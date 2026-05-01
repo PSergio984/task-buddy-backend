@@ -6,8 +6,17 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.dependencies import get_query_token
 from app.api.routers import task, users
 
+from app.database import database
+
 
 app = FastAPI()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    await database.connect()
+    yield
+    await database.disconnect()
 
 
 # Configure CORS middleware
