@@ -5,7 +5,7 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.api.routers.task import tbl_task, tbl_subtask
+from app.database import database
 
 
 @pytest.fixture(scope="session")
@@ -15,9 +15,9 @@ def anyio_backend():
 
 @pytest.fixture(autouse=True)
 async def db() -> AsyncGenerator:
-    tbl_task.clear()
-    tbl_subtask.clear()
+    await database.connect()
     yield
+    await database.disconnect()
 
 
 @pytest.fixture()
@@ -28,5 +28,5 @@ def client() -> Generator:
 @pytest.fixture(scope="session")
 async def async_client() -> AsyncGenerator:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+    async with AsyncClient(transport=transport, base_url="http:127.0.0.1/") as ac:
         yield ac

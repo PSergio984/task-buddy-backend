@@ -1,6 +1,7 @@
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+from pydantic import ConfigDict
 
 
 class TaskCreateRequest(BaseModel):
@@ -22,6 +23,8 @@ class SubTaskCreateRequest(BaseModel):
 
 
 class SubTaskCreateResponse(SubTaskCreateRequest):
+    model_config = ConfigDict(from_attributes=True)
+
     id: int
     created_at: datetime
 

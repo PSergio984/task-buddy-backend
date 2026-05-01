@@ -30,7 +30,7 @@ async def test_create_task(async_client: AsyncClient):
     response = await async_client.post("/api/v1/tasks/", json=body)
 
     assert response.status_code == 201
-    assert {"id": "3", "title": body["title"]}.items() <= response.json().items()
+    assert {"id": "1", "title": body["title"]}.items() <= response.json().items()
 
 
 @pytest.mark.anyio
@@ -57,7 +57,7 @@ async def test_create_subtask(async_client: AsyncClient, created_task: dict):
 
     assert response.status_code == 201
     assert {
-        "id": 0,
+        "id": 1,
         "title": body["title"],
         "task_id": body["task_id"],
     }.items() <= response.json().items()
