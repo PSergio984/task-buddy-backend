@@ -2,10 +2,10 @@ from collections.abc import AsyncGenerator, Generator
 
 import pytest
 from fastapi.testclient import TestClient
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 
-from api.main import app
-from api.routers.task import tbl_task, tbl_subtask
+from app.main import app
+from app.api.routers.task import tbl_task, tbl_subtask
 
 
 @pytest.fixture(scope="session")
@@ -27,5 +27,6 @@ def client() -> Generator:
 
 @pytest.fixture(scope="session")
 async def async_client() -> AsyncGenerator:
-    async with AsyncClient(app=app, base_url=client.base.url) as ac:
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
         yield ac

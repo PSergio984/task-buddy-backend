@@ -1,6 +1,4 @@
 from fastapi import APIRouter, HTTPException
-
-from app.api.routers.tasks import task_table, subtask_table
 from app.models.task import (
     TaskCreateRequest,
     TaskCreateResponse,
