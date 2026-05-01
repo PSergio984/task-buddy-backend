@@ -28,5 +28,5 @@ def client() -> Generator:
 @pytest.fixture(scope="session")
 async def async_client() -> AsyncGenerator:
     transport = ASGITransport(app=app)
-    async with AsyncClient(transport=transport, base_url="http:127.0.0.1/") as ac:
+    async with AsyncClient(transport=transport, base_url="http://testserver/") as ac:
         yield ac

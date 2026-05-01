@@ -8,6 +8,7 @@ from app.models.task import (
     SubTaskCreateResponse,
     TaskWithSubTasks,
 )
+from datetime import datetime
 
 router = APIRouter(
     tags=["tasks"],
@@ -15,21 +16,22 @@ router = APIRouter(
 )
 
 
-@router.get("/task", tags=["tasks"], response_model=list[TaskCreateResponse])
+@router.get("/", tags=["tasks"], response_model=list[TaskCreateResponse])
 async def get_all_tasks():
     query = tbl_task.select()
     return await database.fetch_all(query)
 
 
-@router.get("/task/{task_id}", response_model=TaskCreateResponse)
+@router.get("/{task_id}", response_model=TaskCreateResponse)
 async def get_task(task_id: int):
     query = tbl_task.select().where(tbl_task.c.id == task_id)
     return await database.fetch_one(query)
 
 
-@router.post("/task", response_model=TaskCreateResponse, status_code=201)
+@router.post("/", response_model=TaskCreateResponse, status_code=201)
 async def create_task(task: TaskCreateRequest):
     data = task.model_dump()
+    data["created_at"] = datetime.now()
     query = tbl_task.insert().values(**data)
     last_record_id = await database.execute(query)
     return {**data, "id": last_record_id}
@@ -67,17 +69,14 @@ async def delete_task(task_id: str):
     return {"message": "Task deleted successfully"}
 
 
-@router.get("/{task_id}/subtasks", response_model=SubTaskCreateResponse)
-async def get_subtasks(subtask: SubTaskCreateRequest):
-    if SubTaskCreateRequest.task_id not in tbl_task:
+@router.get("/{task_id}/subtasks", response_model=TaskWithSubTasks)
+async def get_task_with_subtasks(task_id: int):
+    task = await get_task(task_id)
+
+    if not task:
         raise HTTPException(status_code=404, detail="Task not found")
 
-    subtasks = [
-        subtask
-        for subtask in tbl_subtask.values()
-        if subtask["task_id"] == SubTaskCreateRequest.task_id
-    ]
-    return {"subtasks": subtasks}
+    return {"task": task, "subtasks": await get_subtasks_on_task(task_id)}
 
 
 @router.post("/subtask", response_model=SubTaskCreateResponse, status_code=201)
@@ -87,23 +86,16 @@ async def create_subtask(subtask: SubTaskCreateRequest):
         raise HTTPException(status_code=404, detail="Task not found")
 
     data = subtask.model_dump()
+    from datetime import datetime
+
+    data["created_at"] = datetime.now()
     query = tbl_subtask.insert().values(**data)
     last_record_id = await database.execute(query)
     return {**data, "id": last_record_id}
 
 
-@router.get("/task/{task_id}/subtask", response_model=list[SubTaskCreateResponse])
+@router.get("/{task_id}/subtask", response_model=list[SubTaskCreateResponse])
 async def get_subtasks_on_task(task_id: int):
 
     query = tbl_subtask.select().where(tbl_subtask.c.task_id == task_id)
     return await database.fetch_all(query)
-
-
-@router.get("/task/{task_id}/subtask", response_model=list[TaskWithSubTasks])
-async def get_task_with_subtasks(task_id: int):
-    task = await get_task(task_id)
-
-    if not task:
-        raise HTTPException(status_code=404, detail="Task not found")
-
-    return {"task": task, "subtasks": await get_subtasks_on_task(task_id)}

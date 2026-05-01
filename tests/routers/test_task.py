@@ -30,7 +30,7 @@ async def test_create_task(async_client: AsyncClient):
     response = await async_client.post("/api/v1/tasks/", json=body)
 
     assert response.status_code == 201
-    assert {"id": "1", "title": body["title"]}.items() <= response.json().items()
+    assert {"id": 1, "title": body["title"]}.items() <= response.json().items()
 
 
 @pytest.mark.anyio
@@ -85,7 +85,7 @@ async def test_get_subtasks_on_task_empty(async_client: AsyncClient, created_tas
 async def test_get_task_with_subtasks(
     async_client: AsyncClient, created_task: dict, created_subtask: dict
 ):
-    response = await async_client.get(f"/api/v1/tasks/{created_task['id']}/subtask")
+    response = await async_client.get(f"/api/v1/tasks/{created_task['id']}/subtasks")
 
     assert response.status_code == 200
     assert response.json() == {
@@ -98,6 +98,6 @@ async def test_get_task_with_subtasks(
 async def test_get_missing_task_with_subtasks(
     async_client: AsyncClient, created_subtask: dict, created_task: dict
 ):
-    response = await async_client.get("/api/v1/tasks/999/subtask")
+    response = await async_client.get("/api/v1/tasks/999/subtasks")
 
     assert response.status_code == 404

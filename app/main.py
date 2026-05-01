@@ -11,6 +11,8 @@ from app.database import database
 
 app = FastAPI()
 
+app.include_router(task.router, prefix="/api/v1/tasks")
+app.include_router(users.router, prefix="/api/v1/users")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

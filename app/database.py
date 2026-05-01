@@ -12,6 +12,8 @@ tbl_task = sqlalchemy.Table(
     sqlalchemy.Column("title", sqlalchemy.String, nullable=False),
     sqlalchemy.Column("description", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("completed", sqlalchemy.Boolean, default=False),
+    sqlalchemy.Column("due_date", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
 tbl_subtask = sqlalchemy.Table(
@@ -22,6 +24,8 @@ tbl_subtask = sqlalchemy.Table(
     sqlalchemy.Column("title", sqlalchemy.String, nullable=False),
     sqlalchemy.Column("description", sqlalchemy.String, nullable=True),
     sqlalchemy.Column("completed", sqlalchemy.Boolean, default=False),
+    sqlalchemy.Column("due_date", sqlalchemy.DateTime, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
 engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False})
