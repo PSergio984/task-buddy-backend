@@ -1,6 +1,8 @@
 import logging
-from contextlib import asynccontextmanager
+import sentry_sdk
 
+from contextlib import asynccontextmanager
+from app.config import DevConfig, config
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.exceptions import http_exception_handler
@@ -12,6 +14,12 @@ from app.database import database
 from app.logging_conf import configure_logging
 
 logger = logging.getLogger(__name__)
+
+sentry_sdk.init(
+    dsn=config.SENTRY_DSN,
+    send_default_pii=isinstance(config, DevConfig),
+    enable_logs=isinstance(config, DevConfig),
+)
 
 
 @asynccontextmanager
