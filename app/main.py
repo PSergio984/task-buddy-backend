@@ -5,6 +5,7 @@ from fastapi.middleware.cors import CORSMiddleware
 
 from app.api.dependencies import get_query_token
 from app.api.routers import task, users
+from app.logging_conf import configure_logging
 
 from app.database import database
 
@@ -14,8 +15,10 @@ app = FastAPI()
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(users.router, prefix="/api/v1/users")
 
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    configure_logging()
     await database.connect()
     yield
     await database.disconnect()
