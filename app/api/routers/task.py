@@ -1,7 +1,8 @@
 import logging
 from datetime import datetime
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException
 
 from app.database import database, tbl_subtask, tbl_task
 from app.models.task import (
@@ -11,6 +12,8 @@ from app.models.task import (
     TaskCreateResponse,
     TaskWithSubTasks,
 )
+from app.models.user import User
+from app.security import get_current_user
 
 # Constants to avoid duplicated string literals
 ROUTER_TAG = "tasks"
@@ -56,9 +59,13 @@ async def get_task(task_id: int):
 
 
 @router.post("/", response_model=TaskCreateResponse, status_code=201)
-async def create_task(task: TaskCreateRequest):
+async def create_task(
+    task: TaskCreateRequest, current_user: Annotated[User, Depends(get_current_user)]
+):
     logger.info("POST / - creating task title=%s", task.title)
+
     data = task.model_dump()
+    data["user_id"] = current_user.id
     data["created_at"] = datetime.now()
     query = tbl_task.insert().values(**data)
     last_record_id = await database.execute(query)
@@ -130,11 +137,16 @@ async def get_task_with_subtasks(task_id: int):
     status_code=201,
     responses={404: {"description": TASK_NOT_FOUND}},
 )
-async def create_subtask(subtask: SubTaskCreateRequest):
+async def create_subtask(
+    subtask: SubTaskCreateRequest,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
     logger.info("POST /subtask - creating subtask for task_id=%s", subtask.task_id)
+
     await get_task(subtask.task_id)
 
     data = subtask.model_dump()
+    data["user_id"] = current_user.id
     data["created_at"] = datetime.now()
     query = tbl_subtask.insert().values(**data)
     last_record_id = await database.execute(query)

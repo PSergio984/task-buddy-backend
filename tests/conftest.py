@@ -57,3 +57,21 @@ async def registered_user(db, async_client: AsyncClient) -> dict:
 
     user_data["id"] = user["id"]
     return user_data
+
+
+@pytest.fixture()
+async def logged_in_token(async_client: AsyncClient, registered_user: dict) -> str:
+    response = await async_client.post(
+        "/api/v1/users/token",
+        data={"username": registered_user["email"], "password": registered_user["password"]},
+    )
+    assert response.status_code == 200, (
+        f"Login failed with status {response.status_code}: {response.json()}"
+    )
+
+    payload = response.json()
+    token = payload.get("access_token")
+    assert isinstance(token, str) and token, (
+        f"Login response did not include a valid access_token: {payload}"
+    )
+    return token

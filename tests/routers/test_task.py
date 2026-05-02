@@ -1,44 +1,82 @@
 import pytest
 from httpx import AsyncClient
+from app import security
 
 
-async def create_task(body: dict, client: AsyncClient) -> dict:
-    response = await client.post("/api/v1/tasks/", json=body)
+async def create_task(body: dict, client: AsyncClient, logged_in_token: str) -> dict:
+    response = await client.post(
+        "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
     return response.json()
 
 
-async def create_subtask(body: str, post_id: int, client: AsyncClient) -> dict:
+async def create_subtask(
+    body: str, post_id: int, client: AsyncClient, logged_in_token: str
+) -> dict:
 
-    response = await client.post("/api/v1/tasks/subtask", json={"title": body, "task_id": post_id})
+    response = await client.post(
+        "/api/v1/tasks/subtask",
+        json={"title": body, "task_id": post_id},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
     return response.json()
 
 
 @pytest.fixture()
-async def created_task(db, async_client: AsyncClient) -> dict:
-    return await create_task({"title": "Test Task"}, async_client)
+async def created_task(db, async_client: AsyncClient, logged_in_token: str) -> dict:
+    return await create_task({"title": "Test Task"}, async_client, logged_in_token)
 
 
 @pytest.fixture()
-async def created_subtask(created_task: dict, async_client: AsyncClient) -> dict:
-    return await create_subtask("Test SubTask", created_task["id"], async_client)
+async def created_subtask(
+    created_task: dict, async_client: AsyncClient, logged_in_token: str
+) -> dict:
+    return await create_subtask("Test SubTask", created_task["id"], async_client, logged_in_token)
 
 
 @pytest.mark.anyio
-async def test_create_task(db, async_client: AsyncClient):
+async def test_create_task(
+    db, async_client: AsyncClient, logged_in_token: str, registered_user: dict
+):
     body = {"title": "Test Task"}
 
-    response = await async_client.post("/api/v1/tasks/", json=body)
+    response = await async_client.post(
+        "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
 
     assert response.status_code == 201
-    assert {"id": 1, "title": body["title"]}.items() <= response.json().items()
+    assert {
+        "id": 1,
+        "title": body["title"],
+        "user_id": registered_user["id"],
+    }.items() <= response.json().items()
 
 
 @pytest.mark.anyio
-async def test_create_empty_task(db, async_client: AsyncClient):
+async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token: str):
 
-    response = await async_client.post("/api/v1/tasks/", json={})
+    response = await async_client.post(
+        "/api/v1/tasks/", json={}, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
 
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_create_task_expired_token(
+    db, async_client: AsyncClient, registered_user: dict, monkeypatch
+):
+    monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
+    token = security.create_access_token(registered_user["email"])
+    response = await async_client.post(
+        "/api/v1/tasks/", json={"title": "Test Task"}, headers={"Authorization": f"Bearer {token}"}
+    )
+
+    assert response.status_code == 401
+    assert (
+        "Token has expired" in response.json()["detail"]
+        or "Could not validate credentials" in response.json()["detail"]
+    )
 
 
 @pytest.mark.anyio
@@ -50,16 +88,24 @@ async def test_get_all_tasks(async_client: AsyncClient, created_task: dict):
 
 
 @pytest.mark.anyio
-async def test_create_subtask(async_client: AsyncClient, created_task: dict):
+async def test_create_subtask(
+    async_client: AsyncClient,
+    created_task: dict,
+    logged_in_token: str,
+    registered_user: dict,
+):
     body = {"title": "Test SubTask", "task_id": created_task["id"]}
 
-    response = await async_client.post("/api/v1/tasks/subtask", json=body)
+    response = await async_client.post(
+        "/api/v1/tasks/subtask", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
 
     assert response.status_code == 201
     assert {
         "id": 1,
         "title": body["title"],
         "task_id": body["task_id"],
+        "user_id": registered_user["id"],
     }.items() <= response.json().items()
 
 

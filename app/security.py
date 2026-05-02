@@ -1,11 +1,13 @@
 import logging
 import datetime
-import os
 
+from typing import Annotated
 from passlib.hash import argon2
 from jose import jwt, ExpiredSignatureError, JWTError
 from app.database import database, tbl_user
-from fastapi import HTTPException, status
+from fastapi import HTTPException, status, Depends
+from fastapi.security import OAuth2PasswordBearer
+
 from app.config import config, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 
@@ -13,6 +15,7 @@ logger = logging.getLogger(__name__)
 
 pwd_context = argon2.using(rounds=10)
 
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
 
 credentials_exception = HTTPException(
     status_code=status.HTTP_401_UNAUTHORIZED,
@@ -34,7 +37,7 @@ def _get_secret_key() -> str:
 def create_access_token(email: str) -> str:
     logger.debug("Creating access token for email=%s", email)
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
-        minutes=ACCESS_TOKEN_EXPIRE_MINUTES
+        minutes=access_token_expire_time()
     )
     jwt_payload = {"sub": email, "exp": expire}
     secret = _get_secret_key()
@@ -67,7 +70,7 @@ async def authenticate_user(email: str, password: str):
     return user
 
 
-async def get_current_user(token: str):
+async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
         email: str = payload.get("sub")
