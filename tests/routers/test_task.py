@@ -14,7 +14,7 @@ async def create_subtask(body: str, post_id: int, client: AsyncClient) -> dict:
 
 
 @pytest.fixture()
-async def created_task(async_client: AsyncClient) -> dict:
+async def created_task(db, async_client: AsyncClient) -> dict:
     return await create_task({"title": "Test Task"}, async_client)
 
 
@@ -24,7 +24,7 @@ async def created_subtask(created_task: dict, async_client: AsyncClient) -> dict
 
 
 @pytest.mark.anyio
-async def test_create_task(async_client: AsyncClient):
+async def test_create_task(db, async_client: AsyncClient):
     body = {"title": "Test Task"}
 
     response = await async_client.post("/api/v1/tasks/", json=body)
@@ -34,7 +34,7 @@ async def test_create_task(async_client: AsyncClient):
 
 
 @pytest.mark.anyio
-async def test_create_empty_task(async_client: AsyncClient):
+async def test_create_empty_task(db, async_client: AsyncClient):
 
     response = await async_client.post("/api/v1/tasks/", json={})
 

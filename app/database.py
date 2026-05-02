@@ -28,6 +28,17 @@ tbl_subtask = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+tbl_user = sqlalchemy.Table(
+    "tbl_users",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column("username", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("email", sqlalchemy.String, unique=True, nullable=False),
+    sqlalchemy.Column("password", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
+
 engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False})
 
 metadata.create_all(engine)

@@ -5,11 +5,10 @@ from contextlib import asynccontextmanager
 from app.config import DevConfig, config
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, HTTPException, Request
-from fastapi.exceptions import http_exception_handler
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-from app.api.routers import task, users
+from app.api.routers import task, user
 from app.database import database
 from app.logging_conf import configure_logging
 
@@ -35,7 +34,7 @@ app = FastAPI(lifespan=lifespan)
 app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
-app.include_router(users.router, prefix="/api/v1/users")
+app.include_router(user.router, prefix="/api/v1/users")
 
 
 @app.exception_handler(HTTPException)
@@ -47,7 +46,10 @@ async def log_http_exception(request: Request, exc: HTTPException):
         exc.status_code,
         exc.detail,
     )
-    return await http_exception_handler(request, exc)
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"detail": exc.detail},
+    )
 
 
 @app.exception_handler(Exception)
