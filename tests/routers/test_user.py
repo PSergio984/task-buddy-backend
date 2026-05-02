@@ -6,7 +6,7 @@ async def register_user(
     async_client: AsyncClient, username: str, email: str, password: str
 ) -> dict:
     return await async_client.post(
-        "/register",
+        "/api/v1/users/register",
         json={
             "username": username,
             "email": email,
@@ -16,7 +16,7 @@ async def register_user(
 
 
 @pytest.mark.anyio
-async def test_register_user(async_client: AsyncClient):
+async def test_register_user(db, async_client: AsyncClient):
     response = await register_user(async_client, "newuser", "example@email.net", "newpassword")
     assert response.status_code == 201
     assert "User Created" in response.json()["detail"]
@@ -32,16 +32,18 @@ async def test_register_user_duplicate_email(async_client: AsyncClient, register
 
 
 @pytest.mark.anyio
-async def test_login_user_not_exists(async_client: AsyncClient):
+async def test_login_user_not_exists(db, async_client: AsyncClient):
     response = await async_client.post(
-        "/token", json={"email": "test@example.net", "password": "any"}
+        "/api/v1/users/token", json={"email": "test@example.net", "password": "any"}
     )
     assert response.status_code == 401
 
 
+@pytest.mark.anyio
 async def test_login_user(async_client: AsyncClient, registered_user: dict):
     response = await async_client.post(
-        "/token", json={"email": registered_user["email"], "password": registered_user["password"]}
+        "/api/v1/users/token",
+        json={"email": registered_user["email"], "password": registered_user["password"]},
     )
     assert response.status_code == 200
     assert "access_token" in response.json()

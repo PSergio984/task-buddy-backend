@@ -1,5 +1,4 @@
 from collections.abc import AsyncGenerator, Generator
-import logging
 
 import pytest
 from fastapi.testclient import TestClient
@@ -17,9 +16,10 @@ def anyio_backend():
 @pytest.fixture()
 async def db() -> AsyncGenerator:
     await database.connect()
-    # Clear task tables before each test
+    # Clear child tables before parents to respect FK constraints.
     await database.execute(tbl_subtask.delete())
     await database.execute(tbl_task.delete())
+    await database.execute(tbl_user.delete())
     yield
     await database.disconnect()
 
@@ -36,8 +36,8 @@ async def async_client() -> AsyncGenerator:
         yield ac
 
 
-@pytest.fixture(scope="session")
-async def registered_user(async_client: AsyncClient) -> dict:
+@pytest.fixture()
+async def registered_user(db, async_client: AsyncClient) -> dict:
     user_data = {
         "username": "testuser",
         "email": "testuser@example.com",
@@ -45,14 +45,9 @@ async def registered_user(async_client: AsyncClient) -> dict:
     }
     response = await async_client.post("/api/v1/users/register", json=user_data)
 
-    # Handle existing user (from previous test runs)
-    if response.status_code == 400 and "already registered" in response.json().get("detail", ""):
-        logger = logging.getLogger(__name__)
-        logger.debug(f"User {user_data['email']} already exists, fetching from database")
-    else:
-        assert response.status_code == 201, (
-            f"Registration failed with status {response.status_code}: {response.json()}"
-        )
+    assert response.status_code == 201, (
+        f"Registration failed with status {response.status_code}: {response.json()}"
+    )
 
     query = tbl_user.select().where(tbl_user.c.email == user_data["email"])
     user = await database.fetch_one(query)

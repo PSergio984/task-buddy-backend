@@ -50,3 +50,17 @@ async def test_authenticate_user_not_found():
 async def test_authenticate_user_wrong_password(registered_user: dict):
     with pytest.raises(security.HTTPException):
         await security.authenticate_user(registered_user["email"], "wrong_password")
+
+
+@pytest.mark.anyio
+async def test_get_current_user(registered_user: dict):
+    token = security.create_access_token(registered_user["email"])
+    user = await security.get_current_user(token)
+    assert user is not None
+    assert user["email"] == registered_user["email"]
+
+
+@pytest.mark.anyio
+async def test_get_current_user_invalid_token():
+    with pytest.raises(security.HTTPException) as exc_info:
+        await security.get_current_user("invalid_token")
