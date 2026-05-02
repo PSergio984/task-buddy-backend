@@ -1,11 +1,16 @@
 from typing import Optional
 from functools import lru_cache
+import os
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BaseConfig(BaseSettings):
     ENV_STATE: Optional[str] = None
     SENTRY_DSN: Optional[str] = None
+    SECRET_KEY: Optional[str] = None
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = "HS256"
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
@@ -24,6 +29,15 @@ class DevConfig(GlobalConfig):
 class ProdConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="PROD_")
 
+    @model_validator(mode="after")
+    def ensure_secret_key(self):
+        """Fail-fast in production when SECRET_KEY is not set."""
+        if not self.SECRET_KEY:
+            raise ValueError(
+                "PROD_SECRET_KEY (SECRET_KEY) must be set in production; refusing to start without a secure secret."
+            )
+        return self
+
 
 class TestConfig(GlobalConfig):
     DATABASE_URL: str = "sqlite:///./test.db"
@@ -39,3 +53,21 @@ def get_config(env_state: str) -> GlobalConfig:
 
 
 config = get_config(BaseConfig().ENV_STATE)
+
+
+# Convenience top-level exports so other modules can import settings directly
+# Preference order for SECRET_KEY: env `SECRET_KEY` -> configured value -> unprefixed .env -> env `PROD_SECRET_KEY`
+_unprefixed_secret = None
+try:
+    _unprefixed_secret = BaseConfig().SECRET_KEY
+except Exception:
+    _unprefixed_secret = None
+
+SECRET_KEY = (
+    os.environ.get("SECRET_KEY")
+    or getattr(config, "SECRET_KEY", None)
+    or _unprefixed_secret
+    or os.environ.get("PROD_SECRET_KEY")
+)
+ALGORITHM = getattr(config, "ALGORITHM", "HS256")
+ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)

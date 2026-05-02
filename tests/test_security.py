@@ -1,11 +1,24 @@
 import pytest
 
+from jose import jwt
 from app import security
 
 
 def test_password_hash():
     password = "my_password"
     assert security.verify_password(password, security.get_password_hash(password))
+
+
+def test_access_token_expire_minutes():
+    assert security.access_token_expire_time() == 30
+
+
+def test_create_access_token():
+    token = security.create_access_token("123")
+
+    assert {"sub": "123"}.items() <= jwt.decode(
+        token, key=security.SECRET_KEY, algorithms=[security.ALGORITHM]
+    ).items()
 
 
 @pytest.mark.anyio
@@ -18,3 +31,22 @@ async def test_get_user(registered_user: dict):
 async def test_get_user_not_found(registered_user: dict):
     user = await security.get_user("nonexistent@example.com")
     assert user is None
+
+
+@pytest.mark.anyio
+async def test_authenticate_user(registered_user: dict):
+    user = await security.authenticate_user(registered_user["email"], registered_user["password"])
+    assert user is not None
+    assert user["email"] == registered_user["email"]
+
+
+@pytest.mark.anyio
+async def test_authenticate_user_not_found():
+    with pytest.raises(security.HTTPException):
+        await security.authenticate_user("nonexistent@example.com", "wrong_password")
+
+
+@pytest.mark.anyio
+async def test_authenticate_user_wrong_password(registered_user: dict):
+    with pytest.raises(security.HTTPException):
+        await security.authenticate_user(registered_user["email"], "wrong_password")

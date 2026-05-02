@@ -14,7 +14,7 @@ def anyio_backend():
     return "asyncio"
 
 
-@pytest.fixture(autouse=True)
+@pytest.fixture()
 async def db() -> AsyncGenerator:
     await database.connect()
     # Clear task tables before each test

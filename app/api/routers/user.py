@@ -4,9 +4,8 @@ import sqlite3
 import sqlalchemy.exc
 from fastapi import APIRouter, HTTPException, status
 from app.models.user import UserIn
-from app.security import get_password_hash
+from app.security import get_password_hash, authenticate_user, create_access_token, get_user
 from app.database import database, tbl_user
-
 
 logger = logging.getLogger(__name__)
 router = APIRouter()
@@ -27,3 +26,10 @@ async def register_user(user: UserIn):
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already registered"
         ) from e
+
+
+@router.post("/token")
+async def login(user: UserIn):
+    user = await authenticate_user(user.email, user.password)
+    access_token = create_access_token(user.email)
+    return {"access_token": access_token, "token_type": "bearer"}
