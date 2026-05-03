@@ -21,6 +21,9 @@ from app.security import get_current_user
 ROUTER_TAG = "tasks"
 TASK_NOT_FOUND = "Task not found"
 BAD_REQUEST = "Bad request"
+NO_FIELDS_TO_UPDATE = "No fields to update"
+NOT_AUTHORIZED_MODIFY_TASK = "Not authorized to modify this task"
+NOT_AUTHORIZED_VIEW_TAGS = "Not authorized to view this task's tags"
 SUBTASK_PATH = "/subtask"
 SUBTASKS_PATH = "/{task_id}/subtasks"
 TASK_SUBTASK_PATH = "/{task_id}/subtask"
@@ -34,9 +37,15 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
+# Centralize task ownership checks so endpoints stay consistent.
 def ensure_task_owner(task, current_user: User, detail: str) -> None:
     if task.user_id != current_user.id:
         raise HTTPException(status_code=403, detail=detail)
+
+
+# Return 201 when a task-tag link is created, otherwise 200 for idempotent attach.
+def set_tag_link_response_status(response: Response, link_created: bool) -> None:
+    response.status_code = 201 if link_created else 200
 
 
 @router.get("/", response_model=list[TaskCreateResponse])
@@ -89,6 +98,7 @@ async def update_task(
     task_id: int, title: str = None, description: str = None, completed: bool = None
 ):
     logger.info("PUT /%s - updating task", task_id)
+    # Reuse existing 404 behavior from get_task.
     await get_task(task_id)
 
     update_data = {}
@@ -101,7 +111,7 @@ async def update_task(
 
     if not update_data:
         logger.warning("PUT /%s - no fields to update", task_id)
-        raise HTTPException(status_code=400, detail="No fields to update")
+        raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
     query = tbl_task.update().where(tbl_task.c.id == task_id)
     await database.execute(query.values(**update_data))
@@ -163,7 +173,7 @@ async def create_subtask(
 )
 async def get_subtasks_on_task(task_id: int):
     logger.info("GET /%s/subtask - fetching subtasks", task_id)
-    await get_task(task_id)  # Validates task exists, raises 404 if not
+    await get_task(task_id)
     query = tbl_subtask.select().where(tbl_subtask.c.task_id == task_id)
     subtasks = await database.fetch_all(query)
     logger.info("GET /%s/subtask - fetched %s subtasks", task_id, len(subtasks))
@@ -175,7 +185,7 @@ async def get_subtasks_on_task(task_id: int):
     response_model=TagResponse,
     responses={
         404: {"description": TASK_NOT_FOUND},
-        403: {"description": "Not authorized to modify this task"},
+        403: {"description": NOT_AUTHORIZED_MODIFY_TASK},
     },
 )
 async def create_tag(
@@ -187,7 +197,7 @@ async def create_tag(
     logger.info("POST /%s/tags - creating tag name=%s", task_id, tag.name)
 
     task = await get_task(task_id)
-    ensure_task_owner(task, current_user, "Not authorized to modify this task")
+    ensure_task_owner(task, current_user, NOT_AUTHORIZED_MODIFY_TASK)
     query = tbl_tag.select().where(
         tbl_tag.c.user_id == current_user.id,
         tbl_tag.c.name == tag.name,
@@ -211,13 +221,13 @@ async def create_tag(
     )
     existing_link = await database.fetch_one(link_query)
 
-    if not existing_link:
+    link_created = not existing_link
+    if link_created:
         await database.execute(
             tbl_task_tags.insert().values(task_id=task_id, tag_id=tag_record["id"])
         )
-        response.status_code = 201
-    else:
-        response.status_code = 200
+    # Keep payload stable while status reflects whether a new link was created.
+    set_tag_link_response_status(response, link_created)
 
     return tag_record
 
@@ -227,7 +237,7 @@ async def create_tag(
     response_model=list[TagResponse],
     responses={
         404: {"description": TASK_NOT_FOUND},
-        403: {"description": "Not authorized to view this task's tags"},
+        403: {"description": NOT_AUTHORIZED_VIEW_TAGS},
     },
 )
 async def get_tags_on_task(
@@ -236,8 +246,8 @@ async def get_tags_on_task(
 ):
     logger.info("GET /%s/tags - fetching tags", task_id)
     task = await get_task(task_id)
-    ensure_task_owner(task, current_user, "Not authorized to view this task's tags")
-    # Fetch tags linked to the task; response model does not include task_id
+    ensure_task_owner(task, current_user, NOT_AUTHORIZED_VIEW_TAGS)
+    # Build a query to retrieve all tags linked to a specific task.
     query = (
         tbl_tag.select()
         .select_from(tbl_tag.join(tbl_task_tags, tbl_tag.c.id == tbl_task_tags.c.tag_id))
