@@ -34,6 +34,11 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
+def ensure_task_owner(task, current_user: User, detail: str) -> None:
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail=detail)
+
+
 @router.get("/", response_model=list[TaskCreateResponse])
 async def get_all_tasks():
     logger.info("GET / - fetching tasks")
@@ -84,11 +89,7 @@ async def update_task(
     task_id: int, title: str = None, description: str = None, completed: bool = None
 ):
     logger.info("PUT /%s - updating task", task_id)
-    existing_task = await database.fetch_one(tbl_task.select().where(tbl_task.c.id == task_id))
-
-    if not existing_task:
-        logger.warning("PUT /%s - task not found", task_id)
-        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+    await get_task(task_id)
 
     update_data = {}
     if title is not None:
@@ -111,11 +112,7 @@ async def update_task(
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}})
 async def delete_task(task_id: int):
     logger.info("DELETE /%s - deleting task", task_id)
-    existing_task = await database.fetch_one(tbl_task.select().where(tbl_task.c.id == task_id))
-
-    if not existing_task:
-        logger.warning("DELETE /%s - task not found", task_id)
-        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+    await get_task(task_id)
 
     await database.execute(tbl_task_tags.delete().where(tbl_task_tags.c.task_id == task_id))
     await database.execute(tbl_subtask.delete().where(tbl_subtask.c.task_id == task_id))
@@ -190,8 +187,7 @@ async def create_tag(
     logger.info("POST /%s/tags - creating tag name=%s", task_id, tag.name)
 
     task = await get_task(task_id)
-    if task.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to modify this task")
+    ensure_task_owner(task, current_user, "Not authorized to modify this task")
     query = tbl_tag.select().where(
         tbl_tag.c.user_id == current_user.id,
         tbl_tag.c.name == tag.name,
@@ -240,8 +236,7 @@ async def get_tags_on_task(
 ):
     logger.info("GET /%s/tags - fetching tags", task_id)
     task = await get_task(task_id)
-    if task.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Not authorized to view this task's tags")
+    ensure_task_owner(task, current_user, "Not authorized to view this task's tags")
     # Fetch tags linked to the task; response model does not include task_id
     query = (
         tbl_tag.select()
