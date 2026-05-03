@@ -34,7 +34,8 @@ async def test_register_user_duplicate_email(async_client: AsyncClient, register
 @pytest.mark.anyio
 async def test_login_user_not_exists(db, async_client: AsyncClient):
     response = await async_client.post(
-        "/api/v1/users/token", json={"email": "test@example.net", "password": "any"}
+        "/api/v1/users/token",
+        data={"username": "test@example.net", "password": "any"},
     )
     assert response.status_code == 401
 
@@ -43,7 +44,10 @@ async def test_login_user_not_exists(db, async_client: AsyncClient):
 async def test_login_user(async_client: AsyncClient, registered_user: dict):
     response = await async_client.post(
         "/api/v1/users/token",
-        json={"email": registered_user["email"], "password": registered_user["password"]},
+        data={
+            "username": registered_user["email"],
+            "password": registered_user["password"],
+        },
     )
     assert response.status_code == 200
     assert "access_token" in response.json()

@@ -2,9 +2,9 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Response
 
-from app.database import database, tbl_subtask, tbl_task
+from app.database import database, tbl_subtask, tbl_task, tbl_tag, tbl_task_tags
 from app.models.task import (
     SubTaskCreateRequest,
     SubTaskCreateResponse,
@@ -12,6 +12,8 @@ from app.models.task import (
     TaskCreateResponse,
     TaskWithSubTasks,
 )
+from app.models.tag import TagResponse, TagCreate
+
 from app.models.user import User
 from app.security import get_current_user
 
@@ -22,6 +24,7 @@ BAD_REQUEST = "Bad request"
 SUBTASK_PATH = "/subtask"
 SUBTASKS_PATH = "/{task_id}/subtasks"
 TASK_SUBTASK_PATH = "/{task_id}/subtask"
+TAGS_PATH = "/{task_id}/tags"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
@@ -114,6 +117,8 @@ async def delete_task(task_id: int):
         logger.warning("DELETE /%s - task not found", task_id)
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
+    await database.execute(tbl_task_tags.delete().where(tbl_task_tags.c.task_id == task_id))
+    await database.execute(tbl_subtask.delete().where(tbl_subtask.c.task_id == task_id))
     query = tbl_task.delete().where(tbl_task.c.id == task_id)
     await database.execute(query)
     logger.info("DELETE /%s - task deleted", task_id)
@@ -166,3 +171,77 @@ async def get_subtasks_on_task(task_id: int):
     subtasks = await database.fetch_all(query)
     logger.info("GET /%s/subtask - fetched %s subtasks", task_id, len(subtasks))
     return subtasks
+
+
+@router.post(
+    TAGS_PATH,
+    response_model=TagResponse,
+    responses={404: {"description": TASK_NOT_FOUND}},
+)
+async def create_tag(
+    task_id: int,
+    tag: TagCreate,
+    current_user: Annotated[User, Depends(get_current_user)],
+    response: Response,
+):
+    logger.info("POST /%s/tags - creating tag name=%s", task_id, tag.name)
+
+    task = await get_task(task_id)
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to modify this task")
+    query = tbl_tag.select().where(
+        tbl_tag.c.user_id == current_user.id,
+        tbl_tag.c.name == tag.name,
+    )
+    existing_tag = await database.fetch_one(query)
+
+    if existing_tag:
+        tag_record = dict(existing_tag)
+    else:
+        tag_data = tag.model_dump()
+        tag_data["user_id"] = current_user.id
+        tag_data["created_at"] = datetime.now()
+        insert_query = tbl_tag.insert().values(**tag_data)
+        last_record_id = await database.execute(insert_query)
+        tag_record = {**tag_data, "id": last_record_id}
+        logger.info("POST /%s/tags - created tag id=%s", task_id, last_record_id)
+
+    link_query = tbl_task_tags.select().where(
+        tbl_task_tags.c.task_id == task_id,
+        tbl_task_tags.c.tag_id == tag_record["id"],
+    )
+    existing_link = await database.fetch_one(link_query)
+
+    if not existing_link:
+        await database.execute(
+            tbl_task_tags.insert().values(task_id=task_id, tag_id=tag_record["id"])
+        )
+        response.status_code = 201
+    else:
+        response.status_code = 200
+
+    return tag_record
+
+
+@router.get(
+    TAGS_PATH,
+    response_model=list[TagResponse],
+    responses={404: {"description": TASK_NOT_FOUND}},
+)
+async def get_tags_on_task(
+    task_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+):
+    logger.info("GET /%s/tags - fetching tags", task_id)
+    task = await get_task(task_id)
+    if task.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to view this task's tags")
+    # Fetch tags linked to the task; response model does not include task_id
+    query = (
+        tbl_tag.select()
+        .select_from(tbl_tag.join(tbl_task_tags, tbl_tag.c.id == tbl_task_tags.c.tag_id))
+        .where(tbl_task_tags.c.task_id == task_id)
+    )
+    tags = await database.fetch_all(query)
+    logger.info("GET /%s/tags - fetched %s tags", task_id, len(tags))
+    return tags

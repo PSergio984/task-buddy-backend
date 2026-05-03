@@ -30,6 +30,32 @@ tbl_subtask = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
 )
 
+tbl_tag = sqlalchemy.Table(
+    "tbl_tags",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column(
+        "user_id", sqlalchemy.ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    ),
+    sqlalchemy.Column("name", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),
+)
+tbl_task_tags = sqlalchemy.Table(
+    "tbl_task_tags",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column(
+        "task_id", sqlalchemy.ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
+    ),
+    sqlalchemy.Column(
+        "tag_id", sqlalchemy.ForeignKey("tbl_tags.id", ondelete="CASCADE"), nullable=False
+    ),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.UniqueConstraint("task_id", "tag_id", name="uq_tbl_task_tags_task_tag"),
+)
+
+
 tbl_user = sqlalchemy.Table(
     "tbl_users",
     metadata,

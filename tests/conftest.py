@@ -5,7 +5,16 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient
 
 from app.main import app
-from app.database import database, tbl_user, tbl_task, tbl_subtask
+from app.database import (
+    database,
+    engine,
+    metadata,
+    tbl_user,
+    tbl_task,
+    tbl_subtask,
+    tbl_tag,
+    tbl_task_tags,
+)
 
 
 @pytest.fixture(scope="session")
@@ -15,8 +24,12 @@ def anyio_backend():
 
 @pytest.fixture()
 async def db() -> AsyncGenerator:
+    metadata.drop_all(engine)
+    metadata.create_all(engine)
     await database.connect()
     # Clear child tables before parents to respect FK constraints.
+    await database.execute(tbl_task_tags.delete())
+    await database.execute(tbl_tag.delete())
     await database.execute(tbl_subtask.delete())
     await database.execute(tbl_task.delete())
     await database.execute(tbl_user.delete())
