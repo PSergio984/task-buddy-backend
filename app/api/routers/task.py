@@ -176,7 +176,10 @@ async def get_subtasks_on_task(task_id: int):
 @router.post(
     TAGS_PATH,
     response_model=TagResponse,
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={
+        404: {"description": TASK_NOT_FOUND},
+        403: {"description": "Not authorized to modify this task"},
+    },
 )
 async def create_tag(
     task_id: int,
@@ -226,7 +229,10 @@ async def create_tag(
 @router.get(
     TAGS_PATH,
     response_model=list[TagResponse],
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={
+        404: {"description": TASK_NOT_FOUND},
+        403: {"description": "Not authorized to view this task's tags"},
+    },
 )
 async def get_tags_on_task(
     task_id: int,
