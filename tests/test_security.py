@@ -1,7 +1,63 @@
 import pytest
+import datetime
 
 from jose import jwt
 from app import security
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_valid_access_token():
+    email = "test@example.com"
+    token = security.create_access_token(email)
+    subject = await security.get_subject_for_token_type(token, expected_type="access")
+    assert subject == email
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_valid_confirm_token():
+    email = "test@example.com"
+    token = security.create_confirm_token(email)
+    subject = await security.get_subject_for_token_type(token, expected_type="confirm")
+    assert subject == email
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_expired(monkeypatch):
+    monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
+    email = "test@example.com"
+    token = security.create_access_token(email)
+    with pytest.raises(security.HTTPException) as exc_info:
+        await security.get_subject_for_token_type(token, expected_type="access")
+    assert "Token has expired" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_invalid_token():
+    token = "invalid_token"
+    with pytest.raises(security.HTTPException) as exc_info:
+        await security.get_subject_for_token_type(token, expected_type="access")
+    assert "Invalid token" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_wrong_type():
+    email = "test@example.com"
+    token = security.create_access_token(email)
+    with pytest.raises(security.HTTPException) as exc_info:
+        await security.get_subject_for_token_type(token, expected_type="confirm")
+    assert "Token has incorrect type, expected 'confirm'" in exc_info.value.detail
+
+
+@pytest.mark.anyio
+async def test_get_subject_for_token_type_missing_subject():
+    # Create a token with missing 'sub' field
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
+    jwt_payload = {"exp": expire, "type": "access"}
+    token = jwt.encode(jwt_payload, security.SECRET_KEY, algorithm=security.ALGORITHM)
+
+    with pytest.raises(security.HTTPException) as exc_info:
+        await security.get_subject_for_token_type(token, expected_type="access")
+    assert "Token is missing subject field" in exc_info.value.detail
 
 
 def test_password_hash():
