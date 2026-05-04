@@ -3,10 +3,16 @@ import sqlite3
 import sqlalchemy.exc
 
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, status, Form, Depends
+from fastapi import APIRouter, HTTPException, status, Form, Depends, Request
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models.user import UserIn
-from app.security import get_password_hash, authenticate_user, create_access_token, get_user
+from app.security import (
+    get_password_hash,
+    authenticate_user,
+    create_access_token,
+    create_confirm_token,
+    get_subject_for_token_type,
+)
 from app.database import database, tbl_user
 
 logger = logging.getLogger(__name__)
@@ -17,7 +23,6 @@ REGISTER_PATH = "/register"
 TOKEN_PATH = "/token"
 
 EMAIL_ALREADY_REGISTERED = "Email already exists"
-USER_CREATED = "User Created"
 AUTH_CREDENTIALS_ERROR = "Could not validate credentials"
 
 router = APIRouter(tags=[ROUTER_TAG])
@@ -26,7 +31,7 @@ router = APIRouter(tags=[ROUTER_TAG])
 @router.post(
     REGISTER_PATH, status_code=201, responses={400: {"description": EMAIL_ALREADY_REGISTERED}}
 )
-async def register_user(user: UserIn):
+async def register_user(user: UserIn, request: Request):
     hashed_password = get_password_hash(user.password)
     query = tbl_user.insert().values(
         email=user.email, password=hashed_password, username=user.username
@@ -42,7 +47,11 @@ async def register_user(user: UserIn):
             detail=EMAIL_ALREADY_REGISTERED,
         ) from e
 
-    return {"detail": USER_CREATED}
+    confirmation_token = create_confirm_token(user.email)
+    return {
+        "detail": "User Created, Please confirm your email to activate the account",
+        "confirmation_url": request.url_for("confirm_email", token=confirmation_token),
+    }
 
 
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
@@ -50,3 +59,16 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
     auth_user = await authenticate_user(form_data.username, form_data.password)
     access_token = create_access_token(auth_user["email"])
     return {"access_token": access_token, "token_type": "bearer"}
+
+
+@router.get("/confirm/{token}")
+async def confirm_email(token: str):
+    email = await get_subject_for_token_type(token, expected_type="confirm")
+    query = tbl_user.update().where(tbl_user.c.email == email).values(confirmed=True)
+    rows_affected = await database.execute(query)
+    if rows_affected == 0:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="User not found",
+        )
+    return {"detail": "Email confirmed"}

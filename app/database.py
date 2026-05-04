@@ -41,6 +41,7 @@ tbl_tag = sqlalchemy.Table(
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),
 )
+
 tbl_task_tags = sqlalchemy.Table(
     "tbl_task_tags",
     metadata,
@@ -55,7 +56,6 @@ tbl_task_tags = sqlalchemy.Table(
     sqlalchemy.UniqueConstraint("task_id", "tag_id", name="uq_tbl_task_tags_task_tag"),
 )
 
-
 tbl_user = sqlalchemy.Table(
     "tbl_users",
     metadata,
@@ -64,6 +64,7 @@ tbl_user = sqlalchemy.Table(
     sqlalchemy.Column("email", sqlalchemy.String, unique=True, nullable=False),
     sqlalchemy.Column("password", sqlalchemy.String, nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, server_default="0", nullable=False),
 )
 
 
