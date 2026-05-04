@@ -11,6 +11,7 @@ class BaseConfig(BaseSettings):
     SECRET_KEY: Optional[str] = None
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
+    CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
@@ -71,3 +72,4 @@ SECRET_KEY = (
 )
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
+CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)

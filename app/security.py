@@ -8,7 +8,13 @@ from app.database import database, tbl_user
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 
-from app.config import config, SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import (
+    config,
+    SECRET_KEY,
+    ALGORITHM,
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    CONFIRM_TOKEN_EXPIRE_MINUTES,
+)
 
 
 logger = logging.getLogger(__name__)
@@ -28,6 +34,10 @@ def access_token_expire_time() -> int:
     return ACCESS_TOKEN_EXPIRE_MINUTES
 
 
+def confirm_token_expire_time() -> int:
+    return CONFIRM_TOKEN_EXPIRE_MINUTES
+
+
 def _get_secret_key() -> str:
     if SECRET_KEY:
         return SECRET_KEY
@@ -39,7 +49,18 @@ def create_access_token(email: str) -> str:
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=access_token_expire_time()
     )
-    jwt_payload = {"sub": email, "exp": expire}
+    jwt_payload = {"sub": email, "exp": expire, "type": "access"}
+    secret = _get_secret_key()
+    jwt_encoded = jwt.encode(jwt_payload, secret, algorithm=ALGORITHM)
+    return jwt_encoded
+
+
+def create_confirm_token(email: str) -> str:
+    logger.debug("Creating confirmation token for email=%s", email)
+    expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
+        minutes=confirm_token_expire_time()
+    )
+    jwt_payload = {"sub": email, "exp": expire, "type": "confirm"}
     secret = _get_secret_key()
     jwt_encoded = jwt.encode(jwt_payload, secret, algorithm=ALGORITHM)
     return jwt_encoded
@@ -74,8 +95,13 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     try:
         payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
         email: str = payload.get("sub")
+        type: str = payload.get("type")
         if email is None:
             raise credentials_exception
+        if type is None or type != "access":
+            logger.debug("Invalid token type: expected 'access', got '%s'", type)
+            raise credentials_exception
+
     except ExpiredSignatureError as e:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
