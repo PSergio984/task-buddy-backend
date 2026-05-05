@@ -95,3 +95,17 @@ async def test_login_user(async_client: AsyncClient, confirmed_user: dict):
     )
     assert response.status_code == 200
     assert "access_token" in response.json()
+
+
+@pytest.mark.anyio
+async def test_logout_user(async_client: AsyncClient, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.post("/api/v1/users/logout", headers=headers)
+    assert response.status_code == 200
+    assert "Successfully logged out" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_logout_user_unauthenticated(async_client: AsyncClient):
+    response = await async_client.post("/api/v1/users/logout")
+    assert response.status_code == 401

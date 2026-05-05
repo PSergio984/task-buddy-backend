@@ -73,6 +73,6 @@ tbl_user = sqlalchemy.Table(
 connect_args = {"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {}
 engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args=connect_args)
 
-metadata.create_all(engine)
+# metadata.create_all(engine)
 
 database = databases.Database(config.DATABASE_URL, force_rollback=config.DB_FORCE_ROLL_BACK)

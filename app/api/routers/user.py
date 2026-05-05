@@ -12,6 +12,7 @@ from app.security import (
     create_access_token,
     create_confirm_token,
     get_subject_for_token_type,
+    get_current_user,
 )
 from app.database import database, tbl_user
 from app import tasks
@@ -110,3 +111,13 @@ async def confirm_email(token: str):
             detail="User not found",
         )
     return {"detail": "Email confirmed"}
+
+
+@router.post("/logout")
+async def logout(current_user: Annotated[dict, Depends(get_current_user)]):
+    """
+    Logout the current user.
+    Since the application uses stateless JWTs, the client is responsible for discarding the token.
+    This endpoint verifies the token is valid and returns a success message.
+    """
+    return {"detail": "Successfully logged out. Please clear your token from client storage."}
