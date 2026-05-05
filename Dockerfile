@@ -18,8 +18,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY . .
 
 # Ensure start script is executable
-RUN chmod +x scripts/start.sh
+RUN chmod +x start.sh
 
 # Run
-CMD ["./scripts/start.sh"]
+CMD ["start.sh"]
 
