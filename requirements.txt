@@ -19,4 +19,5 @@ python-jose[cryptography]>=3.3.0
 python-multipart>=0.0.6
 passlib[argon2]>=1.7.0
 psycopg2-binary>=2.9.0
+rich>=14.0.0
 
