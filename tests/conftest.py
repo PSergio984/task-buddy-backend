@@ -1,8 +1,9 @@
-from collections.abc import AsyncGenerator, Generator
-
 import pytest
+
+from collections.abc import AsyncGenerator, Generator
 from fastapi.testclient import TestClient
-from httpx import ASGITransport, AsyncClient
+from httpx import ASGITransport, AsyncClient, Request, Response
+from unittest.mock import AsyncMock, Mock
 
 from app.main import app
 from app.database import (
@@ -97,3 +98,18 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
         f"Login response did not include a valid access_token: {payload}"
     )
     return token
+
+
+@pytest.fixture(autouse=True)
+def mock_httpx_client(mocker):
+    """Mock httpx.AsyncClient to prevent real HTTP requests during tests."""
+    mocked_client = mocker.patch("api.tasks.httpx.AsyncClient")
+
+    mocked_async_client = AsyncMock()
+
+    response = Response(200, content="", request=Request("POST", "//"))
+
+    mocked_async_client.post = AsyncMock(return_value=response)
+    mocked_client.return_value.__aenter__.return_value = mocked_async_client
+
+    return mocked_async_client

@@ -65,6 +65,9 @@ tbl_user = sqlalchemy.Table(
     sqlalchemy.Column("password", sqlalchemy.String, nullable=False),
     sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
     sqlalchemy.Column("confirmed", sqlalchemy.Boolean, server_default="0", nullable=False),
+    sqlalchemy.Column(
+        "confirmation_failed", sqlalchemy.Boolean, server_default="0", nullable=False
+    ),
 )
 
 

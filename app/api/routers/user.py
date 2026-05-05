@@ -3,7 +3,7 @@ import sqlite3
 import sqlalchemy.exc
 
 from typing import Annotated
-from fastapi import APIRouter, HTTPException, status, Form, Depends, Request
+from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Form, Depends, Request, Body
 from fastapi.security import OAuth2PasswordRequestForm
 from app.models.user import UserIn
 from app.security import (
@@ -14,6 +14,7 @@ from app.security import (
     get_subject_for_token_type,
 )
 from app.database import database, tbl_user
+from app import tasks
 
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ router = APIRouter(tags=[ROUTER_TAG])
 @router.post(
     REGISTER_PATH, status_code=201, responses={400: {"description": EMAIL_ALREADY_REGISTERED}}
 )
-async def register_user(user: UserIn, request: Request):
+async def register_user(user: UserIn, background_tasks: BackgroundTasks, request: Request):
     hashed_password = get_password_hash(user.password)
     query = tbl_user.insert().values(
         email=user.email, password=hashed_password, username=user.username
@@ -48,10 +49,47 @@ async def register_user(user: UserIn, request: Request):
         ) from e
 
     confirmation_token = create_confirm_token(user.email)
+
+    background_tasks.add_task(
+        tasks.send_confirmation_email,
+        user.email,
+        confirmation_url=str(request.url_for("confirm_email", token=confirmation_token)),
+        suppress_exceptions=True,
+    )
+
     return {
-        "detail": "User Created, Please confirm your email to activate the account",
-        "confirmation_url": request.url_for("confirm_email", token=confirmation_token),
+        "detail": "User Created: User registered successfully. Please check your email to confirm."
     }
+
+
+@router.post("/resend-confirmation")
+async def resend_confirmation(
+    background_tasks: BackgroundTasks, email: str = Body(..., embed=True)
+):
+    """Resend a confirmation email for an existing, unconfirmed user.
+
+    The endpoint enqueues the confirmation email as a background task and returns
+    a simple JSON response indicating the action.
+    """
+    query = tbl_user.select().where(tbl_user.c.email == email)
+    user = await database.fetch_one(query)
+    if user is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    if user["confirmed"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Email already confirmed"
+        )
+
+    confirmation_token = create_confirm_token(email)
+    # Use API path for confirmation link (relative) to avoid needing Request here.
+    confirmation_url = f"/api/v1/users/confirm/{confirmation_token}"
+    background_tasks.add_task(
+        tasks.send_confirmation_email,
+        email,
+        confirmation_url=confirmation_url,
+        suppress_exceptions=True,
+    )
+    return {"detail": "Confirmation email requeued"}
 
 
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
