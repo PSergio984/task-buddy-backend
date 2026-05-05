@@ -1,3 +1,4 @@
+from datetime import datetime
 from app.database import database, tbl_audit_log
 
 async def log_action(user_id: int, action: str, target_type: str, target_id: int | None = None, details: str | None = None):
@@ -9,6 +10,7 @@ async def log_action(user_id: int, action: str, target_type: str, target_id: int
         action=action,
         target_type=target_type,
         target_id=target_id,
-        details=details
+        details=details,
+        created_at=datetime.utcnow()
     )
     await database.execute(query)
