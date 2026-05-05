@@ -95,8 +95,10 @@ async def test_create_task_expired_token(
 
 
 @pytest.mark.anyio
-async def test_get_all_tasks(async_client: AsyncClient, created_task: dict):
-    response = await async_client.get("/api/v1/tasks/")
+async def test_get_all_tasks(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+    response = await async_client.get(
+        "/api/v1/tasks/", headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
 
     assert response.status_code == 200
     assert response.json() == [created_task]
@@ -126,17 +128,25 @@ async def test_create_subtask(
 
 @pytest.mark.anyio
 async def test_get_subtasks_on_task(
-    async_client: AsyncClient, created_task: dict, created_subtask: dict
+    async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
 ):
-    response = await async_client.get(f"/api/v1/tasks/{created_task['id']}/subtask")
+    response = await async_client.get(
+        f"/api/v1/tasks/{created_task['id']}/subtask",
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
 
     assert response.status_code == 200
     assert response.json() == [created_subtask]
 
 
 @pytest.mark.anyio
-async def test_get_subtasks_on_task_empty(async_client: AsyncClient, created_task: dict):
-    response = await async_client.get(f"/api/v1/tasks/{created_task['id']}/subtask")
+async def test_get_subtasks_on_task_empty(
+    async_client: AsyncClient, created_task: dict, logged_in_token: str
+):
+    response = await async_client.get(
+        f"/api/v1/tasks/{created_task['id']}/subtask",
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
 
     assert response.status_code == 200
     assert response.json() == []
@@ -144,9 +154,12 @@ async def test_get_subtasks_on_task_empty(async_client: AsyncClient, created_tas
 
 @pytest.mark.anyio
 async def test_get_task_with_subtasks(
-    async_client: AsyncClient, created_task: dict, created_subtask: dict
+    async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
 ):
-    response = await async_client.get(f"/api/v1/tasks/{created_task['id']}/subtasks")
+    response = await async_client.get(
+        f"/api/v1/tasks/{created_task['id']}/subtasks",
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
 
     assert response.status_code == 200
     assert response.json() == {
@@ -157,9 +170,11 @@ async def test_get_task_with_subtasks(
 
 @pytest.mark.anyio
 async def test_get_missing_task_with_subtasks(
-    async_client: AsyncClient, created_subtask: dict, created_task: dict
+    async_client: AsyncClient, created_subtask: dict, created_task: dict, logged_in_token: str
 ):
-    response = await async_client.get("/api/v1/tasks/999/subtasks")
+    response = await async_client.get(
+        "/api/v1/tasks/999/subtasks", headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
 
     assert response.status_code == 404
 

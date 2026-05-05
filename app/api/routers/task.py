@@ -16,6 +16,7 @@ from app.models.tag import TagResponse, TagCreate
 
 from app.models.user import User
 from app.security import get_current_user
+from app.internal.audit import log_action
 
 # Constants to avoid duplicated string literals
 ROUTER_TAG = "tasks"
@@ -49,9 +50,16 @@ def set_tag_link_response_status(response: Response, link_created: bool) -> None
 
 
 @router.get("/", response_model=list[TaskCreateResponse])
-async def get_all_tasks():
-    logger.info("GET / - fetching tasks")
-    query = tbl_task.select()
+async def get_all_tasks(
+    current_user: Annotated[User, Depends(get_current_user)],
+    completed: bool | None = None
+):
+    logger.info("GET / - fetching tasks for user %s", current_user.id)
+    query = tbl_task.select().where(tbl_task.c.user_id == current_user.id)
+    
+    if completed is not None:
+        query = query.where(tbl_task.c.completed == completed)
+        
     tasks = await database.fetch_all(query)
     logger.info("GET / - fetched %s tasks", len(tasks))
     return tasks
@@ -62,9 +70,11 @@ async def get_all_tasks():
     response_model=TaskCreateResponse,
     responses={404: {"description": TASK_NOT_FOUND}},
 )
-async def get_task(task_id: int):
+async def get_task(task_id: int, current_user: Annotated[User, Depends(get_current_user)]):
     logger.info("GET /%s - fetching task", task_id)
-    query = tbl_task.select().where(tbl_task.c.id == task_id)
+    query = tbl_task.select().where(
+        (tbl_task.c.id == task_id) & (tbl_task.c.user_id == current_user.id)
+    )
     task = await database.fetch_one(query)
 
     if not task:
@@ -86,6 +96,15 @@ async def create_task(
     data["created_at"] = datetime.now()
     query = tbl_task.insert().values(**data)
     last_record_id = await database.execute(query)
+
+    await log_action(
+        user_id=current_user.id,
+        action="CREATE",
+        target_type="TASK",
+        target_id=last_record_id,
+        details=f"Created task: {task.title}",
+    )
+
     logger.info("POST / - created task id=%s", last_record_id)
     return {**data, "id": last_record_id}
 
@@ -95,11 +114,15 @@ async def create_task(
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def update_task(
-    task_id: int, title: str = None, description: str = None, completed: bool = None
+    task_id: int,
+    current_user: Annotated[User, Depends(get_current_user)],
+    title: str = None,
+    description: str = None,
+    completed: bool = None,
 ):
     logger.info("PUT /%s - updating task", task_id)
     # Reuse existing 404 behavior from get_task.
-    await get_task(task_id)
+    await get_task(task_id, current_user)
 
     update_data = {}
     if title is not None:
@@ -115,19 +138,33 @@ async def update_task(
 
     query = tbl_task.update().where(tbl_task.c.id == task_id)
     await database.execute(query.values(**update_data))
+
+    await log_action(
+        user_id=current_user.id,
+        action="UPDATE",
+        target_type="TASK",
+        target_id=task_id,
+        details=f"Updated task fields: {', '.join(update_data.keys())}",
+    )
+
     logger.info("PUT /%s - task updated", task_id)
     return {"message": "Task updated successfully"}
 
 
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}})
-async def delete_task(task_id: int):
+async def delete_task(task_id: int, current_user: Annotated[User, Depends(get_current_user)]):
     logger.info("DELETE /%s - deleting task", task_id)
-    await get_task(task_id)
+    await get_task(task_id, current_user)
 
     await database.execute(tbl_task_tags.delete().where(tbl_task_tags.c.task_id == task_id))
     await database.execute(tbl_subtask.delete().where(tbl_subtask.c.task_id == task_id))
     query = tbl_task.delete().where(tbl_task.c.id == task_id)
     await database.execute(query)
+
+    await log_action(
+        user_id=current_user.id, action="DELETE", target_type="TASK", target_id=task_id
+    )
+
     logger.info("DELETE /%s - task deleted", task_id)
     return {"message": "Task deleted successfully"}
 
@@ -135,10 +172,12 @@ async def delete_task(task_id: int):
 @router.get(
     SUBTASKS_PATH, response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}}
 )
-async def get_task_with_subtasks(task_id: int):
+async def get_task_with_subtasks(
+    task_id: int, current_user: Annotated[User, Depends(get_current_user)]
+):
     logger.info("GET /%s/subtasks - fetching task and subtasks", task_id)
-    task = await get_task(task_id)
-    subtasks = await get_subtasks_on_task(task_id)
+    task = await get_task(task_id, current_user)
+    subtasks = await get_subtasks_on_task(task_id, current_user)
     logger.info("GET /%s/subtasks - fetched %s subtasks", task_id, len(subtasks))
     return {"task": task, "subtasks": subtasks}
 
@@ -155,13 +194,22 @@ async def create_subtask(
 ):
     logger.info("POST /subtask - creating subtask for task_id=%s", subtask.task_id)
 
-    await get_task(subtask.task_id)
+    await get_task(subtask.task_id, current_user)
 
     data = subtask.model_dump()
     data["user_id"] = current_user.id
     data["created_at"] = datetime.now()
     query = tbl_subtask.insert().values(**data)
     last_record_id = await database.execute(query)
+
+    await log_action(
+        user_id=current_user.id,
+        action="CREATE",
+        target_type="SUBTASK",
+        target_id=last_record_id,
+        details=f"Created subtask for task {subtask.task_id}: {subtask.title}",
+    )
+
     logger.info("POST /subtask - created subtask id=%s", last_record_id)
     return {**data, "id": last_record_id}
 
@@ -171,9 +219,11 @@ async def create_subtask(
     response_model=list[SubTaskCreateResponse],
     responses={404: {"description": TASK_NOT_FOUND}},
 )
-async def get_subtasks_on_task(task_id: int):
+async def get_subtasks_on_task(
+    task_id: int, current_user: Annotated[User, Depends(get_current_user)]
+):
     logger.info("GET /%s/subtask - fetching subtasks", task_id)
-    await get_task(task_id)
+    await get_task(task_id, current_user)
     query = tbl_subtask.select().where(tbl_subtask.c.task_id == task_id)
     subtasks = await database.fetch_all(query)
     logger.info("GET /%s/subtask - fetched %s subtasks", task_id, len(subtasks))
@@ -196,7 +246,7 @@ async def create_tag(
 ):
     logger.info("POST /%s/tags - creating tag name=%s", task_id, tag.name)
 
-    task = await get_task(task_id)
+    task = await get_task(task_id, current_user)
     ensure_task_owner(task, current_user, NOT_AUTHORIZED_MODIFY_TASK)
     query = tbl_tag.select().where(
         tbl_tag.c.user_id == current_user.id,
@@ -213,6 +263,15 @@ async def create_tag(
         insert_query = tbl_tag.insert().values(**tag_data)
         last_record_id = await database.execute(insert_query)
         tag_record = {**tag_data, "id": last_record_id}
+
+        await log_action(
+            user_id=current_user.id,
+            action="CREATE",
+            target_type="TAG",
+            target_id=last_record_id,
+            details=f"Created tag: {tag.name}",
+        )
+
         logger.info("POST /%s/tags - created tag id=%s", task_id, last_record_id)
 
     link_query = tbl_task_tags.select().where(
@@ -226,6 +285,15 @@ async def create_tag(
         await database.execute(
             tbl_task_tags.insert().values(task_id=task_id, tag_id=tag_record["id"])
         )
+
+        await log_action(
+            user_id=current_user.id,
+            action="ATTACH",
+            target_type="TAG",
+            target_id=tag_record["id"],
+            details=f"Attached tag {tag.name} to task {task_id}",
+        )
+
     # Keep payload stable while status reflects whether a new link was created.
     set_tag_link_response_status(response, link_created)
 
@@ -245,7 +313,7 @@ async def get_tags_on_task(
     current_user: Annotated[User, Depends(get_current_user)],
 ):
     logger.info("GET /%s/tags - fetching tags", task_id)
-    task = await get_task(task_id)
+    task = await get_task(task_id, current_user)
     ensure_task_owner(task, current_user, NOT_AUTHORIZED_VIEW_TAGS)
     # Build a query to retrieve all tags linked to a specific task.
     query = (

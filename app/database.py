@@ -70,6 +70,20 @@ tbl_user = sqlalchemy.Table(
     ),
 )
 
+tbl_audit_log = sqlalchemy.Table(
+    "tbl_audit_logs",
+    metadata,
+    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
+    sqlalchemy.Column(
+        "user_id", sqlalchemy.ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    ),
+    sqlalchemy.Column("action", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("target_type", sqlalchemy.String, nullable=False),
+    sqlalchemy.Column("target_id", sqlalchemy.Integer, nullable=True),
+    sqlalchemy.Column("details", sqlalchemy.String, nullable=True),
+    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+)
+
 connect_args = {"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {}
 engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args=connect_args)
 
