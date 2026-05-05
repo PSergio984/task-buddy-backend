@@ -11,6 +11,8 @@ from app.models.task import (
     TaskCreateRequest,
     TaskCreateResponse,
     TaskWithSubTasks,
+    TaskUpdateRequest,
+    SubTaskUpdateRequest,
 )
 from app.models.tag import TagResponse, TagCreate
 
@@ -118,22 +120,14 @@ async def create_task(
 )
 async def update_task(
     task_id: int,
+    task_update: TaskUpdateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
-    title: str = None,
-    description: str = None,
-    completed: bool = None,
 ):
     logger.info("PUT /%s - updating task", task_id)
     # Reuse existing 404 behavior from get_task.
     await get_task(task_id, current_user)
 
-    update_data = {}
-    if title is not None:
-        update_data["title"] = title
-    if description is not None:
-        update_data["description"] = description
-    if completed is not None:
-        update_data["completed"] = completed
+    update_data = task_update.model_dump(exclude_unset=True)
 
     if not update_data:
         logger.warning("PUT /%s - no fields to update", task_id)
@@ -259,21 +253,13 @@ async def get_subtask(subtask_id: int, current_user: Annotated[User, Depends(get
 )
 async def update_subtask(
     subtask_id: int,
+    subtask_update: SubTaskUpdateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
-    title: str = None,
-    description: str = None,
-    completed: bool = None,
 ):
     logger.info("PUT /subtask/%s - updating subtask", subtask_id)
     await get_subtask(subtask_id, current_user)
 
-    update_data = {}
-    if title is not None:
-        update_data["title"] = title
-    if description is not None:
-        update_data["description"] = description
-    if completed is not None:
-        update_data["completed"] = completed
+    update_data = subtask_update.model_dump(exclude_unset=True)
 
     if not update_data:
         logger.warning("PUT /subtask/%s - no fields to update", subtask_id)

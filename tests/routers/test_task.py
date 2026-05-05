@@ -254,7 +254,7 @@ async def test_reuse_tag_across_tasks(db, async_client: AsyncClient, logged_in_t
 async def test_update_task(async_client: AsyncClient, created_task: dict, logged_in_token: str):
     response = await async_client.put(
         f"/api/v1/tasks/{created_task['id']}",
-        params={"title": "Updated Title", "completed": True},
+        json={"title": "Updated Title", "completed": True},
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
@@ -288,7 +288,7 @@ async def test_delete_task(async_client: AsyncClient, created_task: dict, logged
 async def test_update_subtask(async_client: AsyncClient, created_subtask: dict, logged_in_token: str):
     response = await async_client.put(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
-        params={"title": "Updated Subtask", "completed": True},
+        json={"title": "Updated Subtask", "completed": True},
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200

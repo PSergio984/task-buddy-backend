@@ -36,3 +36,17 @@ class SubTaskCreateResponse(SubTaskCreateRequest):
 class TaskWithSubTasks(BaseModel):
     task: TaskCreateResponse
     subtasks: list[SubTaskCreateResponse]
+
+
+class TaskUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    completed: Optional[bool] = None
+
+
+class SubTaskUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    due_date: Optional[datetime] = None
+    completed: Optional[bool] = None
