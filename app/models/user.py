@@ -14,3 +14,12 @@ class UserIn(User):
 class Login(BaseModel):
     email: str
     password: str
+
+
+class UsernameUpdate(BaseModel):
+    username: str
+
+
+class PasswordUpdate(BaseModel):
+    current_password: str
+    new_password: str

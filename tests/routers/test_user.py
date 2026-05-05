@@ -109,3 +109,95 @@ async def test_logout_user(async_client: AsyncClient, logged_in_token: str):
 async def test_logout_user_unauthenticated(async_client: AsyncClient):
     response = await async_client.post("/api/v1/users/logout")
     assert response.status_code == 401
+
+
+@pytest.mark.anyio
+async def test_get_my_profile(async_client: AsyncClient, logged_in_token: str, confirmed_user: dict):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.get("/api/v1/users/me", headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert data["username"] == confirmed_user["username"]
+    assert data["email"] == confirmed_user["email"]
+
+
+@pytest.mark.anyio
+async def test_update_username(async_client: AsyncClient, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    new_username = "updatedname"
+    response = await async_client.patch(
+        "/api/v1/users/me/username", headers=headers, json={"username": new_username}
+    )
+    assert response.status_code == 200
+    assert response.json()["message"] == "Username updated successfully"
+
+    # Verify change
+    profile_response = await async_client.get("/api/v1/users/me", headers=headers)
+    assert profile_response.json()["username"] == new_username
+
+
+@pytest.mark.anyio
+async def test_update_username_taken(async_client: AsyncClient, logged_in_token: str, db):
+    # Register another user
+    await register_user(async_client, "otheruser", "other@example.com", "password")
+
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.patch(
+        "/api/v1/users/me/username", headers=headers, json={"username": "otheruser"}
+    )
+    assert response.status_code == 400
+    assert "already taken" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_password(async_client: AsyncClient, confirmed_user: dict, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    new_password = "newsecurepassword"
+    response = await async_client.patch(
+        "/api/v1/users/me/password",
+        headers=headers,
+        json={"current_password": confirmed_user["password"], "new_password": new_password},
+    )
+    assert response.status_code == 200
+    assert response.json()["message"] == "Password updated successfully"
+
+    # Verify login with new password
+    login_response = await async_client.post(
+        "/api/v1/users/token",
+        data={"username": confirmed_user["email"], "password": new_password},
+    )
+    assert login_response.status_code == 200
+
+
+@pytest.mark.anyio
+async def test_update_password_incorrect_current(async_client: AsyncClient, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.patch(
+        "/api/v1/users/me/password",
+        headers=headers,
+        json={"current_password": "wrongpassword", "new_password": "newpassword123"},
+    )
+    assert response.status_code == 400
+    assert "Incorrect current password" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_username_too_short(async_client: AsyncClient, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.patch(
+        "/api/v1/users/me/username", headers=headers, json={"username": "ab"}
+    )
+    assert response.status_code == 400
+    assert "at least 3 characters" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_update_password_too_short(async_client: AsyncClient, confirmed_user: dict, logged_in_token: str):
+    headers = {"Authorization": f"Bearer {logged_in_token}"}
+    response = await async_client.patch(
+        "/api/v1/users/me/password",
+        headers=headers,
+        json={"current_password": confirmed_user["password"], "new_password": "short"},
+    )
+    assert response.status_code == 400
+    assert "at least 8 characters" in response.json()["detail"]

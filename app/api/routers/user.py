@@ -5,9 +5,10 @@ import sqlalchemy.exc
 from typing import Annotated
 from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Form, Depends, Request, Body
 from fastapi.security import OAuth2PasswordRequestForm
-from app.models.user import UserIn
+from app.models.user import User, UserIn, UsernameUpdate, PasswordUpdate
 from app.security import (
     get_password_hash,
+    verify_password,
     authenticate_user,
     create_access_token,
     create_confirm_token,
@@ -111,6 +112,80 @@ async def confirm_email(token: str):
             detail="User not found",
         )
     return {"detail": "Email confirmed"}
+
+
+@router.get("/me", response_model=User)
+async def get_my_profile(current_user: Annotated[dict, Depends(get_current_user)]):
+    """
+    Retrieve the current user's profile information.
+    """
+    return current_user
+
+
+@router.patch("/me/username")
+async def update_username(
+    username_data: UsernameUpdate,
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Update the current user's username.
+    Checks for uniqueness and length.
+    """
+    new_username = username_data.username.strip()
+    if not new_username:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username cannot be empty"
+        )
+
+    if len(new_username) < 3:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Username must be at least 3 characters long",
+        )
+
+    # Check if username is already taken
+    query = tbl_user.select().where(tbl_user.c.username == new_username)
+    existing_user = await database.fetch_one(query)
+    if existing_user and existing_user["id"] != current_user["id"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken"
+        )
+
+    update_query = (
+        tbl_user.update().where(tbl_user.c.id == current_user["id"]).values(username=new_username)
+    )
+    await database.execute(update_query)
+
+    return {"message": "Username updated successfully"}
+
+
+@router.patch("/me/password")
+async def update_password(
+    password_data: PasswordUpdate,
+    current_user: Annotated[dict, Depends(get_current_user)],
+):
+    """
+    Update the current user's password securely.
+    Verifies the current password before updating to the new one.
+    """
+    if not verify_password(password_data.current_password, current_user["password"]):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST, detail="Incorrect current password"
+        )
+
+    if len(password_data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="New password must be at least 8 characters long",
+        )
+
+    hashed_password = get_password_hash(password_data.new_password)
+    update_query = (
+        tbl_user.update().where(tbl_user.c.id == current_user["id"]).values(password=hashed_password)
+    )
+    await database.execute(update_query)
+
+    return {"message": "Password updated successfully"}
 
 
 @router.post("/logout")
