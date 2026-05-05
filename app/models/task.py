@@ -22,6 +22,7 @@ class SubTaskCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    completed: bool = False
 
 
 class SubTaskCreateResponse(SubTaskCreateRequest):
