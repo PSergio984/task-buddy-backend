@@ -13,14 +13,18 @@ class APIResponseError(Exception):
 
 async def send_email(to_email: str, subject: str, body: str) -> httpx.Response:
     try:
+        if not config.MAIL_URL or not (config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")):
+            raise APIResponseError(f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://")
+
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 config.MAIL_URL,
                 headers={"Authorization": f"Bearer {config.MAIL_API_KEY}"},
                 json={
-                    "to": to_email,
+                    "from": {"email": "hello@taskbuddy.com", "name": "Task Buddy"},
+                    "to": [{"email": to_email}],
                     "subject": subject,
-                    "body": body,
+                    "text": body,
                 },
             )
             response.raise_for_status()

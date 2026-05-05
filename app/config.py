@@ -44,7 +44,7 @@ class ProdConfig(GlobalConfig):
 
 class TestConfig(GlobalConfig):
     DATABASE_URL: str = "sqlite:///./test.db"
-    DB_FORCE_ROLL_BACK: bool = True
+    DB_FORCE_ROLL_BACK: bool = False
 
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
