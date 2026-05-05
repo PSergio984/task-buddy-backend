@@ -21,6 +21,8 @@ class GlobalConfig(BaseConfig):
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
+    MAIL_API_KEY: Optional[str] = None
+    MAIL_URL: Optional[str] = None
 
 
 class DevConfig(GlobalConfig):

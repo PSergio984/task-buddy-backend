@@ -50,7 +50,7 @@ async def created_tag(created_task: dict, async_client: AsyncClient, logged_in_t
 
 @pytest.mark.anyio
 async def test_create_task(
-    db, async_client: AsyncClient, logged_in_token: str, registered_user: dict
+    db, async_client: AsyncClient, logged_in_token: str, confirmed_user: dict
 ):
     body = {"title": "Test Task"}
 
@@ -62,7 +62,7 @@ async def test_create_task(
     assert {
         "id": 1,
         "title": body["title"],
-        "user_id": registered_user["id"],
+        "user_id": confirmed_user["id"],
     }.items() <= response.json().items()
 
 
@@ -78,10 +78,10 @@ async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token:
 
 @pytest.mark.anyio
 async def test_create_task_expired_token(
-    db, async_client: AsyncClient, registered_user: dict, monkeypatch
+    db, async_client: AsyncClient, confirmed_user: dict, monkeypatch
 ):
     monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
-    token = security.create_access_token(registered_user["email"])
+    token = security.create_access_token(confirmed_user["email"])
     response = await async_client.post(
         "/api/v1/tasks/", json={"title": "Test Task"}, headers={"Authorization": f"Bearer {token}"}
     )
@@ -106,7 +106,7 @@ async def test_create_subtask(
     async_client: AsyncClient,
     created_task: dict,
     logged_in_token: str,
-    registered_user: dict,
+    confirmed_user: dict,
 ):
     body = {"title": "Test SubTask", "task_id": created_task["id"]}
 
@@ -119,7 +119,7 @@ async def test_create_subtask(
         "id": 1,
         "title": body["title"],
         "task_id": body["task_id"],
-        "user_id": registered_user["id"],
+        "user_id": confirmed_user["id"],
     }.items() <= response.json().items()
 
 
@@ -168,7 +168,7 @@ async def test_create_tag(
     async_client: AsyncClient,
     created_task: dict,
     logged_in_token: str,
-    registered_user: dict,
+    confirmed_user: dict,
 ):
     body = {"name": "Important"}
 
@@ -182,7 +182,7 @@ async def test_create_tag(
     assert {
         "id": 1,
         "name": body["name"],
-        "user_id": registered_user["id"],
+        "user_id": confirmed_user["id"],
     }.items() <= response.json().items()
 
 

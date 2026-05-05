@@ -73,12 +73,22 @@ async def test_login_user_not_exists(db, async_client: AsyncClient):
 
 
 @pytest.mark.anyio
-async def test_login_user(async_client: AsyncClient, registered_user: dict):
+async def test_login_user_not_confirmed(async_client: AsyncClient, registered_user: dict):
+    response = await async_client.post(
+        "/api/v1/users/token",
+        data={"username": registered_user["email"], "password": registered_user["password"]},
+    )
+    assert response.status_code == 401
+    assert "Email not confirmed" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_login_user(async_client: AsyncClient, confirmed_user: dict):
     response = await async_client.post(
         "/api/v1/users/token",
         data={
-            "username": registered_user["email"],
-            "password": registered_user["password"],
+            "username": confirmed_user["email"],
+            "password": confirmed_user["password"],
         },
     )
     assert response.status_code == 200
