@@ -13,18 +13,28 @@ class APIResponseError(Exception):
 
 async def send_email(to_email: str, subject: str, body: str) -> httpx.Response:
     try:
-        if not config.MAIL_URL or not (config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")):
-            raise APIResponseError(f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://")
+        if not config.MAIL_URL or not (
+            config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")
+        ):
+            raise APIResponseError(
+                f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://"
+            )
+        if not config.MAIL_API_KEY:
+            raise APIResponseError("Missing MAIL_API_KEY for Brevo transactional email")
 
         async with httpx.AsyncClient(timeout=30.0) as client:
             response = await client.post(
                 config.MAIL_URL,
-                headers={"Authorization": f"Bearer {config.MAIL_API_KEY}"},
+                headers={
+                    "api-key": config.MAIL_API_KEY,
+                    "accept": "application/json",
+                    "content-type": "application/json",
+                },
                 json={
-                    "from": {"email": "hello@taskbuddy.com", "name": "Task Buddy"},
+                    "sender": {"email": "hello@taskbuddy.com", "name": "Task Buddy"},
                     "to": [{"email": to_email}],
                     "subject": subject,
-                    "text": body,
+                    "textContent": body,
                 },
             )
             response.raise_for_status()
@@ -77,8 +87,10 @@ async def send_confirmation_email(
         try:
             from app.database import database, tbl_user
 
-            query = tbl_user.update().where(tbl_user.c.email == to_email).values(
-                confirmation_failed=True
+            query = (
+                tbl_user.update()
+                .where(tbl_user.c.email == to_email)
+                .values(confirmation_failed=True)
             )
             # database may or may not be connected depending on execution context
             if not database.is_connected:

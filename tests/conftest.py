@@ -103,7 +103,7 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
 @pytest.fixture(autouse=True)
 def mock_httpx_client(mocker):
     """Mock httpx.AsyncClient to prevent real HTTP requests during tests."""
-    mocked_client = mocker.patch("api.tasks.httpx.AsyncClient")
+    mocked_client = mocker.patch("app.tasks.httpx.AsyncClient")
 
     mocked_async_client = AsyncMock()
 

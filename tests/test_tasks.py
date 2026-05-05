@@ -7,7 +7,17 @@ from app.tasks import APIResponseError, send_confirmation_email
 @pytest.mark.anyio
 async def test_send_confirmation_email(mock_httpx_client):
     await send_confirmation_email("test@example.com", "Test Subject", "Test Body")
-    mock_httpx_client.post.assert_called()
+    mock_httpx_client.post.assert_called_once()
+    _, kwargs = mock_httpx_client.post.call_args
+    assert kwargs["json"] == {
+        "sender": {"email": "hello@taskbuddy.com", "name": "Task Buddy"},
+        "to": [{"email": "test@example.com"}],
+        "subject": "Test Subject",
+        "textContent": "Test Body",
+    }
+    assert kwargs["headers"]["api-key"] is not None
+    assert kwargs["headers"]["accept"] == "application/json"
+    assert kwargs["headers"]["content-type"] == "application/json"
 
 
 @pytest.mark.anyio
