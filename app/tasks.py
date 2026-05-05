@@ -1,4 +1,8 @@
+import asyncio
 import logging
+import smtplib
+import ssl
+from email.message import EmailMessage
 
 import httpx
 
@@ -11,43 +15,59 @@ class APIResponseError(Exception):
     pass
 
 
-async def send_email(to_email: str, subject: str, body: str) -> httpx.Response:
-    try:
-        if not config.MAIL_URL or not (
-            config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")
-        ):
-            raise APIResponseError(
-                f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://"
-            )
-        if not config.MAIL_API_KEY:
-            raise APIResponseError("Missing MAIL_API_KEY for Brevo transactional email")
+async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Response:
+    if not config.MAIL_URL or not (
+        config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")
+    ):
+        raise APIResponseError(
+            f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://"
+        )
+    if not config.MAIL_API_KEY:
+        raise APIResponseError("Missing MAIL_API_KEY for Brevo transactional email")
+    if not config.MAIL_FROM_EMAIL:
+        raise APIResponseError("Missing MAIL_FROM_EMAIL for Brevo transactional email")
 
-        async with httpx.AsyncClient(timeout=30.0) as client:
-            response = await client.post(
-                config.MAIL_URL,
-                headers={
-                    "api-key": config.MAIL_API_KEY,
-                    "accept": "application/json",
-                    "content-type": "application/json",
-                },
-                json={
-                    "sender": {"email": "hello@taskbuddy.com", "name": "Task Buddy"},
-                    "to": [{"email": to_email}],
-                    "subject": subject,
-                    "textContent": body,
-                },
-            )
-            response.raise_for_status()
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(
+            config.MAIL_URL,
+            headers={
+                "api-key": config.MAIL_API_KEY,
+                "accept": "application/json",
+                "content-type": "application/json",
+            },
+            json={
+                "sender": {"email": config.MAIL_FROM_EMAIL, "name": config.MAIL_FROM_NAME},
+                "to": [{"email": to_email}],
+                "subject": subject,
+                "textContent": body,
+            },
+        )
+        response.raise_for_status()
+        return response
 
-            return response
 
-    except Exception as e:
-        # Support various httpx exception types and absence of a response attribute.
-        resp = getattr(e, "response", None)
-        status_code = getattr(resp, "status_code", None)
-        if status_code is not None:
-            raise APIResponseError(f"API request failed: with status code {status_code}") from e
-        raise APIResponseError("API request failed") from e
+def send_smtp_email(to_email: str, subject: str, body: str) -> None:
+    if not config.MAIL_SMTP_HOST:
+        raise APIResponseError("Missing MAIL_SMTP_HOST for Brevo SMTP transactional email")
+    if not config.MAIL_SMTP_USERNAME:
+        raise APIResponseError("Missing MAIL_SMTP_USERNAME for Brevo SMTP transactional email")
+    if not config.MAIL_SMTP_PASSWORD:
+        raise APIResponseError("Missing MAIL_SMTP_PASSWORD for Brevo SMTP transactional email")
+    if not config.MAIL_FROM_EMAIL:
+        raise APIResponseError("Missing MAIL_FROM_EMAIL for Brevo SMTP transactional email")
+
+    message = EmailMessage()
+    message["From"] = f"{config.MAIL_FROM_NAME} <{config.MAIL_FROM_EMAIL}>"
+    message["To"] = to_email
+    message["Subject"] = subject
+    message.set_content(body)
+
+    context = ssl.create_default_context()
+    with smtplib.SMTP(config.MAIL_SMTP_HOST, config.MAIL_SMTP_PORT, timeout=30) as smtp:
+        if config.MAIL_SMTP_USE_TLS:
+            smtp.starttls(context=context)
+        smtp.login(config.MAIL_SMTP_USERNAME, config.MAIL_SMTP_PASSWORD)
+        smtp.send_message(message)
 
 
 async def send_confirmation_email(
@@ -78,31 +98,36 @@ async def send_confirmation_email(
         raise ValueError("Either confirmation_url or subject and body must be provided")
 
     try:
-        return await send_email(to_email, subject, body)
-    except Exception as e:
-        # Log full stack and message
-        logger.exception("Failed to send confirmation email to %s", to_email)
-
-        # Attempt to record failure state in the database; if that fails, log and continue
+        await asyncio.to_thread(send_smtp_email, to_email, subject, body)
+        return None
+    except Exception:
+        logger.warning(
+            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+        )
         try:
-            from app.database import database, tbl_user
+            return await send_brevo_email(to_email, subject, body)
+        except Exception as api_error:
+            logger.exception("Brevo API fallback failed for %s", to_email)
 
-            query = (
-                tbl_user.update()
-                .where(tbl_user.c.email == to_email)
-                .values(confirmation_failed=True)
-            )
-            # database may or may not be connected depending on execution context
-            if not database.is_connected:
-                await database.connect()
-                await database.execute(query)
-                await database.disconnect()
-            else:
-                await database.execute(query)
-        except Exception:
-            logger.exception("Failed to record confirmation failure for %s", to_email)
+            try:
+                from app.database import database, tbl_user
 
-        if suppress_exceptions:
-            return None
-        # Re-raise a domain-specific error for callers that expect exceptions
-        raise APIResponseError("Failed to send confirmation email") from e
+                query = (
+                    tbl_user.update()
+                    .where(tbl_user.c.email == to_email)
+                    .values(confirmation_failed=True)
+                )
+                if not database.is_connected:
+                    await database.connect()
+                    await database.execute(query)
+                    await database.disconnect()
+                else:
+                    await database.execute(query)
+            except Exception:
+                logger.exception("Failed to record confirmation failure for %s", to_email)
+
+            if suppress_exceptions:
+                return None
+            raise APIResponseError(
+                "Failed to send confirmation email via SMTP and Brevo API"
+            ) from api_error

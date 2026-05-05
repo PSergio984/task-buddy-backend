@@ -23,6 +23,13 @@ class GlobalConfig(BaseConfig):
     DB_FORCE_ROLL_BACK: bool = False
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
+    MAIL_FROM_NAME: str = "Task Buddy"
+    MAIL_FROM_EMAIL: Optional[str] = None
+    MAIL_SMTP_HOST: Optional[str] = None
+    MAIL_SMTP_PORT: int = 587
+    MAIL_SMTP_USERNAME: Optional[str] = None
+    MAIL_SMTP_PASSWORD: Optional[str] = None
+    MAIL_SMTP_USE_TLS: bool = True
 
 
 class DevConfig(GlobalConfig):

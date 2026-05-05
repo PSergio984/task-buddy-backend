@@ -104,6 +104,14 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
 def mock_httpx_client(mocker):
     """Mock httpx.AsyncClient to prevent real HTTP requests during tests."""
     mocked_client = mocker.patch("app.tasks.httpx.AsyncClient")
+    mocked_smtp = mocker.patch("app.tasks.smtplib.SMTP")
+    mocker.patch("app.tasks.config.MAIL_FROM_EMAIL", "test-sender@example.com")
+    mocker.patch("app.tasks.config.MAIL_FROM_NAME", "Task Buddy")
+    mocker.patch("app.tasks.config.MAIL_SMTP_HOST", "smtp-relay.brevo.com")
+    mocker.patch("app.tasks.config.MAIL_SMTP_PORT", 587)
+    mocker.patch("app.tasks.config.MAIL_SMTP_USERNAME", "9d9828001@smtp-brevo.com")
+    mocker.patch("app.tasks.config.MAIL_SMTP_PASSWORD", "test-smtp-password")
+    mocker.patch("app.tasks.config.MAIL_SMTP_USE_TLS", True)
 
     mocked_async_client = AsyncMock()
 
@@ -112,4 +120,11 @@ def mock_httpx_client(mocker):
     mocked_async_client.post = AsyncMock(return_value=response)
     mocked_client.return_value.__aenter__.return_value = mocked_async_client
 
+    smtp_client = mocked_smtp.return_value.__enter__.return_value
+    smtp_client.starttls.return_value = None
+    smtp_client.login.return_value = None
+    smtp_client.send_message.return_value = None
+
+    mocked_async_client.smtp = mocked_smtp
+    mocked_async_client.smtp_client = smtp_client
     return mocked_async_client
