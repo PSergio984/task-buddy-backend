@@ -70,8 +70,8 @@ tbl_user = sqlalchemy.Table(
     ),
 )
 
-
-engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args={"check_same_thread": False})
+connect_args = {"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {}
+engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args=connect_args)
 
 metadata.create_all(engine)
 
