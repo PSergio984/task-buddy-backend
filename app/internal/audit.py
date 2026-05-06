@@ -1,7 +1,14 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from app.database import database, tbl_audit_log
 
-async def log_action(user_id: int, action: str, target_type: str, target_id: int | None = None, details: str | None = None):
+
+async def log_action(
+    user_id: int,
+    action: str,
+    target_type: str,
+    target_id: int | None = None,
+    details: str | None = None,
+):
     """
     Log an action performed by a user on a specific target resource.
     """
@@ -11,6 +18,6 @@ async def log_action(user_id: int, action: str, target_type: str, target_id: int
         target_type=target_type,
         target_id=target_id,
         details=details,
-        created_at=datetime.utcnow()
+        created_at=datetime.now(timezone.utc),
     )
     await database.execute(query)

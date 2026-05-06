@@ -66,7 +66,7 @@ async def register_user(user: UserIn, background_tasks: BackgroundTasks, request
 
 @router.post("/resend-confirmation")
 async def resend_confirmation(
-    background_tasks: BackgroundTasks, email: str = Body(..., embed=True)
+    background_tasks: BackgroundTasks, email: Annotated[str, Body(embed=True)]
 ):
     """Resend a confirmation email for an existing, unconfirmed user.
 
@@ -103,7 +103,7 @@ async def login(form_data: Annotated[OAuth2PasswordRequestForm, Depends()]):
 
 @router.get("/confirm/{token}")
 async def confirm_email(token: str):
-    email = await get_subject_for_token_type(token, expected_type="confirm")
+    email = get_subject_for_token_type(token, expected_type="confirm")
     query = tbl_user.update().where(tbl_user.c.email == email).values(confirmed=True)
     rows_affected = await database.execute(query)
     if rows_affected == 0:

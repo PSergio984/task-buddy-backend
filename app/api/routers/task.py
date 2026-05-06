@@ -2,7 +2,7 @@ import logging
 from datetime import datetime
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response
+from fastapi import APIRouter, Depends, HTTPException, Response, Query
 
 from app.database import database, tbl_subtask, tbl_task, tbl_tag, tbl_task_tags
 from app.models.task import (
@@ -57,7 +57,7 @@ def set_tag_link_response_status(response: Response, link_created: bool) -> None
 @router.get("/", response_model=list[TaskCreateResponse])
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
-    completed: bool | None = None
+    completed: Annotated[bool | None, Query()] = None
 ):
     logger.info("GET / - fetching tasks for user %s", current_user.id)
     query = tbl_task.select().where(tbl_task.c.user_id == current_user.id)

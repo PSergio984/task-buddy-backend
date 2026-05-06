@@ -9,10 +9,10 @@ router = APIRouter(prefix="/audit", tags=["audit"])
 @router.get("/logs", response_model=list[AuditLog])
 async def get_audit_logs(
     current_user: Annotated[dict, Depends(get_current_user)],
-    limit: int = Query(50, ge=1, le=100),
-    offset: int = Query(0, ge=0),
-    action: str | None = None,
-    target_type: str | None = None,
+    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    action: Annotated[str | None, Query()] = None,
+    target_type: Annotated[str | None, Query()] = None,
 ):
     """
     Retrieve audit logs for the current user.

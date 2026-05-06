@@ -15,10 +15,13 @@ class APIResponseError(Exception):
     pass
 
 
+def _is_valid_url(url: str | None) -> bool:
+    """Helper to validate that a URL starts with http:// or https://."""
+    return bool(url and (url.startswith("http://") or url.startswith("https://")))
+
+
 async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Response:
-    if not config.MAIL_URL or not (
-        config.MAIL_URL.startswith("http://") or config.MAIL_URL.startswith("https://")
-    ):
+    if not _is_valid_url(config.MAIL_URL):
         raise APIResponseError(
             f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://"
         )
@@ -63,6 +66,9 @@ def send_smtp_email(to_email: str, subject: str, body: str) -> None:
     message.set_content(body)
 
     context = ssl.create_default_context()
+    # Explicitly enforce TLS 1.2 or higher for security compliance
+    context.minimum_version = ssl.TLSVersion.TLSv1_2
+
     with smtplib.SMTP(config.MAIL_SMTP_HOST, config.MAIL_SMTP_PORT, timeout=30) as smtp:
         if config.MAIL_SMTP_USE_TLS:
             smtp.starttls(context=context)
@@ -70,23 +76,13 @@ def send_smtp_email(to_email: str, subject: str, body: str) -> None:
         smtp.send_message(message)
 
 
-async def send_confirmation_email(
+def _get_confirmation_content(
     to_email: str,
-    subject: str | None = None,
-    body: str | None = None,
-    confirmation_url: str | None = None,
-    *,
-    suppress_exceptions: bool = False,
-) -> None:
-    """Send a confirmation email.
-
-    Call patterns supported:
-    - send_confirmation_email(to_email, confirmation_url=...)
-    - send_confirmation_email(to_email, subject, body)
-
-    When `suppress_exceptions=True` the function will catch exceptions, log them,
-    and record a failure state for the user instead of raising.
-    """
+    subject: str | None,
+    body: str | None,
+    confirmation_url: str | None,
+) -> tuple[str, str]:
+    """Helper to generate subject and body from confirmation URL or direct inputs."""
     if confirmation_url:
         subject = subject or "Successfully signed up - Confirm your email for Task Buddy"
         body = (
@@ -97,37 +93,71 @@ async def send_confirmation_email(
     if subject is None or body is None:
         raise ValueError("Either confirmation_url or subject and body must be provided")
 
+    return subject, body
+
+
+async def _record_confirmation_failure(to_email: str) -> None:
+    """Helper to mark a user as having a failed email confirmation in the database."""
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, subject, body)
-        return None
+        from app.database import database, tbl_user
+
+        query = (
+            tbl_user.update()
+            .where(tbl_user.c.email == to_email)
+            .values(confirmation_failed=True)
+        )
+        # Ensure database is connected for this standalone operation if called from background task
+        if not database.is_connected:
+            await database.connect()
+            await database.execute(query)
+            await database.disconnect()
+        else:
+            await database.execute(query)
+    except Exception:
+        logger.exception("Failed to record confirmation failure for %s", to_email)
+
+
+async def send_confirmation_email(
+    to_email: str,
+    subject: str | None = None,
+    body: str | None = None,
+    confirmation_url: str | None = None,
+    *,
+    suppress_exceptions: bool = False,
+) -> None:
+    """Send a confirmation email with SMTP and Brevo API fallback.
+
+    The logic is broken down to reduce cognitive complexity.
+    """
+    try:
+        final_subject, final_body = _get_confirmation_content(
+            to_email, subject, body, confirmation_url
+        )
+    except ValueError:
+        if suppress_exceptions:
+            logger.error("Invalid call to send_confirmation_email: missing content")
+            return
+        raise
+
+    # 1. Try SMTP
+    try:
+        await asyncio.to_thread(send_smtp_email, to_email, final_subject, final_body)
+        return
     except Exception:
         logger.warning(
             "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
         )
-        try:
-            return await send_brevo_email(to_email, subject, body)
-        except Exception as api_error:
-            logger.exception("Brevo API fallback failed for %s", to_email)
 
-            try:
-                from app.database import database, tbl_user
+    # 2. Try Brevo API Fallback
+    try:
+        await send_brevo_email(to_email, final_subject, final_body)
+    except Exception as api_error:
+        logger.exception("Brevo API fallback failed for %s", to_email)
 
-                query = (
-                    tbl_user.update()
-                    .where(tbl_user.c.email == to_email)
-                    .values(confirmation_failed=True)
-                )
-                if not database.is_connected:
-                    await database.connect()
-                    await database.execute(query)
-                    await database.disconnect()
-                else:
-                    await database.execute(query)
-            except Exception:
-                logger.exception("Failed to record confirmation failure for %s", to_email)
+        # Record failure in DB as a last resort
+        await _record_confirmation_failure(to_email)
 
-            if suppress_exceptions:
-                return None
+        if not suppress_exceptions:
             raise APIResponseError(
                 "Failed to send confirmation email via SMTP and Brevo API"
             ) from api_error

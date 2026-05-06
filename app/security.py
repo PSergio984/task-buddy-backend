@@ -84,7 +84,7 @@ async def get_user(email: str):
         return user
 
 
-async def get_subject_for_token_type(
+def get_subject_for_token_type(
     token: str, expected_type: Literal["access", "confirm"]
 ) -> str:
     try:
@@ -120,7 +120,7 @@ async def authenticate_user(email: str, password: str):
 
 async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
 
-    email = await get_subject_for_token_type(token, expected_type="access")
+    email = get_subject_for_token_type(token, expected_type="access")
     user = await get_user(email=email)
     if user is None:
         raise create_credentials_exception("Could not find user for this token")

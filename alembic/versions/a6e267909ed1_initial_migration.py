@@ -17,6 +17,10 @@ down_revision: Union[str, Sequence[str], None] = None
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
+# Constants for duplicated literals
+CURRENT_TIMESTAMP = '(CURRENT_TIMESTAMP)'
+TBL_USERS_ID = 'tbl_users.id'
+
 
 def upgrade() -> None:
     """Upgrade schema."""
@@ -26,7 +30,7 @@ def upgrade() -> None:
     sa.Column('username', sa.String(), nullable=False),
     sa.Column('email', sa.String(), nullable=False),
     sa.Column('password', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
     sa.Column('confirmed', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.Column('confirmation_failed', sa.Boolean(), server_default=sa.false(), nullable=False),
     sa.PrimaryKeyConstraint('id'),
@@ -36,8 +40,8 @@ def upgrade() -> None:
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['tbl_users.id'], ondelete='CASCADE'),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'name', name='uq_tbl_tags_user_name')
     )
@@ -48,8 +52,8 @@ def upgrade() -> None:
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('completed', sa.Boolean(), nullable=True),
     sa.Column('due_date', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['tbl_users.id'], ondelete='CASCADE'),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tbl_subtasks',
@@ -60,16 +64,16 @@ def upgrade() -> None:
     sa.Column('description', sa.String(), nullable=True),
     sa.Column('completed', sa.Boolean(), nullable=True),
     sa.Column('due_date', sa.DateTime(), nullable=True),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
     sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], ['tbl_users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tbl_task_tags',
     sa.Column('id', sa.Integer(), nullable=False),
     sa.Column('task_id', sa.Integer(), nullable=False),
     sa.Column('tag_id', sa.Integer(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
+    sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
     sa.ForeignKeyConstraint(['tag_id'], ['tbl_tags.id'], ondelete='CASCADE'),
     sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
