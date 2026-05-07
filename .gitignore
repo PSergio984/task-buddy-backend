@@ -135,3 +135,6 @@ dmypy.json
 *.db
 instance/
 .claude
+graphify-out/manifest.json 
+graphify-out/cost.json 
+graphify-out/cache/
