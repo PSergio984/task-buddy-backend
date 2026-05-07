@@ -9,7 +9,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "project_structure_py",
-      "community": 15,
+      "community": 18,
       "norm_label": "project_structure.py"
     },
     {
@@ -18,7 +18,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "task_buddy_backend_project_structure_rationale_1",
-      "community": 15,
+      "community": 18,
       "norm_label": "project structure overview and getting started guide.  this file provides a qu"
     },
     {
@@ -27,7 +27,7 @@
       "source_file": "seed.py",
       "source_location": "L1",
       "id": "seed_py",
-      "community": 11,
+      "community": 0,
       "norm_label": "seed.py"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "seed.py",
       "source_location": "L7",
       "id": "task_buddy_backend_seed_seed_data",
-      "community": 11,
+      "community": 0,
       "norm_label": "seed_data()"
     },
     {
@@ -45,7 +45,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L1",
       "id": "alembic_env_py",
-      "community": 0,
+      "community": 6,
       "norm_label": "env.py"
     },
     {
@@ -54,7 +54,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L37",
       "id": "alembic_env_run_migrations_offline",
-      "community": 0,
+      "community": 6,
       "norm_label": "run_migrations_offline()"
     },
     {
@@ -63,7 +63,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L61",
       "id": "alembic_env_run_migrations_online",
-      "community": 0,
+      "community": 6,
       "norm_label": "run_migrations_online()"
     },
     {
@@ -72,7 +72,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L38",
       "id": "alembic_env_rationale_38",
-      "community": 0,
+      "community": 6,
       "norm_label": "run migrations in 'offline' mode.      this configures the context with just a u"
     },
     {
@@ -81,7 +81,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L62",
       "id": "alembic_env_rationale_62",
-      "community": 0,
+      "community": 6,
       "norm_label": "run migrations in 'online' mode.      in this scenario we need to create an engi"
     },
     {
@@ -90,7 +90,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "community": 0,
+      "community": 6,
       "norm_label": "a6e267909ed1_initial_migration.py"
     },
     {
@@ -99,7 +99,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L25",
       "id": "versions_a6e267909ed1_initial_migration_upgrade",
-      "community": 0,
+      "community": 6,
       "norm_label": "upgrade()"
     },
     {
@@ -108,7 +108,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L85",
       "id": "versions_a6e267909ed1_initial_migration_downgrade",
-      "community": 0,
+      "community": 6,
       "norm_label": "downgrade()"
     },
     {
@@ -117,7 +117,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "versions_a6e267909ed1_initial_migration_rationale_1",
-      "community": 0,
+      "community": 6,
       "norm_label": "initial migration  revision id: a6e267909ed1 revises:  create date: 2026-05-"
     },
     {
@@ -126,7 +126,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "community": 0,
+      "community": 6,
       "norm_label": "e7d04c90bc13_add_audit_logs_table.py"
     },
     {
@@ -135,7 +135,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L21",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_upgrade",
-      "community": 0,
+      "community": 6,
       "norm_label": "upgrade()"
     },
     {
@@ -144,7 +144,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L38",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_downgrade",
-      "community": 0,
+      "community": 6,
       "norm_label": "downgrade()"
     },
     {
@@ -153,7 +153,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_rationale_1",
-      "community": 0,
+      "community": 6,
       "norm_label": "add audit logs table  revision id: e7d04c90bc13 revises: a6e267909ed1 create dat"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "api/__init__.py",
       "source_location": "L1",
       "id": "api_init_py",
-      "community": 24,
+      "community": 27,
       "norm_label": "__init__.py"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "app/config.py",
       "source_location": "L1",
       "id": "app_config_py",
-      "community": 6,
+      "community": 12,
       "norm_label": "config.py"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "app/config.py",
       "source_location": "L8",
       "id": "app_config_baseconfig",
-      "community": 6,
+      "community": 12,
       "norm_label": "baseconfig"
     },
     {
@@ -189,7 +189,7 @@
       "source_file": "",
       "source_location": "",
       "id": "basesettings",
-      "community": 6,
+      "community": 12,
       "norm_label": "basesettings"
     },
     {
@@ -198,7 +198,7 @@
       "source_file": "app/config.py",
       "source_location": "L18",
       "id": "app_config_globalconfig",
-      "community": 6,
+      "community": 12,
       "norm_label": "globalconfig"
     },
     {
@@ -207,7 +207,7 @@
       "source_file": "app/config.py",
       "source_location": "L35",
       "id": "app_config_devconfig",
-      "community": 6,
+      "community": 12,
       "norm_label": "devconfig"
     },
     {
@@ -216,7 +216,7 @@
       "source_file": "app/config.py",
       "source_location": "L39",
       "id": "app_config_prodconfig",
-      "community": 6,
+      "community": 12,
       "norm_label": "prodconfig"
     },
     {
@@ -225,7 +225,7 @@
       "source_file": "app/config.py",
       "source_location": "L43",
       "id": "app_config_ensure_secret_key",
-      "community": 6,
+      "community": 12,
       "norm_label": "ensure_secret_key()"
     },
     {
@@ -234,7 +234,7 @@
       "source_file": "app/config.py",
       "source_location": "L52",
       "id": "app_config_testconfig",
-      "community": 6,
+      "community": 12,
       "norm_label": "testconfig"
     },
     {
@@ -243,7 +243,7 @@
       "source_file": "app/config.py",
       "source_location": "L60",
       "id": "app_config_get_config",
-      "community": 6,
+      "community": 12,
       "norm_label": "get_config()"
     },
     {
@@ -252,7 +252,7 @@
       "source_file": "app/config.py",
       "source_location": "L44",
       "id": "app_config_rationale_44",
-      "community": 25,
+      "community": 28,
       "norm_label": "fail-fast in production when secret_key is not set."
     },
     {
@@ -261,7 +261,7 @@
       "source_file": "app/database.py",
       "source_location": "L1",
       "id": "app_database_py",
-      "community": 0,
+      "community": 6,
       "norm_label": "database.py"
     },
     {
@@ -270,7 +270,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_py",
-      "community": 10,
+      "community": 1,
       "norm_label": "dependencies.py"
     },
     {
@@ -279,7 +279,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L13",
       "id": "app_dependencies_get_token_header",
-      "community": 10,
+      "community": 1,
       "norm_label": "get_token_header()"
     },
     {
@@ -288,7 +288,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L24",
       "id": "app_dependencies_get_query_token",
-      "community": 10,
+      "community": 1,
       "norm_label": "get_query_token()"
     },
     {
@@ -297,7 +297,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_rationale_1",
-      "community": 10,
+      "community": 1,
       "norm_label": "shared dependencies used across multiple routes and modules.  this module cont"
     },
     {
@@ -306,7 +306,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L14",
       "id": "app_dependencies_rationale_14",
-      "community": 10,
+      "community": 1,
       "norm_label": "validate x-token header.          this is a simple token validation dependency"
     },
     {
@@ -315,7 +315,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L25",
       "id": "app_dependencies_rationale_25",
-      "community": 10,
+      "community": 1,
       "norm_label": "validate query token parameter.          optional query parameter for basic to"
     },
     {
@@ -324,7 +324,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L1",
       "id": "app_logging_conf_py",
-      "community": 6,
+      "community": 1,
       "norm_label": "logging_conf.py"
     },
     {
@@ -333,7 +333,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L7",
       "id": "app_logging_conf_obfuscated",
-      "community": 6,
+      "community": 1,
       "norm_label": "obfuscated()"
     },
     {
@@ -342,7 +342,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L21",
       "id": "app_logging_conf_emailobfuscationfilter",
-      "community": 6,
+      "community": 1,
       "norm_label": "emailobfuscationfilter"
     },
     {
@@ -351,7 +351,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L22",
       "id": "app_logging_conf_emailobfuscationfilter_init",
-      "community": 6,
+      "community": 1,
       "norm_label": ".__init__()"
     },
     {
@@ -360,7 +360,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L26",
       "id": "app_logging_conf_emailobfuscationfilter_filter",
-      "community": 6,
+      "community": 1,
       "norm_label": ".filter()"
     },
     {
@@ -369,7 +369,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L37",
       "id": "app_logging_conf_configure_logging",
-      "community": 6,
+      "community": 1,
       "norm_label": "configure_logging()"
     },
     {
@@ -378,7 +378,7 @@
       "source_file": "app/main.py",
       "source_location": "L1",
       "id": "app_main_py",
-      "community": 6,
+      "community": 1,
       "norm_label": "main.py"
     },
     {
@@ -387,7 +387,7 @@
       "source_file": "app/main.py",
       "source_location": "L25",
       "id": "app_main_lifespan",
-      "community": 6,
+      "community": 1,
       "norm_label": "lifespan()"
     },
     {
@@ -396,7 +396,7 @@
       "source_file": "app/main.py",
       "source_location": "L43",
       "id": "app_main_log_http_exception",
-      "community": 6,
+      "community": 1,
       "norm_label": "log_http_exception()"
     },
     {
@@ -405,7 +405,7 @@
       "source_file": "app/main.py",
       "source_location": "L59",
       "id": "app_main_log_unhandled_exception",
-      "community": 6,
+      "community": 1,
       "norm_label": "log_unhandled_exception()"
     },
     {
@@ -414,7 +414,7 @@
       "source_file": "app/security.py",
       "source_location": "L1",
       "id": "app_security_py",
-      "community": 1,
+      "community": 0,
       "norm_label": "security.py"
     },
     {
@@ -423,7 +423,7 @@
       "source_file": "app/security.py",
       "source_location": "L27",
       "id": "app_security_create_credentials_exception",
-      "community": 1,
+      "community": 0,
       "norm_label": "create_credentials_exception()"
     },
     {
@@ -432,7 +432,7 @@
       "source_file": "app/security.py",
       "source_location": "L35",
       "id": "app_security_access_token_expire_time",
-      "community": 1,
+      "community": 0,
       "norm_label": "access_token_expire_time()"
     },
     {
@@ -441,7 +441,7 @@
       "source_file": "app/security.py",
       "source_location": "L39",
       "id": "app_security_confirm_token_expire_time",
-      "community": 1,
+      "community": 0,
       "norm_label": "confirm_token_expire_time()"
     },
     {
@@ -450,7 +450,7 @@
       "source_file": "app/security.py",
       "source_location": "L43",
       "id": "app_security_get_secret_key",
-      "community": 1,
+      "community": 0,
       "norm_label": "_get_secret_key()"
     },
     {
@@ -459,7 +459,7 @@
       "source_file": "app/security.py",
       "source_location": "L49",
       "id": "app_security_create_access_token",
-      "community": 1,
+      "community": 0,
       "norm_label": "create_access_token()"
     },
     {
@@ -468,7 +468,7 @@
       "source_file": "app/security.py",
       "source_location": "L60",
       "id": "app_security_create_confirm_token",
-      "community": 1,
+      "community": 0,
       "norm_label": "create_confirm_token()"
     },
     {
@@ -477,7 +477,7 @@
       "source_file": "app/security.py",
       "source_location": "L71",
       "id": "app_security_get_password_hash",
-      "community": 1,
+      "community": 0,
       "norm_label": "get_password_hash()"
     },
     {
@@ -486,7 +486,7 @@
       "source_file": "app/security.py",
       "source_location": "L75",
       "id": "app_security_verify_password",
-      "community": 1,
+      "community": 0,
       "norm_label": "verify_password()"
     },
     {
@@ -495,7 +495,7 @@
       "source_file": "app/security.py",
       "source_location": "L79",
       "id": "app_security_get_user",
-      "community": 1,
+      "community": 0,
       "norm_label": "get_user()"
     },
     {
@@ -504,7 +504,7 @@
       "source_file": "app/security.py",
       "source_location": "L87",
       "id": "app_security_get_subject_for_token_type",
-      "community": 1,
+      "community": 0,
       "norm_label": "get_subject_for_token_type()"
     },
     {
@@ -513,7 +513,7 @@
       "source_file": "app/security.py",
       "source_location": "L110",
       "id": "app_security_authenticate_user",
-      "community": 1,
+      "community": 0,
       "norm_label": "authenticate_user()"
     },
     {
@@ -522,7 +522,7 @@
       "source_file": "app/security.py",
       "source_location": "L121",
       "id": "app_security_get_current_user",
-      "community": 1,
+      "community": 0,
       "norm_label": "get_current_user()"
     },
     {
@@ -531,7 +531,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L1",
       "id": "app_tasks_py",
-      "community": 8,
+      "community": 9,
       "norm_label": "tasks.py"
     },
     {
@@ -540,7 +540,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L14",
       "id": "app_tasks_apiresponseerror",
-      "community": 8,
+      "community": 9,
       "norm_label": "apiresponseerror"
     },
     {
@@ -549,7 +549,7 @@
       "source_file": "",
       "source_location": "",
       "id": "exception",
-      "community": 8,
+      "community": 9,
       "norm_label": "exception"
     },
     {
@@ -558,7 +558,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L18",
       "id": "app_tasks_is_valid_url",
-      "community": 8,
+      "community": 9,
       "norm_label": "_is_valid_url()"
     },
     {
@@ -567,7 +567,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L23",
       "id": "app_tasks_send_brevo_email",
-      "community": 8,
+      "community": 9,
       "norm_label": "send_brevo_email()"
     },
     {
@@ -576,7 +576,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L52",
       "id": "app_tasks_send_smtp_email",
-      "community": 8,
+      "community": 9,
       "norm_label": "send_smtp_email()"
     },
     {
@@ -585,7 +585,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L79",
       "id": "app_tasks_get_confirmation_content",
-      "community": 8,
+      "community": 9,
       "norm_label": "_get_confirmation_content()"
     },
     {
@@ -594,7 +594,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L99",
       "id": "app_tasks_record_confirmation_failure",
-      "community": 8,
+      "community": 9,
       "norm_label": "_record_confirmation_failure()"
     },
     {
@@ -603,7 +603,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L120",
       "id": "app_tasks_send_confirmation_email",
-      "community": 8,
+      "community": 9,
       "norm_label": "send_confirmation_email()"
     },
     {
@@ -612,7 +612,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L19",
       "id": "app_tasks_rationale_19",
-      "community": 8,
+      "community": 9,
       "norm_label": "helper to validate that a url starts with https://."
     },
     {
@@ -621,7 +621,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L85",
       "id": "app_tasks_rationale_85",
-      "community": 8,
+      "community": 9,
       "norm_label": "helper to generate subject and body from confirmation url or direct inputs."
     },
     {
@@ -630,7 +630,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L100",
       "id": "app_tasks_rationale_100",
-      "community": 8,
+      "community": 9,
       "norm_label": "helper to mark a user as having a failed email confirmation in the database."
     },
     {
@@ -639,7 +639,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L128",
       "id": "app_tasks_rationale_128",
-      "community": 8,
+      "community": 9,
       "norm_label": "send a confirmation email with smtp and brevo api fallback.      the logic is br"
     },
     {
@@ -648,7 +648,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_py",
-      "community": 16,
+      "community": 19,
       "norm_label": "__init__.py"
     },
     {
@@ -657,7 +657,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_rationale_1",
-      "community": 16,
+      "community": 19,
       "norm_label": "task buddy backend - fastapi application main package initialization file."
     },
     {
@@ -666,7 +666,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "app_api_dependencies_py",
-      "community": 0,
+      "community": 1,
       "norm_label": "dependencies.py"
     },
     {
@@ -675,7 +675,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L13",
       "id": "api_dependencies_get_query_token",
-      "community": 0,
+      "community": 1,
       "norm_label": "get_query_token()"
     },
     {
@@ -684,7 +684,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "api_dependencies_rationale_1",
-      "community": 0,
+      "community": 1,
       "norm_label": "api-specific dependencies.  these dependencies are specific to the api routers"
     },
     {
@@ -693,7 +693,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L14",
       "id": "api_dependencies_rationale_14",
-      "community": 0,
+      "community": 1,
       "norm_label": "optional query token validation for api routes.          this is a simple quer"
     },
     {
@@ -702,7 +702,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "app_api_init_py",
-      "community": 17,
+      "community": 20,
       "norm_label": "__init__.py"
     },
     {
@@ -711,7 +711,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "api_init_rationale_1",
-      "community": 17,
+      "community": 20,
       "norm_label": "api package - contains all api routes and related modules."
     },
     {
@@ -720,7 +720,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L1",
       "id": "app_api_routers_audit_py",
-      "community": 0,
+      "community": 1,
       "norm_label": "audit.py"
     },
     {
@@ -729,7 +729,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L10",
       "id": "routers_audit_get_audit_logs",
-      "community": 0,
+      "community": 1,
       "norm_label": "get_audit_logs()"
     },
     {
@@ -738,7 +738,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L17",
       "id": "routers_audit_rationale_17",
-      "community": 0,
+      "community": 1,
       "norm_label": "retrieve audit logs for the current user."
     },
     {
@@ -747,7 +747,7 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L1",
       "id": "app_api_routers_stats_py",
-      "community": 0,
+      "community": 6,
       "norm_label": "stats.py"
     },
     {
@@ -774,7 +774,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L1",
       "id": "app_api_routers_task_py",
-      "community": 4,
+      "community": 5,
       "norm_label": "task.py"
     },
     {
@@ -783,7 +783,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L47",
       "id": "routers_task_ensure_task_owner",
-      "community": 4,
+      "community": 5,
       "norm_label": "ensure_task_owner()"
     },
     {
@@ -792,7 +792,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L53",
       "id": "routers_task_set_tag_link_response_status",
-      "community": 4,
+      "community": 5,
       "norm_label": "set_tag_link_response_status()"
     },
     {
@@ -801,7 +801,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L58",
       "id": "routers_task_get_all_tasks",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_all_tasks()"
     },
     {
@@ -810,7 +810,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L78",
       "id": "routers_task_get_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_task()"
     },
     {
@@ -819,7 +819,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L94",
       "id": "routers_task_create_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "create_task()"
     },
     {
@@ -828,7 +828,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L121",
       "id": "routers_task_update_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "update_task()"
     },
     {
@@ -837,7 +837,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L152",
       "id": "routers_task_delete_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "delete_task()"
     },
     {
@@ -846,7 +846,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L172",
       "id": "routers_task_get_task_with_subtasks",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_task_with_subtasks()"
     },
     {
@@ -855,7 +855,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L188",
       "id": "routers_task_create_subtask",
-      "community": 4,
+      "community": 5,
       "norm_label": "create_subtask()"
     },
     {
@@ -864,7 +864,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L219",
       "id": "routers_task_get_subtasks_on_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_subtasks_on_task()"
     },
     {
@@ -873,7 +873,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L235",
       "id": "routers_task_get_subtask",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_subtask()"
     },
     {
@@ -882,7 +882,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L254",
       "id": "routers_task_update_subtask",
-      "community": 4,
+      "community": 5,
       "norm_label": "update_subtask()"
     },
     {
@@ -891,7 +891,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L284",
       "id": "routers_task_delete_subtask",
-      "community": 4,
+      "community": 5,
       "norm_label": "delete_subtask()"
     },
     {
@@ -900,7 +900,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L307",
       "id": "routers_task_create_tag",
-      "community": 4,
+      "community": 5,
       "norm_label": "create_tag()"
     },
     {
@@ -909,7 +909,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L377",
       "id": "routers_task_get_tags_on_task",
-      "community": 4,
+      "community": 5,
       "norm_label": "get_tags_on_task()"
     },
     {
@@ -918,7 +918,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L396",
       "id": "routers_task_detach_tag",
-      "community": 4,
+      "community": 5,
       "norm_label": "detach_tag()"
     },
     {
@@ -927,7 +927,7 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L432",
       "id": "routers_task_delete_tag",
-      "community": 4,
+      "community": 5,
       "norm_label": "delete_tag()"
     },
     {
@@ -936,7 +936,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L1",
       "id": "app_api_routers_user_py",
-      "community": 1,
+      "community": 0,
       "norm_label": "user.py"
     },
     {
@@ -945,7 +945,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L37",
       "id": "routers_user_register_user",
-      "community": 1,
+      "community": 0,
       "norm_label": "register_user()"
     },
     {
@@ -954,7 +954,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L68",
       "id": "routers_user_resend_confirmation",
-      "community": 1,
+      "community": 0,
       "norm_label": "resend_confirmation()"
     },
     {
@@ -963,7 +963,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L98",
       "id": "routers_user_login",
-      "community": 1,
+      "community": 0,
       "norm_label": "login()"
     },
     {
@@ -972,7 +972,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L105",
       "id": "routers_user_confirm_email",
-      "community": 1,
+      "community": 0,
       "norm_label": "confirm_email()"
     },
     {
@@ -981,7 +981,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L118",
       "id": "routers_user_get_my_profile",
-      "community": 1,
+      "community": 0,
       "norm_label": "get_my_profile()"
     },
     {
@@ -990,7 +990,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L126",
       "id": "routers_user_update_username",
-      "community": 1,
+      "community": 0,
       "norm_label": "update_username()"
     },
     {
@@ -999,7 +999,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L163",
       "id": "routers_user_update_password",
-      "community": 1,
+      "community": 0,
       "norm_label": "update_password()"
     },
     {
@@ -1008,7 +1008,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L192",
       "id": "routers_user_logout",
-      "community": 1,
+      "community": 0,
       "norm_label": "logout()"
     },
     {
@@ -1017,7 +1017,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L71",
       "id": "routers_user_rationale_71",
-      "community": 1,
+      "community": 0,
       "norm_label": "resend a confirmation email for an existing, unconfirmed user.      the endpoi"
     },
     {
@@ -1026,7 +1026,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L119",
       "id": "routers_user_rationale_119",
-      "community": 1,
+      "community": 0,
       "norm_label": "retrieve the current user's profile information."
     },
     {
@@ -1035,7 +1035,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L130",
       "id": "routers_user_rationale_130",
-      "community": 1,
+      "community": 0,
       "norm_label": "update the current user's username.     checks for uniqueness and length."
     },
     {
@@ -1044,7 +1044,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L167",
       "id": "routers_user_rationale_167",
-      "community": 1,
+      "community": 0,
       "norm_label": "update the current user's password securely.     verifies the current password"
     },
     {
@@ -1053,7 +1053,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L193",
       "id": "routers_user_rationale_193",
-      "community": 1,
+      "community": 0,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli"
     },
     {
@@ -1062,7 +1062,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "app_api_routers_init_py",
-      "community": 18,
+      "community": 21,
       "norm_label": "__init__.py"
     },
     {
@@ -1071,7 +1071,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "routers_init_rationale_1",
-      "community": 18,
+      "community": 21,
       "norm_label": "api routers package - contains all endpoint routers."
     },
     {
@@ -1080,7 +1080,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "app_crud_init_py",
-      "community": 19,
+      "community": 22,
       "norm_label": "__init__.py"
     },
     {
@@ -1089,7 +1089,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "crud_init_rationale_1",
-      "community": 19,
+      "community": 22,
       "norm_label": "crud operations - database interaction functions."
     },
     {
@@ -1098,7 +1098,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L1",
       "id": "app_internal_admin_py",
-      "community": 0,
+      "community": 1,
       "norm_label": "admin.py"
     },
     {
@@ -1107,7 +1107,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L14",
       "id": "internal_admin_update_admin",
-      "community": 0,
+      "community": 1,
       "norm_label": "update_admin()"
     },
     {
@@ -1116,7 +1116,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L1",
       "id": "internal_admin_rationale_1",
-      "community": 0,
+      "community": 1,
       "norm_label": "admin module.  contains admin-only functionality and operations. not exposed"
     },
     {
@@ -1125,7 +1125,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L15",
       "id": "internal_admin_rationale_15",
-      "community": 0,
+      "community": 1,
       "norm_label": "admin update endpoint."
     },
     {
@@ -1134,7 +1134,7 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L1",
       "id": "app_internal_audit_py",
-      "community": 4,
+      "community": 5,
       "norm_label": "audit.py"
     },
     {
@@ -1143,7 +1143,7 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L5",
       "id": "internal_audit_log_action",
-      "community": 4,
+      "community": 5,
       "norm_label": "log_action()"
     },
     {
@@ -1152,7 +1152,7 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L12",
       "id": "internal_audit_rationale_12",
-      "community": 4,
+      "community": 5,
       "norm_label": "log an action performed by a user on a specific target resource."
     },
     {
@@ -1161,7 +1161,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "app_internal_init_py",
-      "community": 20,
+      "community": 23,
       "norm_label": "__init__.py"
     },
     {
@@ -1170,7 +1170,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "internal_init_rationale_1",
-      "community": 20,
+      "community": 23,
       "norm_label": "internal modules - internal-only functionality."
     },
     {
@@ -1404,7 +1404,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "app_models_init_py",
-      "community": 21,
+      "community": 24,
       "norm_label": "__init__.py"
     },
     {
@@ -1413,7 +1413,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "models_init_rationale_1",
-      "community": 21,
+      "community": 24,
       "norm_label": "database models - sqlalchemy orm models."
     },
     {
@@ -1422,7 +1422,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "app_schemas_init_py",
-      "community": 22,
+      "community": 25,
       "norm_label": "__init__.py"
     },
     {
@@ -1431,7 +1431,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "schemas_init_rationale_1",
-      "community": 22,
+      "community": 25,
       "norm_label": "pydantic schemas - data validation models for request/response."
     },
     {
@@ -1440,7 +1440,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L1",
       "id": "tests_conftest_py",
-      "community": 9,
+      "community": 11,
       "norm_label": "conftest.py"
     },
     {
@@ -1449,7 +1449,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L22",
       "id": "tests_conftest_anyio_backend",
-      "community": 9,
+      "community": 11,
       "norm_label": "anyio_backend()"
     },
     {
@@ -1458,7 +1458,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L27",
       "id": "tests_conftest_db",
-      "community": 9,
+      "community": 11,
       "norm_label": "db()"
     },
     {
@@ -1467,7 +1467,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L42",
       "id": "tests_conftest_client",
-      "community": 9,
+      "community": 11,
       "norm_label": "client()"
     },
     {
@@ -1476,7 +1476,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L47",
       "id": "tests_conftest_async_client",
-      "community": 9,
+      "community": 11,
       "norm_label": "async_client()"
     },
     {
@@ -1485,7 +1485,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L54",
       "id": "tests_conftest_registered_user",
-      "community": 9,
+      "community": 11,
       "norm_label": "registered_user()"
     },
     {
@@ -1494,7 +1494,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L77",
       "id": "tests_conftest_confirmed_user",
-      "community": 9,
+      "community": 11,
       "norm_label": "confirmed_user()"
     },
     {
@@ -1503,7 +1503,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L86",
       "id": "tests_conftest_logged_in_token",
-      "community": 9,
+      "community": 11,
       "norm_label": "logged_in_token()"
     },
     {
@@ -1512,7 +1512,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L104",
       "id": "tests_conftest_mock_httpx_client",
-      "community": 9,
+      "community": 11,
       "norm_label": "mock_httpx_client()"
     },
     {
@@ -1521,7 +1521,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L105",
       "id": "tests_conftest_rationale_105",
-      "community": 9,
+      "community": 11,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests."
     },
     {
@@ -1530,7 +1530,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L1",
       "id": "tests_test_migrations_py",
-      "community": 14,
+      "community": 17,
       "norm_label": "test_migrations.py"
     },
     {
@@ -1539,7 +1539,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L5",
       "id": "tests_test_migrations_test_alembic_migrations",
-      "community": 14,
+      "community": 17,
       "norm_label": "test_alembic_migrations()"
     },
     {
@@ -1548,7 +1548,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
       "id": "tests_test_migrations_rationale_6",
-      "community": 14,
+      "community": 17,
       "norm_label": "test that alembic migration can run against a clean database successfully."
     },
     {
@@ -1557,7 +1557,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L1",
       "id": "tests_test_security_py",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_security.py"
     },
     {
@@ -1566,7 +1566,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L8",
       "id": "tests_test_security_test_get_subject_for_token_type_valid_access_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_valid_access_token()"
     },
     {
@@ -1575,7 +1575,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L15",
       "id": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_valid_confirm_token()"
     },
     {
@@ -1584,7 +1584,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L22",
       "id": "tests_test_security_test_get_subject_for_token_type_expired",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_expired()"
     },
     {
@@ -1593,7 +1593,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L31",
       "id": "tests_test_security_test_get_subject_for_token_type_invalid_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_invalid_token()"
     },
     {
@@ -1602,7 +1602,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L38",
       "id": "tests_test_security_test_get_subject_for_token_type_wrong_type",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_wrong_type()"
     },
     {
@@ -1611,7 +1611,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L46",
       "id": "tests_test_security_test_get_subject_for_token_type_missing_subject",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_subject_for_token_type_missing_subject()"
     },
     {
@@ -1620,7 +1620,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L57",
       "id": "tests_test_security_test_password_hash",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_password_hash()"
     },
     {
@@ -1629,7 +1629,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L62",
       "id": "tests_test_security_test_access_token_expire_minutes",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_access_token_expire_minutes()"
     },
     {
@@ -1638,7 +1638,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L66",
       "id": "tests_test_security_test_confirm_token_expire_minutes",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_confirm_token_expire_minutes()"
     },
     {
@@ -1647,7 +1647,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L70",
       "id": "tests_test_security_test_create_access_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_create_access_token()"
     },
     {
@@ -1656,7 +1656,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L78",
       "id": "tests_test_security_test_create_confirmation_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_create_confirmation_token()"
     },
     {
@@ -1665,7 +1665,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L87",
       "id": "tests_test_security_test_get_user",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_user()"
     },
     {
@@ -1674,7 +1674,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L93",
       "id": "tests_test_security_test_get_user_not_found",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_user_not_found()"
     },
     {
@@ -1683,7 +1683,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L99",
       "id": "tests_test_security_test_authenticate_user",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_authenticate_user()"
     },
     {
@@ -1692,7 +1692,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L106",
       "id": "tests_test_security_test_authenticate_user_not_found",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_authenticate_user_not_found()"
     },
     {
@@ -1701,7 +1701,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L112",
       "id": "tests_test_security_test_authenticate_user_wrong_password",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_authenticate_user_wrong_password()"
     },
     {
@@ -1710,7 +1710,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L118",
       "id": "tests_test_security_test_get_current_user",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_current_user()"
     },
     {
@@ -1719,7 +1719,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L126",
       "id": "tests_test_security_test_get_current_user_invalid_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_current_user_invalid_token()"
     },
     {
@@ -1728,7 +1728,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L132",
       "id": "tests_test_security_test_get_current_user_wrong_type_token",
-      "community": 5,
+      "community": 7,
       "norm_label": "test_get_current_user_wrong_type_token()"
     },
     {
@@ -1737,7 +1737,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L1",
       "id": "tests_test_seed_py",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_seed.py"
     },
     {
@@ -1746,7 +1746,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L6",
       "id": "tests_test_seed_test_seed_data",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_seed_data()"
     },
     {
@@ -1755,7 +1755,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L7",
       "id": "tests_test_seed_rationale_7",
-      "community": 11,
+      "community": 0,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r"
     },
     {
@@ -1764,7 +1764,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L1",
       "id": "tests_test_tasks_py",
-      "community": 8,
+      "community": 9,
       "norm_label": "test_tasks.py"
     },
     {
@@ -1773,7 +1773,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L8",
       "id": "tests_test_tasks_test_send_confirmation_email",
-      "community": 8,
+      "community": 9,
       "norm_label": "test_send_confirmation_email()"
     },
     {
@@ -1782,7 +1782,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L20",
       "id": "tests_test_tasks_test_send_confirmation_email_api_error",
-      "community": 8,
+      "community": 9,
       "norm_label": "test_send_confirmation_email_api_error()"
     },
     {
@@ -1791,7 +1791,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L33",
       "id": "tests_test_tasks_test_send_confirmation_email_falls_back_to_api",
-      "community": 8,
+      "community": 9,
       "norm_label": "test_send_confirmation_email_falls_back_to_api()"
     },
     {
@@ -1800,7 +1800,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_py",
-      "community": 23,
+      "community": 26,
       "norm_label": "__init__.py"
     },
     {
@@ -1809,7 +1809,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_rationale_1",
-      "community": 23,
+      "community": 26,
       "norm_label": "tests package - contains all application tests."
     },
     {
@@ -1818,7 +1818,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L1",
       "id": "tests_routers_test_audit_py",
-      "community": 12,
+      "community": 15,
       "norm_label": "test_audit.py"
     },
     {
@@ -1827,7 +1827,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L5",
       "id": "routers_test_audit_test_get_audit_logs_empty",
-      "community": 12,
+      "community": 15,
       "norm_label": "test_get_audit_logs_empty()"
     },
     {
@@ -1836,7 +1836,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L14",
       "id": "routers_test_audit_test_audit_log_after_task_creation",
-      "community": 12,
+      "community": 15,
       "norm_label": "test_audit_log_after_task_creation()"
     },
     {
@@ -1845,7 +1845,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L41",
       "id": "routers_test_audit_test_audit_log_filtering",
-      "community": 12,
+      "community": 15,
       "norm_label": "test_audit_log_filtering()"
     },
     {
@@ -1854,7 +1854,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L1",
       "id": "tests_routers_test_stats_py",
-      "community": 13,
+      "community": 16,
       "norm_label": "test_stats.py"
     },
     {
@@ -1863,7 +1863,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L5",
       "id": "routers_test_stats_test_get_stats_overview_empty",
-      "community": 13,
+      "community": 16,
       "norm_label": "test_get_stats_overview_empty()"
     },
     {
@@ -1872,7 +1872,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L17",
       "id": "routers_test_stats_test_stats_with_data",
-      "community": 13,
+      "community": 16,
       "norm_label": "test_stats_with_data()"
     },
     {
@@ -1881,7 +1881,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L43",
       "id": "routers_test_stats_test_tag_distribution",
-      "community": 13,
+      "community": 16,
       "norm_label": "test_tag_distribution()"
     },
     {
@@ -2124,7 +2124,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L1",
       "id": "tests_routers_test_user_py",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_user.py"
     },
     {
@@ -2133,7 +2133,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L7",
       "id": "routers_test_user_register_user",
-      "community": 7,
+      "community": 8,
       "norm_label": "register_user()"
     },
     {
@@ -2142,7 +2142,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L21",
       "id": "routers_test_user_test_register_user",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_register_user()"
     },
     {
@@ -2151,7 +2151,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L28",
       "id": "routers_test_user_test_confirm_user",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_confirm_user()"
     },
     {
@@ -2160,7 +2160,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L40",
       "id": "routers_test_user_test_confirm_user_invalid_token",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_confirm_user_invalid_token()"
     },
     {
@@ -2169,7 +2169,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L46",
       "id": "routers_test_user_test_confirm_user_expired_token",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_confirm_user_expired_token()"
     },
     {
@@ -2178,7 +2178,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L60",
       "id": "routers_test_user_test_register_user_duplicate_email",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_register_user_duplicate_email()"
     },
     {
@@ -2187,7 +2187,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L69",
       "id": "routers_test_user_test_login_user_not_exists",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_login_user_not_exists()"
     },
     {
@@ -2196,7 +2196,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L78",
       "id": "routers_test_user_test_login_user_not_confirmed",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_login_user_not_confirmed()"
     },
     {
@@ -2205,7 +2205,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L88",
       "id": "routers_test_user_test_login_user",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_login_user()"
     },
     {
@@ -2214,7 +2214,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L101",
       "id": "routers_test_user_test_logout_user",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_logout_user()"
     },
     {
@@ -2223,7 +2223,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L109",
       "id": "routers_test_user_test_logout_user_unauthenticated",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_logout_user_unauthenticated()"
     },
     {
@@ -2232,7 +2232,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L115",
       "id": "routers_test_user_test_get_my_profile",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_get_my_profile()"
     },
     {
@@ -2241,7 +2241,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L125",
       "id": "routers_test_user_test_update_username",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_username()"
     },
     {
@@ -2250,7 +2250,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L140",
       "id": "routers_test_user_test_update_username_taken",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_username_taken()"
     },
     {
@@ -2259,7 +2259,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L153",
       "id": "routers_test_user_test_update_password",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_password()"
     },
     {
@@ -2268,7 +2268,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L173",
       "id": "routers_test_user_test_update_password_incorrect_current",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_password_incorrect_current()"
     },
     {
@@ -2277,7 +2277,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L185",
       "id": "routers_test_user_test_update_username_too_short",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_username_too_short()"
     },
     {
@@ -2286,7 +2286,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L195",
       "id": "routers_test_user_test_update_password_too_short",
-      "community": 7,
+      "community": 8,
       "norm_label": "test_update_password_too_short()"
     },
     {
@@ -2295,64 +2295,541 @@
       "source_file": "tests/routers/__init__.py",
       "source_location": "L1",
       "id": "tests_routers_init_py",
-      "community": 26,
+      "community": 29,
       "norm_label": "__init__.py"
     },
     {
-      "label": "Claude Code Guidance",
+      "label": "CLAUDE.md",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "id": "claude_code",
-      "community": 0,
-      "norm_label": "claude code guidance"
+      "source_location": "L1",
+      "id": "claude_md",
+      "community": 14,
+      "norm_label": "claude.md"
     },
     {
-      "label": "FastAPI Framework",
-      "file_type": "rationale",
-      "source_file": "README.md",
-      "id": "fastapi",
-      "community": 0,
-      "norm_label": "fastapi framework"
+      "label": "CLAUDE.md",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "id": "task_buddy_backend_claude_claude_md",
+      "community": 14,
+      "norm_label": "claude.md"
     },
     {
-      "label": "SQLAlchemy ORM",
-      "file_type": "rationale",
-      "source_file": "README.md",
-      "id": "sqlalchemy",
-      "community": 0,
-      "norm_label": "sqlalchemy orm"
+      "label": "Common Development Commands",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
+      "id": "task_buddy_backend_claude_common_development_commands",
+      "community": 14,
+      "norm_label": "common development commands"
     },
     {
-      "label": "PostgreSQL Database",
-      "file_type": "rationale",
-      "source_file": "README.md",
-      "id": "postgresql",
-      "community": 0,
-      "norm_label": "postgresql database"
+      "label": "High\u2011Level Architecture",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L23",
+      "id": "task_buddy_backend_claude_high_level_architecture",
+      "community": 14,
+      "norm_label": "high\u2010level architecture"
     },
     {
-      "label": "Docker Containerization",
-      "file_type": "rationale",
+      "label": "Environment Variables",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L40",
+      "id": "task_buddy_backend_claude_environment_variables",
+      "community": 14,
+      "norm_label": "environment variables"
+    },
+    {
+      "label": "code:block1 (DATABASE_URL=postgresql://user:password@localhost/task_buddy)",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "source_location": "L43",
+      "id": "task_buddy_backend_claude_codeblock_1",
+      "community": 14,
+      "norm_label": "code:block1 (database_url=postgresql://user:password@localhost/task_buddy)"
+    },
+    {
+      "label": "README.md",
+      "file_type": "document",
       "source_file": "README.md",
-      "id": "docker",
-      "community": 27,
-      "norm_label": "docker containerization"
+      "source_location": "L1",
+      "id": "readme_md",
+      "community": 4,
+      "norm_label": "readme.md"
     },
     {
       "label": "Task Buddy Backend",
       "file_type": "document",
       "source_file": "README.md",
-      "id": "task_buddy_backend",
-      "community": 0,
+      "source_location": "L1",
+      "id": "task_buddy_backend_readme_task_buddy_backend",
+      "community": 4,
       "norm_label": "task buddy backend"
+    },
+    {
+      "label": "\ud83d\udccb Features",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L5",
+      "id": "task_buddy_backend_readme_features",
+      "community": 4,
+      "norm_label": "\ud83d\udccb features"
+    },
+    {
+      "label": "\ud83d\udee0\ufe0f Tech Stack",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "id": "task_buddy_backend_readme_tech_stack",
+      "community": 4,
+      "norm_label": "\ud83d\udee0\ufe0f tech stack"
+    },
+    {
+      "label": "\ud83d\udcc1 Project Structure",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L26",
+      "id": "task_buddy_backend_readme_project_structure",
+      "community": 4,
+      "norm_label": "\ud83d\udcc1 project structure"
+    },
+    {
+      "label": "code:block1 (task-buddy-backend/)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L28",
+      "id": "task_buddy_backend_readme_codeblock_1",
+      "community": 4,
+      "norm_label": "code:block1 (task-buddy-backend/)"
+    },
+    {
+      "label": "\ud83d\ude80 Quick Start",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L57",
+      "id": "task_buddy_backend_readme_quick_start",
+      "community": 10,
+      "norm_label": "\ud83d\ude80 quick start"
+    },
+    {
+      "label": "Prerequisites",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L59",
+      "id": "task_buddy_backend_readme_prerequisites",
+      "community": 10,
+      "norm_label": "prerequisites"
+    },
+    {
+      "label": "Installation",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L65",
+      "id": "task_buddy_backend_readme_installation",
+      "community": 10,
+      "norm_label": "installation"
+    },
+    {
+      "label": "code:bash (git clone https://github.com/yourusername/task-buddy-backend)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L69",
+      "id": "task_buddy_backend_readme_codeblock_2",
+      "community": 10,
+      "norm_label": "code:bash (git clone https://github.com/yourusername/task-buddy-backend)"
+    },
+    {
+      "label": "code:bash (# On Windows)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L76",
+      "id": "task_buddy_backend_readme_codeblock_3",
+      "community": 10,
+      "norm_label": "code:bash (# on windows)"
+    },
+    {
+      "label": "code:bash (pip install -e \".[dev]\")",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L88",
+      "id": "task_buddy_backend_readme_codeblock_4",
+      "community": 10,
+      "norm_label": "code:bash (pip install -e \".[dev]\")"
+    },
+    {
+      "label": "Running the Application",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L94",
+      "id": "task_buddy_backend_readme_running_the_application",
+      "community": 10,
+      "norm_label": "running the application"
+    },
+    {
+      "label": "Development Mode",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L96",
+      "id": "task_buddy_backend_readme_development_mode",
+      "community": 10,
+      "norm_label": "development mode"
+    },
+    {
+      "label": "code:bash (fastapi dev)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L100",
+      "id": "task_buddy_backend_readme_codeblock_5",
+      "community": 10,
+      "norm_label": "code:bash (fastapi dev)"
+    },
+    {
+      "label": "code:bash (uvicorn app.main:app --reload)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L106",
+      "id": "task_buddy_backend_readme_codeblock_6",
+      "community": 10,
+      "norm_label": "code:bash (uvicorn app.main:app --reload)"
+    },
+    {
+      "label": "Production Mode",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L112",
+      "id": "task_buddy_backend_readme_production_mode",
+      "community": 10,
+      "norm_label": "production mode"
+    },
+    {
+      "label": "code:bash (fastapi run)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L114",
+      "id": "task_buddy_backend_readme_codeblock_7",
+      "community": 10,
+      "norm_label": "code:bash (fastapi run)"
+    },
+    {
+      "label": "code:bash (uvicorn app.main:app --host 0.0.0.0 --port 8000)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L120",
+      "id": "task_buddy_backend_readme_codeblock_8",
+      "community": 10,
+      "norm_label": "code:bash (uvicorn app.main:app --host 0.0.0.0 --port 8000)"
+    },
+    {
+      "label": "\ud83d\udcda API Documentation",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L124",
+      "id": "task_buddy_backend_readme_api_documentation",
+      "community": 4,
+      "norm_label": "\ud83d\udcda api documentation"
+    },
+    {
+      "label": "\ud83d\udd0d Available Endpoints",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L132",
+      "id": "task_buddy_backend_readme_available_endpoints",
+      "community": 4,
+      "norm_label": "\ud83d\udd0d available endpoints"
+    },
+    {
+      "label": "Health Check",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L134",
+      "id": "task_buddy_backend_readme_health_check",
+      "community": 4,
+      "norm_label": "health check"
+    },
+    {
+      "label": "Tasks",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L140",
+      "id": "task_buddy_backend_readme_tasks",
+      "community": 4,
+      "norm_label": "tasks"
+    },
+    {
+      "label": "Users",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L148",
+      "id": "task_buddy_backend_readme_users",
+      "community": 4,
+      "norm_label": "users"
+    },
+    {
+      "label": "\ud83e\uddea Testing",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L156",
+      "id": "task_buddy_backend_readme_testing",
+      "community": 4,
+      "norm_label": "\ud83e\uddea testing"
+    },
+    {
+      "label": "code:bash (pytest)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L160",
+      "id": "task_buddy_backend_readme_codeblock_9",
+      "community": 4,
+      "norm_label": "code:bash (pytest)"
+    },
+    {
+      "label": "code:bash (pytest --cov=app --cov-report=html)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L166",
+      "id": "task_buddy_backend_readme_codeblock_10",
+      "community": 4,
+      "norm_label": "code:bash (pytest --cov=app --cov-report=html)"
+    },
+    {
+      "label": "\ud83d\udcdd Code Quality",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L170",
+      "id": "task_buddy_backend_readme_code_quality",
+      "community": 13,
+      "norm_label": "\ud83d\udcdd code quality"
+    },
+    {
+      "label": "Format code with Black",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L172",
+      "id": "task_buddy_backend_readme_format_code_with_black",
+      "community": 13,
+      "norm_label": "format code with black"
+    },
+    {
+      "label": "code:bash (black app tests)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L174",
+      "id": "task_buddy_backend_readme_codeblock_11",
+      "community": 13,
+      "norm_label": "code:bash (black app tests)"
+    },
+    {
+      "label": "Lint with ruff",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L178",
+      "id": "task_buddy_backend_readme_lint_with_ruff",
+      "community": 13,
+      "norm_label": "lint with ruff"
+    },
+    {
+      "label": "code:bash (ruff check app tests)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L180",
+      "id": "task_buddy_backend_readme_codeblock_12",
+      "community": 13,
+      "norm_label": "code:bash (ruff check app tests)"
+    },
+    {
+      "label": "Type checking with mypy",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L184",
+      "id": "task_buddy_backend_readme_type_checking_with_mypy",
+      "community": 13,
+      "norm_label": "type checking with mypy"
+    },
+    {
+      "label": "code:bash (mypy app)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L186",
+      "id": "task_buddy_backend_readme_codeblock_13",
+      "community": 13,
+      "norm_label": "code:bash (mypy app)"
+    },
+    {
+      "label": "Sort imports with isort",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L190",
+      "id": "task_buddy_backend_readme_sort_imports_with_isort",
+      "community": 13,
+      "norm_label": "sort imports with isort"
+    },
+    {
+      "label": "code:bash (isort app tests)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L192",
+      "id": "task_buddy_backend_readme_codeblock_14",
+      "community": 13,
+      "norm_label": "code:bash (isort app tests)"
+    },
+    {
+      "label": "\ud83d\udd11 Environment Variables",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L196",
+      "id": "task_buddy_backend_readme_environment_variables",
+      "community": 4,
+      "norm_label": "\ud83d\udd11 environment variables"
+    },
+    {
+      "label": "code:env (# Database)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L200",
+      "id": "task_buddy_backend_readme_codeblock_15",
+      "community": 4,
+      "norm_label": "code:env (# database)"
+    },
+    {
+      "label": "\ud83d\udce6 Docker",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L214",
+      "id": "task_buddy_backend_readme_docker",
+      "community": 4,
+      "norm_label": "\ud83d\udce6 docker"
+    },
+    {
+      "label": "Build Docker image",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L216",
+      "id": "task_buddy_backend_readme_build_docker_image",
+      "community": 4,
+      "norm_label": "build docker image"
+    },
+    {
+      "label": "code:bash (docker build -t task-buddy-backend:latest .)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L218",
+      "id": "task_buddy_backend_readme_codeblock_16",
+      "community": 4,
+      "norm_label": "code:bash (docker build -t task-buddy-backend:latest .)"
+    },
+    {
+      "label": "Run container",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L222",
+      "id": "task_buddy_backend_readme_run_container",
+      "community": 4,
+      "norm_label": "run container"
+    },
+    {
+      "label": "code:bash (docker run -p 8000:8000 task-buddy-backend:latest)",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L224",
+      "id": "task_buddy_backend_readme_codeblock_17",
+      "community": 4,
+      "norm_label": "code:bash (docker run -p 8000:8000 task-buddy-backend:latest)"
+    },
+    {
+      "label": "\ud83e\udd1d Contributing",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L228",
+      "id": "task_buddy_backend_readme_contributing",
+      "community": 4,
+      "norm_label": "\ud83e\udd1d contributing"
+    },
+    {
+      "label": "\ud83d\udcc4 License",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L236",
+      "id": "task_buddy_backend_readme_license",
+      "community": 4,
+      "norm_label": "\ud83d\udcc4 license"
+    },
+    {
+      "label": "\ud83d\udcac Support",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L240",
+      "id": "task_buddy_backend_readme_support",
+      "community": 4,
+      "norm_label": "\ud83d\udcac support"
+    },
+    {
+      "label": "\ud83d\udd17 Useful Resources",
+      "file_type": "document",
+      "source_file": "README.md",
+      "source_location": "L244",
+      "id": "task_buddy_backend_readme_useful_resources",
+      "community": 4,
+      "norm_label": "\ud83d\udd17 useful resources"
+    },
+    {
+      "label": "Claude Code Guidance",
+      "file_type": "document",
+      "source_file": "CLAUDE.md",
+      "community": 6,
+      "norm_label": "claude code guidance",
+      "id": "claude_code"
+    },
+    {
+      "label": "FastAPI Framework",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "community": 1,
+      "norm_label": "fastapi framework",
+      "id": "fastapi"
+    },
+    {
+      "label": "SQLAlchemy ORM",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "community": 6,
+      "norm_label": "sqlalchemy orm",
+      "id": "sqlalchemy"
+    },
+    {
+      "label": "PostgreSQL Database",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "community": 6,
+      "norm_label": "postgresql database",
+      "id": "postgresql"
+    },
+    {
+      "label": "Docker Containerization",
+      "file_type": "rationale",
+      "source_file": "README.md",
+      "community": 30,
+      "norm_label": "docker containerization",
+      "id": "docker"
+    },
+    {
+      "label": "Task Buddy Backend",
+      "file_type": "document",
+      "source_file": "README.md",
+      "community": 6,
+      "norm_label": "task buddy backend",
+      "id": "task_buddy_backend"
     },
     {
       "label": "Docker Compose Configuration",
       "file_type": "document",
       "source_file": "docker-compose.yml",
-      "id": "docker_compose",
-      "community": 0,
-      "norm_label": "docker compose configuration"
+      "community": 6,
+      "norm_label": "docker compose configuration",
+      "id": "docker_compose"
     }
   ],
   "links": [
@@ -2362,9 +2839,9 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_project_structure_rationale_1",
-      "target": "project_structure_py",
-      "confidence_score": 1.0
+      "target": "project_structure_py"
     },
     {
       "relation": "contains",
@@ -2372,9 +2849,9 @@
       "source_file": "seed.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "seed_py",
-      "target": "task_buddy_backend_seed_seed_data",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_seed_seed_data"
     },
     {
       "relation": "calls",
@@ -2405,9 +2882,9 @@
       "source_file": "alembic/env.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_env_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "contains",
@@ -2415,9 +2892,9 @@
       "source_file": "alembic/env.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_env_py",
-      "target": "alembic_env_run_migrations_offline",
-      "confidence_score": 1.0
+      "target": "alembic_env_run_migrations_offline"
     },
     {
       "relation": "contains",
@@ -2425,9 +2902,9 @@
       "source_file": "alembic/env.py",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_env_py",
-      "target": "alembic_env_run_migrations_online",
-      "confidence_score": 1.0
+      "target": "alembic_env_run_migrations_online"
     },
     {
       "relation": "rationale_for",
@@ -2435,9 +2912,9 @@
       "source_file": "alembic/env.py",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_env_rationale_38",
-      "target": "alembic_env_run_migrations_offline",
-      "confidence_score": 1.0
+      "target": "alembic_env_run_migrations_offline"
     },
     {
       "relation": "rationale_for",
@@ -2445,9 +2922,9 @@
       "source_file": "alembic/env.py",
       "source_location": "L62",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_env_rationale_62",
-      "target": "alembic_env_run_migrations_online",
-      "confidence_score": 1.0
+      "target": "alembic_env_run_migrations_online"
     },
     {
       "relation": "imports",
@@ -2456,9 +2933,9 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "contains",
@@ -2466,9 +2943,9 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "target": "versions_a6e267909ed1_initial_migration_upgrade",
-      "confidence_score": 1.0
+      "target": "versions_a6e267909ed1_initial_migration_upgrade"
     },
     {
       "relation": "contains",
@@ -2476,9 +2953,9 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "target": "versions_a6e267909ed1_initial_migration_downgrade",
-      "confidence_score": 1.0
+      "target": "versions_a6e267909ed1_initial_migration_downgrade"
     },
     {
       "relation": "rationale_for",
@@ -2486,9 +2963,9 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "versions_a6e267909ed1_initial_migration_rationale_1",
-      "target": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "confidence_score": 1.0
+      "target": "alembic_versions_a6e267909ed1_initial_migration_py"
     },
     {
       "relation": "imports",
@@ -2497,9 +2974,9 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "contains",
@@ -2507,9 +2984,9 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "target": "versions_e7d04c90bc13_add_audit_logs_table_upgrade",
-      "confidence_score": 1.0
+      "target": "versions_e7d04c90bc13_add_audit_logs_table_upgrade"
     },
     {
       "relation": "contains",
@@ -2517,9 +2994,9 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "target": "versions_e7d04c90bc13_add_audit_logs_table_downgrade",
-      "confidence_score": 1.0
+      "target": "versions_e7d04c90bc13_add_audit_logs_table_downgrade"
     },
     {
       "relation": "rationale_for",
@@ -2527,9 +3004,9 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "versions_e7d04c90bc13_add_audit_logs_table_rationale_1",
-      "target": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "confidence_score": 1.0
+      "target": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py"
     },
     {
       "relation": "contains",
@@ -2537,9 +3014,9 @@
       "source_file": "app/config.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_baseconfig",
-      "confidence_score": 1.0
+      "target": "app_config_baseconfig"
     },
     {
       "relation": "contains",
@@ -2547,9 +3024,9 @@
       "source_file": "app/config.py",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_globalconfig",
-      "confidence_score": 1.0
+      "target": "app_config_globalconfig"
     },
     {
       "relation": "contains",
@@ -2557,9 +3034,9 @@
       "source_file": "app/config.py",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_devconfig",
-      "confidence_score": 1.0
+      "target": "app_config_devconfig"
     },
     {
       "relation": "contains",
@@ -2567,9 +3044,9 @@
       "source_file": "app/config.py",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_prodconfig",
-      "confidence_score": 1.0
+      "target": "app_config_prodconfig"
     },
     {
       "relation": "contains",
@@ -2577,9 +3054,9 @@
       "source_file": "app/config.py",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_ensure_secret_key",
-      "confidence_score": 1.0
+      "target": "app_config_ensure_secret_key"
     },
     {
       "relation": "contains",
@@ -2587,9 +3064,9 @@
       "source_file": "app/config.py",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_testconfig",
-      "confidence_score": 1.0
+      "target": "app_config_testconfig"
     },
     {
       "relation": "contains",
@@ -2597,9 +3074,9 @@
       "source_file": "app/config.py",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_py",
-      "target": "app_config_get_config",
-      "confidence_score": 1.0
+      "target": "app_config_get_config"
     },
     {
       "relation": "inherits",
@@ -2607,9 +3084,9 @@
       "source_file": "app/config.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_baseconfig",
-      "target": "basesettings",
-      "confidence_score": 1.0
+      "target": "basesettings"
     },
     {
       "relation": "inherits",
@@ -2617,9 +3094,9 @@
       "source_file": "app/config.py",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_globalconfig",
-      "target": "app_config_baseconfig",
-      "confidence_score": 1.0
+      "target": "app_config_baseconfig"
     },
     {
       "relation": "inherits",
@@ -2627,9 +3104,9 @@
       "source_file": "app/config.py",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_devconfig",
-      "target": "app_config_globalconfig",
-      "confidence_score": 1.0
+      "target": "app_config_globalconfig"
     },
     {
       "relation": "inherits",
@@ -2637,9 +3114,9 @@
       "source_file": "app/config.py",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_prodconfig",
-      "target": "app_config_globalconfig",
-      "confidence_score": 1.0
+      "target": "app_config_globalconfig"
     },
     {
       "relation": "inherits",
@@ -2647,9 +3124,9 @@
       "source_file": "app/config.py",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_config_testconfig",
-      "target": "app_config_globalconfig",
-      "confidence_score": 1.0
+      "target": "app_config_globalconfig"
     },
     {
       "relation": "uses",
@@ -2657,9 +3134,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L4",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "app_logging_conf_emailobfuscationfilter",
-      "target": "app_config_devconfig",
-      "confidence_score": 0.5
+      "target": "app_config_devconfig"
     },
     {
       "relation": "imports",
@@ -2668,9 +3145,9 @@
       "source_file": "app/database.py",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_database_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "imports_from",
@@ -2679,9 +3156,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -2689,9 +3166,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_py",
-      "target": "app_dependencies_get_token_header",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_token_header"
     },
     {
       "relation": "contains",
@@ -2699,9 +3176,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_py",
-      "target": "app_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_query_token"
     },
     {
       "relation": "rationale_for",
@@ -2709,9 +3186,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_rationale_1",
-      "target": "app_dependencies_py",
-      "confidence_score": 1.0
+      "target": "app_dependencies_py"
     },
     {
       "relation": "rationale_for",
@@ -2719,9 +3196,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_rationale_14",
-      "target": "app_dependencies_get_token_header",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_token_header"
     },
     {
       "relation": "rationale_for",
@@ -2729,9 +3206,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_rationale_25",
-      "target": "app_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_query_token"
     },
     {
       "relation": "contains",
@@ -2739,9 +3216,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_py",
-      "target": "app_logging_conf_obfuscated",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_obfuscated"
     },
     {
       "relation": "contains",
@@ -2749,9 +3226,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_py",
-      "target": "app_logging_conf_emailobfuscationfilter",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_emailobfuscationfilter"
     },
     {
       "relation": "contains",
@@ -2759,9 +3236,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_py",
-      "target": "app_logging_conf_configure_logging",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_configure_logging"
     },
     {
       "relation": "calls",
@@ -2770,9 +3247,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_emailobfuscationfilter_filter",
-      "target": "app_logging_conf_obfuscated",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_obfuscated"
     },
     {
       "relation": "method",
@@ -2780,9 +3257,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_emailobfuscationfilter",
-      "target": "app_logging_conf_emailobfuscationfilter_init",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_emailobfuscationfilter_init"
     },
     {
       "relation": "method",
@@ -2790,9 +3267,9 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_logging_conf_emailobfuscationfilter",
-      "target": "app_logging_conf_emailobfuscationfilter_filter",
-      "confidence_score": 1.0
+      "target": "app_logging_conf_emailobfuscationfilter_filter"
     },
     {
       "relation": "calls",
@@ -2812,9 +3289,9 @@
       "source_file": "app/main.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -2822,9 +3299,9 @@
       "source_file": "app/main.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_py",
-      "target": "app_main_lifespan",
-      "confidence_score": 1.0
+      "target": "app_main_lifespan"
     },
     {
       "relation": "contains",
@@ -2832,9 +3309,9 @@
       "source_file": "app/main.py",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_py",
-      "target": "app_main_log_http_exception",
-      "confidence_score": 1.0
+      "target": "app_main_log_http_exception"
     },
     {
       "relation": "contains",
@@ -2842,9 +3319,9 @@
       "source_file": "app/main.py",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_py",
-      "target": "app_main_log_unhandled_exception",
-      "confidence_score": 1.0
+      "target": "app_main_log_unhandled_exception"
     },
     {
       "relation": "imports_from",
@@ -2853,9 +3330,9 @@
       "source_file": "app/security.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -2863,9 +3340,9 @@
       "source_file": "app/security.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_create_credentials_exception",
-      "confidence_score": 1.0
+      "target": "app_security_create_credentials_exception"
     },
     {
       "relation": "contains",
@@ -2873,9 +3350,9 @@
       "source_file": "app/security.py",
       "source_location": "L35",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_access_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_access_token_expire_time"
     },
     {
       "relation": "contains",
@@ -2883,9 +3360,9 @@
       "source_file": "app/security.py",
       "source_location": "L39",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_confirm_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_confirm_token_expire_time"
     },
     {
       "relation": "contains",
@@ -2893,9 +3370,9 @@
       "source_file": "app/security.py",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_secret_key",
-      "confidence_score": 1.0
+      "target": "app_security_get_secret_key"
     },
     {
       "relation": "contains",
@@ -2903,9 +3380,9 @@
       "source_file": "app/security.py",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_create_access_token",
-      "confidence_score": 1.0
+      "target": "app_security_create_access_token"
     },
     {
       "relation": "contains",
@@ -2913,9 +3390,9 @@
       "source_file": "app/security.py",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_create_confirm_token",
-      "confidence_score": 1.0
+      "target": "app_security_create_confirm_token"
     },
     {
       "relation": "contains",
@@ -2923,9 +3400,9 @@
       "source_file": "app/security.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_password_hash",
-      "confidence_score": 1.0
+      "target": "app_security_get_password_hash"
     },
     {
       "relation": "contains",
@@ -2933,9 +3410,9 @@
       "source_file": "app/security.py",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_verify_password",
-      "confidence_score": 1.0
+      "target": "app_security_verify_password"
     },
     {
       "relation": "contains",
@@ -2943,9 +3420,9 @@
       "source_file": "app/security.py",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_user",
-      "confidence_score": 1.0
+      "target": "app_security_get_user"
     },
     {
       "relation": "contains",
@@ -2953,9 +3430,9 @@
       "source_file": "app/security.py",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_subject_for_token_type",
-      "confidence_score": 1.0
+      "target": "app_security_get_subject_for_token_type"
     },
     {
       "relation": "contains",
@@ -2963,9 +3440,9 @@
       "source_file": "app/security.py",
       "source_location": "L110",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_authenticate_user",
-      "confidence_score": 1.0
+      "target": "app_security_authenticate_user"
     },
     {
       "relation": "contains",
@@ -2973,9 +3450,9 @@
       "source_file": "app/security.py",
       "source_location": "L121",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_current_user",
-      "confidence_score": 1.0
+      "target": "app_security_get_current_user"
     },
     {
       "relation": "calls",
@@ -2984,9 +3461,9 @@
       "source_file": "app/security.py",
       "source_location": "L93",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_subject_for_token_type",
-      "target": "app_security_create_credentials_exception",
-      "confidence_score": 1.0
+      "target": "app_security_create_credentials_exception"
     },
     {
       "relation": "calls",
@@ -2995,9 +3472,9 @@
       "source_file": "app/security.py",
       "source_location": "L113",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_authenticate_user",
-      "target": "app_security_create_credentials_exception",
-      "confidence_score": 1.0
+      "target": "app_security_create_credentials_exception"
     },
     {
       "relation": "calls",
@@ -3006,9 +3483,9 @@
       "source_file": "app/security.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_current_user",
-      "target": "app_security_create_credentials_exception",
-      "confidence_score": 1.0
+      "target": "app_security_create_credentials_exception"
     },
     {
       "relation": "calls",
@@ -3017,9 +3494,9 @@
       "source_file": "app/security.py",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_access_token",
-      "target": "app_security_access_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_access_token_expire_time"
     },
     {
       "relation": "calls",
@@ -3028,9 +3505,9 @@
       "source_file": "app/security.py",
       "source_location": "L63",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_confirm_token",
-      "target": "app_security_confirm_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_confirm_token_expire_time"
     },
     {
       "relation": "calls",
@@ -3039,9 +3516,9 @@
       "source_file": "app/security.py",
       "source_location": "L55",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_access_token",
-      "target": "app_security_get_secret_key",
-      "confidence_score": 1.0
+      "target": "app_security_get_secret_key"
     },
     {
       "relation": "calls",
@@ -3050,9 +3527,9 @@
       "source_file": "app/security.py",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_confirm_token",
-      "target": "app_security_get_secret_key",
-      "confidence_score": 1.0
+      "target": "app_security_get_secret_key"
     },
     {
       "relation": "calls",
@@ -3061,9 +3538,9 @@
       "source_file": "app/security.py",
       "source_location": "L91",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_subject_for_token_type",
-      "target": "app_security_get_secret_key",
-      "confidence_score": 1.0
+      "target": "app_security_get_secret_key"
     },
     {
       "relation": "calls",
@@ -3127,9 +3604,9 @@
       "source_file": "app/security.py",
       "source_location": "L114",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_authenticate_user",
-      "target": "app_security_verify_password",
-      "confidence_score": 1.0
+      "target": "app_security_verify_password"
     },
     {
       "relation": "calls",
@@ -3149,9 +3626,9 @@
       "source_file": "app/security.py",
       "source_location": "L111",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_authenticate_user",
-      "target": "app_security_get_user",
-      "confidence_score": 1.0
+      "target": "app_security_get_user"
     },
     {
       "relation": "calls",
@@ -3160,9 +3637,9 @@
       "source_file": "app/security.py",
       "source_location": "L124",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_current_user",
-      "target": "app_security_get_user",
-      "confidence_score": 1.0
+      "target": "app_security_get_user"
     },
     {
       "relation": "calls",
@@ -3171,9 +3648,9 @@
       "source_file": "app/security.py",
       "source_location": "L123",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_current_user",
-      "target": "app_security_get_subject_for_token_type",
-      "confidence_score": 1.0
+      "target": "app_security_get_subject_for_token_type"
     },
     {
       "relation": "calls",
@@ -3203,9 +3680,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_apiresponseerror",
-      "confidence_score": 1.0
+      "target": "app_tasks_apiresponseerror"
     },
     {
       "relation": "contains",
@@ -3213,9 +3690,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_is_valid_url",
-      "confidence_score": 1.0
+      "target": "app_tasks_is_valid_url"
     },
     {
       "relation": "contains",
@@ -3223,9 +3700,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_send_brevo_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_brevo_email"
     },
     {
       "relation": "contains",
@@ -3233,9 +3710,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L52",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_send_smtp_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_smtp_email"
     },
     {
       "relation": "contains",
@@ -3243,9 +3720,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_get_confirmation_content",
-      "confidence_score": 1.0
+      "target": "app_tasks_get_confirmation_content"
     },
     {
       "relation": "contains",
@@ -3253,9 +3730,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_record_confirmation_failure",
-      "confidence_score": 1.0
+      "target": "app_tasks_record_confirmation_failure"
     },
     {
       "relation": "contains",
@@ -3263,9 +3740,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L120",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_send_confirmation_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_confirmation_email"
     },
     {
       "relation": "inherits",
@@ -3273,9 +3750,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_apiresponseerror",
-      "target": "exception",
-      "confidence_score": 1.0
+      "target": "exception"
     },
     {
       "relation": "calls",
@@ -3284,9 +3761,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L25",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_brevo_email",
-      "target": "app_tasks_apiresponseerror",
-      "confidence_score": 1.0
+      "target": "app_tasks_apiresponseerror"
     },
     {
       "relation": "calls",
@@ -3295,9 +3772,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_smtp_email",
-      "target": "app_tasks_apiresponseerror",
-      "confidence_score": 1.0
+      "target": "app_tasks_apiresponseerror"
     },
     {
       "relation": "calls",
@@ -3306,9 +3783,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L161",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_confirmation_email",
-      "target": "app_tasks_apiresponseerror",
-      "confidence_score": 1.0
+      "target": "app_tasks_apiresponseerror"
     },
     {
       "relation": "calls",
@@ -3317,9 +3794,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L117",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_record_confirmation_failure",
-      "target": "exception",
-      "confidence_score": 1.0
+      "target": "exception"
     },
     {
       "relation": "calls",
@@ -3328,9 +3805,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L155",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_confirmation_email",
-      "target": "exception",
-      "confidence_score": 1.0
+      "target": "exception"
     },
     {
       "relation": "calls",
@@ -3339,9 +3816,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_brevo_email",
-      "target": "app_tasks_is_valid_url",
-      "confidence_score": 1.0
+      "target": "app_tasks_is_valid_url"
     },
     {
       "relation": "rationale_for",
@@ -3349,9 +3826,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_19",
-      "target": "app_tasks_is_valid_url",
-      "confidence_score": 1.0
+      "target": "app_tasks_is_valid_url"
     },
     {
       "relation": "calls",
@@ -3360,9 +3837,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L153",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_confirmation_email",
-      "target": "app_tasks_send_brevo_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_brevo_email"
     },
     {
       "relation": "calls",
@@ -3371,9 +3848,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L133",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_confirmation_email",
-      "target": "app_tasks_get_confirmation_content",
-      "confidence_score": 1.0
+      "target": "app_tasks_get_confirmation_content"
     },
     {
       "relation": "rationale_for",
@@ -3381,9 +3858,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L85",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_85",
-      "target": "app_tasks_get_confirmation_content",
-      "confidence_score": 1.0
+      "target": "app_tasks_get_confirmation_content"
     },
     {
       "relation": "calls",
@@ -3392,9 +3869,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L158",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_confirmation_email",
-      "target": "app_tasks_record_confirmation_failure",
-      "confidence_score": 1.0
+      "target": "app_tasks_record_confirmation_failure"
     },
     {
       "relation": "rationale_for",
@@ -3402,9 +3879,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L100",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_100",
-      "target": "app_tasks_record_confirmation_failure",
-      "confidence_score": 1.0
+      "target": "app_tasks_record_confirmation_failure"
     },
     {
       "relation": "rationale_for",
@@ -3412,9 +3889,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L128",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_128",
-      "target": "app_tasks_send_confirmation_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_confirmation_email"
     },
     {
       "relation": "calls",
@@ -3455,9 +3932,9 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_init_rationale_1",
-      "target": "app_init_py",
-      "confidence_score": 1.0
+      "target": "app_init_py"
     },
     {
       "relation": "imports_from",
@@ -3466,9 +3943,9 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_dependencies_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -3476,9 +3953,9 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_dependencies_py",
-      "target": "api_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "api_dependencies_get_query_token"
     },
     {
       "relation": "rationale_for",
@@ -3486,9 +3963,9 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "api_dependencies_rationale_1",
-      "target": "app_api_dependencies_py",
-      "confidence_score": 1.0
+      "target": "app_api_dependencies_py"
     },
     {
       "relation": "rationale_for",
@@ -3496,9 +3973,9 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "api_dependencies_rationale_14",
-      "target": "api_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "api_dependencies_get_query_token"
     },
     {
       "relation": "rationale_for",
@@ -3506,9 +3983,9 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "api_init_rationale_1",
-      "target": "app_api_init_py",
-      "confidence_score": 1.0
+      "target": "app_api_init_py"
     },
     {
       "relation": "imports_from",
@@ -3517,9 +3994,9 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L2",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_audit_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -3527,9 +4004,9 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_audit_py",
-      "target": "routers_audit_get_audit_logs",
-      "confidence_score": 1.0
+      "target": "routers_audit_get_audit_logs"
     },
     {
       "relation": "rationale_for",
@@ -3537,9 +4014,9 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_audit_rationale_17",
-      "target": "routers_audit_get_audit_logs",
-      "confidence_score": 1.0
+      "target": "routers_audit_get_audit_logs"
     },
     {
       "relation": "imports",
@@ -3548,9 +4025,9 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_stats_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "imports_from",
@@ -3559,9 +4036,9 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_stats_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -3569,9 +4046,9 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L11",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_stats_py",
-      "target": "routers_stats_get_system_overview",
-      "confidence_score": 1.0
+      "target": "routers_stats_get_system_overview"
     },
     {
       "relation": "rationale_for",
@@ -3579,9 +4056,9 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_stats_rationale_12",
-      "target": "routers_stats_get_system_overview",
-      "confidence_score": 1.0
+      "target": "routers_stats_get_system_overview"
     },
     {
       "relation": "calls",
@@ -3623,9 +4100,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -3633,9 +4110,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_ensure_task_owner",
-      "confidence_score": 1.0
+      "target": "routers_task_ensure_task_owner"
     },
     {
       "relation": "contains",
@@ -3643,9 +4120,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_set_tag_link_response_status",
-      "confidence_score": 1.0
+      "target": "routers_task_set_tag_link_response_status"
     },
     {
       "relation": "contains",
@@ -3653,9 +4130,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L58",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_all_tasks",
-      "confidence_score": 1.0
+      "target": "routers_task_get_all_tasks"
     },
     {
       "relation": "contains",
@@ -3663,9 +4140,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "contains",
@@ -3673,9 +4150,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L94",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_create_task",
-      "confidence_score": 1.0
+      "target": "routers_task_create_task"
     },
     {
       "relation": "contains",
@@ -3683,9 +4160,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L121",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_update_task",
-      "confidence_score": 1.0
+      "target": "routers_task_update_task"
     },
     {
       "relation": "contains",
@@ -3693,9 +4170,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L152",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_delete_task",
-      "confidence_score": 1.0
+      "target": "routers_task_delete_task"
     },
     {
       "relation": "contains",
@@ -3703,9 +4180,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L172",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_task_with_subtasks",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task_with_subtasks"
     },
     {
       "relation": "contains",
@@ -3713,9 +4190,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L188",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_create_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_create_subtask"
     },
     {
       "relation": "contains",
@@ -3723,9 +4200,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L219",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_subtasks_on_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_subtasks_on_task"
     },
     {
       "relation": "contains",
@@ -3733,9 +4210,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L235",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_get_subtask"
     },
     {
       "relation": "contains",
@@ -3743,9 +4220,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L254",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_update_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_update_subtask"
     },
     {
       "relation": "contains",
@@ -3753,9 +4230,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L284",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_delete_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_delete_subtask"
     },
     {
       "relation": "contains",
@@ -3763,9 +4240,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L307",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_create_tag",
-      "confidence_score": 1.0
+      "target": "routers_task_create_tag"
     },
     {
       "relation": "contains",
@@ -3773,9 +4250,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L377",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_get_tags_on_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_tags_on_task"
     },
     {
       "relation": "contains",
@@ -3783,9 +4260,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L396",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_detach_tag",
-      "confidence_score": 1.0
+      "target": "routers_task_detach_tag"
     },
     {
       "relation": "contains",
@@ -3793,9 +4270,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L432",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_delete_tag",
-      "confidence_score": 1.0
+      "target": "routers_task_delete_tag"
     },
     {
       "relation": "calls",
@@ -3804,9 +4281,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L316",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_create_tag",
-      "target": "routers_task_ensure_task_owner",
-      "confidence_score": 1.0
+      "target": "routers_task_ensure_task_owner"
     },
     {
       "relation": "calls",
@@ -3815,9 +4292,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L383",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_get_tags_on_task",
-      "target": "routers_task_ensure_task_owner",
-      "confidence_score": 1.0
+      "target": "routers_task_ensure_task_owner"
     },
     {
       "relation": "calls",
@@ -3826,9 +4303,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L364",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_create_tag",
-      "target": "routers_task_set_tag_link_response_status",
-      "confidence_score": 1.0
+      "target": "routers_task_set_tag_link_response_status"
     },
     {
       "relation": "calls",
@@ -3837,9 +4314,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L128",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_update_task",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3848,9 +4325,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L154",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_delete_task",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3859,9 +4336,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L176",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_get_task_with_subtasks",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3870,9 +4347,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L194",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_create_subtask",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3881,9 +4358,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L223",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_get_subtasks_on_task",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3892,9 +4369,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L315",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_create_tag",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3903,9 +4380,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L382",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_get_tags_on_task",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3914,9 +4391,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L402",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_detach_tag",
-      "target": "routers_task_get_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_task"
     },
     {
       "relation": "calls",
@@ -3958,9 +4435,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L177",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_get_task_with_subtasks",
-      "target": "routers_task_get_subtasks_on_task",
-      "confidence_score": 1.0
+      "target": "routers_task_get_subtasks_on_task"
     },
     {
       "relation": "calls",
@@ -3980,9 +4457,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L260",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_update_subtask",
-      "target": "routers_task_get_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_get_subtask"
     },
     {
       "relation": "calls",
@@ -3991,9 +4468,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L286",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_delete_subtask",
-      "target": "routers_task_get_subtask",
-      "confidence_score": 1.0
+      "target": "routers_task_get_subtask"
     },
     {
       "relation": "calls",
@@ -4057,9 +4534,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -4067,9 +4544,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_user_register_user"
     },
     {
       "relation": "contains",
@@ -4077,9 +4554,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L68",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_resend_confirmation",
-      "confidence_score": 1.0
+      "target": "routers_user_resend_confirmation"
     },
     {
       "relation": "contains",
@@ -4087,9 +4564,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_login",
-      "confidence_score": 1.0
+      "target": "routers_user_login"
     },
     {
       "relation": "contains",
@@ -4097,9 +4574,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L105",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_confirm_email",
-      "confidence_score": 1.0
+      "target": "routers_user_confirm_email"
     },
     {
       "relation": "contains",
@@ -4107,9 +4584,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L118",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_get_my_profile",
-      "confidence_score": 1.0
+      "target": "routers_user_get_my_profile"
     },
     {
       "relation": "contains",
@@ -4117,9 +4594,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_update_username",
-      "confidence_score": 1.0
+      "target": "routers_user_update_username"
     },
     {
       "relation": "contains",
@@ -4127,9 +4604,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L163",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_update_password",
-      "confidence_score": 1.0
+      "target": "routers_user_update_password"
     },
     {
       "relation": "contains",
@@ -4137,9 +4614,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L192",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_logout",
-      "confidence_score": 1.0
+      "target": "routers_user_logout"
     },
     {
       "relation": "rationale_for",
@@ -4147,9 +4624,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_71",
-      "target": "routers_user_resend_confirmation",
-      "confidence_score": 1.0
+      "target": "routers_user_resend_confirmation"
     },
     {
       "relation": "rationale_for",
@@ -4157,9 +4634,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L119",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_119",
-      "target": "routers_user_get_my_profile",
-      "confidence_score": 1.0
+      "target": "routers_user_get_my_profile"
     },
     {
       "relation": "rationale_for",
@@ -4167,9 +4644,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L130",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_130",
-      "target": "routers_user_update_username",
-      "confidence_score": 1.0
+      "target": "routers_user_update_username"
     },
     {
       "relation": "rationale_for",
@@ -4177,9 +4654,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L167",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_167",
-      "target": "routers_user_update_password",
-      "confidence_score": 1.0
+      "target": "routers_user_update_password"
     },
     {
       "relation": "rationale_for",
@@ -4187,9 +4664,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L193",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_193",
-      "target": "routers_user_logout",
-      "confidence_score": 1.0
+      "target": "routers_user_logout"
     },
     {
       "relation": "rationale_for",
@@ -4197,9 +4674,9 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_init_rationale_1",
-      "target": "app_api_routers_init_py",
-      "confidence_score": 1.0
+      "target": "app_api_routers_init_py"
     },
     {
       "relation": "rationale_for",
@@ -4207,9 +4684,9 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "crud_init_rationale_1",
-      "target": "app_crud_init_py",
-      "confidence_score": 1.0
+      "target": "app_crud_init_py"
     },
     {
       "relation": "imports_from",
@@ -4218,9 +4695,9 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_internal_admin_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -4228,9 +4705,9 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_internal_admin_py",
-      "target": "internal_admin_update_admin",
-      "confidence_score": 1.0
+      "target": "internal_admin_update_admin"
     },
     {
       "relation": "rationale_for",
@@ -4238,9 +4715,9 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_admin_rationale_1",
-      "target": "app_internal_admin_py",
-      "confidence_score": 1.0
+      "target": "app_internal_admin_py"
     },
     {
       "relation": "rationale_for",
@@ -4248,9 +4725,9 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_admin_rationale_15",
-      "target": "internal_admin_update_admin",
-      "confidence_score": 1.0
+      "target": "internal_admin_update_admin"
     },
     {
       "relation": "contains",
@@ -4258,9 +4735,9 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_internal_audit_py",
-      "target": "internal_audit_log_action",
-      "confidence_score": 1.0
+      "target": "internal_audit_log_action"
     },
     {
       "relation": "rationale_for",
@@ -4268,9 +4745,9 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_audit_rationale_12",
-      "target": "internal_audit_log_action",
-      "confidence_score": 1.0
+      "target": "internal_audit_log_action"
     },
     {
       "relation": "rationale_for",
@@ -4278,9 +4755,9 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_init_rationale_1",
-      "target": "app_internal_init_py",
-      "confidence_score": 1.0
+      "target": "app_internal_init_py"
     },
     {
       "relation": "contains",
@@ -4288,9 +4765,9 @@
       "source_file": "app/models/audit.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_audit_py",
-      "target": "models_audit_auditlog",
-      "confidence_score": 1.0
+      "target": "models_audit_auditlog"
     },
     {
       "relation": "contains",
@@ -4298,9 +4775,9 @@
       "source_file": "app/models/audit.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_audit_py",
-      "target": "models_audit_auditlogcreate",
-      "confidence_score": 1.0
+      "target": "models_audit_auditlogcreate"
     },
     {
       "relation": "inherits",
@@ -4308,9 +4785,9 @@
       "source_file": "app/models/audit.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_audit_auditlog",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4318,9 +4795,9 @@
       "source_file": "app/models/audit.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_audit_auditlogcreate",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4328,9 +4805,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_stats_taskstats",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4338,9 +4815,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_stats_tagdistribution",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4348,9 +4825,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_stats_systemoverview",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4358,9 +4835,9 @@
       "source_file": "app/models/tag.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_tag_tagcreate",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4368,9 +4845,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_taskcreaterequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4378,9 +4855,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_subtaskcreaterequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4388,9 +4865,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_taskwithsubtasks",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4398,9 +4875,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_taskupdaterequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4408,9 +4885,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_subtaskupdaterequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4418,9 +4895,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_user",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4428,9 +4905,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_login",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4438,9 +4915,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_usernameupdate",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -4448,9 +4925,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_passwordupdate",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "contains",
@@ -4458,9 +4935,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_stats_py",
-      "target": "models_stats_taskstats",
-      "confidence_score": 1.0
+      "target": "models_stats_taskstats"
     },
     {
       "relation": "contains",
@@ -4468,9 +4945,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_stats_py",
-      "target": "models_stats_tagdistribution",
-      "confidence_score": 1.0
+      "target": "models_stats_tagdistribution"
     },
     {
       "relation": "contains",
@@ -4478,9 +4955,9 @@
       "source_file": "app/models/stats.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_stats_py",
-      "target": "models_stats_systemoverview",
-      "confidence_score": 1.0
+      "target": "models_stats_systemoverview"
     },
     {
       "relation": "contains",
@@ -4488,9 +4965,9 @@
       "source_file": "app/models/tag.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_tag_py",
-      "target": "models_tag_tagcreate",
-      "confidence_score": 1.0
+      "target": "models_tag_tagcreate"
     },
     {
       "relation": "contains",
@@ -4498,9 +4975,9 @@
       "source_file": "app/models/tag.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_tag_py",
-      "target": "models_tag_tagresponse",
-      "confidence_score": 1.0
+      "target": "models_tag_tagresponse"
     },
     {
       "relation": "inherits",
@@ -4508,9 +4985,9 @@
       "source_file": "app/models/tag.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_tag_tagresponse",
-      "target": "models_tag_tagcreate",
-      "confidence_score": 1.0
+      "target": "models_tag_tagcreate"
     },
     {
       "relation": "contains",
@@ -4518,9 +4995,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_taskcreaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_taskcreaterequest"
     },
     {
       "relation": "contains",
@@ -4528,9 +5005,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_taskcreateresponse",
-      "confidence_score": 1.0
+      "target": "models_task_taskcreateresponse"
     },
     {
       "relation": "contains",
@@ -4538,9 +5015,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_subtaskcreaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_subtaskcreaterequest"
     },
     {
       "relation": "contains",
@@ -4548,9 +5025,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_subtaskcreateresponse",
-      "confidence_score": 1.0
+      "target": "models_task_subtaskcreateresponse"
     },
     {
       "relation": "contains",
@@ -4558,9 +5035,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_taskwithsubtasks",
-      "confidence_score": 1.0
+      "target": "models_task_taskwithsubtasks"
     },
     {
       "relation": "contains",
@@ -4568,9 +5045,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_taskupdaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_taskupdaterequest"
     },
     {
       "relation": "contains",
@@ -4578,9 +5055,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_task_py",
-      "target": "models_task_subtaskupdaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_subtaskupdaterequest"
     },
     {
       "relation": "inherits",
@@ -4588,9 +5065,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_taskcreateresponse",
-      "target": "models_task_taskcreaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_taskcreaterequest"
     },
     {
       "relation": "inherits",
@@ -4598,9 +5075,9 @@
       "source_file": "app/models/task.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_task_subtaskcreateresponse",
-      "target": "models_task_subtaskcreaterequest",
-      "confidence_score": 1.0
+      "target": "models_task_subtaskcreaterequest"
     },
     {
       "relation": "contains",
@@ -4608,9 +5085,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_user",
-      "confidence_score": 1.0
+      "target": "models_user_user"
     },
     {
       "relation": "contains",
@@ -4618,9 +5095,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_userin",
-      "confidence_score": 1.0
+      "target": "models_user_userin"
     },
     {
       "relation": "contains",
@@ -4628,9 +5105,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_login",
-      "confidence_score": 1.0
+      "target": "models_user_login"
     },
     {
       "relation": "contains",
@@ -4638,9 +5115,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_usernameupdate",
-      "confidence_score": 1.0
+      "target": "models_user_usernameupdate"
     },
     {
       "relation": "contains",
@@ -4648,9 +5125,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_passwordupdate",
-      "confidence_score": 1.0
+      "target": "models_user_passwordupdate"
     },
     {
       "relation": "inherits",
@@ -4658,9 +5135,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_userin",
-      "target": "models_user_user",
-      "confidence_score": 1.0
+      "target": "models_user_user"
     },
     {
       "relation": "rationale_for",
@@ -4668,9 +5145,9 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_init_rationale_1",
-      "target": "app_models_init_py",
-      "confidence_score": 1.0
+      "target": "app_models_init_py"
     },
     {
       "relation": "rationale_for",
@@ -4678,9 +5155,9 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "schemas_init_rationale_1",
-      "target": "app_schemas_init_py",
-      "confidence_score": 1.0
+      "target": "app_schemas_init_py"
     },
     {
       "relation": "contains",
@@ -4688,9 +5165,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_anyio_backend",
-      "confidence_score": 1.0
+      "target": "tests_conftest_anyio_backend"
     },
     {
       "relation": "contains",
@@ -4698,9 +5175,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L27",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_db",
-      "confidence_score": 1.0
+      "target": "tests_conftest_db"
     },
     {
       "relation": "contains",
@@ -4708,9 +5185,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L42",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_client",
-      "confidence_score": 1.0
+      "target": "tests_conftest_client"
     },
     {
       "relation": "contains",
@@ -4718,9 +5195,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_async_client",
-      "confidence_score": 1.0
+      "target": "tests_conftest_async_client"
     },
     {
       "relation": "contains",
@@ -4728,9 +5205,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L54",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_registered_user",
-      "confidence_score": 1.0
+      "target": "tests_conftest_registered_user"
     },
     {
       "relation": "contains",
@@ -4738,9 +5215,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L77",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_confirmed_user",
-      "confidence_score": 1.0
+      "target": "tests_conftest_confirmed_user"
     },
     {
       "relation": "contains",
@@ -4748,9 +5225,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L86",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_logged_in_token",
-      "confidence_score": 1.0
+      "target": "tests_conftest_logged_in_token"
     },
     {
       "relation": "contains",
@@ -4758,9 +5235,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_py",
-      "target": "tests_conftest_mock_httpx_client",
-      "confidence_score": 1.0
+      "target": "tests_conftest_mock_httpx_client"
     },
     {
       "relation": "rationale_for",
@@ -4768,9 +5245,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L105",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_rationale_105",
-      "target": "tests_conftest_mock_httpx_client",
-      "confidence_score": 1.0
+      "target": "tests_conftest_mock_httpx_client"
     },
     {
       "relation": "contains",
@@ -4778,9 +5255,9 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_migrations_py",
-      "target": "tests_test_migrations_test_alembic_migrations",
-      "confidence_score": 1.0
+      "target": "tests_test_migrations_test_alembic_migrations"
     },
     {
       "relation": "rationale_for",
@@ -4788,9 +5265,9 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_migrations_rationale_6",
-      "target": "tests_test_migrations_test_alembic_migrations",
-      "confidence_score": 1.0
+      "target": "tests_test_migrations_test_alembic_migrations"
     },
     {
       "relation": "contains",
@@ -4798,9 +5275,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_valid_access_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_valid_access_token"
     },
     {
       "relation": "contains",
@@ -4808,9 +5285,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token"
     },
     {
       "relation": "contains",
@@ -4818,9 +5295,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_expired",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_expired"
     },
     {
       "relation": "contains",
@@ -4828,9 +5305,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_invalid_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_invalid_token"
     },
     {
       "relation": "contains",
@@ -4838,9 +5315,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_wrong_type",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_wrong_type"
     },
     {
       "relation": "contains",
@@ -4848,9 +5325,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_subject_for_token_type_missing_subject",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_subject_for_token_type_missing_subject"
     },
     {
       "relation": "contains",
@@ -4858,9 +5335,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_password_hash",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_password_hash"
     },
     {
       "relation": "contains",
@@ -4868,9 +5345,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L62",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_access_token_expire_minutes",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_access_token_expire_minutes"
     },
     {
       "relation": "contains",
@@ -4878,9 +5355,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L66",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_confirm_token_expire_minutes",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_confirm_token_expire_minutes"
     },
     {
       "relation": "contains",
@@ -4888,9 +5365,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L70",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_create_access_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_create_access_token"
     },
     {
       "relation": "contains",
@@ -4898,9 +5375,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_create_confirmation_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_create_confirmation_token"
     },
     {
       "relation": "contains",
@@ -4908,9 +5385,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L87",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_user",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_user"
     },
     {
       "relation": "contains",
@@ -4918,9 +5395,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L93",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_user_not_found",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_user_not_found"
     },
     {
       "relation": "contains",
@@ -4928,9 +5405,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_authenticate_user",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_authenticate_user"
     },
     {
       "relation": "contains",
@@ -4938,9 +5415,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L106",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_authenticate_user_not_found",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_authenticate_user_not_found"
     },
     {
       "relation": "contains",
@@ -4948,9 +5425,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L112",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_authenticate_user_wrong_password",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_authenticate_user_wrong_password"
     },
     {
       "relation": "contains",
@@ -4958,9 +5435,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L118",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_current_user",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_current_user"
     },
     {
       "relation": "contains",
@@ -4968,9 +5445,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_current_user_invalid_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_current_user_invalid_token"
     },
     {
       "relation": "contains",
@@ -4978,9 +5455,9 @@
       "source_file": "tests/test_security.py",
       "source_location": "L132",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_py",
-      "target": "tests_test_security_test_get_current_user_wrong_type_token",
-      "confidence_score": 1.0
+      "target": "tests_test_security_test_get_current_user_wrong_type_token"
     },
     {
       "relation": "contains",
@@ -4988,9 +5465,9 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_seed_py",
-      "target": "tests_test_seed_test_seed_data",
-      "confidence_score": 1.0
+      "target": "tests_test_seed_test_seed_data"
     },
     {
       "relation": "rationale_for",
@@ -4998,9 +5475,9 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_seed_rationale_7",
-      "target": "tests_test_seed_test_seed_data",
-      "confidence_score": 1.0
+      "target": "tests_test_seed_test_seed_data"
     },
     {
       "relation": "contains",
@@ -5008,9 +5485,9 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L8",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_tasks_py",
-      "target": "tests_test_tasks_test_send_confirmation_email",
-      "confidence_score": 1.0
+      "target": "tests_test_tasks_test_send_confirmation_email"
     },
     {
       "relation": "contains",
@@ -5018,9 +5495,9 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_tasks_py",
-      "target": "tests_test_tasks_test_send_confirmation_email_api_error",
-      "confidence_score": 1.0
+      "target": "tests_test_tasks_test_send_confirmation_email_api_error"
     },
     {
       "relation": "contains",
@@ -5028,9 +5505,9 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L33",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_tasks_py",
-      "target": "tests_test_tasks_test_send_confirmation_email_falls_back_to_api",
-      "confidence_score": 1.0
+      "target": "tests_test_tasks_test_send_confirmation_email_falls_back_to_api"
     },
     {
       "relation": "rationale_for",
@@ -5038,9 +5515,9 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_init_rationale_1",
-      "target": "tests_init_py",
-      "confidence_score": 1.0
+      "target": "tests_init_py"
     },
     {
       "relation": "contains",
@@ -5048,9 +5525,9 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_audit_py",
-      "target": "routers_test_audit_test_get_audit_logs_empty",
-      "confidence_score": 1.0
+      "target": "routers_test_audit_test_get_audit_logs_empty"
     },
     {
       "relation": "contains",
@@ -5058,9 +5535,9 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_audit_py",
-      "target": "routers_test_audit_test_audit_log_after_task_creation",
-      "confidence_score": 1.0
+      "target": "routers_test_audit_test_audit_log_after_task_creation"
     },
     {
       "relation": "contains",
@@ -5068,9 +5545,9 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_audit_py",
-      "target": "routers_test_audit_test_audit_log_filtering",
-      "confidence_score": 1.0
+      "target": "routers_test_audit_test_audit_log_filtering"
     },
     {
       "relation": "contains",
@@ -5078,9 +5555,9 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_stats_py",
-      "target": "routers_test_stats_test_get_stats_overview_empty",
-      "confidence_score": 1.0
+      "target": "routers_test_stats_test_get_stats_overview_empty"
     },
     {
       "relation": "contains",
@@ -5088,9 +5565,9 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_stats_py",
-      "target": "routers_test_stats_test_stats_with_data",
-      "confidence_score": 1.0
+      "target": "routers_test_stats_test_stats_with_data"
     },
     {
       "relation": "contains",
@@ -5098,9 +5575,9 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_stats_py",
-      "target": "routers_test_stats_test_tag_distribution",
-      "confidence_score": 1.0
+      "target": "routers_test_stats_test_tag_distribution"
     },
     {
       "relation": "contains",
@@ -5108,9 +5585,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_create_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_task"
     },
     {
       "relation": "contains",
@@ -5118,9 +5595,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L14",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_create_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_subtask"
     },
     {
       "relation": "contains",
@@ -5128,9 +5605,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_create_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_tag"
     },
     {
       "relation": "contains",
@@ -5138,9 +5615,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L36",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_created_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_created_task"
     },
     {
       "relation": "contains",
@@ -5148,9 +5625,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L41",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_created_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_created_subtask"
     },
     {
       "relation": "contains",
@@ -5158,9 +5635,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L48",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_created_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_created_tag"
     },
     {
       "relation": "contains",
@@ -5168,9 +5645,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L53",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_create_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_create_task"
     },
     {
       "relation": "contains",
@@ -5178,9 +5655,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L71",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_create_empty_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_create_empty_task"
     },
     {
       "relation": "contains",
@@ -5188,9 +5665,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L81",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_create_task_expired_token",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_create_task_expired_token"
     },
     {
       "relation": "contains",
@@ -5198,9 +5675,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L98",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_all_tasks",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_all_tasks"
     },
     {
       "relation": "contains",
@@ -5208,9 +5685,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L108",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_create_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_create_subtask"
     },
     {
       "relation": "contains",
@@ -5218,9 +5695,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L130",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_subtasks_on_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_subtasks_on_task"
     },
     {
       "relation": "contains",
@@ -5228,9 +5705,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L143",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_subtasks_on_task_empty",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_subtasks_on_task_empty"
     },
     {
       "relation": "contains",
@@ -5238,9 +5715,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L156",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_task_with_subtasks",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_task_with_subtasks"
     },
     {
       "relation": "contains",
@@ -5248,9 +5725,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L172",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_missing_task_with_subtasks",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_missing_task_with_subtasks"
     },
     {
       "relation": "contains",
@@ -5258,9 +5735,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L183",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_create_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_create_tag"
     },
     {
       "relation": "contains",
@@ -5268,9 +5745,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L206",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_tags_on_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_tags_on_task"
     },
     {
       "relation": "contains",
@@ -5278,9 +5755,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_get_tags_on_missing_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_get_tags_on_missing_task"
     },
     {
       "relation": "contains",
@@ -5288,9 +5765,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L232",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_reuse_tag_across_tasks",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_reuse_tag_across_tasks"
     },
     {
       "relation": "contains",
@@ -5298,9 +5775,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L254",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_update_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_update_task"
     },
     {
       "relation": "contains",
@@ -5308,9 +5785,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L272",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_delete_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_delete_task"
     },
     {
       "relation": "contains",
@@ -5318,9 +5795,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L288",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_update_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_update_subtask"
     },
     {
       "relation": "contains",
@@ -5328,9 +5805,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L308",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_delete_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_delete_subtask"
     },
     {
       "relation": "contains",
@@ -5338,9 +5815,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L326",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_detach_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_detach_tag"
     },
     {
       "relation": "contains",
@@ -5348,9 +5825,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L344",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
-      "target": "routers_test_task_test_delete_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_test_delete_tag"
     },
     {
       "relation": "calls",
@@ -5359,9 +5836,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_task_created_task",
-      "target": "routers_test_task_create_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_task"
     },
     {
       "relation": "calls",
@@ -5370,9 +5847,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L233",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_task_test_reuse_tag_across_tasks",
-      "target": "routers_test_task_create_task",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_task"
     },
     {
       "relation": "calls",
@@ -5381,9 +5858,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_task_created_subtask",
-      "target": "routers_test_task_create_subtask",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_subtask"
     },
     {
       "relation": "calls",
@@ -5392,9 +5869,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L49",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_task_created_tag",
-      "target": "routers_test_task_create_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_tag"
     },
     {
       "relation": "calls",
@@ -5403,9 +5880,9 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L236",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_task_test_reuse_tag_across_tasks",
-      "target": "routers_test_task_create_tag",
-      "confidence_score": 1.0
+      "target": "routers_test_task_create_tag"
     },
     {
       "relation": "imports_from",
@@ -5414,9 +5891,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -5424,9 +5901,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_register_user"
     },
     {
       "relation": "contains",
@@ -5434,9 +5911,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L21",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_register_user"
     },
     {
       "relation": "contains",
@@ -5444,9 +5921,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_confirm_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_confirm_user"
     },
     {
       "relation": "contains",
@@ -5454,9 +5931,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L40",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_confirm_user_invalid_token",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_confirm_user_invalid_token"
     },
     {
       "relation": "contains",
@@ -5464,9 +5941,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_confirm_user_expired_token",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_confirm_user_expired_token"
     },
     {
       "relation": "contains",
@@ -5474,9 +5951,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_register_user_duplicate_email",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_register_user_duplicate_email"
     },
     {
       "relation": "contains",
@@ -5484,9 +5961,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L69",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_login_user_not_exists",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_login_user_not_exists"
     },
     {
       "relation": "contains",
@@ -5494,9 +5971,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L78",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_login_user_not_confirmed",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_login_user_not_confirmed"
     },
     {
       "relation": "contains",
@@ -5504,9 +5981,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_login_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_login_user"
     },
     {
       "relation": "contains",
@@ -5514,9 +5991,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L101",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_logout_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_logout_user"
     },
     {
       "relation": "contains",
@@ -5524,9 +6001,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L109",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_logout_user_unauthenticated",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_logout_user_unauthenticated"
     },
     {
       "relation": "contains",
@@ -5534,9 +6011,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L115",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_get_my_profile",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_get_my_profile"
     },
     {
       "relation": "contains",
@@ -5544,9 +6021,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L125",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_username",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_username"
     },
     {
       "relation": "contains",
@@ -5554,9 +6031,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L140",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_username_taken",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_username_taken"
     },
     {
       "relation": "contains",
@@ -5564,9 +6041,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L153",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_password",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_password"
     },
     {
       "relation": "contains",
@@ -5574,9 +6051,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L173",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_password_incorrect_current",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_password_incorrect_current"
     },
     {
       "relation": "contains",
@@ -5584,9 +6061,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L185",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_username_too_short",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_username_too_short"
     },
     {
       "relation": "contains",
@@ -5594,9 +6071,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L195",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_user_py",
-      "target": "routers_test_user_test_update_password_too_short",
-      "confidence_score": 1.0
+      "target": "routers_test_user_test_update_password_too_short"
     },
     {
       "relation": "calls",
@@ -5605,9 +6082,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L22",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_user_test_register_user",
-      "target": "routers_test_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_register_user"
     },
     {
       "relation": "calls",
@@ -5616,9 +6093,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L31",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_user_test_confirm_user",
-      "target": "routers_test_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_register_user"
     },
     {
       "relation": "calls",
@@ -5627,9 +6104,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L50",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_user_test_confirm_user_expired_token",
-      "target": "routers_test_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_register_user"
     },
     {
       "relation": "calls",
@@ -5638,9 +6115,9 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L61",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_user_test_register_user_duplicate_email",
-      "target": "routers_test_user_register_user",
-      "confidence_score": 1.0
+      "target": "routers_test_user_register_user"
     },
     {
       "relation": "calls",
@@ -5649,8 +6126,518 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L142",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_user_test_update_username_taken",
-      "target": "routers_test_user_register_user",
+      "target": "routers_test_user_register_user"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "claude_md",
+      "target": "task_buddy_backend_claude_claude_md",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "task_buddy_backend_claude_claude_md",
+      "target": "task_buddy_backend_claude_common_development_commands",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "task_buddy_backend_claude_claude_md",
+      "target": "task_buddy_backend_claude_high_level_architecture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L40",
+      "weight": 1.0,
+      "source": "task_buddy_backend_claude_claude_md",
+      "target": "task_buddy_backend_claude_environment_variables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "CLAUDE.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "task_buddy_backend_claude_environment_variables",
+      "target": "task_buddy_backend_claude_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "readme_md",
+      "target": "task_buddy_backend_readme_task_buddy_backend",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_features",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_tech_stack",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_project_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_quick_start",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L124",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_api_documentation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L132",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_available_endpoints",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L156",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_testing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L170",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_code_quality",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L196",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_environment_variables",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L214",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_docker",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L228",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_contributing",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L236",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_license",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L240",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_support",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L244",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_task_buddy_backend",
+      "target": "task_buddy_backend_readme_useful_resources",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L28",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_project_structure",
+      "target": "task_buddy_backend_readme_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L59",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_quick_start",
+      "target": "task_buddy_backend_readme_prerequisites",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L65",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_quick_start",
+      "target": "task_buddy_backend_readme_installation",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L94",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_quick_start",
+      "target": "task_buddy_backend_readme_running_the_application",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L69",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_installation",
+      "target": "task_buddy_backend_readme_codeblock_2",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L76",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_installation",
+      "target": "task_buddy_backend_readme_codeblock_3",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L88",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_installation",
+      "target": "task_buddy_backend_readme_codeblock_4",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L96",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_running_the_application",
+      "target": "task_buddy_backend_readme_development_mode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L112",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_running_the_application",
+      "target": "task_buddy_backend_readme_production_mode",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L100",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_development_mode",
+      "target": "task_buddy_backend_readme_codeblock_5",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L106",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_development_mode",
+      "target": "task_buddy_backend_readme_codeblock_6",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L114",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_production_mode",
+      "target": "task_buddy_backend_readme_codeblock_7",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L120",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_production_mode",
+      "target": "task_buddy_backend_readme_codeblock_8",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L134",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_available_endpoints",
+      "target": "task_buddy_backend_readme_health_check",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L140",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_available_endpoints",
+      "target": "task_buddy_backend_readme_tasks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L148",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_available_endpoints",
+      "target": "task_buddy_backend_readme_users",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L160",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_testing",
+      "target": "task_buddy_backend_readme_codeblock_9",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L166",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_testing",
+      "target": "task_buddy_backend_readme_codeblock_10",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L172",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_code_quality",
+      "target": "task_buddy_backend_readme_format_code_with_black",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L178",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_code_quality",
+      "target": "task_buddy_backend_readme_lint_with_ruff",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L184",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_code_quality",
+      "target": "task_buddy_backend_readme_type_checking_with_mypy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L190",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_code_quality",
+      "target": "task_buddy_backend_readme_sort_imports_with_isort",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L174",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_format_code_with_black",
+      "target": "task_buddy_backend_readme_codeblock_11",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L180",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_lint_with_ruff",
+      "target": "task_buddy_backend_readme_codeblock_12",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L186",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_type_checking_with_mypy",
+      "target": "task_buddy_backend_readme_codeblock_13",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L192",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_sort_imports_with_isort",
+      "target": "task_buddy_backend_readme_codeblock_14",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L200",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_environment_variables",
+      "target": "task_buddy_backend_readme_codeblock_15",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L216",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_docker",
+      "target": "task_buddy_backend_readme_build_docker_image",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L222",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_docker",
+      "target": "task_buddy_backend_readme_run_container",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L218",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_build_docker_image",
+      "target": "task_buddy_backend_readme_codeblock_16",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "README.md",
+      "source_location": "L224",
+      "weight": 1.0,
+      "source": "task_buddy_backend_readme_run_container",
+      "target": "task_buddy_backend_readme_codeblock_17",
       "confidence_score": 1.0
     },
     {
@@ -5695,5 +6682,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f2090878eeee74e55e5e750d40cd1f914ae9b105"
+  "built_at_commit": "eeac524fe488b0d08711d71ecf588aa5cf14ecb0"
 }
