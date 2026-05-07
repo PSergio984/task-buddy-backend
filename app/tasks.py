@@ -21,10 +21,14 @@ def _is_valid_url(url: str | None) -> bool:
 
 
 async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Response:
-    if not _is_valid_url(config.MAIL_URL):
+    mail_url = config.MAIL_URL
+    if not _is_valid_url(mail_url):
         raise APIResponseError(
-            f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with https://"
+            f"Invalid MAIL_URL: {mail_url}. Must start with https://"
         )
+    # Assert for type checker narrowing (mail_url is now guaranteed to be str)
+    assert mail_url is not None
+
     if not config.MAIL_API_KEY:
         raise APIResponseError("Missing MAIL_API_KEY for Brevo transactional email")
     if not config.MAIL_FROM_EMAIL:
@@ -32,7 +36,7 @@ async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Resp
 
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
-            config.MAIL_URL,
+            mail_url,
             headers={
                 "api-key": config.MAIL_API_KEY,
                 "accept": "application/json",
@@ -160,4 +164,32 @@ async def send_confirmation_email(
         if not suppress_exceptions:
             raise APIResponseError(
                 "Failed to send confirmation email via SMTP and Brevo API"
+            ) from api_error
+async def send_password_reset_email(
+    to_email: str,
+    reset_url: str,
+    *,
+    suppress_exceptions: bool = False,
+) -> None:
+    """Send a password reset email with SMTP and Brevo API fallback."""
+    subject = "Password Reset Request - Task Buddy"
+    body = f"Hi, you requested a password reset. Please click the following link to reset your password: {reset_url}\nIf you did not request this, please ignore this email."
+
+    # 1. Try SMTP
+    try:
+        await asyncio.to_thread(send_smtp_email, to_email, subject, body)
+        return
+    except Exception:
+        logger.warning(
+            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+        )
+
+    # 2. Try Brevo API Fallback
+    try:
+        await send_brevo_email(to_email, subject, body)
+    except Exception as api_error:
+        logger.exception("Brevo API fallback failed for %s", to_email)
+        if not suppress_exceptions:
+            raise APIResponseError(
+                "Failed to send password reset email via SMTP and Brevo API"
             ) from api_error

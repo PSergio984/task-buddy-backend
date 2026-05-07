@@ -12,6 +12,7 @@ class BaseConfig(BaseSettings):
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
+    RESET_TOKEN_EXPIRE_MINUTES: int = 60
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
@@ -21,6 +22,8 @@ class GlobalConfig(BaseConfig):
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
     MAIL_FROM_NAME: str = "Task Buddy"
@@ -52,6 +55,7 @@ class ProdConfig(GlobalConfig):
 class TestConfig(GlobalConfig):
     DATABASE_URL: str = "sqlite:///./test.db"
     DB_FORCE_ROLL_BACK: bool = False
+    RATE_LIMIT_ENABLED: bool = False
 
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
@@ -82,3 +86,4 @@ SECRET_KEY = (
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
 CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
+RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)

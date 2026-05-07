@@ -6,23 +6,23 @@ from app import security
 
 
 def test_get_subject_for_token_type_valid_access_token():
-    email = "test@example.com"
-    token = security.create_access_token(email)
+    user_id = 123
+    token = security.create_access_token(user_id)
     subject = security.get_subject_for_token_type(token, expected_type="access")
-    assert subject == email
+    assert subject == str(user_id)
 
 
 def test_get_subject_for_token_type_valid_confirm_token():
-    email = "test@example.com"
-    token = security.create_confirm_token(email)
+    user_id = 123
+    token = security.create_confirm_token(user_id)
     subject = security.get_subject_for_token_type(token, expected_type="confirm")
-    assert subject == email
+    assert subject == str(user_id)
 
 
 def test_get_subject_for_token_type_expired(monkeypatch):
     monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
-    email = "test@example.com"
-    token = security.create_access_token(email)
+    user_id = 123
+    token = security.create_access_token(user_id)
     with pytest.raises(security.HTTPException) as exc_info:
         security.get_subject_for_token_type(token, expected_type="access")
     assert "Token has expired" in exc_info.value.detail
@@ -36,8 +36,8 @@ def test_get_subject_for_token_type_invalid_token():
 
 
 def test_get_subject_for_token_type_wrong_type():
-    email = "test@example.com"
-    token = security.create_access_token(email)
+    user_id = 123
+    token = security.create_access_token(user_id)
     with pytest.raises(security.HTTPException) as exc_info:
         security.get_subject_for_token_type(token, expected_type="confirm")
     assert "Token has incorrect type, expected 'confirm'" in exc_info.value.detail
@@ -47,6 +47,7 @@ def test_get_subject_for_token_type_missing_subject():
     # Create a token with missing 'sub' field
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(minutes=30)
     jwt_payload = {"exp": expire, "type": "access"}
+    assert security.SECRET_KEY is not None
     token = jwt.encode(jwt_payload, security.SECRET_KEY, algorithm=security.ALGORITHM)
 
     with pytest.raises(security.HTTPException) as exc_info:
@@ -68,16 +69,18 @@ def test_confirm_token_expire_minutes():
 
 
 def test_create_access_token():
-    token = security.create_access_token("123")
+    token = security.create_access_token(123)
 
+    assert security.SECRET_KEY is not None
     assert {"sub": "123", "type": "access"}.items() <= jwt.decode(
         token, key=security.SECRET_KEY, algorithms=[security.ALGORITHM]
     ).items()
 
 
 def test_create_confirmation_token():
-    token = security.create_confirm_token("123")
+    token = security.create_confirm_token(123)
 
+    assert security.SECRET_KEY is not None
     assert {"sub": "123", "type": "confirm"}.items() <= jwt.decode(
         token, key=security.SECRET_KEY, algorithms=[security.ALGORITHM]
     ).items()
@@ -116,7 +119,7 @@ async def test_authenticate_user_wrong_password(registered_user: dict):
 
 @pytest.mark.anyio
 async def test_get_current_user(registered_user: dict):
-    token = security.create_access_token(registered_user["email"])
+    token = security.create_access_token(registered_user["id"])
     user = await security.get_current_user(token)
     assert user is not None
     assert user["email"] == registered_user["email"]
@@ -130,7 +133,7 @@ async def test_get_current_user_invalid_token():
 
 @pytest.mark.anyio
 async def test_get_current_user_wrong_type_token(registered_user: dict):
-    token = security.create_confirm_token(registered_user["email"])
+    token = security.create_confirm_token(registered_user["id"])
 
     with pytest.raises(security.HTTPException):
         await security.get_current_user(token)

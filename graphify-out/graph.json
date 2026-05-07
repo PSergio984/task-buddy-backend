@@ -6136,9 +6136,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "claude_md",
-      "target": "task_buddy_backend_claude_claude_md",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_claude_claude_md"
     },
     {
       "relation": "contains",
@@ -6146,9 +6146,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_claude_claude_md",
-      "target": "task_buddy_backend_claude_common_development_commands",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_claude_common_development_commands"
     },
     {
       "relation": "contains",
@@ -6156,9 +6156,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_claude_claude_md",
-      "target": "task_buddy_backend_claude_high_level_architecture",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_claude_high_level_architecture"
     },
     {
       "relation": "contains",
@@ -6166,9 +6166,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L40",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_claude_claude_md",
-      "target": "task_buddy_backend_claude_environment_variables",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_claude_environment_variables"
     },
     {
       "relation": "contains",
@@ -6176,9 +6176,9 @@
       "source_file": "CLAUDE.md",
       "source_location": "L43",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_claude_environment_variables",
-      "target": "task_buddy_backend_claude_codeblock_1",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_claude_codeblock_1"
     },
     {
       "relation": "contains",
@@ -6186,9 +6186,9 @@
       "source_file": "README.md",
       "source_location": "L1",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "readme_md",
-      "target": "task_buddy_backend_readme_task_buddy_backend",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_task_buddy_backend"
     },
     {
       "relation": "contains",
@@ -6196,9 +6196,9 @@
       "source_file": "README.md",
       "source_location": "L5",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_features",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_features"
     },
     {
       "relation": "contains",
@@ -6206,9 +6206,9 @@
       "source_file": "README.md",
       "source_location": "L17",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_tech_stack",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_tech_stack"
     },
     {
       "relation": "contains",
@@ -6216,9 +6216,9 @@
       "source_file": "README.md",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_project_structure",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_project_structure"
     },
     {
       "relation": "contains",
@@ -6226,9 +6226,9 @@
       "source_file": "README.md",
       "source_location": "L57",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_quick_start",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_quick_start"
     },
     {
       "relation": "contains",
@@ -6236,9 +6236,9 @@
       "source_file": "README.md",
       "source_location": "L124",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_api_documentation",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_api_documentation"
     },
     {
       "relation": "contains",
@@ -6246,9 +6246,9 @@
       "source_file": "README.md",
       "source_location": "L132",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_available_endpoints",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_available_endpoints"
     },
     {
       "relation": "contains",
@@ -6256,9 +6256,9 @@
       "source_file": "README.md",
       "source_location": "L156",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_testing",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_testing"
     },
     {
       "relation": "contains",
@@ -6266,9 +6266,9 @@
       "source_file": "README.md",
       "source_location": "L170",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_code_quality",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_code_quality"
     },
     {
       "relation": "contains",
@@ -6276,9 +6276,9 @@
       "source_file": "README.md",
       "source_location": "L196",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_environment_variables",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_environment_variables"
     },
     {
       "relation": "contains",
@@ -6286,9 +6286,9 @@
       "source_file": "README.md",
       "source_location": "L214",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_docker",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_docker"
     },
     {
       "relation": "contains",
@@ -6296,9 +6296,9 @@
       "source_file": "README.md",
       "source_location": "L228",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_contributing",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_contributing"
     },
     {
       "relation": "contains",
@@ -6306,9 +6306,9 @@
       "source_file": "README.md",
       "source_location": "L236",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_license",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_license"
     },
     {
       "relation": "contains",
@@ -6316,9 +6316,9 @@
       "source_file": "README.md",
       "source_location": "L240",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_support",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_support"
     },
     {
       "relation": "contains",
@@ -6326,9 +6326,9 @@
       "source_file": "README.md",
       "source_location": "L244",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_task_buddy_backend",
-      "target": "task_buddy_backend_readme_useful_resources",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_useful_resources"
     },
     {
       "relation": "contains",
@@ -6336,9 +6336,9 @@
       "source_file": "README.md",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_project_structure",
-      "target": "task_buddy_backend_readme_codeblock_1",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_1"
     },
     {
       "relation": "contains",
@@ -6346,9 +6346,9 @@
       "source_file": "README.md",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_quick_start",
-      "target": "task_buddy_backend_readme_prerequisites",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_prerequisites"
     },
     {
       "relation": "contains",
@@ -6356,9 +6356,9 @@
       "source_file": "README.md",
       "source_location": "L65",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_quick_start",
-      "target": "task_buddy_backend_readme_installation",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_installation"
     },
     {
       "relation": "contains",
@@ -6366,9 +6366,9 @@
       "source_file": "README.md",
       "source_location": "L94",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_quick_start",
-      "target": "task_buddy_backend_readme_running_the_application",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_running_the_application"
     },
     {
       "relation": "contains",
@@ -6376,9 +6376,9 @@
       "source_file": "README.md",
       "source_location": "L69",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_installation",
-      "target": "task_buddy_backend_readme_codeblock_2",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_2"
     },
     {
       "relation": "contains",
@@ -6386,9 +6386,9 @@
       "source_file": "README.md",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_installation",
-      "target": "task_buddy_backend_readme_codeblock_3",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_3"
     },
     {
       "relation": "contains",
@@ -6396,9 +6396,9 @@
       "source_file": "README.md",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_installation",
-      "target": "task_buddy_backend_readme_codeblock_4",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_4"
     },
     {
       "relation": "contains",
@@ -6406,9 +6406,9 @@
       "source_file": "README.md",
       "source_location": "L96",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_running_the_application",
-      "target": "task_buddy_backend_readme_development_mode",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_development_mode"
     },
     {
       "relation": "contains",
@@ -6416,9 +6416,9 @@
       "source_file": "README.md",
       "source_location": "L112",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_running_the_application",
-      "target": "task_buddy_backend_readme_production_mode",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_production_mode"
     },
     {
       "relation": "contains",
@@ -6426,9 +6426,9 @@
       "source_file": "README.md",
       "source_location": "L100",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_development_mode",
-      "target": "task_buddy_backend_readme_codeblock_5",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_5"
     },
     {
       "relation": "contains",
@@ -6436,9 +6436,9 @@
       "source_file": "README.md",
       "source_location": "L106",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_development_mode",
-      "target": "task_buddy_backend_readme_codeblock_6",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_6"
     },
     {
       "relation": "contains",
@@ -6446,9 +6446,9 @@
       "source_file": "README.md",
       "source_location": "L114",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_production_mode",
-      "target": "task_buddy_backend_readme_codeblock_7",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_7"
     },
     {
       "relation": "contains",
@@ -6456,9 +6456,9 @@
       "source_file": "README.md",
       "source_location": "L120",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_production_mode",
-      "target": "task_buddy_backend_readme_codeblock_8",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_8"
     },
     {
       "relation": "contains",
@@ -6466,9 +6466,9 @@
       "source_file": "README.md",
       "source_location": "L134",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_available_endpoints",
-      "target": "task_buddy_backend_readme_health_check",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_health_check"
     },
     {
       "relation": "contains",
@@ -6476,9 +6476,9 @@
       "source_file": "README.md",
       "source_location": "L140",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_available_endpoints",
-      "target": "task_buddy_backend_readme_tasks",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_tasks"
     },
     {
       "relation": "contains",
@@ -6486,9 +6486,9 @@
       "source_file": "README.md",
       "source_location": "L148",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_available_endpoints",
-      "target": "task_buddy_backend_readme_users",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_users"
     },
     {
       "relation": "contains",
@@ -6496,9 +6496,9 @@
       "source_file": "README.md",
       "source_location": "L160",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_testing",
-      "target": "task_buddy_backend_readme_codeblock_9",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_9"
     },
     {
       "relation": "contains",
@@ -6506,9 +6506,9 @@
       "source_file": "README.md",
       "source_location": "L166",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_testing",
-      "target": "task_buddy_backend_readme_codeblock_10",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_10"
     },
     {
       "relation": "contains",
@@ -6516,9 +6516,9 @@
       "source_file": "README.md",
       "source_location": "L172",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_code_quality",
-      "target": "task_buddy_backend_readme_format_code_with_black",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_format_code_with_black"
     },
     {
       "relation": "contains",
@@ -6526,9 +6526,9 @@
       "source_file": "README.md",
       "source_location": "L178",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_code_quality",
-      "target": "task_buddy_backend_readme_lint_with_ruff",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_lint_with_ruff"
     },
     {
       "relation": "contains",
@@ -6536,9 +6536,9 @@
       "source_file": "README.md",
       "source_location": "L184",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_code_quality",
-      "target": "task_buddy_backend_readme_type_checking_with_mypy",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_type_checking_with_mypy"
     },
     {
       "relation": "contains",
@@ -6546,9 +6546,9 @@
       "source_file": "README.md",
       "source_location": "L190",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_code_quality",
-      "target": "task_buddy_backend_readme_sort_imports_with_isort",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_sort_imports_with_isort"
     },
     {
       "relation": "contains",
@@ -6556,9 +6556,9 @@
       "source_file": "README.md",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_format_code_with_black",
-      "target": "task_buddy_backend_readme_codeblock_11",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_11"
     },
     {
       "relation": "contains",
@@ -6566,9 +6566,9 @@
       "source_file": "README.md",
       "source_location": "L180",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_lint_with_ruff",
-      "target": "task_buddy_backend_readme_codeblock_12",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_12"
     },
     {
       "relation": "contains",
@@ -6576,9 +6576,9 @@
       "source_file": "README.md",
       "source_location": "L186",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_type_checking_with_mypy",
-      "target": "task_buddy_backend_readme_codeblock_13",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_13"
     },
     {
       "relation": "contains",
@@ -6586,9 +6586,9 @@
       "source_file": "README.md",
       "source_location": "L192",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_sort_imports_with_isort",
-      "target": "task_buddy_backend_readme_codeblock_14",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_14"
     },
     {
       "relation": "contains",
@@ -6596,9 +6596,9 @@
       "source_file": "README.md",
       "source_location": "L200",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_environment_variables",
-      "target": "task_buddy_backend_readme_codeblock_15",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_15"
     },
     {
       "relation": "contains",
@@ -6606,9 +6606,9 @@
       "source_file": "README.md",
       "source_location": "L216",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_docker",
-      "target": "task_buddy_backend_readme_build_docker_image",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_build_docker_image"
     },
     {
       "relation": "contains",
@@ -6616,9 +6616,9 @@
       "source_file": "README.md",
       "source_location": "L222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_docker",
-      "target": "task_buddy_backend_readme_run_container",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_run_container"
     },
     {
       "relation": "contains",
@@ -6626,9 +6626,9 @@
       "source_file": "README.md",
       "source_location": "L218",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_build_docker_image",
-      "target": "task_buddy_backend_readme_codeblock_16",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_16"
     },
     {
       "relation": "contains",
@@ -6636,9 +6636,9 @@
       "source_file": "README.md",
       "source_location": "L224",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "task_buddy_backend_readme_run_container",
-      "target": "task_buddy_backend_readme_codeblock_17",
-      "confidence_score": 1.0
+      "target": "task_buddy_backend_readme_codeblock_17"
     },
     {
       "relation": "references",
@@ -6682,5 +6682,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "eeac524fe488b0d08711d71ecf588aa5cf14ecb0"
+  "built_at_commit": "016c00d9f10ba878ca5690c489516809a215914c"
 }
