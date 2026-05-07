@@ -1,18 +1,30 @@
-__pycache__
+# Exclude local environment files
+.venv/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
-.Python
-env/
-venv/
-.git
-.gitignore
-.dockerignore
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+
+# Exclude sensitive information
 .env
-.env.example
+*.db
+*.sqlite3
+
+# Exclude version control
+.git/
+.gitignore
+
+# Exclude Docker related files
+Dockerfile
 docker-compose.yml
+.dockerignore
+
+# Exclude metadata and logs
+.claude/
+.gemini/
+.vscode/
+app.log
 *.log
-.DS_Store
-.mypy_cache
-.pytest_cache
-app/storage/

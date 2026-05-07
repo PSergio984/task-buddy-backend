@@ -16,14 +16,14 @@ class APIResponseError(Exception):
 
 
 def _is_valid_url(url: str | None) -> bool:
-    """Helper to validate that a URL starts with http:// or https://."""
-    return bool(url and (url.startswith("http://") or url.startswith("https://")))
+    """Helper to validate that a URL starts with https://."""
+    return bool(url and url.startswith("https://"))
 
 
 async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Response:
     if not _is_valid_url(config.MAIL_URL):
         raise APIResponseError(
-            f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with http:// or https://"
+            f"Invalid MAIL_URL: {config.MAIL_URL}. Must start with https://"
         )
     if not config.MAIL_API_KEY:
         raise APIResponseError("Missing MAIL_API_KEY for Brevo transactional email")
