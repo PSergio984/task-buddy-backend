@@ -258,7 +258,7 @@ async def test_update_task(async_client: AsyncClient, created_task: dict, logged
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify update
     get_resp = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}",
@@ -275,7 +275,7 @@ async def test_delete_task(async_client: AsyncClient, created_task: dict, logged
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify deletion
     get_resp = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}",
@@ -285,14 +285,16 @@ async def test_delete_task(async_client: AsyncClient, created_task: dict, logged
 
 
 @pytest.mark.anyio
-async def test_update_subtask(async_client: AsyncClient, created_subtask: dict, logged_in_token: str):
+async def test_update_subtask(
+    async_client: AsyncClient, created_subtask: dict, logged_in_token: str
+):
     response = await async_client.put(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
         json={"title": "Updated Subtask", "completed": True},
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify update
     get_resp = await async_client.get(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
@@ -303,13 +305,15 @@ async def test_update_subtask(async_client: AsyncClient, created_subtask: dict, 
 
 
 @pytest.mark.anyio
-async def test_delete_subtask(async_client: AsyncClient, created_subtask: dict, logged_in_token: str):
+async def test_delete_subtask(
+    async_client: AsyncClient, created_subtask: dict, logged_in_token: str
+):
     response = await async_client.delete(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify deletion
     get_resp = await async_client.get(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
@@ -319,13 +323,15 @@ async def test_delete_subtask(async_client: AsyncClient, created_subtask: dict, 
 
 
 @pytest.mark.anyio
-async def test_detach_tag(async_client: AsyncClient, created_task: dict, created_tag: dict, logged_in_token: str):
+async def test_detach_tag(
+    async_client: AsyncClient, created_task: dict, created_tag: dict, logged_in_token: str
+):
     response = await async_client.delete(
         f"/api/v1/tasks/{created_task['id']}/tags/{created_tag['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify detached
     get_resp = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/tags",
@@ -341,12 +347,11 @@ async def test_delete_tag(async_client: AsyncClient, created_tag: dict, logged_i
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
-    
+
     # Verify tag itself is gone (or at least not returned for this user)
     # Since we don't have a GET /tags, we check if it can be attached again as a NEW tag
     # Actually, we can check if it's attached to any other task
-    # Or just assume the DELETE 200 and audit log integration is enough for now, 
-    # but let's try to fetch it if we had an endpoint. 
+    # Or just assume the DELETE 200 and audit log integration is enough for now,
+    # but let's try to fetch it if we had an endpoint.
     # We don't have a direct GET /tags/{tag_id}.
     # But we can try detaching it again, which should 404.
-    pass

@@ -37,7 +37,7 @@ async def test_stats_with_data(async_client: AsyncClient, logged_in_token: str):
     assert data["task_stats"]["total_tasks"] == 2
     assert data["task_stats"]["completed_tasks"] == 1
     assert data["task_stats"]["pending_tasks"] == 1
-    assert data["task_stats"]["completion_percentage"] == 50.0
+    assert data["task_stats"]["completion_percentage"] == pytest.approx(50.0)
 
 @pytest.mark.anyio
 async def test_tag_distribution(async_client: AsyncClient, logged_in_token: str):
