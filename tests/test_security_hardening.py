@@ -4,10 +4,14 @@ from app.main import app
 
 @pytest.mark.anyio
 async def test_security_headers(async_client: AsyncClient):
-    response = await async_client.get("/api/v1/users/me")
+    response = await async_client.get("/api/v1/tasks")
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-XSS-Protection"] == "1; mode=block"
     assert "Content-Security-Policy" in response.headers
+    assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
+    assert "Permissions-Policy" in response.headers
+    assert "geolocation=()" in response.headers["Permissions-Policy"]
 
 @pytest.mark.anyio
 async def test_cors_allowed_origin(async_client: AsyncClient):

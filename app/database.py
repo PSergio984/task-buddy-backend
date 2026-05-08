@@ -1,92 +1,41 @@
-import databases
-import sqlalchemy
-
+import logging
+from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from app.config import config
 
-metadata = sqlalchemy.MetaData()
+logger = logging.getLogger(__name__)
 
-tbl_task = sqlalchemy.Table(
-    "tbl_tasks",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("tbl_users.id"), nullable=False),
-    sqlalchemy.Column("title", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("description", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("completed", sqlalchemy.Boolean, default=False),
-    sqlalchemy.Column("due_date", sqlalchemy.DateTime, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+def get_async_database_url(url: str) -> str:
+    """
+    Ensures the database URL uses an async driver.
+    """
+    if url.startswith("sqlite://"):
+        return url.replace("sqlite://", "sqlite+aiosqlite://")
+    if url.startswith("postgresql://"):
+        return url.replace("postgresql://", "postgresql+asyncpg://")
+    return url
+
+# Get the async-compatible URL
+ASYNC_DATABASE_URL = get_async_database_url(config.DATABASE_URL)
+
+# Configure engine arguments
+connect_args = {}
+if ASYNC_DATABASE_URL.startswith("sqlite"):
+    connect_args["check_same_thread"] = False
+
+# Create the async engine
+engine = create_async_engine(
+    ASYNC_DATABASE_URL,
+    connect_args=connect_args,
+    echo=config.DEBUG,
 )
 
-tbl_subtask = sqlalchemy.Table(
-    "tbl_subtasks",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("user_id", sqlalchemy.ForeignKey("tbl_users.id"), nullable=False),
-    sqlalchemy.Column("task_id", sqlalchemy.ForeignKey("tbl_tasks.id"), nullable=False),
-    sqlalchemy.Column("title", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("description", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("completed", sqlalchemy.Boolean, default=False),
-    sqlalchemy.Column("due_date", sqlalchemy.DateTime, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
+# Create the session factory
+AsyncSessionLocal = async_sessionmaker(
+    bind=engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False,
 )
 
-tbl_tag = sqlalchemy.Table(
-    "tbl_tags",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column(
-        "user_id", sqlalchemy.ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
-    ),
-    sqlalchemy.Column("name", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
-    sqlalchemy.UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),
-)
-
-tbl_task_tags = sqlalchemy.Table(
-    "tbl_task_tags",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column(
-        "task_id", sqlalchemy.ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
-    ),
-    sqlalchemy.Column(
-        "tag_id", sqlalchemy.ForeignKey("tbl_tags.id", ondelete="CASCADE"), nullable=False
-    ),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
-    sqlalchemy.UniqueConstraint("task_id", "tag_id", name="uq_tbl_task_tags_task_tag"),
-)
-
-tbl_user = sqlalchemy.Table(
-    "tbl_users",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column("username", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("email", sqlalchemy.String, unique=True, nullable=False),
-    sqlalchemy.Column("password", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
-    sqlalchemy.Column("confirmed", sqlalchemy.Boolean, server_default="0", nullable=False),
-    sqlalchemy.Column(
-        "confirmation_failed", sqlalchemy.Boolean, server_default="0", nullable=False
-    ),
-)
-
-tbl_audit_log = sqlalchemy.Table(
-    "tbl_audit_logs",
-    metadata,
-    sqlalchemy.Column("id", sqlalchemy.Integer, primary_key=True),
-    sqlalchemy.Column(
-        "user_id", sqlalchemy.ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
-    ),
-    sqlalchemy.Column("action", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("target_type", sqlalchemy.String, nullable=False),
-    sqlalchemy.Column("target_id", sqlalchemy.Integer, nullable=True),
-    sqlalchemy.Column("details", sqlalchemy.String, nullable=True),
-    sqlalchemy.Column("created_at", sqlalchemy.DateTime, server_default=sqlalchemy.func.now()),
-)
-
-connect_args = {"check_same_thread": False} if config.DATABASE_URL.startswith("sqlite") else {}
-engine = sqlalchemy.create_engine(config.DATABASE_URL, connect_args=connect_args)
-
-# metadata.create_all(engine)
-
-database = databases.Database(config.DATABASE_URL, force_rollback=config.DB_FORCE_ROLL_BACK)
+# Base metadata is now managed by individual models inheriting from app.models.base.Base

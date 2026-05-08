@@ -32,7 +32,7 @@ async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_i
     assert len(logs) >= 1
     
     # Find the CREATE TASK log
-    task_log = next((log for log in logs if log["action"] == "CREATE" and log["target_type"] == "TASK"), None)
+    task_log = next((log for log in logs if log["action"] == "create" and log["target_type"] == "TASK"), None)
     assert task_log is not None
     assert task_log["target_id"] == task_id
     assert "Test Task" in task_log["details"]
@@ -48,12 +48,12 @@ async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: s
     
     # Filter by action
     response = await async_client.get(
-        "/api/v1/audit/logs?action=CREATE",
+        "/api/v1/audit/logs?action=create",
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 200
     logs = response.json()
-    assert all(log["action"] == "CREATE" for log in logs)
+    assert all(log["action"] == "create" for log in logs)
     
     # Filter by non-existent action
     response = await async_client.get(

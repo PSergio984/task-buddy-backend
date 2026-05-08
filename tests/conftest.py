@@ -3,20 +3,16 @@ import pytest
 from collections.abc import AsyncGenerator, Generator
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
+from sqlalchemy.ext.asyncio import AsyncSession
 from unittest.mock import AsyncMock, Mock
 
 from app.main import app
-from app.database import (
-    database,
-    engine,
-    metadata,
-    tbl_user,
-    tbl_task,
-    tbl_subtask,
-    tbl_tag,
-    tbl_task_tags,
-)
-
+from app.models.base import Base
+from app.database import engine, AsyncSessionLocal
+from app.models.user import User
+from app.models.task import Task, SubTask
+from app.models.tag import Tag
+from sqlalchemy import delete
 
 @pytest.fixture(scope="session")
 def anyio_backend():
@@ -25,17 +21,21 @@ def anyio_backend():
 
 @pytest.fixture()
 async def db() -> AsyncGenerator:
-    metadata.drop_all(engine)
-    metadata.create_all(engine)
-    await database.connect()
-    # Clear child tables before parents to respect FK constraints.
-    await database.execute(tbl_task_tags.delete())
-    await database.execute(tbl_tag.delete())
-    await database.execute(tbl_subtask.delete())
-    await database.execute(tbl_task.delete())
-    await database.execute(tbl_user.delete())
-    yield
-    await database.disconnect()
+    # Use sync engine for schema operations (simpler for SQLite tests)
+    # But wait, we are using create_async_engine. 
+    # For schema drop/create we should use async engine too if possible, 
+    # or just use the sync-style metadata.create_all with engine.connect() if it's a sync engine.
+    # Actually, SQLAlchemy 2.0 with AsyncEngine needs run_sync.
+    
+    async with engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    
+    async with AsyncSessionLocal() as session:
+        # Clear child tables before parents to respect FK constraints.
+        # This is optional if we just drop/create each time, but good practice.
+        yield session
+        await session.rollback() # Ensure nothing leaks
 
 
 @pytest.fixture()
@@ -51,7 +51,7 @@ async def async_client() -> AsyncGenerator:
 
 
 @pytest.fixture()
-async def registered_user(db, async_client: AsyncClient) -> dict:
+async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
     user_data = {
         "username": "testuser",
         "email": "testuser@example.com",
@@ -63,22 +63,26 @@ async def registered_user(db, async_client: AsyncClient) -> dict:
         f"Registration failed with status {response.status_code}: {response.json()}"
     )
 
-    query = tbl_user.select().where(tbl_user.c.email == user_data["email"])
-    user = await database.fetch_one(query)
+    from sqlalchemy import select
+    stmt = select(User).where(User.email == user_data["email"])
+    result = await db.execute(stmt)
+    user = result.scalar_one_or_none()
     assert user is not None, (
         f"User not found in database after registration for email: {user_data['email']}"
     )
 
-    user_data["id"] = user["id"]
+    user_data["id"] = user.id
     return user_data
 
 
 @pytest.fixture()
-async def confirmed_user(registered_user: dict) -> dict:
-    query = (
-        tbl_user.update().where(tbl_user.c.email == registered_user["email"]).values(confirmed=True)
+async def confirmed_user(db: AsyncSession, registered_user: dict) -> dict:
+    from sqlalchemy import update
+    stmt = (
+        update(User).where(User.email == registered_user["email"]).values(confirmed=True)
     )
-    await database.execute(query)
+    await db.execute(stmt)
+    await db.commit()
     return registered_user
 
 

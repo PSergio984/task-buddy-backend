@@ -21,7 +21,7 @@ async def get_token_header(x_token: Annotated[str, Header()]):
         raise HTTPException(status_code=400, detail="X-Token header invalid")
 
 
-async def get_query_token(token: str = None):
+async def get_query_token(token: str | None = None):
     """
     Validate query token parameter.
     
@@ -32,3 +32,16 @@ async def get_query_token(token: str = None):
         return None
     # Add your token validation logic here
     return token
+
+
+from collections.abc import AsyncGenerator
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.database import AsyncSessionLocal
+
+async def get_db() -> AsyncGenerator[AsyncSession, None]:
+    """
+    Dependency to provide an AsyncSession to routers.
+    Ensures the session is closed after the request is finished.
+    """
+    async with AsyncSessionLocal() as session:
+        yield session

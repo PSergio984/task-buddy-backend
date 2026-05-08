@@ -1,14 +1,30 @@
-from pydantic import BaseModel, ConfigDict
 from datetime import datetime
+from typing import List
+from sqlalchemy import String, ForeignKey, func, UniqueConstraint, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
+
+from app.models.base import Base
 
 
-class TagCreate(BaseModel):
-    name: str
+class Tag(Base):
+    __tablename__ = "tbl_tags"
 
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-class TagResponse(TagCreate):
-    model_config = ConfigDict(from_attributes=True)
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="tags")
+    tasks: Mapped[List["Task"]] = relationship(
+        secondary="tbl_task_tags", back_populates="tags"
+    )
 
-    id: int
-    user_id: int
-    created_at: datetime
+    __table_args__ = (
+        UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),
+    )
+
+    def __repr__(self) -> str:
+        return f"<Tag(id={self.id}, name={self.name})>"

@@ -41,7 +41,24 @@
 | Repository/CRUD | `app/crud/` | To centralize data access logic and keep routers clean. |
 | Lifespan Context Manager | `app/main.py` | To manage database engine connection/disconnection during app startup/shutdown. |
 
-### 5) Known Architectural Risks
+### 5) Graphify Insights (Core Abstractions)
+
+According to `graphify-out/GRAPH_REPORT.md`, the following are the most connected "God Nodes" and key communities in the backend:
+
+**God Nodes (Core Abstractions):**
+1. `Task Buddy Backend` (System Root)
+2. `FastAPI Framework` (Core Infrastructure)
+3. `send_confirmation_email()` (Critical Communication Path)
+4. `log_action()` (Cross-cutting Audit Logging)
+5. `get_task()` (Primary Domain Query)
+
+**Key Communities:**
+- **Database Migrations**: High volume of nodes (42), weakly interconnected (Cohesion: 0.07).
+- **User Authentication**: Core security logic, includes JWT and OAuth2 integration.
+- **SQLAlchemy Models**: Pydantic-to-ORM mapping and data definitions.
+- **Audit Logging System**: Centralized tracking of user actions.
+
+### 6) Known Architectural Risks
 
 - **Database Connection Pooling**: Potential bottlenecks if async connections are not managed correctly under high load.
 - **Circular Dependencies**: Risks when importing between models, schemas, and routers if not carefully structured.

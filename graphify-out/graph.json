@@ -9,7 +9,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "project_structure_py",
-      "community": 20,
+      "community": 26,
       "norm_label": "project_structure.py"
     },
     {
@@ -18,7 +18,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "task_buddy_backend_project_structure_rationale_1",
-      "community": 20,
+      "community": 26,
       "norm_label": "project structure overview and getting started guide.  this file provides a qu"
     },
     {
@@ -27,7 +27,7 @@
       "source_file": "seed.py",
       "source_location": "L1",
       "id": "seed_py",
-      "community": 15,
+      "community": 21,
       "norm_label": "seed.py"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "seed.py",
       "source_location": "L7",
       "id": "task_buddy_backend_seed_seed_data",
-      "community": 15,
+      "community": 21,
       "norm_label": "seed_data()"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "api/__init__.py",
       "source_location": "L1",
       "id": "api_init_py",
-      "community": 29,
+      "community": 35,
       "norm_label": "__init__.py"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "app/config.py",
       "source_location": "L1",
       "id": "app_config_py",
-      "community": 13,
+      "community": 18,
       "norm_label": "config.py"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "app/config.py",
       "source_location": "L8",
       "id": "app_config_baseconfig",
-      "community": 13,
+      "community": 18,
       "norm_label": "baseconfig"
     },
     {
@@ -189,7 +189,7 @@
       "source_file": "",
       "source_location": "",
       "id": "basesettings",
-      "community": 13,
+      "community": 18,
       "norm_label": "basesettings"
     },
     {
@@ -198,7 +198,7 @@
       "source_file": "app/config.py",
       "source_location": "L19",
       "id": "app_config_globalconfig",
-      "community": 13,
+      "community": 18,
       "norm_label": "globalconfig"
     },
     {
@@ -207,7 +207,7 @@
       "source_file": "app/config.py",
       "source_location": "L38",
       "id": "app_config_devconfig",
-      "community": 13,
+      "community": 18,
       "norm_label": "devconfig"
     },
     {
@@ -216,7 +216,7 @@
       "source_file": "app/config.py",
       "source_location": "L42",
       "id": "app_config_prodconfig",
-      "community": 13,
+      "community": 18,
       "norm_label": "prodconfig"
     },
     {
@@ -225,7 +225,7 @@
       "source_file": "app/config.py",
       "source_location": "L46",
       "id": "app_config_ensure_secret_key",
-      "community": 13,
+      "community": 18,
       "norm_label": "ensure_secret_key()"
     },
     {
@@ -234,7 +234,7 @@
       "source_file": "app/config.py",
       "source_location": "L55",
       "id": "app_config_testconfig",
-      "community": 13,
+      "community": 18,
       "norm_label": "testconfig"
     },
     {
@@ -243,7 +243,7 @@
       "source_file": "app/config.py",
       "source_location": "L64",
       "id": "app_config_get_config",
-      "community": 13,
+      "community": 18,
       "norm_label": "get_config()"
     },
     {
@@ -252,7 +252,7 @@
       "source_file": "app/config.py",
       "source_location": "L47",
       "id": "app_config_rationale_47",
-      "community": 30,
+      "community": 36,
       "norm_label": "fail-fast in production when secret_key is not set."
     },
     {
@@ -324,7 +324,7 @@
       "source_file": "app/limiter.py",
       "source_location": "L1",
       "id": "app_limiter_py",
-      "community": 31,
+      "community": 37,
       "norm_label": "limiter.py"
     },
     {
@@ -468,7 +468,7 @@
       "source_file": "app/security.py",
       "source_location": "L44",
       "id": "app_security_reset_token_expire_time",
-      "community": 11,
+      "community": 0,
       "norm_label": "reset_token_expire_time()"
     },
     {
@@ -504,7 +504,7 @@
       "source_file": "app/security.py",
       "source_location": "L76",
       "id": "app_security_create_reset_token",
-      "community": 11,
+      "community": 0,
       "norm_label": "create_reset_token()"
     },
     {
@@ -711,7 +711,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_py",
-      "community": 21,
+      "community": 27,
       "norm_label": "__init__.py"
     },
     {
@@ -720,7 +720,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_rationale_1",
-      "community": 21,
+      "community": 27,
       "norm_label": "task buddy backend - fastapi application main package initialization file."
     },
     {
@@ -765,7 +765,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "app_api_init_py",
-      "community": 22,
+      "community": 28,
       "norm_label": "__init__.py"
     },
     {
@@ -774,7 +774,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "api_init_rationale_1",
-      "community": 22,
+      "community": 28,
       "norm_label": "api package - contains all api routes and related modules."
     },
     {
@@ -1080,7 +1080,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L222",
       "id": "routers_user_forgot_password",
-      "community": 11,
+      "community": 0,
       "norm_label": "forgot_password()"
     },
     {
@@ -1152,7 +1152,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L225",
       "id": "routers_user_rationale_225",
-      "community": 11,
+      "community": 0,
       "norm_label": "initiate password reset flow by sending an email with a reset token."
     },
     {
@@ -1179,7 +1179,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "app_api_routers_init_py",
-      "community": 23,
+      "community": 29,
       "norm_label": "__init__.py"
     },
     {
@@ -1188,7 +1188,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "routers_init_rationale_1",
-      "community": 23,
+      "community": 29,
       "norm_label": "api routers package - contains all endpoint routers."
     },
     {
@@ -1197,7 +1197,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "app_crud_init_py",
-      "community": 24,
+      "community": 30,
       "norm_label": "__init__.py"
     },
     {
@@ -1206,7 +1206,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "crud_init_rationale_1",
-      "community": 24,
+      "community": 30,
       "norm_label": "crud operations - database interaction functions."
     },
     {
@@ -1278,7 +1278,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "app_internal_init_py",
-      "community": 25,
+      "community": 31,
       "norm_label": "__init__.py"
     },
     {
@@ -1287,7 +1287,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "internal_init_rationale_1",
-      "community": 25,
+      "community": 31,
       "norm_label": "internal modules - internal-only functionality."
     },
     {
@@ -1539,7 +1539,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "app_models_init_py",
-      "community": 26,
+      "community": 32,
       "norm_label": "__init__.py"
     },
     {
@@ -1548,7 +1548,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "models_init_rationale_1",
-      "community": 26,
+      "community": 32,
       "norm_label": "database models - sqlalchemy orm models."
     },
     {
@@ -1557,7 +1557,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "app_schemas_init_py",
-      "community": 27,
+      "community": 33,
       "norm_label": "__init__.py"
     },
     {
@@ -1566,7 +1566,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "schemas_init_rationale_1",
-      "community": 27,
+      "community": 33,
       "norm_label": "pydantic schemas - data validation models for request/response."
     },
     {
@@ -1575,7 +1575,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L1",
       "id": "tests_conftest_py",
-      "community": 12,
+      "community": 14,
       "norm_label": "conftest.py"
     },
     {
@@ -1584,7 +1584,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L22",
       "id": "tests_conftest_anyio_backend",
-      "community": 12,
+      "community": 14,
       "norm_label": "anyio_backend()"
     },
     {
@@ -1593,7 +1593,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L27",
       "id": "tests_conftest_db",
-      "community": 12,
+      "community": 14,
       "norm_label": "db()"
     },
     {
@@ -1602,7 +1602,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L42",
       "id": "tests_conftest_client",
-      "community": 12,
+      "community": 14,
       "norm_label": "client()"
     },
     {
@@ -1611,7 +1611,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L47",
       "id": "tests_conftest_async_client",
-      "community": 12,
+      "community": 14,
       "norm_label": "async_client()"
     },
     {
@@ -1620,7 +1620,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L54",
       "id": "tests_conftest_registered_user",
-      "community": 12,
+      "community": 14,
       "norm_label": "registered_user()"
     },
     {
@@ -1629,7 +1629,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L77",
       "id": "tests_conftest_confirmed_user",
-      "community": 12,
+      "community": 14,
       "norm_label": "confirmed_user()"
     },
     {
@@ -1638,7 +1638,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L86",
       "id": "tests_conftest_logged_in_token",
-      "community": 12,
+      "community": 14,
       "norm_label": "logged_in_token()"
     },
     {
@@ -1647,7 +1647,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L104",
       "id": "tests_conftest_mock_httpx_client",
-      "community": 12,
+      "community": 14,
       "norm_label": "mock_httpx_client()"
     },
     {
@@ -1656,7 +1656,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L105",
       "id": "tests_conftest_rationale_105",
-      "community": 12,
+      "community": 14,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests."
     },
     {
@@ -1665,7 +1665,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L1",
       "id": "tests_test_migrations_py",
-      "community": 19,
+      "community": 25,
       "norm_label": "test_migrations.py"
     },
     {
@@ -1674,7 +1674,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L5",
       "id": "tests_test_migrations_test_alembic_migrations",
-      "community": 19,
+      "community": 25,
       "norm_label": "test_alembic_migrations()"
     },
     {
@@ -1683,7 +1683,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
       "id": "tests_test_migrations_rationale_6",
-      "community": 19,
+      "community": 25,
       "norm_label": "test that alembic migration can run against a clean database successfully."
     },
     {
@@ -1872,7 +1872,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L1",
       "id": "tests_test_security_hardening_py",
-      "community": 16,
+      "community": 22,
       "norm_label": "test_security_hardening.py"
     },
     {
@@ -1881,7 +1881,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L6",
       "id": "tests_test_security_hardening_test_security_headers",
-      "community": 16,
+      "community": 22,
       "norm_label": "test_security_headers()"
     },
     {
@@ -1890,7 +1890,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L13",
       "id": "tests_test_security_hardening_test_cors_allowed_origin",
-      "community": 16,
+      "community": 22,
       "norm_label": "test_cors_allowed_origin()"
     },
     {
@@ -1899,7 +1899,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L20",
       "id": "tests_test_security_hardening_test_cors_disallowed_origin",
-      "community": 16,
+      "community": 22,
       "norm_label": "test_cors_disallowed_origin()"
     },
     {
@@ -1908,7 +1908,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L26",
       "id": "tests_test_security_hardening_test_rate_limiting_register",
-      "community": 16,
+      "community": 22,
       "norm_label": "test_rate_limiting_register()"
     },
     {
@@ -1917,7 +1917,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L1",
       "id": "tests_test_seed_py",
-      "community": 15,
+      "community": 21,
       "norm_label": "test_seed.py"
     },
     {
@@ -1926,7 +1926,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L6",
       "id": "tests_test_seed_test_seed_data",
-      "community": 15,
+      "community": 21,
       "norm_label": "test_seed_data()"
     },
     {
@@ -1935,7 +1935,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L7",
       "id": "tests_test_seed_rationale_7",
-      "community": 15,
+      "community": 21,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r"
     },
     {
@@ -1980,7 +1980,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_py",
-      "community": 28,
+      "community": 34,
       "norm_label": "__init__.py"
     },
     {
@@ -1989,7 +1989,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_rationale_1",
-      "community": 28,
+      "community": 34,
       "norm_label": "tests package - contains all application tests."
     },
     {
@@ -1998,7 +1998,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L1",
       "id": "tests_routers_test_audit_py",
-      "community": 17,
+      "community": 23,
       "norm_label": "test_audit.py"
     },
     {
@@ -2007,7 +2007,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L5",
       "id": "routers_test_audit_test_get_audit_logs_empty",
-      "community": 17,
+      "community": 23,
       "norm_label": "test_get_audit_logs_empty()"
     },
     {
@@ -2016,7 +2016,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L14",
       "id": "routers_test_audit_test_audit_log_after_task_creation",
-      "community": 17,
+      "community": 23,
       "norm_label": "test_audit_log_after_task_creation()"
     },
     {
@@ -2025,7 +2025,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L41",
       "id": "routers_test_audit_test_audit_log_filtering",
-      "community": 17,
+      "community": 23,
       "norm_label": "test_audit_log_filtering()"
     },
     {
@@ -2034,7 +2034,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L1",
       "id": "tests_routers_test_password_reset_py",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_password_reset.py"
     },
     {
@@ -2043,7 +2043,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L7",
       "id": "routers_test_password_reset_test_forgot_password_success",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_forgot_password_success()"
     },
     {
@@ -2052,7 +2052,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L24",
       "id": "routers_test_password_reset_test_forgot_password_user_not_found",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_forgot_password_user_not_found()"
     },
     {
@@ -2061,7 +2061,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L37",
       "id": "routers_test_password_reset_test_reset_password_success",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_reset_password_success()"
     },
     {
@@ -2070,7 +2070,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L64",
       "id": "routers_test_password_reset_test_reset_password_invalid_token",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_reset_password_invalid_token()"
     },
     {
@@ -2079,7 +2079,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L75",
       "id": "routers_test_password_reset_test_reset_password_expired_token",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_reset_password_expired_token()"
     },
     {
@@ -2088,7 +2088,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L90",
       "id": "routers_test_password_reset_test_reset_password_too_short",
-      "community": 11,
+      "community": 0,
       "norm_label": "test_reset_password_too_short()"
     },
     {
@@ -2097,7 +2097,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L1",
       "id": "tests_routers_test_stats_py",
-      "community": 18,
+      "community": 24,
       "norm_label": "test_stats.py"
     },
     {
@@ -2106,7 +2106,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L5",
       "id": "routers_test_stats_test_get_stats_overview_empty",
-      "community": 18,
+      "community": 24,
       "norm_label": "test_get_stats_overview_empty()"
     },
     {
@@ -2115,7 +2115,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L17",
       "id": "routers_test_stats_test_stats_with_data",
-      "community": 18,
+      "community": 24,
       "norm_label": "test_stats_with_data()"
     },
     {
@@ -2124,7 +2124,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L43",
       "id": "routers_test_stats_test_tag_distribution",
-      "community": 18,
+      "community": 24,
       "norm_label": "test_tag_distribution()"
     },
     {
@@ -2538,7 +2538,7 @@
       "source_file": "tests/routers/__init__.py",
       "source_location": "L1",
       "id": "tests_routers_init_py",
-      "community": 32,
+      "community": 38,
       "norm_label": "__init__.py"
     },
     {
@@ -2547,7 +2547,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "id": "claude_md",
-      "community": 14,
+      "community": 20,
       "norm_label": "claude.md"
     },
     {
@@ -2556,7 +2556,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "id": "task_buddy_backend_claude_claude_md",
-      "community": 14,
+      "community": 20,
       "norm_label": "claude.md"
     },
     {
@@ -2565,7 +2565,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L5",
       "id": "task_buddy_backend_claude_common_development_commands",
-      "community": 14,
+      "community": 20,
       "norm_label": "common development commands"
     },
     {
@@ -2574,7 +2574,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L23",
       "id": "task_buddy_backend_claude_high_level_architecture",
-      "community": 14,
+      "community": 20,
       "norm_label": "high\u2010level architecture"
     },
     {
@@ -2583,7 +2583,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L40",
       "id": "task_buddy_backend_claude_environment_variables",
-      "community": 14,
+      "community": 20,
       "norm_label": "environment variables"
     },
     {
@@ -2592,7 +2592,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L43",
       "id": "task_buddy_backend_claude_codeblock_1",
-      "community": 14,
+      "community": 20,
       "norm_label": "code:block1 (database_url=postgresql://user:password@localhost/task_buddy)"
     },
     {
@@ -3019,11 +3019,659 @@
       "norm_label": "\ud83d\udd17 useful resources"
     },
     {
+      "label": "ARCHITECTURE.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L1",
+      "id": "docs_codebase_architecture_md",
+      "community": 11,
+      "norm_label": "architecture.md"
+    },
+    {
+      "label": "Architecture",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L1",
+      "id": "codebase_architecture_architecture",
+      "community": 11,
+      "norm_label": "architecture"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L3",
+      "id": "codebase_architecture_core_sections_required",
+      "community": 11,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Architectural Style",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L5",
+      "id": "codebase_architecture_1_architectural_style",
+      "community": 11,
+      "norm_label": "1) architectural style"
+    },
+    {
+      "label": "2) System Flow",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L14",
+      "id": "codebase_architecture_2_system_flow",
+      "community": 11,
+      "norm_label": "2) system flow"
+    },
+    {
+      "label": "code:text ([HTTP Request] -> [app/main.py] -> [app/api/routers/*] -> [a)",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L16",
+      "id": "codebase_architecture_codeblock_1",
+      "community": 11,
+      "norm_label": "code:text ([http request] -> [app/main.py] -> [app/api/routers/*] -> [a)"
+    },
+    {
+      "label": "3) Layer/Module Responsibilities",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L26",
+      "id": "codebase_architecture_3_layer_module_responsibilities",
+      "community": 11,
+      "norm_label": "3) layer/module responsibilities"
+    },
+    {
+      "label": "4) Reused Patterns",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L36",
+      "id": "codebase_architecture_4_reused_patterns",
+      "community": 11,
+      "norm_label": "4) reused patterns"
+    },
+    {
+      "label": "5) Known Architectural Risks",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L44",
+      "id": "codebase_architecture_5_known_architectural_risks",
+      "community": 11,
+      "norm_label": "5) known architectural risks"
+    },
+    {
+      "label": "6) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L49",
+      "id": "codebase_architecture_6_evidence",
+      "community": 11,
+      "norm_label": "6) evidence"
+    },
+    {
+      "label": "Extended Sections (Optional)",
+      "file_type": "document",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L57",
+      "id": "codebase_architecture_extended_sections_optional",
+      "community": 11,
+      "norm_label": "extended sections (optional)"
+    },
+    {
+      "label": "CONCERNS.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L1",
+      "id": "docs_codebase_concerns_md",
+      "community": 15,
+      "norm_label": "concerns.md"
+    },
+    {
+      "label": "Codebase Concerns",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L1",
+      "id": "codebase_concerns_codebase_concerns",
+      "community": 15,
+      "norm_label": "codebase concerns"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L3",
+      "id": "codebase_concerns_core_sections_required",
+      "community": 15,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Top Risks (Prioritized)",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L5",
+      "id": "codebase_concerns_1_top_risks_prioritized",
+      "community": 15,
+      "norm_label": "1) top risks (prioritized)"
+    },
+    {
+      "label": "2) Technical Debt",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L13",
+      "id": "codebase_concerns_2_technical_debt",
+      "community": 15,
+      "norm_label": "2) technical debt"
+    },
+    {
+      "label": "3) Security Concerns",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L22",
+      "id": "codebase_concerns_3_security_concerns",
+      "community": 15,
+      "norm_label": "3) security concerns"
+    },
+    {
+      "label": "4) Performance and Scaling Concerns",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L29",
+      "id": "codebase_concerns_4_performance_and_scaling_concerns",
+      "community": 15,
+      "norm_label": "4) performance and scaling concerns"
+    },
+    {
+      "label": "5) Fragile/High-Churn Areas",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L35",
+      "id": "codebase_concerns_5_fragile_high_churn_areas",
+      "community": 15,
+      "norm_label": "5) fragile/high-churn areas"
+    },
+    {
+      "label": "6) `[ASK USER]` Questions",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L41",
+      "id": "codebase_concerns_6_ask_user_questions",
+      "community": 15,
+      "norm_label": "6) `[ask user]` questions"
+    },
+    {
+      "label": "7) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L48",
+      "id": "codebase_concerns_7_evidence",
+      "community": 15,
+      "norm_label": "7) evidence"
+    },
+    {
+      "label": "CONVENTIONS.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L1",
+      "id": "docs_codebase_conventions_md",
+      "community": 12,
+      "norm_label": "conventions.md"
+    },
+    {
+      "label": "Coding Conventions",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L1",
+      "id": "codebase_conventions_coding_conventions",
+      "community": 12,
+      "norm_label": "coding conventions"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L3",
+      "id": "codebase_conventions_core_sections_required",
+      "community": 12,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Naming Rules",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L5",
+      "id": "codebase_conventions_1_naming_rules",
+      "community": 12,
+      "norm_label": "1) naming rules"
+    },
+    {
+      "label": "2) Formatting and Linting",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L14",
+      "id": "codebase_conventions_2_formatting_and_linting",
+      "community": 12,
+      "norm_label": "2) formatting and linting"
+    },
+    {
+      "label": "code:bash (black app tests)",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L20",
+      "id": "codebase_conventions_codeblock_1",
+      "community": 12,
+      "norm_label": "code:bash (black app tests)"
+    },
+    {
+      "label": "3) Import and Module Conventions",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L27",
+      "id": "codebase_conventions_3_import_and_module_conventions",
+      "community": 12,
+      "norm_label": "3) import and module conventions"
+    },
+    {
+      "label": "4) Error and Logging Conventions",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L33",
+      "id": "codebase_conventions_4_error_and_logging_conventions",
+      "community": 12,
+      "norm_label": "4) error and logging conventions"
+    },
+    {
+      "label": "5) Testing Conventions",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L39",
+      "id": "codebase_conventions_5_testing_conventions",
+      "community": 12,
+      "norm_label": "5) testing conventions"
+    },
+    {
+      "label": "6) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L45",
+      "id": "codebase_conventions_6_evidence",
+      "community": 12,
+      "norm_label": "6) evidence"
+    },
+    {
+      "label": "Extended Sections (Optional)",
+      "file_type": "document",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L52",
+      "id": "codebase_conventions_extended_sections_optional",
+      "community": 12,
+      "norm_label": "extended sections (optional)"
+    },
+    {
+      "label": "INTEGRATIONS.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L1",
+      "id": "docs_codebase_integrations_md",
+      "community": 16,
+      "norm_label": "integrations.md"
+    },
+    {
+      "label": "External Integrations",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L1",
+      "id": "codebase_integrations_external_integrations",
+      "community": 16,
+      "norm_label": "external integrations"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L3",
+      "id": "codebase_integrations_core_sections_required",
+      "community": 16,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Integration Inventory",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L5",
+      "id": "codebase_integrations_1_integration_inventory",
+      "community": 16,
+      "norm_label": "1) integration inventory"
+    },
+    {
+      "label": "2) Data Stores",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L13",
+      "id": "codebase_integrations_2_data_stores",
+      "community": 16,
+      "norm_label": "2) data stores"
+    },
+    {
+      "label": "3) Secrets and Credentials Handling",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L20",
+      "id": "codebase_integrations_3_secrets_and_credentials_handling",
+      "community": 16,
+      "norm_label": "3) secrets and credentials handling"
+    },
+    {
+      "label": "4) Reliability and Failure Behavior",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L26",
+      "id": "codebase_integrations_4_reliability_and_failure_behavior",
+      "community": 16,
+      "norm_label": "4) reliability and failure behavior"
+    },
+    {
+      "label": "5) Observability for Integrations",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L32",
+      "id": "codebase_integrations_5_observability_for_integrations",
+      "community": 16,
+      "norm_label": "5) observability for integrations"
+    },
+    {
+      "label": "6) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L38",
+      "id": "codebase_integrations_6_evidence",
+      "community": 16,
+      "norm_label": "6) evidence"
+    },
+    {
+      "label": "Extended Sections (Optional)",
+      "file_type": "document",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L45",
+      "id": "codebase_integrations_extended_sections_optional",
+      "community": 16,
+      "norm_label": "extended sections (optional)"
+    },
+    {
+      "label": "STACK.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L1",
+      "id": "docs_codebase_stack_md",
+      "community": 17,
+      "norm_label": "stack.md"
+    },
+    {
+      "label": "Technology Stack",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L1",
+      "id": "codebase_stack_technology_stack",
+      "community": 17,
+      "norm_label": "technology stack"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L3",
+      "id": "codebase_stack_core_sections_required",
+      "community": 17,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Runtime Summary",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L5",
+      "id": "codebase_stack_1_runtime_summary",
+      "community": 17,
+      "norm_label": "1) runtime summary"
+    },
+    {
+      "label": "2) Production Frameworks and Dependencies",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L14",
+      "id": "codebase_stack_2_production_frameworks_and_dependencies",
+      "community": 17,
+      "norm_label": "2) production frameworks and dependencies"
+    },
+    {
+      "label": "3) Development Toolchain",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L31",
+      "id": "codebase_stack_3_development_toolchain",
+      "community": 17,
+      "norm_label": "3) development toolchain"
+    },
+    {
+      "label": "4) Key Commands",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L41",
+      "id": "codebase_stack_4_key_commands",
+      "community": 17,
+      "norm_label": "4) key commands"
+    },
+    {
+      "label": "code:bash (pip install -e \".[dev]\")",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L43",
+      "id": "codebase_stack_codeblock_1",
+      "community": 17,
+      "norm_label": "code:bash (pip install -e \".[dev]\")"
+    },
+    {
+      "label": "5) Environment and Config",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L52",
+      "id": "codebase_stack_5_environment_and_config",
+      "community": 17,
+      "norm_label": "5) environment and config"
+    },
+    {
+      "label": "6) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L58",
+      "id": "codebase_stack_6_evidence",
+      "community": 17,
+      "norm_label": "6) evidence"
+    },
+    {
+      "label": "STRUCTURE.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L1",
+      "id": "docs_codebase_structure_md",
+      "community": 19,
+      "norm_label": "structure.md"
+    },
+    {
+      "label": "Codebase Structure",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L1",
+      "id": "codebase_structure_codebase_structure",
+      "community": 19,
+      "norm_label": "codebase structure"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L3",
+      "id": "codebase_structure_core_sections_required",
+      "community": 19,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Top-Level Map",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L5",
+      "id": "codebase_structure_1_top_level_map",
+      "community": 19,
+      "norm_label": "1) top-level map"
+    },
+    {
+      "label": "2) Entry Points",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L19",
+      "id": "codebase_structure_2_entry_points",
+      "community": 19,
+      "norm_label": "2) entry points"
+    },
+    {
+      "label": "3) Module Boundaries",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L25",
+      "id": "codebase_structure_3_module_boundaries",
+      "community": 19,
+      "norm_label": "3) module boundaries"
+    },
+    {
+      "label": "4) Naming and Organization Rules",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L35",
+      "id": "codebase_structure_4_naming_and_organization_rules",
+      "community": 19,
+      "norm_label": "4) naming and organization rules"
+    },
+    {
+      "label": "5) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L41",
+      "id": "codebase_structure_5_evidence",
+      "community": 19,
+      "norm_label": "5) evidence"
+    },
+    {
+      "label": "Extended Sections (Optional)",
+      "file_type": "document",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L48",
+      "id": "codebase_structure_extended_sections_optional",
+      "community": 19,
+      "norm_label": "extended sections (optional)"
+    },
+    {
+      "label": "TESTING.md",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L1",
+      "id": "docs_codebase_testing_md",
+      "community": 13,
+      "norm_label": "testing.md"
+    },
+    {
+      "label": "Testing Patterns",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L1",
+      "id": "codebase_testing_testing_patterns",
+      "community": 13,
+      "norm_label": "testing patterns"
+    },
+    {
+      "label": "Core Sections (Required)",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L3",
+      "id": "codebase_testing_core_sections_required",
+      "community": 13,
+      "norm_label": "core sections (required)"
+    },
+    {
+      "label": "1) Test Stack and Commands",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L5",
+      "id": "codebase_testing_1_test_stack_and_commands",
+      "community": 13,
+      "norm_label": "1) test stack and commands"
+    },
+    {
+      "label": "code:bash (pytest)",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L11",
+      "id": "codebase_testing_codeblock_1",
+      "community": 13,
+      "norm_label": "code:bash (pytest)"
+    },
+    {
+      "label": "2) Test Layout",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L17",
+      "id": "codebase_testing_2_test_layout",
+      "community": 13,
+      "norm_label": "2) test layout"
+    },
+    {
+      "label": "3) Test Scope Matrix",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L23",
+      "id": "codebase_testing_3_test_scope_matrix",
+      "community": 13,
+      "norm_label": "3) test scope matrix"
+    },
+    {
+      "label": "4) Mocking and Isolation Strategy",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L31",
+      "id": "codebase_testing_4_mocking_and_isolation_strategy",
+      "community": 13,
+      "norm_label": "4) mocking and isolation strategy"
+    },
+    {
+      "label": "5) Coverage and Quality Signals",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L37",
+      "id": "codebase_testing_5_coverage_and_quality_signals",
+      "community": 13,
+      "norm_label": "5) coverage and quality signals"
+    },
+    {
+      "label": "6) Evidence",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L43",
+      "id": "codebase_testing_6_evidence",
+      "community": 13,
+      "norm_label": "6) evidence"
+    },
+    {
+      "label": "Extended Sections (Optional)",
+      "file_type": "document",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L49",
+      "id": "codebase_testing_extended_sections_optional",
+      "community": 13,
+      "norm_label": "extended sections (optional)"
+    },
+    {
       "label": "Fail-fast in production when SECRET_KEY is not set.",
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L44",
-      "community": 33,
+      "community": 39,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_44"
     },
@@ -3135,7 +3783,7 @@
       "label": "Docker Containerization",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 34,
+      "community": 40,
       "norm_label": "docker containerization",
       "id": "docker"
     },
@@ -3653,9 +4301,9 @@
       "source_file": "app/main.py",
       "source_location": "L80",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_main_py",
-      "target": "app_main_add_security_headers",
-      "confidence_score": 1.0
+      "target": "app_main_add_security_headers"
     },
     {
       "relation": "imports_from",
@@ -3704,9 +4352,9 @@
       "source_file": "app/security.py",
       "source_location": "L44",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_reset_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_reset_token_expire_time"
     },
     {
       "relation": "contains",
@@ -3744,9 +4392,9 @@
       "source_file": "app/security.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_create_reset_token",
-      "confidence_score": 1.0
+      "target": "app_security_create_reset_token"
     },
     {
       "relation": "contains",
@@ -3784,9 +4432,9 @@
       "source_file": "app/security.py",
       "source_location": "L103",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_get_user_by_id",
-      "confidence_score": 1.0
+      "target": "app_security_get_user_by_id"
     },
     {
       "relation": "contains",
@@ -3880,9 +4528,9 @@
       "source_file": "app/security.py",
       "source_location": "L79",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_reset_token",
-      "target": "app_security_reset_token_expire_time",
-      "confidence_score": 1.0
+      "target": "app_security_reset_token_expire_time"
     },
     {
       "relation": "calls",
@@ -3913,9 +4561,9 @@
       "source_file": "app/security.py",
       "source_location": "L82",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_create_reset_token",
-      "target": "app_security_get_secret_key",
-      "confidence_score": 1.0
+      "target": "app_security_get_secret_key"
     },
     {
       "relation": "calls",
@@ -4089,9 +4737,9 @@
       "source_file": "app/security.py",
       "source_location": "L153",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_current_user",
-      "target": "app_security_get_user_by_id",
-      "confidence_score": 1.0
+      "target": "app_security_get_user_by_id"
     },
     {
       "relation": "calls",
@@ -4213,9 +4861,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L168",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_py",
-      "target": "app_tasks_send_password_reset_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_password_reset_email"
     },
     {
       "relation": "inherits",
@@ -4267,9 +4915,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L193",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_password_reset_email",
-      "target": "app_tasks_apiresponseerror",
-      "confidence_score": 1.0
+      "target": "app_tasks_apiresponseerror"
     },
     {
       "relation": "calls",
@@ -4300,9 +4948,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L191",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_password_reset_email",
-      "target": "exception",
-      "confidence_score": 1.0
+      "target": "exception"
     },
     {
       "relation": "calls",
@@ -4343,9 +4991,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L189",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_send_password_reset_email",
-      "target": "app_tasks_send_brevo_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_brevo_email"
     },
     {
       "relation": "calls",
@@ -4364,9 +5012,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L89",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_89",
-      "target": "app_tasks_get_confirmation_content",
-      "confidence_score": 1.0
+      "target": "app_tasks_get_confirmation_content"
     },
     {
       "relation": "rationale_for",
@@ -4395,9 +5043,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L104",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_104",
-      "target": "app_tasks_record_confirmation_failure",
-      "confidence_score": 1.0
+      "target": "app_tasks_record_confirmation_failure"
     },
     {
       "relation": "rationale_for",
@@ -4415,9 +5063,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L132",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_132",
-      "target": "app_tasks_send_confirmation_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_confirmation_email"
     },
     {
       "relation": "calls",
@@ -4468,9 +5116,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L174",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_174",
-      "target": "app_tasks_send_password_reset_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_password_reset_email"
     },
     {
       "relation": "rationale_for",
@@ -5170,9 +5818,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L222",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_forgot_password",
-      "confidence_score": 1.0
+      "target": "routers_user_forgot_password"
     },
     {
       "relation": "contains",
@@ -5180,9 +5828,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L250",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_reset_password_page",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password_page"
     },
     {
       "relation": "contains",
@@ -5190,9 +5838,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L260",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_user_py",
-      "target": "routers_user_reset_password",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password"
     },
     {
       "relation": "rationale_for",
@@ -5200,9 +5848,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L82",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_82",
-      "target": "routers_user_resend_confirmation",
-      "confidence_score": 1.0
+      "target": "routers_user_resend_confirmation"
     },
     {
       "relation": "rationale_for",
@@ -5220,9 +5868,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L138",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_138",
-      "target": "routers_user_get_my_profile",
-      "confidence_score": 1.0
+      "target": "routers_user_get_my_profile"
     },
     {
       "relation": "rationale_for",
@@ -5240,9 +5888,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L149",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_149",
-      "target": "routers_user_update_username",
-      "confidence_score": 1.0
+      "target": "routers_user_update_username"
     },
     {
       "relation": "rationale_for",
@@ -5260,9 +5908,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L186",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_186",
-      "target": "routers_user_update_password",
-      "confidence_score": 1.0
+      "target": "routers_user_update_password"
     },
     {
       "relation": "rationale_for",
@@ -5280,9 +5928,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L212",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_212",
-      "target": "routers_user_logout",
-      "confidence_score": 1.0
+      "target": "routers_user_logout"
     },
     {
       "relation": "rationale_for",
@@ -5300,9 +5948,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L225",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_225",
-      "target": "routers_user_forgot_password",
-      "confidence_score": 1.0
+      "target": "routers_user_forgot_password"
     },
     {
       "relation": "rationale_for",
@@ -5310,9 +5958,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L251",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_251",
-      "target": "routers_user_reset_password_page",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password_page"
     },
     {
       "relation": "rationale_for",
@@ -5320,9 +5968,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L261",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_261",
-      "target": "routers_user_reset_password",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password"
     },
     {
       "relation": "rationale_for",
@@ -5591,9 +6239,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_forgotpasswordrequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "inherits",
@@ -5601,9 +6249,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "models_user_resetpasswordrequest",
-      "target": "basemodel",
-      "confidence_score": 1.0
+      "target": "basemodel"
     },
     {
       "relation": "contains",
@@ -5811,9 +6459,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L28",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_forgotpasswordrequest",
-      "confidence_score": 1.0
+      "target": "models_user_forgotpasswordrequest"
     },
     {
       "relation": "contains",
@@ -5821,9 +6469,9 @@
       "source_file": "app/models/user.py",
       "source_location": "L32",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_models_user_py",
-      "target": "models_user_resetpasswordrequest",
-      "confidence_score": 1.0
+      "target": "models_user_resetpasswordrequest"
     },
     {
       "relation": "inherits",
@@ -6161,9 +6809,9 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_hardening_py",
-      "target": "tests_test_security_hardening_test_security_headers",
-      "confidence_score": 1.0
+      "target": "tests_test_security_hardening_test_security_headers"
     },
     {
       "relation": "contains",
@@ -6171,9 +6819,9 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L13",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_hardening_py",
-      "target": "tests_test_security_hardening_test_cors_allowed_origin",
-      "confidence_score": 1.0
+      "target": "tests_test_security_hardening_test_cors_allowed_origin"
     },
     {
       "relation": "contains",
@@ -6181,9 +6829,9 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L20",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_hardening_py",
-      "target": "tests_test_security_hardening_test_cors_disallowed_origin",
-      "confidence_score": 1.0
+      "target": "tests_test_security_hardening_test_cors_disallowed_origin"
     },
     {
       "relation": "contains",
@@ -6191,9 +6839,9 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_security_hardening_py",
-      "target": "tests_test_security_hardening_test_rate_limiting_register",
-      "confidence_score": 1.0
+      "target": "tests_test_security_hardening_test_rate_limiting_register"
     },
     {
       "relation": "contains",
@@ -6292,9 +6940,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -6302,9 +6950,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_forgot_password_success",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_forgot_password_success"
     },
     {
       "relation": "contains",
@@ -6312,9 +6960,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L24",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_forgot_password_user_not_found",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_forgot_password_user_not_found"
     },
     {
       "relation": "contains",
@@ -6322,9 +6970,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L37",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_reset_password_success",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_reset_password_success"
     },
     {
       "relation": "contains",
@@ -6332,9 +6980,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L64",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_reset_password_invalid_token",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_reset_password_invalid_token"
     },
     {
       "relation": "contains",
@@ -6342,9 +6990,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L75",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_reset_password_expired_token",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_reset_password_expired_token"
     },
     {
       "relation": "contains",
@@ -6352,9 +7000,9 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L90",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_password_reset_py",
-      "target": "routers_test_password_reset_test_reset_password_too_short",
-      "confidence_score": 1.0
+      "target": "routers_test_password_reset_test_reset_password_too_short"
     },
     {
       "relation": "contains",
@@ -7448,6 +8096,656 @@
       "target": "task_buddy_backend_readme_codeblock_17"
     },
     {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_architecture_md",
+      "target": "codebase_architecture_architecture",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_architecture_architecture",
+      "target": "codebase_architecture_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L57",
+      "weight": 1.0,
+      "source": "codebase_architecture_architecture",
+      "target": "codebase_architecture_extended_sections_optional",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_1_architectural_style",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_2_system_flow",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_3_layer_module_responsibilities",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L36",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_4_reused_patterns",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L44",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_5_known_architectural_risks",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "codebase_architecture_core_sections_required",
+      "target": "codebase_architecture_6_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/ARCHITECTURE.md",
+      "source_location": "L16",
+      "weight": 1.0,
+      "source": "codebase_architecture_2_system_flow",
+      "target": "codebase_architecture_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_concerns_md",
+      "target": "codebase_concerns_codebase_concerns",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_concerns_codebase_concerns",
+      "target": "codebase_concerns_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_1_top_risks_prioritized",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_2_technical_debt",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L22",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_3_security_concerns",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L29",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_4_performance_and_scaling_concerns",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_5_fragile_high_churn_areas",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_6_ask_user_questions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONCERNS.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "codebase_concerns_core_sections_required",
+      "target": "codebase_concerns_7_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_conventions_md",
+      "target": "codebase_conventions_coding_conventions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_conventions_coding_conventions",
+      "target": "codebase_conventions_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "codebase_conventions_coding_conventions",
+      "target": "codebase_conventions_extended_sections_optional",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_1_naming_rules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_2_formatting_and_linting",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L27",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_3_import_and_module_conventions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L33",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_4_error_and_logging_conventions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L39",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_5_testing_conventions",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "codebase_conventions_core_sections_required",
+      "target": "codebase_conventions_6_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/CONVENTIONS.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "codebase_conventions_2_formatting_and_linting",
+      "target": "codebase_conventions_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_integrations_md",
+      "target": "codebase_integrations_external_integrations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_integrations_external_integrations",
+      "target": "codebase_integrations_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L45",
+      "weight": 1.0,
+      "source": "codebase_integrations_external_integrations",
+      "target": "codebase_integrations_extended_sections_optional",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_1_integration_inventory",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_2_data_stores",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_3_secrets_and_credentials_handling",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L26",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_4_reliability_and_failure_behavior",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_5_observability_for_integrations",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/INTEGRATIONS.md",
+      "source_location": "L38",
+      "weight": 1.0,
+      "source": "codebase_integrations_core_sections_required",
+      "target": "codebase_integrations_6_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_stack_md",
+      "target": "codebase_stack_technology_stack",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_stack_technology_stack",
+      "target": "codebase_stack_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_1_runtime_summary",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L14",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_2_production_frameworks_and_dependencies",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_3_development_toolchain",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_4_key_commands",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_5_environment_and_config",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L58",
+      "weight": 1.0,
+      "source": "codebase_stack_core_sections_required",
+      "target": "codebase_stack_6_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STACK.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "codebase_stack_4_key_commands",
+      "target": "codebase_stack_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_structure_md",
+      "target": "codebase_structure_codebase_structure",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_structure_codebase_structure",
+      "target": "codebase_structure_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L48",
+      "weight": 1.0,
+      "source": "codebase_structure_codebase_structure",
+      "target": "codebase_structure_extended_sections_optional",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_structure_core_sections_required",
+      "target": "codebase_structure_1_top_level_map",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L19",
+      "weight": 1.0,
+      "source": "codebase_structure_core_sections_required",
+      "target": "codebase_structure_2_entry_points",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L25",
+      "weight": 1.0,
+      "source": "codebase_structure_core_sections_required",
+      "target": "codebase_structure_3_module_boundaries",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L35",
+      "weight": 1.0,
+      "source": "codebase_structure_core_sections_required",
+      "target": "codebase_structure_4_naming_and_organization_rules",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/STRUCTURE.md",
+      "source_location": "L41",
+      "weight": 1.0,
+      "source": "codebase_structure_core_sections_required",
+      "target": "codebase_structure_5_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "docs_codebase_testing_md",
+      "target": "codebase_testing_testing_patterns",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "codebase_testing_testing_patterns",
+      "target": "codebase_testing_core_sections_required",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L49",
+      "weight": 1.0,
+      "source": "codebase_testing_testing_patterns",
+      "target": "codebase_testing_extended_sections_optional",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L5",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_1_test_stack_and_commands",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L17",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_2_test_layout",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L23",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_3_test_scope_matrix",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L31",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_4_mocking_and_isolation_strategy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L37",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_5_coverage_and_quality_signals",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L43",
+      "weight": 1.0,
+      "source": "codebase_testing_core_sections_required",
+      "target": "codebase_testing_6_evidence",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "docs/codebase/TESTING.md",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "codebase_testing_1_test_stack_and_commands",
+      "target": "codebase_testing_codeblock_1",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "references",
       "confidence": "EXTRACTED",
       "confidence_score": 1.0,
@@ -7489,5 +8787,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "60010039fd80d65bb15d5b868b03b9bfef2161f6"
+  "built_at_commit": "7577c2003278b51d96e2365e6b1277b1b3c6a88f"
 }

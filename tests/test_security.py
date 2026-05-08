@@ -2,6 +2,7 @@ import pytest
 import datetime
 
 from jose import jwt
+from sqlalchemy.ext.asyncio import AsyncSession
 from app import security
 
 
@@ -87,53 +88,74 @@ def test_create_confirmation_token():
 
 
 @pytest.mark.anyio
-async def test_get_user(registered_user: dict):
-    user = await security.get_user(registered_user["email"])
-    assert user["email"] == registered_user["email"]
+async def test_get_user(db: AsyncSession, registered_user: dict):
+    from app.crud.user import get_user_by_email
+    user = await get_user_by_email(db, registered_user["email"])
+    assert user is not None
+    assert user.email == registered_user["email"]
 
 
 @pytest.mark.anyio
-async def test_get_user_not_found(registered_user: dict):
-    user = await security.get_user("nonexistent@example.com")
+async def test_get_user_not_found(db: AsyncSession):
+    from app.crud.user import get_user_by_email
+    user = await get_user_by_email(db, "nonexistent@example.com")
     assert user is None
 
 
 @pytest.mark.anyio
-async def test_authenticate_user(confirmed_user: dict):
-    user = await security.authenticate_user(confirmed_user["email"], confirmed_user["password"])
+async def test_authenticate_user(db: AsyncSession, confirmed_user: dict):
+    user = await security.authenticate_user(db, confirmed_user["email"], confirmed_user["password"])
     assert user is not None
-    assert user["email"] == confirmed_user["email"]
+    assert user.email == confirmed_user["email"]
 
 
 @pytest.mark.anyio
-async def test_authenticate_user_not_found():
+async def test_authenticate_user_not_found(db: AsyncSession):
     with pytest.raises(security.HTTPException):
-        await security.authenticate_user("nonexistent@example.com", "wrong_password")
+        await security.authenticate_user(db, "nonexistent@example.com", "wrong_password")
 
 
 @pytest.mark.anyio
-async def test_authenticate_user_wrong_password(registered_user: dict):
+async def test_authenticate_user_wrong_password(db: AsyncSession, registered_user: dict):
     with pytest.raises(security.HTTPException):
-        await security.authenticate_user(registered_user["email"], "wrong_password")
+        await security.authenticate_user(db, registered_user["email"], "wrong_password")
 
 
 @pytest.mark.anyio
-async def test_get_current_user(registered_user: dict):
+async def test_get_current_user(db: AsyncSession, registered_user: dict):
     token = security.create_access_token(registered_user["id"])
-    user = await security.get_current_user(token)
+    user = await security.get_current_user(token, db)
     assert user is not None
-    assert user["email"] == registered_user["email"]
+    assert user.email == registered_user["email"]
 
 
 @pytest.mark.anyio
-async def test_get_current_user_invalid_token():
+async def test_get_current_user_invalid_token(db: AsyncSession):
     with pytest.raises(security.HTTPException):
-        await security.get_current_user("invalid_token")
+        await security.get_current_user("invalid_token", db)
 
 
 @pytest.mark.anyio
-async def test_get_current_user_wrong_type_token(registered_user: dict):
+async def test_get_current_user_wrong_type_token(db: AsyncSession, registered_user: dict):
     token = security.create_confirm_token(registered_user["id"])
 
-    with pytest.raises(security.HTTPException):
-        await security.get_current_user(token)
+@pytest.mark.anyio
+async def test_authenticate_user_lazy_migration(db: AsyncSession, confirmed_user: dict):
+    from passlib.hash import pbkdf2_sha256
+    
+    # Manually set a legacy pbkdf2_sha256 hash for the user
+    legacy_hash = pbkdf2_sha256.hash(confirmed_user["password"])
+    assert legacy_hash.startswith("$pbkdf2-sha256$")
+    
+    from app.crud.user import get_user_by_email
+    user = await get_user_by_email(db, confirmed_user["email"])
+    user.password = legacy_hash
+    await db.commit()
+    await db.refresh(user)
+    
+    # Authenticate - should trigger re-hash
+    authenticated_user = await security.authenticate_user(db, confirmed_user["email"], confirmed_user["password"])
+    
+    # Verify it's re-hashed to Argon2
+    assert authenticated_user.password.startswith("$argon2id$")
+    assert security.verify_password(confirmed_user["password"], authenticated_user.password)

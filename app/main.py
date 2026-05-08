@@ -9,7 +9,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from app.api.routers import task, user, audit, stats
-from app.database import database
 from app.logging_conf import configure_logging
 from app.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
@@ -27,14 +26,15 @@ sentry_sdk.init(
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     configure_logging()
-    await database.connect()
     yield
-    await database.disconnect()
 
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
-app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+@app.exception_handler(RateLimitExceeded)
+async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    return _rate_limit_exceeded_handler(request, exc)
 
 app.add_middleware(CorrelationIdMiddleware)
 
@@ -84,6 +84,8 @@ async def add_security_headers(request: Request, call_next):
     response.headers["X-XSS-Protection"] = "1; mode=block"
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Content-Security-Policy"] = "default-src 'none'; frame-ancestors 'none';"
+    response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+    response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
     return response
 
 

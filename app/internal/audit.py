@@ -1,10 +1,12 @@
-from datetime import datetime, timezone
-from app.database import database, tbl_audit_log
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.crud.audit import create_audit_log
+from app.schemas.enums import AuditAction
 
 
 async def log_action(
+    db: AsyncSession,
     user_id: int,
-    action: str,
+    action: str | AuditAction,
     target_type: str,
     target_id: int | None = None,
     details: str | None = None,
@@ -12,12 +14,11 @@ async def log_action(
     """
     Log an action performed by a user on a specific target resource.
     """
-    query = tbl_audit_log.insert().values(
+    await create_audit_log(
+        db=db,
         user_id=user_id,
         action=action,
         target_type=target_type,
         target_id=target_id,
         details=details,
-        created_at=datetime.now(timezone.utc),
     )
-    await database.execute(query)

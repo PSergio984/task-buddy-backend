@@ -103,20 +103,14 @@ def _get_confirmation_content(
 async def _record_confirmation_failure(to_email: str) -> None:
     """Helper to mark a user as having a failed email confirmation in the database."""
     try:
-        from app.database import database, tbl_user
+        from sqlalchemy import update
+        from app.database import AsyncSessionLocal
+        from app.models.user import User
 
-        query = (
-            tbl_user.update()
-            .where(tbl_user.c.email == to_email)
-            .values(confirmation_failed=True)
-        )
-        # Ensure database is connected for this standalone operation if called from background task
-        if not database.is_connected:
-            await database.connect()
-            await database.execute(query)
-            await database.disconnect()
-        else:
-            await database.execute(query)
+        async with AsyncSessionLocal() as db:
+            stmt = update(User).where(User.email == to_email).values(confirmation_failed=True)
+            await db.execute(stmt)
+            await db.commit()
     except Exception:
         logger.exception("Failed to record confirmation failure for %s", to_email)
 

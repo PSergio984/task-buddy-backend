@@ -4,7 +4,6 @@ import datetime
 from typing import Annotated, Literal
 from passlib.context import CryptContext
 from jose import jwt, ExpiredSignatureError, JWTError
-from app.database import database, tbl_user
 from fastapi import HTTPException, status, Depends
 from fastapi.security import OAuth2PasswordBearer
 
@@ -18,9 +17,14 @@ from app.config import (
 )
 
 
+from sqlalchemy.ext.asyncio import AsyncSession
+from app.models.user import User
+from app.crud.user import get_user_by_email, get_user_by_id as crud_get_user_by_id
+from app.dependencies import get_db
+
 logger = logging.getLogger(__name__)
 
-pwd_context = CryptContext(schemes=["argon2"], deprecated="auto")
+pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto")
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
 
@@ -92,22 +96,6 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     return pwd_context.verify(plain_password, hashed_password)
 
 
-async def get_user(email: str):
-    logger.debug("Fetching user with email=%s", email)
-    query = tbl_user.select().where(tbl_user.c.email == email)
-    user = await database.fetch_one(query)
-    if user:
-        return user
-
-
-async def get_user_by_id(user_id: int):
-    logger.debug("Fetching user with id=%s", user_id)
-    query = tbl_user.select().where(tbl_user.c.id == user_id)
-    user = await database.fetch_one(query)
-    if user:
-        return user
-
-
 def get_subject_for_token_type(
     token: str, expected_type: Literal["access", "confirm", "reset"]
 ) -> str:
@@ -131,18 +119,28 @@ def get_subject_for_token_type(
     return subject
 
 
-async def authenticate_user(email: str, password: str):
-    user = await get_user(email)
+async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
+    user = await get_user_by_email(db, email)
     if not user:
         raise create_credentials_exception("Invalid credentials")
     if not verify_password(password, user.password):
         raise create_credentials_exception("Invalid credentials")
+    
+    # Lazy migration to new hashing scheme (Argon2) if needed
+    if pwd_context.needs_update(user.password):
+        logger.info("Re-hashing password for user_id=%s", user.id)
+        user.password = get_password_hash(password)
+        # Note: Transaction commit is handled by the caller (router)
+    
     if not user.confirmed:
         raise create_credentials_exception("Email not confirmed")
     return user
 
 
-async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
+async def get_current_user(
+    token: Annotated[str, Depends(oauth2_scheme)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> User:
 
     subject = get_subject_for_token_type(token, expected_type="access")
     try:
@@ -150,7 +148,7 @@ async def get_current_user(token: Annotated[str, Depends(oauth2_scheme)]):
     except ValueError:
         raise create_credentials_exception("Invalid user ID in token")
 
-    user = await get_user_by_id(user_id=user_id)
+    user = await crud_get_user_by_id(db, user_id=user_id)
     if user is None:
         raise create_credentials_exception("Could not find user for this token")
 

@@ -1,17 +1,26 @@
 from datetime import datetime
-from pydantic import BaseModel
+from typing import Optional
+from sqlalchemy import String, ForeignKey, func, DateTime
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-class AuditLog(BaseModel):
-    id: int
-    user_id: int
-    action: str
-    target_type: str
-    target_id: int | None = None
-    details: str | None = None
-    created_at: datetime
+from app.models.base import Base
 
-class AuditLogCreate(BaseModel):
-    action: str
-    target_type: str
-    target_id: int | None = None
-    details: str | None = None
+
+class AuditLog(Base):
+    __tablename__ = "tbl_audit_logs"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    )
+    action: Mapped[str] = mapped_column(String, nullable=False)
+    target_type: Mapped[str] = mapped_column(String, nullable=False)
+    target_id: Mapped[Optional[int]] = mapped_column(nullable=True)
+    details: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="audit_logs")
+
+    def __repr__(self) -> str:
+        return f"<AuditLog(id={self.id}, action={self.action}, target_type={self.target_type})>"

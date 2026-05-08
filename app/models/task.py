@@ -1,52 +1,63 @@
+from __future__ import annotations
 from datetime import datetime
-from typing import Optional
+from typing import Optional, List, TYPE_CHECKING
+from sqlalchemy import String, Boolean, DateTime, ForeignKey, func, Column, Table
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from pydantic import BaseModel, ConfigDict
+from app.models.base import Base
 
+if TYPE_CHECKING:
+    from app.models.user import User
+    from app.models.tag import Tag
 
-class TaskCreateRequest(BaseModel):
-    title: str
-    description: Optional[str] = None
-    due_date: Optional[datetime] = None
-    completed: bool = False
-
-
-class TaskCreateResponse(TaskCreateRequest):
-    user_id: int
-    id: int
-    created_at: datetime
-
-
-class SubTaskCreateRequest(BaseModel):
-    task_id: int
-    title: str
-    description: Optional[str] = None
-    due_date: Optional[datetime] = None
-    completed: bool = False
+# Association table for Task <-> Tag
+task_tags = Table(
+    "tbl_task_tags",
+    Base.metadata,
+    Column("task_id", ForeignKey("tbl_tasks.id", ondelete="CASCADE"), primary_key=True),
+    Column("tag_id", ForeignKey("tbl_tags.id", ondelete="CASCADE"), primary_key=True),
+    Column("created_at", DateTime, server_default=func.now()),
+)
 
 
-class SubTaskCreateResponse(SubTaskCreateRequest):
-    model_config = ConfigDict(from_attributes=True)
+class Task(Base):
+    __tablename__ = "tbl_tasks"
 
-    user_id: int
-    id: int
-    created_at: datetime
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+
+    # Relationships
+    user: Mapped["User"] = relationship(back_populates="tasks")
+    subtasks: Mapped[List["SubTask"]] = relationship(
+        back_populates="task", cascade="all, delete-orphan"
+    )
+    tags: Mapped[List["Tag"]] = relationship(
+        secondary=task_tags, back_populates="tasks"
+    )
+
+    def __repr__(self) -> str:
+        return f"<Task(id={self.id}, title={self.title}, completed={self.completed})>"
 
 
-class TaskWithSubTasks(BaseModel):
-    task: TaskCreateResponse
-    subtasks: list[SubTaskCreateResponse]
+class SubTask(Base):
+    __tablename__ = "tbl_subtasks"
 
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
+    task_id: Mapped[int] = mapped_column(ForeignKey("tbl_tasks.id"), nullable=False)
+    title: Mapped[str] = mapped_column(String, nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    due_date: Mapped[Optional[datetime]] = mapped_column(DateTime, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
-class TaskUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    due_date: Optional[datetime] = None
-    completed: Optional[bool] = None
+    # Relationships
+    task: Mapped["Task"] = relationship(back_populates="subtasks")
 
-
-class SubTaskUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
-    due_date: Optional[datetime] = None
-    completed: Optional[bool] = None
+    def __repr__(self) -> str:
+        return f"<SubTask(id={self.id}, title={self.title}, completed={self.completed})>"
