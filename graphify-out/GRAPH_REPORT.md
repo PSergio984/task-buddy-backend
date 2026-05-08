@@ -1,7 +1,7 @@
 # Graph Report - task-buddy-backend  (2026-05-08)
 
 ## Corpus Check
-- 66 files · ~15,670 words
+- 66 files · ~15,680 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
@@ -10,7 +10,7 @@
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `425aa942`
+- Built from commit: `01e833dd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 

@@ -5317,9 +5317,9 @@
       "source_file": "app/database.py",
       "source_location": "L10",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_database_rationale_10",
-      "target": "app_database_get_async_database_url",
-      "confidence_score": 1.0
+      "target": "app_database_get_async_database_url"
     },
     {
       "relation": "rationale_for",
@@ -5388,9 +5388,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L18",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_rationale_18",
-      "target": "app_dependencies_get_token_header",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_token_header"
     },
     {
       "relation": "rationale_for",
@@ -5408,9 +5408,9 @@
       "source_file": "app/dependencies.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_dependencies_rationale_29",
-      "target": "app_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "app_dependencies_get_query_token"
     },
     {
       "relation": "rationale_for",
@@ -6399,9 +6399,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L127",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_127",
-      "target": "app_tasks_send_confirmation_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_confirmation_email"
     },
     {
       "relation": "calls",
@@ -6472,9 +6472,9 @@
       "source_file": "app/tasks.py",
       "source_location": "L169",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_tasks_rationale_169",
-      "target": "app_tasks_send_password_reset_email",
-      "confidence_score": 1.0
+      "target": "app_tasks_send_password_reset_email"
     },
     {
       "relation": "rationale_for",
@@ -6543,9 +6543,9 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L12",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "api_dependencies_rationale_12",
-      "target": "api_dependencies_get_query_token",
-      "confidence_score": 1.0
+      "target": "api_dependencies_get_query_token"
     },
     {
       "relation": "rationale_for",
@@ -6594,9 +6594,9 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L23",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_audit_rationale_23",
-      "target": "routers_audit_get_audit_logs",
-      "confidence_score": 1.0
+      "target": "routers_audit_get_audit_logs"
     },
     {
       "relation": "rationale_for",
@@ -6656,9 +6656,9 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L19",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_stats_rationale_19",
-      "target": "routers_stats_get_system_overview",
-      "confidence_score": 1.0
+      "target": "routers_stats_get_system_overview"
     },
     {
       "relation": "rationale_for",
@@ -7401,9 +7401,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L91",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_91",
-      "target": "routers_user_resend_confirmation",
-      "confidence_score": 1.0
+      "target": "routers_user_resend_confirmation"
     },
     {
       "relation": "rationale_for",
@@ -7441,9 +7441,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L149",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_149",
-      "target": "routers_user_get_my_profile",
-      "confidence_score": 1.0
+      "target": "routers_user_get_my_profile"
     },
     {
       "relation": "rationale_for",
@@ -7481,9 +7481,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L161",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_161",
-      "target": "routers_user_update_username",
-      "confidence_score": 1.0
+      "target": "routers_user_update_username"
     },
     {
       "relation": "rationale_for",
@@ -7521,9 +7521,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L196",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_196",
-      "target": "routers_user_update_password",
-      "confidence_score": 1.0
+      "target": "routers_user_update_password"
     },
     {
       "relation": "rationale_for",
@@ -7561,9 +7561,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L220",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_220",
-      "target": "routers_user_logout",
-      "confidence_score": 1.0
+      "target": "routers_user_logout"
     },
     {
       "relation": "rationale_for",
@@ -7601,9 +7601,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L236",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_236",
-      "target": "routers_user_forgot_password",
-      "confidence_score": 1.0
+      "target": "routers_user_forgot_password"
     },
     {
       "relation": "calls",
@@ -7642,9 +7642,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L260",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_260",
-      "target": "routers_user_reset_password_page",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password_page"
     },
     {
       "relation": "rationale_for",
@@ -7672,9 +7672,9 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L274",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_user_rationale_274",
-      "target": "routers_user_reset_password",
-      "confidence_score": 1.0
+      "target": "routers_user_reset_password"
     },
     {
       "relation": "rationale_for",
@@ -7889,9 +7889,9 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L38",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "crud_tag_rationale_38",
-      "target": "crud_tag_attach_tag_to_task",
-      "confidence_score": 1.0
+      "target": "crud_tag_attach_tag_to_task"
     },
     {
       "relation": "rationale_for",
@@ -8218,9 +8218,9 @@
       "source_file": "app/internal/audit.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "internal_audit_rationale_15",
-      "target": "internal_audit_log_action",
-      "confidence_score": 1.0
+      "target": "internal_audit_log_action"
     },
     {
       "relation": "rationale_for",
@@ -8330,9 +8330,9 @@
       "source_file": "app/models/audit.py",
       "source_location": "L12",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "models_audit_auditlog",
-      "target": "schemas_user_user",
-      "confidence_score": 0.5
+      "target": "schemas_user_user"
     },
     {
       "relation": "inherits",
@@ -8511,9 +8511,9 @@
       "source_file": "app/models/tag.py",
       "source_location": "L13",
       "weight": 0.8,
+      "confidence_score": 0.5,
       "source": "models_tag_tag",
-      "target": "schemas_user_user",
-      "confidence_score": 0.5
+      "target": "schemas_user_user"
     },
     {
       "relation": "uses",
@@ -9609,9 +9609,9 @@
       "source_file": "tests/conftest.py",
       "source_location": "L107",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_conftest_rationale_107",
-      "target": "tests_conftest_mock_httpx_client",
-      "confidence_score": 1.0
+      "target": "tests_conftest_mock_httpx_client"
     },
     {
       "relation": "rationale_for",
@@ -9649,9 +9649,9 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L7",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_migrations_rationale_7",
-      "target": "tests_test_migrations_test_alembic_migrations",
-      "confidence_score": 1.0
+      "target": "tests_test_migrations_test_alembic_migrations"
     },
     {
       "relation": "rationale_for",
@@ -9919,9 +9919,9 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L9",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_test_seed_rationale_9",
-      "target": "tests_test_seed_test_seed_data",
-      "confidence_score": 1.0
+      "target": "tests_test_seed_test_seed_data"
     },
     {
       "relation": "rationale_for",
@@ -11937,5 +11937,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "425aa942f1b166796271324e4c30a5e35aafd0d7"
+  "built_at_commit": "01e833dd2f32a456f43106bfa94f30f87cadc67d"
 }
