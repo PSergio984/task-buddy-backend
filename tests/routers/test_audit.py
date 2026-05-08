@@ -1,6 +1,7 @@
 import pytest
 from httpx import AsyncClient
 
+
 @pytest.mark.anyio
 async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: str):
     response = await async_client.get(
@@ -30,7 +31,7 @@ async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_i
     assert logs_response.status_code == 200
     logs = logs_response.json()
     assert len(logs) >= 1
-    
+
     # Find the CREATE TASK log
     task_log = next((log for log in logs if log["action"] == "create" and log["target_type"] == "TASK"), None)
     assert task_log is not None
@@ -45,7 +46,7 @@ async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: s
         json={"title": "Another Task"},
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
-    
+
     # Filter by action
     response = await async_client.get(
         "/api/v1/audit/logs?action=create",
@@ -54,7 +55,7 @@ async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: s
     assert response.status_code == 200
     logs = response.json()
     assert all(log["action"] == "create" for log in logs)
-    
+
     # Filter by non-existent action
     response = await async_client.get(
         "/api/v1/audit/logs?action=NON_EXISTENT",

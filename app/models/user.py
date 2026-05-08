@@ -1,15 +1,17 @@
 from __future__ import annotations
+
 from datetime import datetime
-from typing import Optional, List, TYPE_CHECKING
-from sqlalchemy import String, Boolean, DateTime, func
+from typing import TYPE_CHECKING
+
+from sqlalchemy import Boolean, DateTime, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
 if TYPE_CHECKING:
-    from app.models.task import Task
-    from app.models.tag import Tag
     from app.models.audit import AuditLog
+    from app.models.tag import Tag
+    from app.models.task import Task
 
 
 class User(Base):

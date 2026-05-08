@@ -4,6 +4,8 @@ aiosqlite==0.22.1
     # via
     #   task-buddy-backend (pyproject.toml)
     #   databases
+alembic==1.18.4
+    # via task-buddy-backend (pyproject.toml)
 annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
@@ -52,8 +54,12 @@ idna==3.13
     # via anyio
 limits==5.8.0
     # via slowapi
+mako==1.3.12
+    # via alembic
 markdown-it-py==4.2.0
     # via rich
+markupsafe==3.0.3
+    # via mako
 mdurl==0.1.2
     # via markdown-it-py
 packaging==26.2
@@ -104,6 +110,7 @@ slowapi==0.1.9
 sqlalchemy==2.0.49
     # via
     #   task-buddy-backend (pyproject.toml)
+    #   alembic
     #   databases
 starlette==1.0.0
     # via
@@ -111,6 +118,7 @@ starlette==1.0.0
     #   fastapi
 typing-extensions==4.15.0
     # via
+    #   alembic
     #   fastapi
     #   limits
     #   pydantic

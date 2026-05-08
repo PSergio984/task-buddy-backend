@@ -1,12 +1,14 @@
-from typing import List, Optional
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.tag import Tag
 from app.models.task import task_tags
 from app.schemas.tag import TagCreate
 
 
-async def get_user_tags(db: AsyncSession, user_id: int) -> List[Tag]:
+async def get_user_tags(db: AsyncSession, user_id: int) -> list[Tag]:
     query = select(Tag).where(Tag.user_id == user_id)
     result = await db.execute(query)
     return list(result.scalars().all())
@@ -24,6 +26,7 @@ async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
         name=tag_in.name
     )
     db.add(db_tag)
+    await db.flush()
     return db_tag
 
 
@@ -43,7 +46,7 @@ async def attach_tag_to_task(db: AsyncSession, task_id: int, tag_id: int) -> boo
     result = await db.execute(query)
     if result.scalar_one_or_none():
         return False
-        
+
     stmt = task_tags.insert().values(task_id=task_id, tag_id=tag_id)
     await db.execute(stmt)
     return True
@@ -57,7 +60,7 @@ async def detach_tag_from_task(db: AsyncSession, task_id: int, tag_id: int) -> N
     await db.execute(stmt)
 
 
-async def get_tags_on_task(db: AsyncSession, task_id: int) -> List[Tag]:
+async def get_tags_on_task(db: AsyncSession, task_id: int) -> list[Tag]:
     query = select(Tag).join(task_tags, Tag.id == task_tags.c.tag_id).where(task_tags.c.task_id == task_id)
     result = await db.execute(query)
     return list(result.scalars().all())

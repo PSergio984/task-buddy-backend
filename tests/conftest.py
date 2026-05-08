@@ -1,18 +1,16 @@
-import pytest
-
 from collections.abc import AsyncGenerator, Generator
+from unittest.mock import AsyncMock
+
+import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
-from unittest.mock import AsyncMock, Mock
 
+from app.database import AsyncSessionLocal, engine
 from app.main import app
 from app.models.base import Base
-from app.database import engine, AsyncSessionLocal
 from app.models.user import User
-from app.models.task import Task, SubTask
-from app.models.tag import Tag
-from sqlalchemy import delete
+
 
 @pytest.fixture(scope="session")
 def anyio_backend():
@@ -22,15 +20,15 @@ def anyio_backend():
 @pytest.fixture()
 async def db() -> AsyncGenerator:
     # Use sync engine for schema operations (simpler for SQLite tests)
-    # But wait, we are using create_async_engine. 
-    # For schema drop/create we should use async engine too if possible, 
+    # But wait, we are using create_async_engine.
+    # For schema drop/create we should use async engine too if possible,
     # or just use the sync-style metadata.create_all with engine.connect() if it's a sync engine.
     # Actually, SQLAlchemy 2.0 with AsyncEngine needs run_sync.
-    
+
     async with engine.begin() as conn:
         await conn.run_sync(Base.metadata.drop_all)
         await conn.run_sync(Base.metadata.create_all)
-    
+
     async with AsyncSessionLocal() as session:
         # Clear child tables before parents to respect FK constraints.
         # This is optional if we just drop/create each time, but good practice.

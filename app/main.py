@@ -1,18 +1,18 @@
 import logging
-import sentry_sdk
-
 from contextlib import asynccontextmanager
-from app.config import DevConfig, config
+
+import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-
-from app.api.routers import task, user, audit, stats
-from app.logging_conf import configure_logging
-from app.limiter import limiter
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
+
+from app.api.routers import audit, stats, task, user
+from app.config import DevConfig, config
+from app.limiter import limiter
+from app.logging_conf import configure_logging
 
 logger = logging.getLogger(__name__)
 

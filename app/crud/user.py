@@ -1,6 +1,8 @@
 from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.user import User
 from app.schemas.user import UserCreateRequest
 
@@ -24,6 +26,7 @@ async def create_user(db: AsyncSession, user_in: UserCreateRequest, hashed_passw
         password=hashed_password,
     )
     db.add(db_user)
+    await db.flush()
     return db_user
 
 
@@ -31,6 +34,7 @@ async def update_user_confirmation(db: AsyncSession, db_user: User, confirmed: b
     db_user.confirmed = confirmed
     db_user.confirmation_failed = not confirmed
     db.add(db_user)
+    await db.flush()
     return db_user
 
 
@@ -44,4 +48,5 @@ async def update_user(db: AsyncSession, db_user: User, update_data: dict) -> Use
     for field, value in update_data.items():
         setattr(db_user, field, value)
     db.add(db_user)
+    await db.flush()
     return db_user

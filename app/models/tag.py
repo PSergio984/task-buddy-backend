@@ -1,9 +1,16 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import List
-from sqlalchemy import String, ForeignKey, func, UniqueConstraint, DateTime
+from typing import TYPE_CHECKING
+
+from sqlalchemy import DateTime, ForeignKey, String, UniqueConstraint, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.task import Task
+    from app.models.user import User
 
 
 class Tag(Base):
@@ -18,7 +25,7 @@ class Tag(Base):
 
     # Relationships
     user: Mapped["User"] = relationship(back_populates="tags")
-    tasks: Mapped[List["Task"]] = relationship(
+    tasks: Mapped[list["Task"]] = relationship(
         secondary="tbl_task_tags", back_populates="tags"
     )
 

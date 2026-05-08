@@ -1,29 +1,28 @@
 import logging
-from typing import Annotated, List
+from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Response, Query
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import tag as tag_crud
+from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.models.user import User
-from app.models.task import Task, SubTask
+from app.internal.audit import log_action
 from app.models.tag import Tag
+from app.models.user import User
+from app.schemas.enums import AuditAction
+from app.schemas.tag import TagCreate, TagResponse
 from app.schemas.task import (
     SubTaskCreateRequest,
     SubTaskCreateResponse,
+    SubTaskUpdateRequest,
     TaskCreateRequest,
     TaskCreateResponse,
-    TaskWithSubTasks,
     TaskUpdateRequest,
-    SubTaskUpdateRequest,
+    TaskWithSubTasks,
 )
-from app.schemas.tag import TagResponse, TagCreate
-from app.schemas.enums import AuditAction
 from app.security import get_current_user
-from app.internal.audit import log_action
-from app.crud import task as task_crud
-from app.crud import tag as tag_crud
 
 # Constants to avoid duplicated string literals
 ROUTER_TAG = "tasks"
@@ -49,7 +48,7 @@ def ensure_task_owner(task_obj, current_user: User, detail: str) -> None:
         raise HTTPException(status_code=403, detail=detail)
 
 
-@router.get("/", response_model=List[TaskCreateResponse])
+@router.get("/", response_model=list[TaskCreateResponse])
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -67,7 +66,7 @@ async def get_all_tasks(
     responses={404: {"description": TASK_NOT_FOUND}},
 )
 async def get_task(
-    task_id: int, 
+    task_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -84,14 +83,14 @@ async def get_task(
 
 @router.post("/", response_model=TaskCreateResponse, status_code=201)
 async def create_task(
-    task_in: TaskCreateRequest, 
+    task_in: TaskCreateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST / - creating task title=%s", task_in.title)
 
     db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
-    
+
     # Commit transaction
     await db.commit()
     await db.refresh(db_task)
@@ -131,7 +130,7 @@ async def update_task(
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
     await task_crud.update_task(db, db_task=db_task, task_in=task_update)
-    
+
     await log_action(
         db=db,
         user_id=current_user.id,
@@ -148,7 +147,7 @@ async def update_task(
 
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}})
 async def delete_task(
-    task_id: int, 
+    task_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -169,7 +168,9 @@ async def delete_task(
 
 
 @router.get(
-    "/{task_id}/subtask", response_model=List[SubTaskCreateResponse]
+    "/{task_id}/subtask",
+    response_model=list[SubTaskCreateResponse],
+    responses={404: {"description": TASK_NOT_FOUND}},
 )
 async def get_subtasks_on_task_list(
     task_id: int,
@@ -186,7 +187,7 @@ async def get_subtasks_on_task_list(
     "/{task_id}/subtasks", response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}}
 )
 async def get_task_with_subtasks(
-    task_id: int, 
+    task_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -194,9 +195,9 @@ async def get_task_with_subtasks(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-    
+
     subtasks = await task_crud.get_subtasks_on_task(db, task_id=task_id)
-    
+
     logger.info("GET /%s/subtasks - fetched %s subtasks", task_id, len(subtasks))
     return {"task": db_task, "subtasks": subtasks}
 
@@ -242,7 +243,7 @@ async def create_subtask(
     responses={404: {"description": SUBTASK_NOT_FOUND}},
 )
 async def get_subtask(
-    subtask_id: int, 
+    subtask_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -278,7 +279,7 @@ async def update_subtask(
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
     await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
-    
+
     await log_action(
         db=db,
         user_id=current_user.id,
@@ -295,7 +296,7 @@ async def update_subtask(
 
 @router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}})
 async def delete_subtask(
-    subtask_id: int, 
+    subtask_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -317,7 +318,7 @@ async def delete_subtask(
 
 # --- Tag Endpoints ---
 
-@router.get("/tags/", response_model=List[TagResponse])
+@router.get("/tags/", response_model=list[TagResponse])
 async def get_all_tags(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -334,14 +335,14 @@ async def create_tag(
     existing_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
-    
+
     db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
     await db.commit()
     await db.refresh(db_tag)
     return db_tag
 
 
-@router.delete("/tags/{tag_id}")
+@router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}})
 async def delete_tag(
     tag_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -351,10 +352,10 @@ async def delete_tag(
     query = select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id)
     result = await db.execute(query)
     db_tag = result.scalar_one_or_none()
-    
+
     if not db_tag:
         raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
-        
+
     await tag_crud.delete_tag(db, db_tag=db_tag)
     await db.commit()
     return {"message": "Tag deleted successfully"}
@@ -371,13 +372,13 @@ async def create_and_attach_tag(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-        
+
     # Check if tag already exists for user
     db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
     if not db_tag:
         db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
         await db.flush() # Get the tag ID
-        
+
     # Attach to task
     await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id)
     await db.commit()
@@ -385,7 +386,11 @@ async def create_and_attach_tag(
     return db_tag
 
 
-@router.get("/{task_id}/tags", response_model=List[TagResponse])
+@router.get(
+    "/{task_id}/tags",
+    response_model=list[TagResponse],
+    responses={404: {"description": TASK_NOT_FOUND}},
+)
 async def get_tags_on_task(
     task_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -394,11 +399,11 @@ async def get_tags_on_task(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-        
+
     return await tag_crud.get_tags_on_task(db, task_id=task_id)
 
 
-@router.post("/{task_id}/tags/{tag_id}")
+@router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}})
 async def attach_tag_to_task(
     task_id: int,
     tag_id: int,
@@ -409,21 +414,21 @@ async def attach_tag_to_task(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-        
+
     query_tag = select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id)
     result_tag = await db.execute(query_tag)
     if not result_tag.scalar_one_or_none():
         raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
-        
+
     attached = await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=tag_id)
     if not attached:
         return {"message": "Tag already attached"}
-        
+
     await db.commit()
     return {"message": "Tag attached successfully"}
 
 
-@router.delete("/{task_id}/tags/{tag_id}")
+@router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}})
 async def detach_tag_from_task(
     task_id: int,
     tag_id: int,
@@ -434,7 +439,7 @@ async def detach_tag_from_task(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
-        
+
     await tag_crud.detach_tag_from_task(db, task_id=task_id, tag_id=tag_id)
     await db.commit()
     return {"message": "Tag detached successfully"}

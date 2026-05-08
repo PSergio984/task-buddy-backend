@@ -1,6 +1,8 @@
 import pytest
 from httpx import AsyncClient
+
 from app.main import app
+
 
 @pytest.mark.anyio
 async def test_security_headers(async_client: AsyncClient):
@@ -33,19 +35,19 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker):
     try:
         # Mock get_remote_address to ensure we have a consistent key
         mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
-        
+
         user_data = {
             "username": "ratelimituser",
             "email": "ratelimit@example.com",
             "password": "testpassword",
         }
-        
+
         # Hit the limit (5 per minute)
         for _ in range(5):
             response = await async_client.post("/api/v1/users/register", json=user_data)
             # We don't care about the result here, just that it's not 429
             assert response.status_code != 429
-            
+
         # 6th request should be rate limited
         response = await async_client.post("/api/v1/users/register", json=user_data)
         assert response.status_code == 429

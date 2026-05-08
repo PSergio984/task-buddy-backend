@@ -1,6 +1,7 @@
-from typing import Optional
-from functools import lru_cache
 import os
+from functools import lru_cache
+from typing import Optional
+
 from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -60,7 +61,7 @@ class TestConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
 
-@lru_cache()
+@lru_cache
 def get_config(env_state: str) -> GlobalConfig:
     configs = {"dev": DevConfig, "prod": ProdConfig, "test": TestConfig}
     return configs[env_state.lower() if env_state else "dev"]()

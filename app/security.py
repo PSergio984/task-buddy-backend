@@ -1,26 +1,24 @@
-import logging
 import datetime
-
+import logging
 from typing import Annotated, Literal
-from passlib.context import CryptContext
-from jose import jwt, ExpiredSignatureError, JWTError
-from fastapi import HTTPException, status, Depends
+
+from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
+from jose import ExpiredSignatureError, JWTError, jwt
+from passlib.context import CryptContext
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import (
-    config,
-    SECRET_KEY,
-    ALGORITHM,
     ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
     CONFIRM_TOKEN_EXPIRE_MINUTES,
     RESET_TOKEN_EXPIRE_MINUTES,
+    SECRET_KEY,
 )
-
-
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.user import User
-from app.crud.user import get_user_by_email, get_user_by_id as crud_get_user_by_id
+from app.crud.user import get_user_by_email
+from app.crud.user import get_user_by_id as crud_get_user_by_id
 from app.dependencies import get_db
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -125,13 +123,13 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         raise create_credentials_exception("Invalid credentials")
     if not verify_password(password, user.password):
         raise create_credentials_exception("Invalid credentials")
-    
+
     # Lazy migration to new hashing scheme (Argon2) if needed
     if pwd_context.needs_update(user.password):
         logger.info("Re-hashing password for user_id=%s", user.id)
         user.password = get_password_hash(password)
         # Note: Transaction commit is handled by the caller (router)
-    
+
     if not user.confirmed:
         raise create_credentials_exception("Email not confirmed")
     return user
@@ -145,8 +143,8 @@ async def get_current_user(
     subject = get_subject_for_token_type(token, expected_type="access")
     try:
         user_id = int(subject)
-    except ValueError:
-        raise create_credentials_exception("Invalid user ID in token")
+    except ValueError as err:
+        raise create_credentials_exception("Invalid user ID in token") from err
 
     user = await crud_get_user_by_id(db, user_id=user_id)
     if user is None:

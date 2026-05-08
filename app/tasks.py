@@ -104,6 +104,7 @@ async def _record_confirmation_failure(to_email: str) -> None:
     """Helper to mark a user as having a failed email confirmation in the database."""
     try:
         from sqlalchemy import update
+
         from app.database import AsyncSessionLocal
         from app.models.user import User
 

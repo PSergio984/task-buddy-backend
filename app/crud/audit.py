@@ -1,5 +1,7 @@
 from typing import Optional
+
 from sqlalchemy.ext.asyncio import AsyncSession
+
 from app.models.audit import AuditLog
 from app.schemas.enums import AuditAction
 
@@ -20,6 +22,7 @@ async def create_audit_log(
         details=details,
     )
     db.add(db_log)
+    await db.flush()
     return db_log
 
 
@@ -37,7 +40,7 @@ async def get_audit_logs(
         query = query.where(AuditLog.action == action)
     if target_type:
         query = query.where(AuditLog.target_type == target_type)
-    
+
     query = query.order_by(AuditLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
     return list(result.scalars().all())

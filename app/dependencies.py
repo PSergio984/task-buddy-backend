@@ -5,15 +5,19 @@ This module contains common dependency functions that are used
 by multiple routers and path operations in the application.
 """
 
+from collections.abc import AsyncGenerator
 from typing import Annotated
 
 from fastapi import Header, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.database import AsyncSessionLocal
 
 
 async def get_token_header(x_token: Annotated[str, Header()]):
     """
     Validate X-Token header.
-    
+
     This is a simple token validation dependency.
     In production, use proper authentication (JWT, OAuth2, etc.).
     """
@@ -24,7 +28,7 @@ async def get_token_header(x_token: Annotated[str, Header()]):
 async def get_query_token(token: str | None = None):
     """
     Validate query token parameter.
-    
+
     Optional query parameter for basic token validation.
     Set as optional in production or remove if not needed.
     """
@@ -33,10 +37,6 @@ async def get_query_token(token: str | None = None):
     # Add your token validation logic here
     return token
 
-
-from collections.abc import AsyncGenerator
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.database import AsyncSessionLocal
 
 async def get_db() -> AsyncGenerator[AsyncSession, None]:
     """

@@ -1,11 +1,18 @@
-from typing import List, Optional
+from typing import Optional
+
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.models.task import Task, SubTask
-from app.schemas.task import TaskCreateRequest, TaskUpdateRequest, SubTaskCreateRequest, SubTaskUpdateRequest
+
+from app.models.task import SubTask, Task
+from app.schemas.task import (
+    SubTaskCreateRequest,
+    SubTaskUpdateRequest,
+    TaskCreateRequest,
+    TaskUpdateRequest,
+)
 
 
-async def get_tasks(db: AsyncSession, user_id: int, completed: Optional[bool] = None) -> List[Task]:
+async def get_tasks(db: AsyncSession, user_id: int, completed: Optional[bool] = None) -> list[Task]:
     query = select(Task).where(Task.user_id == user_id)
     if completed is not None:
         query = query.where(Task.completed == completed)
@@ -25,6 +32,7 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
         user_id=user_id,
     )
     db.add(db_task)
+    await db.flush()
     # No commit here as per design
     return db_task
 
@@ -34,6 +42,7 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
     for field, value in update_data.items():
         setattr(db_task, field, value)
     db.add(db_task)
+    await db.flush()
     return db_task
 
 
@@ -51,6 +60,7 @@ async def create_subtask(db: AsyncSession, task_id: int, user_id: int, subtask_i
         user_id=user_id
     )
     db.add(db_subtask)
+    await db.flush()
     return db_subtask
 
 
@@ -65,6 +75,7 @@ async def update_subtask(db: AsyncSession, db_subtask: SubTask, subtask_in: SubT
     for field, value in update_data.items():
         setattr(db_subtask, field, value)
     db.add(db_subtask)
+    await db.flush()
     return db_subtask
 
 
@@ -72,7 +83,7 @@ async def delete_subtask(db: AsyncSession, db_subtask: SubTask) -> None:
     await db.delete(db_subtask)
 
 
-async def get_subtasks_on_task(db: AsyncSession, task_id: int) -> List[SubTask]:
+async def get_subtasks_on_task(db: AsyncSession, task_id: int) -> list[SubTask]:
     query = select(SubTask).where(SubTask.task_id == task_id)
     result = await db.execute(query)
     return list(result.scalars().all())

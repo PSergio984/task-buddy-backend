@@ -1,9 +1,15 @@
+from __future__ import annotations
+
 from datetime import datetime
-from typing import Optional
-from sqlalchemy import String, ForeignKey, func, DateTime
+from typing import TYPE_CHECKING, Optional
+
+from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
+
+if TYPE_CHECKING:
+    from app.models.user import User
 
 
 class AuditLog(Base):

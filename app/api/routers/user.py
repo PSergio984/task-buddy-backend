@@ -1,34 +1,33 @@
 import logging
-import sqlite3
-import sqlalchemy.exc
-
 from typing import Annotated
-from fastapi import APIRouter, BackgroundTasks, HTTPException, status, Form, Depends, Request, Body
+
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordRequestForm
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app import tasks
+from app.crud import user as user_crud
+from app.dependencies import get_db
+from app.limiter import limiter
 from app.models.user import User as UserORM
 from app.schemas.user import (
+    ForgotPasswordRequest,
+    PasswordUpdate,
+    ResetPasswordRequest,
     User,
     UserCreateRequest,
     UsernameUpdate,
-    PasswordUpdate,
-    ForgotPasswordRequest,
-    ResetPasswordRequest,
 )
 from app.security import (
-    get_password_hash,
-    verify_password,
     authenticate_user,
     create_access_token,
     create_confirm_token,
     create_reset_token,
-    get_subject_for_token_type,
     get_current_user,
+    get_password_hash,
+    get_subject_for_token_type,
+    verify_password,
 )
-from app.dependencies import get_db
-from sqlalchemy.ext.asyncio import AsyncSession
-from app.crud import user as user_crud
-from app import tasks
-from app.limiter import limiter
 
 logger = logging.getLogger(__name__)
 
@@ -48,8 +47,8 @@ router = APIRouter(tags=[ROUTER_TAG])
 )
 @limiter.limit("5/minute")
 async def register_user(
-    user: UserCreateRequest, 
-    background_tasks: BackgroundTasks, 
+    user: UserCreateRequest,
+    background_tasks: BackgroundTasks,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -84,8 +83,8 @@ async def register_user(
 @router.post("/resend-confirmation")
 @limiter.limit("5/minute")
 async def resend_confirmation(
-    background_tasks: BackgroundTasks, 
-    email: Annotated[str, Body(embed=True)], 
+    background_tasks: BackgroundTasks,
+    email: Annotated[str, Body(embed=True)],
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -112,7 +111,7 @@ async def resend_confirmation(
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
 @limiter.limit("5/minute")
 async def login(
-    form_data: Annotated[OAuth2PasswordRequestForm, Depends()], 
+    form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -126,22 +125,22 @@ async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]
     subject = get_subject_for_token_type(token, expected_type="confirm")
     try:
         user_id = int(subject)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid confirmation token",
-        )
-    
+        ) from err
+
     user = await user_crud.get_user_by_id(db, user_id)
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="User not found",
         )
-    
+
     await user_crud.update_user_confirmation(db, db_user=user, confirmed=True)
     await db.commit()
-    
+
     return {"detail": "Email confirmed"}
 
 
@@ -229,8 +228,8 @@ async def logout(current_user: Annotated[UserORM, Depends(get_current_user)]):
 @router.post("/forgot-password")
 @limiter.limit("5/minute")
 async def forgot_password(
-    request: ForgotPasswordRequest, 
-    background_tasks: BackgroundTasks, 
+    request: ForgotPasswordRequest,
+    background_tasks: BackgroundTasks,
     fastapi_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -268,7 +267,7 @@ async def reset_password_page(token: str):
 @router.post("/reset-password")
 @limiter.limit("5/minute")
 async def reset_password(
-    request: ResetPasswordRequest, 
+    request: ResetPasswordRequest,
     fastapi_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -278,11 +277,11 @@ async def reset_password(
     subject = get_subject_for_token_type(request.token, expected_type="reset")
     try:
         user_id = int(subject)
-    except ValueError:
+    except ValueError as err:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Invalid reset token",
-        )
+        ) from err
 
     if len(request.new_password) < 8:
         raise HTTPException(
