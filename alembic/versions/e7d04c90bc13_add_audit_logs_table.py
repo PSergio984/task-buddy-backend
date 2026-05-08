@@ -30,7 +30,7 @@ def upgrade() -> None:
     sa.Column('target_id', sa.Integer(), nullable=True),
     sa.Column('details', sa.String(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text('(CURRENT_TIMESTAMP)'), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], ['tbl_users.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], ['tbl_users.id'], name=op.f('fk_tbl_audit_logs_user_id_tbl_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     # ### end Alembic commands ###

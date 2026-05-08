@@ -42,7 +42,7 @@ def upgrade() -> None:
     sa.Column('user_id', sa.Integer(), nullable=False),
     sa.Column('name', sa.String(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], name=op.f('fk_tbl_tags_user_id_tbl_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('user_id', 'name', name='uq_tbl_tags_user_name')
     )
@@ -54,7 +54,7 @@ def upgrade() -> None:
     sa.Column('completed', sa.Boolean(), nullable=True),
     sa.Column('due_date', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
-    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], name=op.f('fk_tbl_tasks_user_id_tbl_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tbl_subtasks',
@@ -66,8 +66,8 @@ def upgrade() -> None:
     sa.Column('completed', sa.Boolean(), nullable=True),
     sa.Column('due_date', sa.DateTime(), nullable=True),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
-    sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], name=op.f('fk_tbl_subtasks_task_id_tbl_tasks'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['user_id'], [TBL_USERS_ID], name=op.f('fk_tbl_subtasks_user_id_tbl_users'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id')
     )
     op.create_table('tbl_task_tags',
@@ -75,8 +75,8 @@ def upgrade() -> None:
     sa.Column('task_id', sa.Integer(), nullable=False),
     sa.Column('tag_id', sa.Integer(), nullable=False),
     sa.Column('created_at', sa.DateTime(), server_default=sa.text(CURRENT_TIMESTAMP), nullable=True),
-    sa.ForeignKeyConstraint(['tag_id'], ['tbl_tags.id'], ondelete='CASCADE'),
-    sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['tag_id'], ['tbl_tags.id'], name=op.f('fk_tbl_task_tags_tag_id_tbl_tags'), ondelete='CASCADE'),
+    sa.ForeignKeyConstraint(['task_id'], ['tbl_tasks.id'], name=op.f('fk_tbl_task_tags_task_id_tbl_tasks'), ondelete='CASCADE'),
     sa.PrimaryKeyConstraint('id'),
     sa.UniqueConstraint('task_id', 'tag_id', name='uq_tbl_task_tags_task_tag')
     )

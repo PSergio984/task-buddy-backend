@@ -2,7 +2,7 @@ import datetime
 import logging
 from typing import Annotated, Literal
 
-from fastapi import Depends, HTTPException, status
+from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
@@ -24,7 +24,23 @@ logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto")
 
-oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token")
+oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=False)
+
+
+async def get_token(
+    request: Request,
+    token: Annotated[str | None, Depends(oauth2_scheme)] = None,
+) -> str:
+    # First check the Authorization header (standard OAuth2)
+    if token:
+        return token
+    
+    # Fallback to HttpOnly cookie
+    token = request.cookies.get("access_token")
+    if token:
+        return token
+        
+    raise create_credentials_exception("Not authenticated")
 
 
 def create_credentials_exception(detail: str) -> HTTPException:
@@ -127,7 +143,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
 
 
 async def get_current_user(
-    token: Annotated[str, Depends(oauth2_scheme)],
+    token: Annotated[str, Depends(get_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
 

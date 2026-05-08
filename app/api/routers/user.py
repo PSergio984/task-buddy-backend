@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, status
+from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -111,6 +111,7 @@ async def resend_confirmation(
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
 @limiter.limit("5/minute")
 async def login(
+    response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
@@ -119,6 +120,18 @@ async def login(
     # Commit any potential lazy migration (password re-hash)
     await db.commit()
     access_token = create_access_token(auth_user.id)
+    
+    # Set HttpOnly cookie
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False, # Set to True in production (HTTPS)
+        samesite="lax", # Strict might be too restrictive for cross-site if dev env differs
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+    
     return {"access_token": access_token, "token_type": "bearer"}
 
 
@@ -218,13 +231,15 @@ async def update_password(
 
 
 @router.post("/logout")
-async def logout(current_user: Annotated[UserORM, Depends(get_current_user)]):
+async def logout(
+    response: Response,
+    current_user: Annotated[UserORM, Depends(get_current_user)]
+):
     """
     Logout the current user.
-    Since the application uses stateless JWTs, the client is responsible for discarding the token.
-    This endpoint verifies the token is valid and returns a success message.
     """
-    return {"detail": "Successfully logged out. Please clear your token from client storage."}
+    response.delete_cookie(key="access_token", path="/")
+    return {"detail": "Successfully logged out."}
 
 
 @router.post("/forgot-password")

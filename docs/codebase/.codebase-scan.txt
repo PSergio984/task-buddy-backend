@@ -41,6 +41,7 @@
 .claude\skills\postgresql-optimization\SKILL.md
 .claude\skills\ruff-recursive-fix
 .claude\skills\ruff-recursive-fix\SKILL.md
+.coverage
 .dockerignore
 .env
 .env.example
@@ -54,8 +55,42 @@
 .github\workflows
 .github\workflows\apisec-scan.yml
 .github\workflows\mayhem-for-api.yml
+.github\workflows\python-app.yml
 .github\workflows\soos-dast-scan.yml
 .gitignore
+.planning
+.planning\1-2-UAT.md
+.planning\codebase
+.planning\codebase\ARCHITECTURE.md
+.planning\codebase\CONCERNS.md
+.planning\codebase\CONVENTIONS.md
+.planning\codebase\INTEGRATIONS.md
+.planning\codebase\STACK.md
+.planning\codebase\STRUCTURE.md
+.planning\codebase\TESTING.md
+.planning\config.json
+.planning\map
+.planning\map\STACK.md
+.planning\phases
+.planning\phases\01-architecture-refinement
+.planning\phases\01-architecture-refinement\01-01-PLAN.md
+.planning\phases\01-architecture-refinement\01-02-PLAN.md
+.planning\phases\01-architecture-refinement\01-RESEARCH.md
+.planning\phases\02-security-hardening
+.planning\phases\02-security-hardening\02-01-PLAN.md
+.planning\phases\02-security-hardening\02-REVIEW-FIX.md
+.planning\phases\02-security-hardening\02-REVIEW.md
+.planning\phases\02-security-hardening\02.5-REVIEW.md
+.planning\phases\02-security-hardening\02.5-UAT.md
+.planning\phases\03-task-grouping-and-due-time
+.planning\phases\03-task-grouping-and-due-time\03-CONTEXT.md
+.planning\phases\03-task-grouping-and-due-time\03-REVIEW.md
+.planning\phases\03-task-grouping-and-due-time\03-TASK-2-REVIEW.md
+.planning\phases\03-task-grouping-and-due-time\03-TASK-5-REVIEW.md
+.planning\PROJECT.md
+.planning\REQUIREMENTS.md
+.planning\ROADMAP.md
+.planning\STATE.md
 .pytest_cache
 .pytest_cache\.gitignore
 .pytest_cache\CACHEDIR.TAG
@@ -67,8 +102,18 @@
 .ruff_cache
 .ruff_cache\.gitignore
 .ruff_cache\0.15.12
+.ruff_cache\0.15.12\10182283722020880301
+.ruff_cache\0.15.12\16340373952160485695
+.ruff_cache\0.15.12\2377672890866843695
+.ruff_cache\0.15.12\5543447392548578331
 .ruff_cache\0.15.12\6743693829323926512
+.ruff_cache\0.15.12\7444283086156155296
 .ruff_cache\CACHEDIR.TAG
+.superpowers
+.superpowers\brainstorm
+.superpowers\brainstorm\session-01
+.superpowers\brainstorm\session-01\content
+.superpowers\brainstorm\session-01\state
 .vscode
 .vscode\mcp.json
 .vscode\settings.json
@@ -77,6 +122,7 @@ alembic\env.py
 alembic\README
 alembic\script.py.mako
 alembic\versions
+alembic\versions\38d622ba3db7_add_group_model_v2.py
 alembic\versions\a6e267909ed1_initial_migration.py
 alembic\versions\e7d04c90bc13_add_audit_logs_table.py
 alembic.ini
@@ -90,12 +136,19 @@ app\api\dependencies.py
 app\api\routers
 app\api\routers\__init__.py
 app\api\routers\audit.py
+app\api\routers\group.py
 app\api\routers\stats.py
 app\api\routers\task.py
 app\api\routers\user.py
 app\config.py
 app\crud
 app\crud\__init__.py
+app\crud\audit.py
+app\crud\group.py
+app\crud\stats.py
+app\crud\tag.py
+app\crud\task.py
+app\crud\user.py
 app\database.py
 app\dependencies.py
 app\internal
@@ -108,12 +161,20 @@ app\main.py
 app\models
 app\models\__init__.py
 app\models\audit.py
-app\models\stats.py
+app\models\base.py
+app\models\group.py
 app\models\tag.py
 app\models\task.py
 app\models\user.py
 app\schemas
 app\schemas\__init__.py
+app\schemas\audit.py
+app\schemas\enums.py
+app\schemas\group.py
+app\schemas\stats.py
+app\schemas\tag.py
+app\schemas\task.py
+app\schemas\user.py
 app\security.py
 app\tasks.py
 app.log
@@ -123,83 +184,22 @@ Dockerfile
 docs
 docs\codebase
 docs\codebase\.codebase-scan.txt
+docs\codebase\ARCHITECTURE.md
+docs\codebase\CONCERNS.md
+docs\codebase\CONVENTIONS.md
+docs\codebase\INTEGRATIONS.md
+docs\codebase\STACK.md
+docs\codebase\STRUCTURE.md
+docs\codebase\TESTING.md
+docs\superpowers
+docs\superpowers\plans
+docs\superpowers\plans\2025-05-14-frontend-lint-cleanup.md
+docs\superpowers\plans\2026-05-08-task-grouping-and-due-time.md
+docs\superpowers\specs
+docs\superpowers\specs\2026-05-08-task-grouping-and-due-time-design.md
 graphify-out
 graphify-out\.graphify_labels.json
 graphify-out\.graphify_python
-graphify-out\.graphify_root
-graphify-out\.graphify_uncached.txt
-graphify-out\cache
-graphify-out\cache\ast
-graphify-out\cache\ast\00e37c48e2bf3ae721c0472e6a465f347a2cfd792a0c53032b5d807bd9833fed.json
-graphify-out\cache\ast\04f82922159d8b938ecb2f71247eb9e1b6125f9a80d5db8a4e8470d3381e8a82.json
-graphify-out\cache\ast\06490ef3b945f89dc03b519be62b84c22bd6ddbc16adc9d62aa8abd2ee81b647.json
-graphify-out\cache\ast\0be3cc3c388c98b0762cc4f9764187edd7be110b3e1ceef0af4e2b2d59525938.json
-graphify-out\cache\ast\0e413114d4d8281973eceb0e12ab6c9ea449ee4bb42e1df6a05ba733bb32dd54.json
-graphify-out\cache\ast\1809ba72767c0c06400aa9aba509e082c4ec049bfa0250c9540a511403f0523a.json
-graphify-out\cache\ast\18a8317a931e8b73c585f67f1ef8843d08a9e5ee4826b6cbaced2201d1164795.json
-graphify-out\cache\ast\18e354523dfb107d69eaa8cc7b51f3c3c9d3056b05e96a792db5151356bb15fe.json
-graphify-out\cache\ast\1a913719675bdc1c6d7512dd45fa3d34cc30148da5fa28418b4a4a2388f530c7.json
-graphify-out\cache\ast\2c9b990459797063661ca0aa4035a07711367ad4450bbbfdfaf16b89f8a6c74e.json
-graphify-out\cache\ast\3662086af2802849154884d55562c76fcebf75521d6b3edd0636877136a90112.json
-graphify-out\cache\ast\37a04549a0d1c73de5e9991a83f64e439bcfea6209ffcc1a97ab70fe4cc591d9.json
-graphify-out\cache\ast\37e1a5c8ee4ad78675c5d3f5828fcf3668615d6f590cb33cf76ef3a379bfe472.json
-graphify-out\cache\ast\49d35a5ca23c6f592c49fc26f696750dd0a69c72db3a1aef1cde4e85942e6100.json
-graphify-out\cache\ast\4cc36138f888d0dc495802ce374619a49a1f54be5a5a560d7bdd568efe77854c.json
-graphify-out\cache\ast\4eb2a3038e94f5a4ec69b3bcb5caa6b08042aa04b9397e17c86fd875e87ba12b.json
-graphify-out\cache\ast\50ed113ef7899d9685a14f92fc38aa41fbc1b16e47362fd0997254a7928801a3.json
-graphify-out\cache\ast\50f1fe5da9af268ff27d4f9704ac881c19222398aca974e77847ddd383680924.json
-graphify-out\cache\ast\51af33856a9557565db91e3eeb9c825b48f6813bab4d7134c17829964573c691.json
-graphify-out\cache\ast\54b07eda9622611d5c9a8c78c55d26477c408af454778a3e4e66792b99744add.json
-graphify-out\cache\ast\59be491febd25b0306e59b8d6c5453d08bd5c7150df28588962f96c714c45664.json
-graphify-out\cache\ast\5f4ac2fcf4317cb4969e4ad3c67468a61c0a9eb98cafa95ec7826d7b3ea9401d.json
-graphify-out\cache\ast\618dd421b1bfd36c919eb9f21b0487a46271a602a79c2d9435ceec7db21aac2d.json
-graphify-out\cache\ast\6312b51a54c5b27a1f77dad170ecf2dc6ebe9f45ffb8e4804571c07031879722.json
-graphify-out\cache\ast\688b94f873580dbfb97ec432234168fdff5d8dc9365b757b1717436ca6b15b4b.json
-graphify-out\cache\ast\7254b10552a07163004ccd8661df5ab77e4777b9fb660713355a8d9703625166.json
-graphify-out\cache\ast\72a1f2fead253ea4c78c1c2af41b1312ddf1b100b8730f2f067dac52d1d24303.json
-graphify-out\cache\ast\758dc245fb43dea5df37857a4fb759f8d80f5749d97d1cd61ec5ebf4f6d93306.json
-graphify-out\cache\ast\75e569d276e69e0eac9ab8e2f2546b457106fbb628e503d22a1ea1794b5cdf2a.json
-graphify-out\cache\ast\776f3198a777c2ecbc8c1c5f25fe35cef71b4449ddccdb0141b8258210c7c7be.json
-graphify-out\cache\ast\7aa3c89946c837a03f9d187762db8f67c92f1379d4326b413acca6d812fa684d.json
-graphify-out\cache\ast\83cf346c264d09fe9861a22e159cd24b02d190f961b044c37a51e1a21acc659a.json
-graphify-out\cache\ast\84470cd29b717c7c5df46fc7ceee1c5989df7ebcbc944b6b818cab41c21b101a.json
-graphify-out\cache\ast\85575183695cd54eca0abe546b138fd888bce401de9791edb8e5390bd6ba073e.json
-graphify-out\cache\ast\86db868262f88cfa863aa0e5b4631ac4139f869e9684ee01cc33c9856e171c22.json
-graphify-out\cache\ast\8bb789e5d2a3175aac85140cbc1d85e467c38c371b4b11395789a59bad1c976e.json
-graphify-out\cache\ast\90f38901d719c780e162596510146ea3c845eeb466d617b823d200c4ad8360bb.json
-graphify-out\cache\ast\948af7d099a7c1b4dc2757553b479381914ce64e7c3413b663d0a3163686d4c9.json
-graphify-out\cache\ast\967c58d6685084de9cf69f09e2abeda54eaf62ca1d05f5851b4a7e49db5a9ece.json
-graphify-out\cache\ast\a0a3d4aee35f694147edda0de303957fba3887a60a9e9657c89c5a1d35a6aa73.json
-graphify-out\cache\ast\a404a7e09b88245668e4f44e7ff1f724160dab1092e572711c21e71fcf210058.json
-graphify-out\cache\ast\a8ece6ba4ab5fdf79b860a5263611fcb1cf6ff2cc5582b0b750af4c98dfe6a09.json
-graphify-out\cache\ast\bfd59955c892226e44ef88bc4b995de927bda668b55d37d3d4fbb29877eafa7b.json
-graphify-out\cache\ast\c17fd41edff350c00bd914e74f9b841dbd71c3a59cea98b550f9c8e8d4b21a64.json
-graphify-out\cache\ast\c631c32563ccddd3050ee950d6e106d88f4ae9dae5023dbb78256909abf64159.json
-graphify-out\cache\ast\cf396eaa1ffb6028eb8219caea12eed6cd1c21e8f9591ccdcda20168fb2f7e64.json
-graphify-out\cache\ast\d0bfe4c211932259c43275f1676a82d94676df731566c27dbbbdbadd96f5e2d9.json
-graphify-out\cache\ast\d84e41d9498eb2d0ddb025388d64872bf8ae083dd6152d0e9a5ea3c0bf0d7e91.json
-graphify-out\cache\ast\d84fe1acf5b699fff00700b737508f830c9240dda55ee1a2f892e805fbf230a4.json
-graphify-out\cache\ast\d8740b77b7c439ea863dcfb1480fd37c11b0d968b18600ff99c8184f162ce4e5.json
-graphify-out\cache\ast\e40a936feb3e129b24eeac18e53eb99424adc13e3520010ff75d61d738524fec.json
-graphify-out\cache\ast\e60059d68d1d3d3fc259f14b4a4674d2e511c092e5f64f54c81a572c32aa34d3.json
-graphify-out\cache\ast\f58727ec38777e5724c4c5cf6742459965b042120b107e2b91877611643bd0bc.json
-graphify-out\cache\ast\fa9d5f8dbec31ed8a954f324551d2fb30f7b381661ffd52310ca3b9e8abc2fff.json
-graphify-out\cache\ast\fcce5f789fcb58d672431361e7409a7db0c90ecab0cc0b437c0b6bbe884c3bb6.json
-graphify-out\cache\semantic
-graphify-out\cost.json
-graphify-out\docs_content.txt
-graphify-out\graph.html
-graphify-out\graph.json
-graphify-out\GRAPH_REPORT.md
-graphify-out\manifest.json
-PROJECT_STRUCTURE.py
-pyproject.toml
-README.md
-requirements-dev.txt
-requirements.txt
-seed.py
-start.sh
-task_buddy_backend.egg-info
 
 === STACK DETECTION (manifest files) ===
 
@@ -219,9 +219,6 @@ authors = [
     {name = "Your Name", email = "your.email@example.com"},
 ]
 keywords = ["fastapi", "api", "tasks", "backend"]
-
-
-
 dependencies = [
     "fastapi>=0.100.0",
     "uvicorn[standard]>=0.23.0",
@@ -239,6 +236,10 @@ dependencies = [
     "rich>=13.5.0",
     "python-json-logger>=2.0.7",
     "aiosqlite>=0.19.0",
+    "alembic>=1.12.0",  # Database migrations
+    "psycopg2-binary>=2.9.0",  # PostgreSQL driver for Alembic
+    "asyncpg>=0.28.0",  # Async PostgreSQL driver for FastAPI
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -251,12 +252,10 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "isort>=5.12.0",
-    "httpx>=0.24.0",
 ]
 database = [
     "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.0",  # PostgreSQL driver
-    "alembic>=1.12.0",  # Database migrations
 ]
 
 [project.urls]
@@ -284,23 +283,46 @@ omit = [
     "*/site-packages/*",
 ]
 
+[tool.coverage.report]
 
-[TRUNCATED] Showing first 80 of 144 lines.
+[TRUNCATED] Showing first 80 of 143 lines.
 --- requirements.txt ---
 # This file was autogenerated by uv via the following command:
 #    uv pip compile pyproject.toml -o requirements.txt
+aiosqlite==0.22.1
+    # via
+    #   task-buddy-backend (pyproject.toml)
+    #   databases
+alembic==1.18.4
+    # via task-buddy-backend (pyproject.toml)
 annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
     # via pydantic
 anyio==4.13.0
     # via
+    #   httpx
     #   starlette
     #   watchfiles
-bcrypt==5.0.0
-    # via passlib
+argon2-cffi==25.1.0
+    # via
+    #   task-buddy-backend (pyproject.toml)
+    #   passlib
+argon2-cffi-bindings==25.1.0
+    # via argon2-cffi
+asgi-correlation-id==4.3.4
+    # via task-buddy-backend (pyproject.toml)
+asyncpg==0.31.0
+    # via task-buddy-backend (pyproject.toml)
+certifi==2026.4.22
+    # via
+    #   httpcore
+    #   httpx
+    #   sentry-sdk
 cffi==2.0.0
-    # via cryptography
+    # via
+    #   argon2-cffi-bindings
+    #   cryptography
 click==8.3.3
     # via uvicorn
 colorama==0.4.6
@@ -309,6 +331,10 @@ colorama==0.4.6
     #   uvicorn
 cryptography==48.0.0
     # via python-jose
+databases==0.9.0
+    # via task-buddy-backend (pyproject.toml)
+deprecated==1.3.1
+    # via limits
 ecdsa==0.19.2
     # via python-jose
 fastapi==0.136.1
@@ -316,59 +342,33 @@ fastapi==0.136.1
 greenlet==3.5.0
     # via sqlalchemy
 h11==0.16.0
-    # via uvicorn
+    # via
+    #   httpcore
+    #   uvicorn
+httpcore==1.0.9
+    # via httpx
 httptools==0.7.1
     # via uvicorn
+httpx==0.28.1
+    # via task-buddy-backend (pyproject.toml)
 idna==3.13
-    # via anyio
-passlib==1.7.4
-    # via task-buddy-backend (pyproject.toml)
-pyasn1==0.6.3
     # via
-    #   python-jose
-    #   rsa
-pycparser==3.0
-    # via cffi
-pydantic==2.13.4
+    #   anyio
+    #   httpx
+limits==5.8.0
+    # via slowapi
+mako==1.3.12
+    # via alembic
+markdown-it-py==4.2.0
+    # via rich
+markupsafe==3.0.3
+    # via mako
+mdurl==0.1.2
+    # via markdown-it-py
+packaging==26.2
     # via
-    #   task-buddy-backend (pyproject.toml)
-    #   fastapi
-    #   pydantic-settings
-pydantic-core==2.46.4
-    # via pydantic
-pydantic-settings==2.14.0
-    # via task-buddy-backend (pyproject.toml)
-python-dotenv==1.2.2
-    # via
-    #   pydantic-settings
-    #   uvicorn
-python-jose==3.5.0
-    # via task-buddy-backend (pyproject.toml)
-python-multipart==0.0.27
-    # via task-buddy-backend (pyproject.toml)
-pyyaml==6.0.3
-    # via uvicorn
-rsa==4.9.1
-    # via python-jose
-six==1.17.0
-    # via ecdsa
-sqlalchemy==2.0.49
-    # via task-buddy-backend (pyproject.toml)
-starlette==1.0.0
-    # via fastapi
-typing-extensions==4.15.0
-    # via
-    #   fastapi
-    #   pydantic
-    #   pydantic-core
-    #   sqlalchemy
-    #   typing-inspection
-typing-inspection==0.4.2
-    # via
-    #   fastapi
-    #   pydantic
 
-[TRUNCATED] Showing first 80 of 87 lines.
+[TRUNCATED] Showing first 80 of 158 lines.
 --- uv.lock ---
 version = 1
 revision = 3
@@ -451,7 +451,7 @@ wheels = [
 name = "anyio"
 version = "4.12.1"
 
-[TRUNCATED] Showing first 80 of 3223 lines.
+[TRUNCATED] Showing first 80 of 3303 lines.
 
 === ENTRY POINTS ===
 No common entry points found. Check 'main' or 'scripts.start' in manifest files above.
@@ -505,71 +505,71 @@ PORT=8000
 None found.
 
 === GIT RECENT COMMITS (last 20) ===
-6001003 feat: implement core user authentication, security, and task management infrastructure with associated development documentation
-016c00d feat: generate project codebase analysis and interactive visualization report
-eeac524 feat: added graphify for token cost reduction
-f209087 fix: improved security for docker containers and removed insecure http in emails
-2bc1de5 fix: added uv.lock for dependency and security, floating point values for testing is removed
-9e7f67e fix: improved code readability, added annotated into routers and use def instead of async in non i/o operations
-5312172 feat: enhance email functionality with SMTP support and configuration updates
-9324a73 feat: update email configuration and enhance email sending logic with Brevo API integration
-06b0d45 feat: create audit_logs table to track user actions
-f1cec3d feat: implement task and subtask management models, API endpoints, and corresponding test suite
-820eb0f feat: implement audit logging utility to track user actions in database
-4e57404 feat: implement task and subtask data models for update and delette, API router endpoints, and comprehensive integration tests
-7d58336 feat: implement task, subtask, tag, and audit logging API endpoints with database integration
-d3cc481 feat: implement user authentication, registration, email confirmation, and profile management endpoints with associated models and tests
-d33f6fb feat: implement application configuration management and email service tasks
-bd36559 feat: add startup script for automated database migrations and seeding and update Docker entrypoint
-161bdc9 feat: add database migration support with Alembic and implement initial schema and seeding tests
-7f2b84b chore: Add rich library for enhanced console output formatting
-ed487d4 fix: Adjust database engine connection arguments for SQLite compatibility
-6981137 refactor: Update Dockerfile and configuration classes for improved dependency management and ignore unnecessary files
+5c128b2 feat(backend): finalize phase 3 backend changes and tests
+f87ad6c refactor(backend): consolidate db.commit calls and remove unused code in task/group routers
+ee4cac8 feat(backend): implement Group schemas and CRUD operations
+c22b8d9 feat(backend): add Group model and task grouping relationship with naming conventions
+f277f82 docs: add design spec for task grouping and due time enhancement
+bb1166c fix: made cors workked with multiple links
+1d5c75b fix: added  the crrrectt cors andd prodd config debug
+31c406b chore: update project dependencies to  include  httpx
+55bad26 refactor: add __init__.py to models package and update seed script to export AuditLog
+c4f72da chore:updated db config
+892d07b test: update security headers test for Phase 2 fixes
+b5b2027 fix(02): IN-01 generic auth errors and IN-03 direct SECRET_KEY usage
+0db94c3 fix(02): WR-01 relaxation of CSP for docs and IN-02 removal of X-XSS-Protection
+d2b9599 fix(02): CR-01 Password Lazy Migration Persistence Failure
+cf0aa11 feat: implement database schema with async support and initial models including audit logging
+8b16188 fix: database url in database.py
+01e833d feat: add asyncpg dependency to fix deployment issues
+425aa94 feat: implement full async backend architecture with security hardening and audit logging support
+22df504 feat: implement SQLAlchemy 2.0 ORM with AsyncSession and standardize security hardening policies ad refactor the whole codebase
+7577c20 docs: initialize comprehensive codebase documentation
 
 === HIGH-CHURN FILES (last 90 days, top 20) ===
-  15 app/api/routers/task.py
-  14 tests/conftest.py
-  13 tests/routers/test_task.py
-  11 app/api/routers/user.py
-  11 app/main.py
-  10 app/config.py
-  10 requirements.txt
-  10 app/database.py
-   9 app/security.py
-   9 tests/test_security.py
-   9 tests/routers/test_user.py
-   7 app/tasks.py
+  19 app/api/routers/task.py
+  16 graphify-out/GRAPH_REPORT.md
+  16 graphify-out/graph.json
+  16 tests/conftest.py
+  15 app/main.py
+  15 tests/routers/test_task.py
+  15 app/database.py
+  14 requirements.txt
+  14 app/api/routers/user.py
+  13 app/config.py
+  12 app/security.py
+  12 tests/test_security.py
+  11 graphify-out/graph.html
+  10 app/models/task.py
+  10 tests/routers/test_user.py
+   9 app/tasks.py
+   8 app/models/user.py
+   7 pyproject.toml
+   7 requirements-dev.txt
    7 .env.example
-   6 requirements-dev.txt
-   6 app/models/task.py
-   4 app/models/user.py
-   4 pyproject.toml
-   4 Dockerfile
-   3 graphify-out/GRAPH_REPORT.md
-   3 graphify-out/graph.json
 
 === MONOREPO SIGNALS ===
 No monorepo signals detected.
 
 === CODE METRICS ===
-Total files scanned: 159
-Total lines of code: 11325
+Total files scanned: 333
+Total lines of code: 19325
 
 Files by language:
-  Other: 113
-  Python: 46
+  Other: 269
+  Python: 64
 
 Top 10 largest files:
-app.log: 638.7KB
-uv.lock: 623.0KB
-graphify-out\graph.html: 252.4KB
-graphify-out\graph.json: 232.2KB
+app.log: 777.3KB
+uv.lock: 641.9KB
+graphify-out\graph.html: 462.8KB
+graphify-out\graph.json: 442.1KB
+test.db: 72.0KB
 graphify-out\cache\ast\3662086af2802849154884d55562c76fcebf75521d6b3edd0636877136a90112.json: 48.2KB
-test.db: 48.0KB
 test_alembic.db: 48.0KB
-graphify-out\cache\ast\51af33856a9557565db91e3eeb9c825b48f6813bab4d7134c17829964573c691.json: 30.8KB
-graphify-out\cache\ast\37a04549a0d1c73de5e9991a83f64e439bcfea6209ffcc1a97ab70fe4cc591d9.json: 30.0KB
-graphify-out\cache\ast\a8ece6ba4ab5fdf79b860a5263611fcb1cf6ff2cc5582b0b750af4c98dfe6a09.json: 28.3KB
+graphify-out\cache\ast\a41cf463419b52cfb5727124811922421a0afcd1ee8d7ff7b6e178c5501631fe.json: 41.6KB
+graphify-out\cache\ast\b6f30459bcd1660df42d48c3fc57ba180a06829f5d8f137223bf887b96a05d28.json: 41.6KB
+graphify-out\cache\ast\657ea543229727178a74f6cc3f5305f2cfdeae132bc0d2873fed294c57d21e9d.json: 40.5KB
 
 === CI/CD PIPELINES ===
 CI/CD: GitHub Actions

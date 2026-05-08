@@ -9,7 +9,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "project_structure_py",
-      "community": 34,
+      "community": 42,
       "norm_label": "project_structure.py"
     },
     {
@@ -18,7 +18,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "task_buddy_backend_project_structure_rationale_1",
-      "community": 34,
+      "community": 42,
       "norm_label": "project structure overview and getting started guide.  this file provides a qu"
     },
     {
@@ -27,7 +27,7 @@
       "source_file": "seed.py",
       "source_location": "L1",
       "id": "seed_py",
-      "community": 4,
+      "community": 27,
       "norm_label": "seed.py"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "seed.py",
       "source_location": "L14",
       "id": "task_buddy_backend_seed_seed_data",
-      "community": 4,
+      "community": 26,
       "norm_label": "seed_data()"
     },
     {
@@ -45,7 +45,7 @@
       "source_file": "test_db_url_extended.py",
       "source_location": "L1",
       "id": "test_db_url_extended_py",
-      "community": 2,
+      "community": 28,
       "norm_label": "test_db_url_extended.py"
     },
     {
@@ -54,7 +54,7 @@
       "source_file": "test_db_url_extended.py",
       "source_location": "L4",
       "id": "task_buddy_backend_test_db_url_extended_test_url_transformation_extended",
-      "community": 2,
+      "community": 28,
       "norm_label": "test_url_transformation_extended()"
     },
     {
@@ -108,7 +108,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L1",
       "id": "alembic_versions_38d622ba3db7_add_group_model_v2_py",
-      "community": 2,
+      "community": 27,
       "norm_label": "38d622ba3db7_add_group_model_v2.py"
     },
     {
@@ -117,7 +117,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L21",
       "id": "versions_38d622ba3db7_add_group_model_v2_upgrade",
-      "community": 2,
+      "community": 27,
       "norm_label": "upgrade()"
     },
     {
@@ -126,7 +126,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L85",
       "id": "versions_38d622ba3db7_add_group_model_v2_downgrade",
-      "community": 2,
+      "community": 27,
       "norm_label": "downgrade()"
     },
     {
@@ -135,7 +135,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L1",
       "id": "versions_38d622ba3db7_add_group_model_v2_rationale_1",
-      "community": 2,
+      "community": 27,
       "norm_label": "add_group_model_v2  revision id: 38d622ba3db7 revises: e7d04c90bc13 create date:"
     },
     {
@@ -144,7 +144,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "community": 2,
+      "community": 37,
       "norm_label": "a6e267909ed1_initial_migration.py"
     },
     {
@@ -153,7 +153,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L26",
       "id": "versions_a6e267909ed1_initial_migration_upgrade",
-      "community": 2,
+      "community": 37,
       "norm_label": "upgrade()"
     },
     {
@@ -162,7 +162,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L86",
       "id": "versions_a6e267909ed1_initial_migration_downgrade",
-      "community": 2,
+      "community": 37,
       "norm_label": "downgrade()"
     },
     {
@@ -171,7 +171,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "versions_a6e267909ed1_initial_migration_rationale_1",
-      "community": 2,
+      "community": 37,
       "norm_label": "initial migration  revision id: a6e267909ed1 revises: create date: 2026-05-0"
     },
     {
@@ -180,7 +180,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "community": 2,
+      "community": 38,
       "norm_label": "e7d04c90bc13_add_audit_logs_table.py"
     },
     {
@@ -189,7 +189,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L22",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_upgrade",
-      "community": 2,
+      "community": 38,
       "norm_label": "upgrade()"
     },
     {
@@ -198,7 +198,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L39",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_downgrade",
-      "community": 2,
+      "community": 38,
       "norm_label": "downgrade()"
     },
     {
@@ -207,7 +207,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_rationale_1",
-      "community": 2,
+      "community": 38,
       "norm_label": "add audit logs table  revision id: e7d04c90bc13 revises: a6e267909ed1 create dat"
     },
     {
@@ -216,7 +216,7 @@
       "source_file": "api/__init__.py",
       "source_location": "L1",
       "id": "api_init_py",
-      "community": 43,
+      "community": 51,
       "norm_label": "__init__.py"
     },
     {
@@ -225,7 +225,7 @@
       "source_file": "app/config.py",
       "source_location": "L1",
       "id": "app_config_py",
-      "community": 9,
+      "community": 7,
       "norm_label": "config.py"
     },
     {
@@ -234,7 +234,7 @@
       "source_file": "app/config.py",
       "source_location": "L9",
       "id": "app_config_baseconfig",
-      "community": 9,
+      "community": 7,
       "norm_label": "baseconfig"
     },
     {
@@ -243,7 +243,7 @@
       "source_file": "",
       "source_location": "",
       "id": "basesettings",
-      "community": 9,
+      "community": 7,
       "norm_label": "basesettings"
     },
     {
@@ -252,7 +252,7 @@
       "source_file": "app/config.py",
       "source_location": "L20",
       "id": "app_config_globalconfig",
-      "community": 9,
+      "community": 7,
       "norm_label": "globalconfig"
     },
     {
@@ -261,7 +261,7 @@
       "source_file": "app/config.py",
       "source_location": "L40",
       "id": "app_config_assemble_cors_origins",
-      "community": 9,
+      "community": 7,
       "norm_label": "assemble_cors_origins()"
     },
     {
@@ -270,7 +270,7 @@
       "source_file": "app/config.py",
       "source_location": "L53",
       "id": "app_config_devconfig",
-      "community": 9,
+      "community": 7,
       "norm_label": "devconfig"
     },
     {
@@ -279,7 +279,7 @@
       "source_file": "app/config.py",
       "source_location": "L57",
       "id": "app_config_prodconfig",
-      "community": 9,
+      "community": 7,
       "norm_label": "prodconfig"
     },
     {
@@ -288,7 +288,7 @@
       "source_file": "app/config.py",
       "source_location": "L62",
       "id": "app_config_ensure_secret_key",
-      "community": 9,
+      "community": 7,
       "norm_label": "ensure_secret_key()"
     },
     {
@@ -297,7 +297,7 @@
       "source_file": "app/config.py",
       "source_location": "L71",
       "id": "app_config_testconfig",
-      "community": 9,
+      "community": 7,
       "norm_label": "testconfig"
     },
     {
@@ -306,7 +306,7 @@
       "source_file": "app/config.py",
       "source_location": "L81",
       "id": "app_config_get_config",
-      "community": 9,
+      "community": 7,
       "norm_label": "get_config()"
     },
     {
@@ -315,7 +315,7 @@
       "source_file": "app/config.py",
       "source_location": "L63",
       "id": "app_config_rationale_63",
-      "community": 44,
+      "community": 52,
       "norm_label": "fail-fast in production when secret_key is not set."
     },
     {
@@ -324,7 +324,7 @@
       "source_file": "app/database.py",
       "source_location": "L1",
       "id": "app_database_py",
-      "community": 2,
+      "community": 28,
       "norm_label": "database.py"
     },
     {
@@ -333,7 +333,7 @@
       "source_file": "app/database.py",
       "source_location": "L11",
       "id": "app_database_get_async_database_url",
-      "community": 2,
+      "community": 28,
       "norm_label": "get_async_database_url()"
     },
     {
@@ -342,7 +342,7 @@
       "source_file": "app/database.py",
       "source_location": "L12",
       "id": "app_database_rationale_12",
-      "community": 2,
+      "community": 28,
       "norm_label": "ensures the database url uses an async driver and handles driver-specific query"
     },
     {
@@ -351,7 +351,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_py",
-      "community": 19,
+      "community": 18,
       "norm_label": "dependencies.py"
     },
     {
@@ -360,7 +360,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L17",
       "id": "app_dependencies_get_token_header",
-      "community": 19,
+      "community": 18,
       "norm_label": "get_token_header()"
     },
     {
@@ -369,7 +369,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L28",
       "id": "app_dependencies_get_query_token",
-      "community": 19,
+      "community": 18,
       "norm_label": "get_query_token()"
     },
     {
@@ -378,7 +378,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L41",
       "id": "app_dependencies_get_db",
-      "community": 19,
+      "community": 18,
       "norm_label": "get_db()"
     },
     {
@@ -387,7 +387,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_rationale_1",
-      "community": 19,
+      "community": 18,
       "norm_label": "shared dependencies used across multiple routes and modules.  this module contai"
     },
     {
@@ -396,7 +396,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L18",
       "id": "app_dependencies_rationale_18",
-      "community": 19,
+      "community": 18,
       "norm_label": "validate x-token header.      this is a simple token validation dependency."
     },
     {
@@ -405,7 +405,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L29",
       "id": "app_dependencies_rationale_29",
-      "community": 19,
+      "community": 18,
       "norm_label": "validate query token parameter.      optional query parameter for basic token va"
     },
     {
@@ -414,7 +414,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L42",
       "id": "app_dependencies_rationale_42",
-      "community": 19,
+      "community": 18,
       "norm_label": "dependency to provide an asyncsession to routers.     ensures the session is clo"
     },
     {
@@ -423,7 +423,7 @@
       "source_file": "app/limiter.py",
       "source_location": "L1",
       "id": "app_limiter_py",
-      "community": 45,
+      "community": 53,
       "norm_label": "limiter.py"
     },
     {
@@ -432,7 +432,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L1",
       "id": "app_logging_conf_py",
-      "community": 9,
+      "community": 7,
       "norm_label": "logging_conf.py"
     },
     {
@@ -441,7 +441,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L7",
       "id": "app_logging_conf_obfuscated",
-      "community": 9,
+      "community": 7,
       "norm_label": "obfuscated()"
     },
     {
@@ -450,7 +450,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L21",
       "id": "app_logging_conf_emailobfuscationfilter",
-      "community": 9,
+      "community": 7,
       "norm_label": "emailobfuscationfilter"
     },
     {
@@ -459,7 +459,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L22",
       "id": "app_logging_conf_emailobfuscationfilter_init",
-      "community": 9,
+      "community": 7,
       "norm_label": ".__init__()"
     },
     {
@@ -468,7 +468,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L26",
       "id": "app_logging_conf_emailobfuscationfilter_filter",
-      "community": 9,
+      "community": 7,
       "norm_label": ".filter()"
     },
     {
@@ -477,7 +477,7 @@
       "source_file": "app/logging_conf.py",
       "source_location": "L37",
       "id": "app_logging_conf_configure_logging",
-      "community": 9,
+      "community": 7,
       "norm_label": "configure_logging()"
     },
     {
@@ -486,7 +486,7 @@
       "source_file": "app/main.py",
       "source_location": "L1",
       "id": "app_main_py",
-      "community": 9,
+      "community": 7,
       "norm_label": "main.py"
     },
     {
@@ -495,7 +495,7 @@
       "source_file": "app/main.py",
       "source_location": "L27",
       "id": "app_main_lifespan",
-      "community": 9,
+      "community": 7,
       "norm_label": "lifespan()"
     },
     {
@@ -504,7 +504,7 @@
       "source_file": "app/main.py",
       "source_location": "L36",
       "id": "app_main_rate_limit_exceeded_handler",
-      "community": 9,
+      "community": 7,
       "norm_label": "rate_limit_exceeded_handler()"
     },
     {
@@ -513,7 +513,7 @@
       "source_file": "app/main.py",
       "source_location": "L49",
       "id": "app_main_log_http_exception",
-      "community": 9,
+      "community": 7,
       "norm_label": "log_http_exception()"
     },
     {
@@ -522,7 +522,7 @@
       "source_file": "app/main.py",
       "source_location": "L65",
       "id": "app_main_log_unhandled_exception",
-      "community": 9,
+      "community": 7,
       "norm_label": "log_unhandled_exception()"
     },
     {
@@ -531,7 +531,7 @@
       "source_file": "app/main.py",
       "source_location": "L81",
       "id": "app_main_add_security_headers",
-      "community": 9,
+      "community": 7,
       "norm_label": "add_security_headers()"
     },
     {
@@ -657,7 +657,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L1",
       "id": "app_tasks_py",
-      "community": 7,
+      "community": 6,
       "norm_label": "tasks.py"
     },
     {
@@ -666,7 +666,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L14",
       "id": "app_tasks_apiresponseerror",
-      "community": 7,
+      "community": 6,
       "norm_label": "apiresponseerror"
     },
     {
@@ -675,7 +675,7 @@
       "source_file": "",
       "source_location": "",
       "id": "exception",
-      "community": 7,
+      "community": 6,
       "norm_label": "exception"
     },
     {
@@ -684,7 +684,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L18",
       "id": "app_tasks_is_valid_url",
-      "community": 7,
+      "community": 6,
       "norm_label": "_is_valid_url()"
     },
     {
@@ -693,7 +693,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L23",
       "id": "app_tasks_send_brevo_email",
-      "community": 7,
+      "community": 6,
       "norm_label": "send_brevo_email()"
     },
     {
@@ -702,7 +702,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L56",
       "id": "app_tasks_send_smtp_email",
-      "community": 7,
+      "community": 6,
       "norm_label": "send_smtp_email()"
     },
     {
@@ -711,7 +711,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L83",
       "id": "app_tasks_get_confirmation_content",
-      "community": 7,
+      "community": 6,
       "norm_label": "_get_confirmation_content()"
     },
     {
@@ -720,7 +720,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L103",
       "id": "app_tasks_record_confirmation_failure",
-      "community": 7,
+      "community": 6,
       "norm_label": "_record_confirmation_failure()"
     },
     {
@@ -729,7 +729,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L119",
       "id": "app_tasks_send_confirmation_email",
-      "community": 7,
+      "community": 6,
       "norm_label": "send_confirmation_email()"
     },
     {
@@ -738,7 +738,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L163",
       "id": "app_tasks_send_password_reset_email",
-      "community": 7,
+      "community": 6,
       "norm_label": "send_password_reset_email()"
     },
     {
@@ -747,7 +747,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L19",
       "id": "app_tasks_rationale_19",
-      "community": 7,
+      "community": 6,
       "norm_label": "helper to validate that a url starts with https://."
     },
     {
@@ -756,7 +756,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L89",
       "id": "app_tasks_rationale_89",
-      "community": 7,
+      "community": 6,
       "norm_label": "helper to generate subject and body from confirmation url or direct inputs."
     },
     {
@@ -765,7 +765,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L104",
       "id": "app_tasks_rationale_104",
-      "community": 7,
+      "community": 6,
       "norm_label": "helper to mark a user as having a failed email confirmation in the database."
     },
     {
@@ -774,7 +774,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L127",
       "id": "app_tasks_rationale_127",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a confirmation email with smtp and brevo api fallback.      the logic is br"
     },
     {
@@ -783,7 +783,7 @@
       "source_file": "app/tasks.py",
       "source_location": "L169",
       "id": "app_tasks_rationale_169",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a password reset email with smtp and brevo api fallback."
     },
     {
@@ -792,7 +792,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_py",
-      "community": 35,
+      "community": 43,
       "norm_label": "__init__.py"
     },
     {
@@ -801,7 +801,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_rationale_1",
-      "community": 35,
+      "community": 43,
       "norm_label": "task buddy backend - fastapi application main package initialization file."
     },
     {
@@ -810,7 +810,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "app_api_dependencies_py",
-      "community": 28,
+      "community": 33,
       "norm_label": "dependencies.py"
     },
     {
@@ -819,7 +819,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L11",
       "id": "api_dependencies_get_query_token",
-      "community": 28,
+      "community": 33,
       "norm_label": "get_query_token()"
     },
     {
@@ -828,7 +828,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "api_dependencies_rationale_1",
-      "community": 28,
+      "community": 33,
       "norm_label": "api-specific dependencies.  these dependencies are specific to the api routers"
     },
     {
@@ -837,7 +837,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L12",
       "id": "api_dependencies_rationale_12",
-      "community": 28,
+      "community": 33,
       "norm_label": "optional query token validation for api routes.      this is a simple query-ba"
     },
     {
@@ -846,7 +846,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "app_api_init_py",
-      "community": 36,
+      "community": 44,
       "norm_label": "__init__.py"
     },
     {
@@ -855,7 +855,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "api_init_rationale_1",
-      "community": 36,
+      "community": 44,
       "norm_label": "api package - contains all api routes and related modules."
     },
     {
@@ -864,7 +864,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L1",
       "id": "app_api_routers_audit_py",
-      "community": 29,
+      "community": 34,
       "norm_label": "audit.py"
     },
     {
@@ -873,7 +873,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L15",
       "id": "routers_audit_get_audit_logs",
-      "community": 29,
+      "community": 34,
       "norm_label": "get_audit_logs()"
     },
     {
@@ -882,7 +882,7 @@
       "source_file": "app/api/routers/audit.py",
       "source_location": "L23",
       "id": "routers_audit_rationale_23",
-      "community": 29,
+      "community": 34,
       "norm_label": "retrieve audit logs for the current user."
     },
     {
@@ -1006,7 +1006,7 @@
       "label": "get_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L71",
+      "source_location": "L74",
       "id": "routers_task_get_task",
       "community": 3,
       "norm_label": "get_task()"
@@ -1015,7 +1015,7 @@
       "label": "create_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L88",
+      "source_location": "L91",
       "id": "routers_task_create_task",
       "community": 3,
       "norm_label": "create_task()"
@@ -1024,7 +1024,7 @@
       "label": "update_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L122",
+      "source_location": "L125",
       "id": "routers_task_update_task",
       "community": 3,
       "norm_label": "update_task()"
@@ -1033,7 +1033,7 @@
       "label": "delete_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L158",
+      "source_location": "L161",
       "id": "routers_task_delete_task",
       "community": 3,
       "norm_label": "delete_task()"
@@ -1042,7 +1042,7 @@
       "label": "get_subtasks_on_task_list()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L184",
+      "source_location": "L187",
       "id": "routers_task_get_subtasks_on_task_list",
       "community": 3,
       "norm_label": "get_subtasks_on_task_list()"
@@ -1051,7 +1051,7 @@
       "label": "get_task_with_subtasks()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L198",
+      "source_location": "L201",
       "id": "routers_task_get_task_with_subtasks",
       "community": 3,
       "norm_label": "get_task_with_subtasks()"
@@ -1060,7 +1060,7 @@
       "label": "create_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L220",
+      "source_location": "L223",
       "id": "routers_task_create_subtask",
       "community": 3,
       "norm_label": "create_subtask()"
@@ -1069,7 +1069,7 @@
       "label": "get_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L254",
+      "source_location": "L257",
       "id": "routers_task_get_subtask",
       "community": 3,
       "norm_label": "get_subtask()"
@@ -1078,7 +1078,7 @@
       "label": "update_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L274",
+      "source_location": "L277",
       "id": "routers_task_update_subtask",
       "community": 3,
       "norm_label": "update_subtask()"
@@ -1087,7 +1087,7 @@
       "label": "delete_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L307",
+      "source_location": "L310",
       "id": "routers_task_delete_subtask",
       "community": 3,
       "norm_label": "delete_subtask()"
@@ -1096,7 +1096,7 @@
       "label": "get_all_tags()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L331",
+      "source_location": "L334",
       "id": "routers_task_get_all_tags",
       "community": 3,
       "norm_label": "get_all_tags()"
@@ -1105,7 +1105,7 @@
       "label": "create_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L339",
+      "source_location": "L342",
       "id": "routers_task_create_tag",
       "community": 3,
       "norm_label": "create_tag()"
@@ -1114,7 +1114,7 @@
       "label": "delete_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L355",
+      "source_location": "L358",
       "id": "routers_task_delete_tag",
       "community": 3,
       "norm_label": "delete_tag()"
@@ -1123,7 +1123,7 @@
       "label": "create_and_attach_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L374",
+      "source_location": "L377",
       "id": "routers_task_create_and_attach_tag",
       "community": 3,
       "norm_label": "create_and_attach_tag()"
@@ -1132,7 +1132,7 @@
       "label": "get_tags_on_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L403",
+      "source_location": "L406",
       "id": "routers_task_get_tags_on_task",
       "community": 3,
       "norm_label": "get_tags_on_task()"
@@ -1141,7 +1141,7 @@
       "label": "attach_tag_to_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L416",
+      "source_location": "L419",
       "id": "routers_task_attach_tag_to_task",
       "community": 3,
       "norm_label": "attach_tag_to_task()"
@@ -1150,7 +1150,7 @@
       "label": "detach_tag_from_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L441",
+      "source_location": "L444",
       "id": "routers_task_detach_tag_from_task",
       "community": 3,
       "norm_label": "detach_tag_from_task()"
@@ -1206,7 +1206,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L150",
       "id": "routers_user_get_my_profile",
-      "community": 16,
+      "community": 14,
       "norm_label": "get_my_profile()"
     },
     {
@@ -1215,7 +1215,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L158",
       "id": "routers_user_update_username",
-      "community": 16,
+      "community": 14,
       "norm_label": "update_username()"
     },
     {
@@ -1233,7 +1233,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L221",
       "id": "routers_user_logout",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout()"
     },
     {
@@ -1278,7 +1278,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L151",
       "id": "routers_user_rationale_151",
-      "community": 16,
+      "community": 14,
       "norm_label": "retrieve the current user's profile information."
     },
     {
@@ -1287,7 +1287,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L163",
       "id": "routers_user_rationale_163",
-      "community": 16,
+      "community": 14,
       "norm_label": "update the current user's username.     checks for uniqueness and length."
     },
     {
@@ -1305,7 +1305,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L222",
       "id": "routers_user_rationale_222",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli"
     },
     {
@@ -1341,7 +1341,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "app_api_routers_init_py",
-      "community": 37,
+      "community": 45,
       "norm_label": "__init__.py"
     },
     {
@@ -1350,7 +1350,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "routers_init_rationale_1",
-      "community": 37,
+      "community": 45,
       "norm_label": "api routers package - contains all endpoint routers."
     },
     {
@@ -1386,7 +1386,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L1",
       "id": "app_crud_group_py",
-      "community": 2,
+      "community": 30,
       "norm_label": "group.py"
     },
     {
@@ -1395,7 +1395,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L10",
       "id": "crud_group_get_groups",
-      "community": 2,
+      "community": 30,
       "norm_label": "get_groups()"
     },
     {
@@ -1404,7 +1404,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L16",
       "id": "crud_group_get_group",
-      "community": 2,
+      "community": 30,
       "norm_label": "get_group()"
     },
     {
@@ -1413,7 +1413,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L22",
       "id": "crud_group_create_group",
-      "community": 2,
+      "community": 30,
       "norm_label": "create_group()"
     },
     {
@@ -1422,7 +1422,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L32",
       "id": "crud_group_update_group",
-      "community": 2,
+      "community": 30,
       "norm_label": "update_group()"
     },
     {
@@ -1431,7 +1431,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L41",
       "id": "crud_group_delete_group",
-      "community": 2,
+      "community": 30,
       "norm_label": "delete_group()"
     },
     {
@@ -1485,7 +1485,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L23",
       "id": "crud_tag_create_tag",
-      "community": 4,
+      "community": 31,
       "norm_label": "create_tag()"
     },
     {
@@ -1539,7 +1539,7 @@
       "source_file": "app/crud/task.py",
       "source_location": "L1",
       "id": "app_crud_task_py",
-      "community": 4,
+      "community": 19,
       "norm_label": "task.py"
     },
     {
@@ -1548,97 +1548,97 @@
       "source_file": "app/crud/task.py",
       "source_location": "L15",
       "id": "crud_task_get_tasks",
-      "community": 4,
+      "community": 19,
       "norm_label": "get_tasks()"
     },
     {
       "label": "get_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L23",
+      "source_location": "L30",
       "id": "crud_task_get_task",
-      "community": 4,
+      "community": 19,
       "norm_label": "get_task()"
     },
     {
       "label": "get_tasks_by_group()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L29",
+      "source_location": "L36",
       "id": "crud_task_get_tasks_by_group",
-      "community": 4,
+      "community": 19,
       "norm_label": "get_tasks_by_group()"
     },
     {
       "label": "create_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L35",
+      "source_location": "L42",
       "id": "crud_task_create_task",
-      "community": 4,
+      "community": 11,
       "norm_label": "create_task()"
     },
     {
       "label": "update_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L46",
+      "source_location": "L53",
       "id": "crud_task_update_task",
-      "community": 4,
+      "community": 19,
       "norm_label": "update_task()"
     },
     {
       "label": "delete_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L55",
+      "source_location": "L62",
       "id": "crud_task_delete_task",
-      "community": 4,
+      "community": 19,
       "norm_label": "delete_task()"
     },
     {
       "label": "create_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L60",
+      "source_location": "L67",
       "id": "crud_task_create_subtask",
-      "community": 4,
+      "community": 26,
       "norm_label": "create_subtask()"
     },
     {
       "label": "get_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L73",
+      "source_location": "L80",
       "id": "crud_task_get_subtask",
-      "community": 4,
+      "community": 19,
       "norm_label": "get_subtask()"
     },
     {
       "label": "update_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L79",
+      "source_location": "L86",
       "id": "crud_task_update_subtask",
-      "community": 4,
+      "community": 19,
       "norm_label": "update_subtask()"
     },
     {
       "label": "delete_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L88",
+      "source_location": "L95",
       "id": "crud_task_delete_subtask",
-      "community": 4,
+      "community": 19,
       "norm_label": "delete_subtask()"
     },
     {
       "label": "get_subtasks_on_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L92",
+      "source_location": "L99",
       "id": "crud_task_get_subtasks_on_task",
-      "community": 4,
+      "community": 19,
       "norm_label": "get_subtasks_on_task()"
     },
     {
@@ -1647,7 +1647,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L1",
       "id": "app_crud_user_py",
-      "community": 6,
+      "community": 4,
       "norm_label": "user.py"
     },
     {
@@ -1656,7 +1656,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L10",
       "id": "crud_user_get_user_by_email",
-      "community": 6,
+      "community": 4,
       "norm_label": "get_user_by_email()"
     },
     {
@@ -1665,7 +1665,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L16",
       "id": "crud_user_get_user_by_id",
-      "community": 6,
+      "community": 4,
       "norm_label": "get_user_by_id()"
     },
     {
@@ -1674,7 +1674,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L22",
       "id": "crud_user_create_user",
-      "community": 6,
+      "community": 4,
       "norm_label": "create_user()"
     },
     {
@@ -1683,7 +1683,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L33",
       "id": "crud_user_update_user_confirmation",
-      "community": 6,
+      "community": 4,
       "norm_label": "update_user_confirmation()"
     },
     {
@@ -1692,7 +1692,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L41",
       "id": "crud_user_get_user_by_username",
-      "community": 6,
+      "community": 4,
       "norm_label": "get_user_by_username()"
     },
     {
@@ -1701,7 +1701,7 @@
       "source_file": "app/crud/user.py",
       "source_location": "L47",
       "id": "crud_user_update_user",
-      "community": 6,
+      "community": 4,
       "norm_label": "update_user()"
     },
     {
@@ -1710,7 +1710,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "app_crud_init_py",
-      "community": 38,
+      "community": 46,
       "norm_label": "__init__.py"
     },
     {
@@ -1719,7 +1719,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "crud_init_rationale_1",
-      "community": 38,
+      "community": 46,
       "norm_label": "crud operations - database interaction functions."
     },
     {
@@ -1791,7 +1791,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "app_internal_init_py",
-      "community": 39,
+      "community": 47,
       "norm_label": "__init__.py"
     },
     {
@@ -1800,7 +1800,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "internal_init_rationale_1",
-      "community": 39,
+      "community": 47,
       "norm_label": "internal modules - internal-only functionality."
     },
     {
@@ -1809,7 +1809,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L1",
       "id": "app_models_audit_py",
-      "community": 2,
+      "community": 27,
       "norm_label": "audit.py"
     },
     {
@@ -1818,7 +1818,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L15",
       "id": "models_audit_auditlog",
-      "community": 4,
+      "community": 11,
       "norm_label": "auditlog"
     },
     {
@@ -1827,7 +1827,7 @@
       "source_file": "",
       "source_location": "",
       "id": "base",
-      "community": 4,
+      "community": 11,
       "norm_label": "base"
     },
     {
@@ -1836,7 +1836,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L31",
       "id": "models_audit_auditlog_repr",
-      "community": 4,
+      "community": 11,
       "norm_label": ".__repr__()"
     },
     {
@@ -1845,7 +1845,7 @@
       "source_file": "app/models/base.py",
       "source_location": "L1",
       "id": "app_models_base_py",
-      "community": 4,
+      "community": 11,
       "norm_label": "base.py"
     },
     {
@@ -1854,7 +1854,7 @@
       "source_file": "app/models/base.py",
       "source_location": "L13",
       "id": "models_base_base",
-      "community": 4,
+      "community": 11,
       "norm_label": "base"
     },
     {
@@ -1863,7 +1863,7 @@
       "source_file": "",
       "source_location": "",
       "id": "declarativebase",
-      "community": 4,
+      "community": 11,
       "norm_label": "declarativebase"
     },
     {
@@ -1872,7 +1872,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L1",
       "id": "app_models_group_py",
-      "community": 4,
+      "community": 11,
       "norm_label": "group.py"
     },
     {
@@ -1881,7 +1881,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L16",
       "id": "models_group_group",
-      "community": 4,
+      "community": 11,
       "norm_label": "group"
     },
     {
@@ -1890,7 +1890,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L29",
       "id": "models_group_group_repr",
-      "community": 4,
+      "community": 11,
       "norm_label": ".__repr__()"
     },
     {
@@ -1899,7 +1899,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L1",
       "id": "app_models_tag_py",
-      "community": 2,
+      "community": 31,
       "norm_label": "tag.py"
     },
     {
@@ -1908,7 +1908,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L16",
       "id": "models_tag_tag",
-      "community": 4,
+      "community": 31,
       "norm_label": "tag"
     },
     {
@@ -1917,7 +1917,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L36",
       "id": "models_tag_tag_repr",
-      "community": 4,
+      "community": 31,
       "norm_label": ".__repr__()"
     },
     {
@@ -1935,7 +1935,7 @@
       "source_file": "app/models/task.py",
       "source_location": "L27",
       "id": "models_task_task",
-      "community": 4,
+      "community": 11,
       "norm_label": "task"
     },
     {
@@ -1944,7 +1944,7 @@
       "source_file": "app/models/task.py",
       "source_location": "L50",
       "id": "models_task_task_repr",
-      "community": 4,
+      "community": 11,
       "norm_label": ".__repr__()"
     },
     {
@@ -1953,7 +1953,7 @@
       "source_file": "app/models/task.py",
       "source_location": "L54",
       "id": "models_task_subtask",
-      "community": 4,
+      "community": 26,
       "norm_label": "subtask"
     },
     {
@@ -1962,7 +1962,7 @@
       "source_file": "app/models/task.py",
       "source_location": "L69",
       "id": "models_task_subtask_repr",
-      "community": 4,
+      "community": 26,
       "norm_label": ".__repr__()"
     },
     {
@@ -1980,7 +1980,7 @@
       "source_file": "app/models/user.py",
       "source_location": "L18",
       "id": "models_user_user",
-      "community": 4,
+      "community": 11,
       "norm_label": "user"
     },
     {
@@ -1989,7 +1989,7 @@
       "source_file": "app/models/user.py",
       "source_location": "L35",
       "id": "models_user_user_repr",
-      "community": 4,
+      "community": 11,
       "norm_label": ".__repr__()"
     },
     {
@@ -1998,7 +1998,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "app_models_init_py",
-      "community": 40,
+      "community": 48,
       "norm_label": "__init__.py"
     },
     {
@@ -2007,7 +2007,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "models_init_rationale_1",
-      "community": 40,
+      "community": 48,
       "norm_label": "database models - sqlalchemy orm models."
     },
     {
@@ -2349,7 +2349,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "app_schemas_init_py",
-      "community": 41,
+      "community": 49,
       "norm_label": "__init__.py"
     },
     {
@@ -2358,7 +2358,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "schemas_init_rationale_1",
-      "community": 41,
+      "community": 49,
       "norm_label": "pydantic schemas - data validation models for request/response."
     },
     {
@@ -2367,7 +2367,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L1",
       "id": "tests_conftest_py",
-      "community": 15,
+      "community": 13,
       "norm_label": "conftest.py"
     },
     {
@@ -2376,7 +2376,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L16",
       "id": "tests_conftest_anyio_backend",
-      "community": 15,
+      "community": 13,
       "norm_label": "anyio_backend()"
     },
     {
@@ -2385,7 +2385,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L21",
       "id": "tests_conftest_db",
-      "community": 15,
+      "community": 13,
       "norm_label": "db()"
     },
     {
@@ -2394,7 +2394,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L40",
       "id": "tests_conftest_client",
-      "community": 15,
+      "community": 13,
       "norm_label": "client()"
     },
     {
@@ -2403,7 +2403,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L45",
       "id": "tests_conftest_async_client",
-      "community": 15,
+      "community": 13,
       "norm_label": "async_client()"
     },
     {
@@ -2412,7 +2412,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L52",
       "id": "tests_conftest_registered_user",
-      "community": 15,
+      "community": 13,
       "norm_label": "registered_user()"
     },
     {
@@ -2421,7 +2421,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L77",
       "id": "tests_conftest_confirmed_user",
-      "community": 15,
+      "community": 13,
       "norm_label": "confirmed_user()"
     },
     {
@@ -2430,7 +2430,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L88",
       "id": "tests_conftest_logged_in_token",
-      "community": 15,
+      "community": 13,
       "norm_label": "logged_in_token()"
     },
     {
@@ -2439,7 +2439,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L106",
       "id": "tests_conftest_mock_httpx_client",
-      "community": 15,
+      "community": 13,
       "norm_label": "mock_httpx_client()"
     },
     {
@@ -2448,7 +2448,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L107",
       "id": "tests_conftest_rationale_107",
-      "community": 15,
+      "community": 13,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests."
     },
     {
@@ -2457,7 +2457,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L1",
       "id": "tests_test_migrations_py",
-      "community": 31,
+      "community": 39,
       "norm_label": "test_migrations.py"
     },
     {
@@ -2466,7 +2466,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
       "id": "tests_test_migrations_test_alembic_migrations",
-      "community": 31,
+      "community": 39,
       "norm_label": "test_alembic_migrations()"
     },
     {
@@ -2475,7 +2475,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L7",
       "id": "tests_test_migrations_rationale_7",
-      "community": 31,
+      "community": 39,
       "norm_label": "test that alembic migration can run against a clean database successfully."
     },
     {
@@ -2484,7 +2484,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L1",
       "id": "tests_test_security_py",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_security.py"
     },
     {
@@ -2493,7 +2493,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L11",
       "id": "tests_test_security_test_get_subject_for_token_type_valid_access_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_valid_access_token()"
     },
     {
@@ -2502,7 +2502,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L18",
       "id": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_valid_confirm_token()"
     },
     {
@@ -2511,7 +2511,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L25",
       "id": "tests_test_security_test_get_subject_for_token_type_expired",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_expired()"
     },
     {
@@ -2520,7 +2520,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L34",
       "id": "tests_test_security_test_get_subject_for_token_type_invalid_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_invalid_token()"
     },
     {
@@ -2529,7 +2529,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L41",
       "id": "tests_test_security_test_get_subject_for_token_type_wrong_type",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_wrong_type()"
     },
     {
@@ -2538,7 +2538,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L49",
       "id": "tests_test_security_test_get_subject_for_token_type_missing_subject",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_subject_for_token_type_missing_subject()"
     },
     {
@@ -2547,7 +2547,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L61",
       "id": "tests_test_security_test_password_hash",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_password_hash()"
     },
     {
@@ -2556,7 +2556,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L66",
       "id": "tests_test_security_test_access_token_expire_minutes",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_access_token_expire_minutes()"
     },
     {
@@ -2565,7 +2565,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L70",
       "id": "tests_test_security_test_confirm_token_expire_minutes",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_confirm_token_expire_minutes()"
     },
     {
@@ -2574,7 +2574,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L74",
       "id": "tests_test_security_test_create_access_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_create_access_token()"
     },
     {
@@ -2583,7 +2583,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L83",
       "id": "tests_test_security_test_create_confirmation_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_create_confirmation_token()"
     },
     {
@@ -2592,7 +2592,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L93",
       "id": "tests_test_security_test_get_user",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_user()"
     },
     {
@@ -2601,7 +2601,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L102",
       "id": "tests_test_security_test_get_user_not_found",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_user_not_found()"
     },
     {
@@ -2610,7 +2610,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L110",
       "id": "tests_test_security_test_authenticate_user",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_authenticate_user()"
     },
     {
@@ -2619,7 +2619,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L117",
       "id": "tests_test_security_test_authenticate_user_not_found",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_authenticate_user_not_found()"
     },
     {
@@ -2628,7 +2628,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L123",
       "id": "tests_test_security_test_authenticate_user_wrong_password",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_authenticate_user_wrong_password()"
     },
     {
@@ -2637,7 +2637,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L129",
       "id": "tests_test_security_test_get_current_user",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_current_user()"
     },
     {
@@ -2646,7 +2646,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L137",
       "id": "tests_test_security_test_get_current_user_invalid_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_current_user_invalid_token()"
     },
     {
@@ -2655,7 +2655,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L143",
       "id": "tests_test_security_test_get_current_user_wrong_type_token",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_get_current_user_wrong_type_token()"
     },
     {
@@ -2664,7 +2664,7 @@
       "source_file": "tests/test_security.py",
       "source_location": "L150",
       "id": "tests_test_security_test_authenticate_user_lazy_migration",
-      "community": 6,
+      "community": 4,
       "norm_label": "test_authenticate_user_lazy_migration()"
     },
     {
@@ -2673,7 +2673,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L1",
       "id": "tests_test_security_hardening_py",
-      "community": 30,
+      "community": 35,
       "norm_label": "test_security_hardening.py"
     },
     {
@@ -2682,7 +2682,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L8",
       "id": "tests_test_security_hardening_test_security_headers",
-      "community": 30,
+      "community": 35,
       "norm_label": "test_security_headers()"
     },
     {
@@ -2691,7 +2691,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L23",
       "id": "tests_test_security_hardening_test_cors_allowed_origin",
-      "community": 30,
+      "community": 35,
       "norm_label": "test_cors_allowed_origin()"
     },
     {
@@ -2700,7 +2700,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L30",
       "id": "tests_test_security_hardening_test_cors_disallowed_origin",
-      "community": 30,
+      "community": 35,
       "norm_label": "test_cors_disallowed_origin()"
     },
     {
@@ -2709,7 +2709,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L36",
       "id": "tests_test_security_hardening_test_rate_limiting_register",
-      "community": 30,
+      "community": 35,
       "norm_label": "test_rate_limiting_register()"
     },
     {
@@ -2718,7 +2718,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L1",
       "id": "tests_test_seed_py",
-      "community": 4,
+      "community": 26,
       "norm_label": "test_seed.py"
     },
     {
@@ -2727,7 +2727,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L8",
       "id": "tests_test_seed_test_seed_data",
-      "community": 4,
+      "community": 26,
       "norm_label": "test_seed_data()"
     },
     {
@@ -2736,7 +2736,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L9",
       "id": "tests_test_seed_rationale_9",
-      "community": 4,
+      "community": 26,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r"
     },
     {
@@ -2745,7 +2745,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L1",
       "id": "tests_test_tasks_py",
-      "community": 7,
+      "community": 6,
       "norm_label": "test_tasks.py"
     },
     {
@@ -2754,7 +2754,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L8",
       "id": "tests_test_tasks_test_send_confirmation_email",
-      "community": 7,
+      "community": 6,
       "norm_label": "test_send_confirmation_email()"
     },
     {
@@ -2763,7 +2763,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L20",
       "id": "tests_test_tasks_test_send_confirmation_email_api_error",
-      "community": 7,
+      "community": 6,
       "norm_label": "test_send_confirmation_email_api_error()"
     },
     {
@@ -2772,7 +2772,7 @@
       "source_file": "tests/test_tasks.py",
       "source_location": "L33",
       "id": "tests_test_tasks_test_send_confirmation_email_falls_back_to_api",
-      "community": 7,
+      "community": 6,
       "norm_label": "test_send_confirmation_email_falls_back_to_api()"
     },
     {
@@ -2781,7 +2781,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_py",
-      "community": 42,
+      "community": 50,
       "norm_label": "__init__.py"
     },
     {
@@ -2790,7 +2790,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_rationale_1",
-      "community": 42,
+      "community": 50,
       "norm_label": "tests package - contains all application tests."
     },
     {
@@ -2799,7 +2799,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L1",
       "id": "tests_routers_test_audit_py",
-      "community": 32,
+      "community": 40,
       "norm_label": "test_audit.py"
     },
     {
@@ -2808,7 +2808,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L6",
       "id": "routers_test_audit_test_get_audit_logs_empty",
-      "community": 32,
+      "community": 40,
       "norm_label": "test_get_audit_logs_empty()"
     },
     {
@@ -2817,7 +2817,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L15",
       "id": "routers_test_audit_test_audit_log_after_task_creation",
-      "community": 32,
+      "community": 40,
       "norm_label": "test_audit_log_after_task_creation()"
     },
     {
@@ -2826,7 +2826,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L42",
       "id": "routers_test_audit_test_audit_log_filtering",
-      "community": 32,
+      "community": 40,
       "norm_label": "test_audit_log_filtering()"
     },
     {
@@ -2835,7 +2835,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L1",
       "id": "tests_routers_test_group_py",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_group.py"
     },
     {
@@ -2844,7 +2844,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L6",
       "id": "routers_test_group_create_group",
-      "community": 2,
+      "community": 15,
       "norm_label": "create_group()"
     },
     {
@@ -2853,7 +2853,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L15",
       "id": "routers_test_group_second_user",
-      "community": 2,
+      "community": 15,
       "norm_label": "second_user()"
     },
     {
@@ -2862,7 +2862,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L46",
       "id": "routers_test_group_test_create_group",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_create_group()"
     },
     {
@@ -2871,7 +2871,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L59",
       "id": "routers_test_group_test_list_groups",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_list_groups()"
     },
     {
@@ -2880,7 +2880,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L72",
       "id": "routers_test_group_test_get_group",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_get_group()"
     },
     {
@@ -2889,7 +2889,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L83",
       "id": "routers_test_group_test_update_group",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_update_group()"
     },
     {
@@ -2898,7 +2898,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L95",
       "id": "routers_test_group_test_delete_group",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_delete_group()"
     },
     {
@@ -2907,7 +2907,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L112",
       "id": "routers_test_group_test_group_idor_protection",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_group_idor_protection()"
     },
     {
@@ -2916,7 +2916,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L141",
       "id": "routers_test_group_test_task_group_idor_protection",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_task_group_idor_protection()"
     },
     {
@@ -2925,7 +2925,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L175",
       "id": "routers_test_group_test_list_group_tasks",
-      "community": 2,
+      "community": 15,
       "norm_label": "test_list_group_tasks()"
     },
     {
@@ -2997,7 +2997,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L1",
       "id": "tests_routers_test_stats_py",
-      "community": 33,
+      "community": 41,
       "norm_label": "test_stats.py"
     },
     {
@@ -3006,7 +3006,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L6",
       "id": "routers_test_stats_test_get_stats_overview_empty",
-      "community": 33,
+      "community": 41,
       "norm_label": "test_get_stats_overview_empty()"
     },
     {
@@ -3015,7 +3015,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L18",
       "id": "routers_test_stats_test_stats_with_data",
-      "community": 33,
+      "community": 41,
       "norm_label": "test_stats_with_data()"
     },
     {
@@ -3024,7 +3024,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L44",
       "id": "routers_test_stats_test_tag_distribution",
-      "community": 33,
+      "community": 41,
       "norm_label": "test_tag_distribution()"
     },
     {
@@ -3033,7 +3033,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L1",
       "id": "tests_routers_test_task_py",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_task.py"
     },
     {
@@ -3042,7 +3042,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L7",
       "id": "routers_test_task_create_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "create_task()"
     },
     {
@@ -3051,7 +3051,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L14",
       "id": "routers_test_task_create_subtask",
-      "community": 8,
+      "community": 5,
       "norm_label": "create_subtask()"
     },
     {
@@ -3060,7 +3060,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L26",
       "id": "routers_test_task_create_tag",
-      "community": 8,
+      "community": 5,
       "norm_label": "create_tag()"
     },
     {
@@ -3069,7 +3069,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L36",
       "id": "routers_test_task_created_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "created_task()"
     },
     {
@@ -3078,7 +3078,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L41",
       "id": "routers_test_task_created_subtask",
-      "community": 8,
+      "community": 5,
       "norm_label": "created_subtask()"
     },
     {
@@ -3087,7 +3087,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L48",
       "id": "routers_test_task_created_tag",
-      "community": 8,
+      "community": 5,
       "norm_label": "created_tag()"
     },
     {
@@ -3096,7 +3096,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L53",
       "id": "routers_test_task_test_create_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_create_task()"
     },
     {
@@ -3105,7 +3105,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L71",
       "id": "routers_test_task_test_create_empty_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_create_empty_task()"
     },
     {
@@ -3114,7 +3114,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L81",
       "id": "routers_test_task_test_create_task_expired_token",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_create_task_expired_token()"
     },
     {
@@ -3123,7 +3123,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L98",
       "id": "routers_test_task_test_get_all_tasks",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_all_tasks()"
     },
     {
@@ -3132,7 +3132,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L108",
       "id": "routers_test_task_test_create_subtask",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_create_subtask()"
     },
     {
@@ -3141,7 +3141,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L130",
       "id": "routers_test_task_test_get_subtasks_on_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_subtasks_on_task()"
     },
     {
@@ -3150,7 +3150,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L143",
       "id": "routers_test_task_test_get_subtasks_on_task_empty",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_subtasks_on_task_empty()"
     },
     {
@@ -3159,7 +3159,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L156",
       "id": "routers_test_task_test_get_task_with_subtasks",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_task_with_subtasks()"
     },
     {
@@ -3168,7 +3168,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L172",
       "id": "routers_test_task_test_get_missing_task_with_subtasks",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_missing_task_with_subtasks()"
     },
     {
@@ -3177,7 +3177,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L183",
       "id": "routers_test_task_test_create_tag",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_create_tag()"
     },
     {
@@ -3186,7 +3186,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L206",
       "id": "routers_test_task_test_get_tags_on_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_tags_on_task()"
     },
     {
@@ -3195,7 +3195,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L222",
       "id": "routers_test_task_test_get_tags_on_missing_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_get_tags_on_missing_task()"
     },
     {
@@ -3204,7 +3204,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L232",
       "id": "routers_test_task_test_reuse_tag_across_tasks",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_reuse_tag_across_tasks()"
     },
     {
@@ -3213,7 +3213,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L254",
       "id": "routers_test_task_test_update_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_update_task()"
     },
     {
@@ -3222,7 +3222,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L272",
       "id": "routers_test_task_test_delete_task",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_delete_task()"
     },
     {
@@ -3231,7 +3231,7 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L288",
       "id": "routers_test_task_test_update_subtask",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_update_subtask()"
     },
     {
@@ -3240,25 +3240,34 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L308",
       "id": "routers_test_task_test_delete_subtask",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_delete_subtask()"
+    },
+    {
+      "label": "test_get_tasks_filtered_by_group()",
+      "file_type": "code",
+      "source_file": "tests/routers/test_task.py",
+      "source_location": "L326",
+      "id": "routers_test_task_test_get_tasks_filtered_by_group",
+      "community": 5,
+      "norm_label": "test_get_tasks_filtered_by_group()"
     },
     {
       "label": "test_detach_tag()",
       "file_type": "code",
       "source_file": "tests/routers/test_task.py",
-      "source_location": "L326",
+      "source_location": "L355",
       "id": "routers_test_task_test_detach_tag",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_detach_tag()"
     },
     {
       "label": "test_delete_tag()",
       "file_type": "code",
       "source_file": "tests/routers/test_task.py",
-      "source_location": "L344",
+      "source_location": "L373",
       "id": "routers_test_task_test_delete_tag",
-      "community": 8,
+      "community": 5,
       "norm_label": "test_delete_tag()"
     },
     {
@@ -3267,7 +3276,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L1",
       "id": "tests_routers_test_user_py",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_user.py"
     },
     {
@@ -3276,7 +3285,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L6",
       "id": "routers_test_user_register_user",
-      "community": 11,
+      "community": 9,
       "norm_label": "register_user()"
     },
     {
@@ -3285,7 +3294,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L20",
       "id": "routers_test_user_test_register_user",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_register_user()"
     },
     {
@@ -3294,7 +3303,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L27",
       "id": "routers_test_user_test_confirm_user",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_confirm_user()"
     },
     {
@@ -3303,7 +3312,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L39",
       "id": "routers_test_user_test_confirm_user_invalid_token",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_confirm_user_invalid_token()"
     },
     {
@@ -3312,7 +3321,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L45",
       "id": "routers_test_user_test_confirm_user_expired_token",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_confirm_user_expired_token()"
     },
     {
@@ -3321,7 +3330,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L59",
       "id": "routers_test_user_test_register_user_duplicate_email",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_register_user_duplicate_email()"
     },
     {
@@ -3330,7 +3339,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L68",
       "id": "routers_test_user_test_login_user_not_exists",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_login_user_not_exists()"
     },
     {
@@ -3339,7 +3348,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L77",
       "id": "routers_test_user_test_login_user_not_confirmed",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_login_user_not_confirmed()"
     },
     {
@@ -3348,7 +3357,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L87",
       "id": "routers_test_user_test_login_user",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_login_user()"
     },
     {
@@ -3357,7 +3366,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L100",
       "id": "routers_test_user_test_logout_user",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_logout_user()"
     },
     {
@@ -3366,7 +3375,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L108",
       "id": "routers_test_user_test_logout_user_unauthenticated",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_logout_user_unauthenticated()"
     },
     {
@@ -3375,7 +3384,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L114",
       "id": "routers_test_user_test_get_my_profile",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_get_my_profile()"
     },
     {
@@ -3384,7 +3393,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L124",
       "id": "routers_test_user_test_update_username",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_username()"
     },
     {
@@ -3393,7 +3402,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L139",
       "id": "routers_test_user_test_update_username_taken",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_username_taken()"
     },
     {
@@ -3402,7 +3411,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L152",
       "id": "routers_test_user_test_update_password",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_password()"
     },
     {
@@ -3411,7 +3420,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L172",
       "id": "routers_test_user_test_update_password_incorrect_current",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_password_incorrect_current()"
     },
     {
@@ -3420,7 +3429,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L184",
       "id": "routers_test_user_test_update_username_too_short",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_username_too_short()"
     },
     {
@@ -3429,7 +3438,7 @@
       "source_file": "tests/routers/test_user.py",
       "source_location": "L194",
       "id": "routers_test_user_test_update_password_too_short",
-      "community": 11,
+      "community": 9,
       "norm_label": "test_update_password_too_short()"
     },
     {
@@ -3438,7 +3447,7 @@
       "source_file": "tests/routers/__init__.py",
       "source_location": "L1",
       "id": "tests_routers_init_py",
-      "community": 46,
+      "community": 54,
       "norm_label": "__init__.py"
     },
     {
@@ -3447,7 +3456,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "id": "claude_md",
-      "community": 27,
+      "community": 32,
       "norm_label": "claude.md"
     },
     {
@@ -3456,7 +3465,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L1",
       "id": "task_buddy_backend_claude_claude_md",
-      "community": 27,
+      "community": 32,
       "norm_label": "claude.md"
     },
     {
@@ -3465,7 +3474,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L5",
       "id": "task_buddy_backend_claude_common_development_commands",
-      "community": 27,
+      "community": 32,
       "norm_label": "common development commands"
     },
     {
@@ -3474,7 +3483,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L23",
       "id": "task_buddy_backend_claude_high_level_architecture",
-      "community": 27,
+      "community": 32,
       "norm_label": "high\u2010level architecture"
     },
     {
@@ -3483,7 +3492,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L40",
       "id": "task_buddy_backend_claude_environment_variables",
-      "community": 27,
+      "community": 32,
       "norm_label": "environment variables"
     },
     {
@@ -3492,7 +3501,7 @@
       "source_file": "CLAUDE.md",
       "source_location": "L43",
       "id": "task_buddy_backend_claude_codeblock_1",
-      "community": 27,
+      "community": 32,
       "norm_label": "code:block1 (database_url=postgresql://user:password@localhost/task_buddy)"
     },
     {
@@ -3501,7 +3510,7 @@
       "source_file": "README.md",
       "source_location": "L1",
       "id": "readme_md",
-      "community": 5,
+      "community": 2,
       "norm_label": "readme.md"
     },
     {
@@ -3510,7 +3519,7 @@
       "source_file": "README.md",
       "source_location": "L1",
       "id": "task_buddy_backend_readme_task_buddy_backend",
-      "community": 5,
+      "community": 2,
       "norm_label": "task buddy backend"
     },
     {
@@ -3519,7 +3528,7 @@
       "source_file": "README.md",
       "source_location": "L5",
       "id": "task_buddy_backend_readme_features",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udccb features"
     },
     {
@@ -3528,7 +3537,7 @@
       "source_file": "README.md",
       "source_location": "L17",
       "id": "task_buddy_backend_readme_tech_stack",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udee0\ufe0f tech stack"
     },
     {
@@ -3537,7 +3546,7 @@
       "source_file": "README.md",
       "source_location": "L26",
       "id": "task_buddy_backend_readme_project_structure",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udcc1 project structure"
     },
     {
@@ -3546,7 +3555,7 @@
       "source_file": "README.md",
       "source_location": "L28",
       "id": "task_buddy_backend_readme_codeblock_1",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:block1 (task-buddy-backend/)"
     },
     {
@@ -3555,7 +3564,7 @@
       "source_file": "README.md",
       "source_location": "L57",
       "id": "task_buddy_backend_readme_quick_start",
-      "community": 13,
+      "community": 2,
       "norm_label": "\ud83d\ude80 quick start"
     },
     {
@@ -3564,7 +3573,7 @@
       "source_file": "README.md",
       "source_location": "L59",
       "id": "task_buddy_backend_readme_prerequisites",
-      "community": 13,
+      "community": 2,
       "norm_label": "prerequisites"
     },
     {
@@ -3573,7 +3582,7 @@
       "source_file": "README.md",
       "source_location": "L65",
       "id": "task_buddy_backend_readme_installation",
-      "community": 13,
+      "community": 2,
       "norm_label": "installation"
     },
     {
@@ -3582,7 +3591,7 @@
       "source_file": "README.md",
       "source_location": "L69",
       "id": "task_buddy_backend_readme_codeblock_2",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (git clone https://github.com/yourusername/task-buddy-backend)"
     },
     {
@@ -3591,7 +3600,7 @@
       "source_file": "README.md",
       "source_location": "L76",
       "id": "task_buddy_backend_readme_codeblock_3",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (# on windows)"
     },
     {
@@ -3600,7 +3609,7 @@
       "source_file": "README.md",
       "source_location": "L88",
       "id": "task_buddy_backend_readme_codeblock_4",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (pip install -e \".[dev]\")"
     },
     {
@@ -3609,7 +3618,7 @@
       "source_file": "README.md",
       "source_location": "L94",
       "id": "task_buddy_backend_readme_running_the_application",
-      "community": 13,
+      "community": 2,
       "norm_label": "running the application"
     },
     {
@@ -3618,7 +3627,7 @@
       "source_file": "README.md",
       "source_location": "L96",
       "id": "task_buddy_backend_readme_development_mode",
-      "community": 13,
+      "community": 2,
       "norm_label": "development mode"
     },
     {
@@ -3627,7 +3636,7 @@
       "source_file": "README.md",
       "source_location": "L100",
       "id": "task_buddy_backend_readme_codeblock_5",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (fastapi dev)"
     },
     {
@@ -3636,7 +3645,7 @@
       "source_file": "README.md",
       "source_location": "L106",
       "id": "task_buddy_backend_readme_codeblock_6",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (uvicorn app.main:app --reload)"
     },
     {
@@ -3645,7 +3654,7 @@
       "source_file": "README.md",
       "source_location": "L112",
       "id": "task_buddy_backend_readme_production_mode",
-      "community": 13,
+      "community": 2,
       "norm_label": "production mode"
     },
     {
@@ -3654,7 +3663,7 @@
       "source_file": "README.md",
       "source_location": "L114",
       "id": "task_buddy_backend_readme_codeblock_7",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (fastapi run)"
     },
     {
@@ -3663,7 +3672,7 @@
       "source_file": "README.md",
       "source_location": "L120",
       "id": "task_buddy_backend_readme_codeblock_8",
-      "community": 13,
+      "community": 2,
       "norm_label": "code:bash (uvicorn app.main:app --host 0.0.0.0 --port 8000)"
     },
     {
@@ -3672,7 +3681,7 @@
       "source_file": "README.md",
       "source_location": "L124",
       "id": "task_buddy_backend_readme_api_documentation",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udcda api documentation"
     },
     {
@@ -3681,7 +3690,7 @@
       "source_file": "README.md",
       "source_location": "L132",
       "id": "task_buddy_backend_readme_available_endpoints",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udd0d available endpoints"
     },
     {
@@ -3690,7 +3699,7 @@
       "source_file": "README.md",
       "source_location": "L134",
       "id": "task_buddy_backend_readme_health_check",
-      "community": 5,
+      "community": 2,
       "norm_label": "health check"
     },
     {
@@ -3699,7 +3708,7 @@
       "source_file": "README.md",
       "source_location": "L140",
       "id": "task_buddy_backend_readme_tasks",
-      "community": 5,
+      "community": 2,
       "norm_label": "tasks"
     },
     {
@@ -3708,7 +3717,7 @@
       "source_file": "README.md",
       "source_location": "L148",
       "id": "task_buddy_backend_readme_users",
-      "community": 5,
+      "community": 2,
       "norm_label": "users"
     },
     {
@@ -3717,7 +3726,7 @@
       "source_file": "README.md",
       "source_location": "L156",
       "id": "task_buddy_backend_readme_testing",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83e\uddea testing"
     },
     {
@@ -3726,7 +3735,7 @@
       "source_file": "README.md",
       "source_location": "L160",
       "id": "task_buddy_backend_readme_codeblock_9",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (pytest)"
     },
     {
@@ -3735,7 +3744,7 @@
       "source_file": "README.md",
       "source_location": "L166",
       "id": "task_buddy_backend_readme_codeblock_10",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (pytest --cov=app --cov-report=html)"
     },
     {
@@ -3744,7 +3753,7 @@
       "source_file": "README.md",
       "source_location": "L170",
       "id": "task_buddy_backend_readme_code_quality",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udcdd code quality"
     },
     {
@@ -3753,7 +3762,7 @@
       "source_file": "README.md",
       "source_location": "L172",
       "id": "task_buddy_backend_readme_format_code_with_black",
-      "community": 5,
+      "community": 2,
       "norm_label": "format code with black"
     },
     {
@@ -3762,7 +3771,7 @@
       "source_file": "README.md",
       "source_location": "L174",
       "id": "task_buddy_backend_readme_codeblock_11",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (black app tests)"
     },
     {
@@ -3771,7 +3780,7 @@
       "source_file": "README.md",
       "source_location": "L178",
       "id": "task_buddy_backend_readme_lint_with_ruff",
-      "community": 5,
+      "community": 2,
       "norm_label": "lint with ruff"
     },
     {
@@ -3780,7 +3789,7 @@
       "source_file": "README.md",
       "source_location": "L180",
       "id": "task_buddy_backend_readme_codeblock_12",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (ruff check app tests)"
     },
     {
@@ -3789,7 +3798,7 @@
       "source_file": "README.md",
       "source_location": "L184",
       "id": "task_buddy_backend_readme_type_checking_with_mypy",
-      "community": 5,
+      "community": 2,
       "norm_label": "type checking with mypy"
     },
     {
@@ -3798,7 +3807,7 @@
       "source_file": "README.md",
       "source_location": "L186",
       "id": "task_buddy_backend_readme_codeblock_13",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (mypy app)"
     },
     {
@@ -3807,7 +3816,7 @@
       "source_file": "README.md",
       "source_location": "L190",
       "id": "task_buddy_backend_readme_sort_imports_with_isort",
-      "community": 5,
+      "community": 2,
       "norm_label": "sort imports with isort"
     },
     {
@@ -3816,7 +3825,7 @@
       "source_file": "README.md",
       "source_location": "L192",
       "id": "task_buddy_backend_readme_codeblock_14",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (isort app tests)"
     },
     {
@@ -3825,7 +3834,7 @@
       "source_file": "README.md",
       "source_location": "L196",
       "id": "task_buddy_backend_readme_environment_variables",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udd11 environment variables"
     },
     {
@@ -3834,7 +3843,7 @@
       "source_file": "README.md",
       "source_location": "L200",
       "id": "task_buddy_backend_readme_codeblock_15",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:env (# database)"
     },
     {
@@ -3843,7 +3852,7 @@
       "source_file": "README.md",
       "source_location": "L214",
       "id": "task_buddy_backend_readme_docker",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udce6 docker"
     },
     {
@@ -3852,7 +3861,7 @@
       "source_file": "README.md",
       "source_location": "L216",
       "id": "task_buddy_backend_readme_build_docker_image",
-      "community": 5,
+      "community": 2,
       "norm_label": "build docker image"
     },
     {
@@ -3861,7 +3870,7 @@
       "source_file": "README.md",
       "source_location": "L218",
       "id": "task_buddy_backend_readme_codeblock_16",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (docker build -t task-buddy-backend:latest .)"
     },
     {
@@ -3870,7 +3879,7 @@
       "source_file": "README.md",
       "source_location": "L222",
       "id": "task_buddy_backend_readme_run_container",
-      "community": 5,
+      "community": 2,
       "norm_label": "run container"
     },
     {
@@ -3879,7 +3888,7 @@
       "source_file": "README.md",
       "source_location": "L224",
       "id": "task_buddy_backend_readme_codeblock_17",
-      "community": 5,
+      "community": 2,
       "norm_label": "code:bash (docker run -p 8000:8000 task-buddy-backend:latest)"
     },
     {
@@ -3888,7 +3897,7 @@
       "source_file": "README.md",
       "source_location": "L228",
       "id": "task_buddy_backend_readme_contributing",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83e\udd1d contributing"
     },
     {
@@ -3897,7 +3906,7 @@
       "source_file": "README.md",
       "source_location": "L236",
       "id": "task_buddy_backend_readme_license",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udcc4 license"
     },
     {
@@ -3906,7 +3915,7 @@
       "source_file": "README.md",
       "source_location": "L240",
       "id": "task_buddy_backend_readme_support",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udcac support"
     },
     {
@@ -3915,7 +3924,7 @@
       "source_file": "README.md",
       "source_location": "L244",
       "id": "task_buddy_backend_readme_useful_resources",
-      "community": 5,
+      "community": 2,
       "norm_label": "\ud83d\udd17 useful resources"
     },
     {
@@ -3924,7 +3933,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L1",
       "id": "docs_codebase_architecture_md",
-      "community": 14,
+      "community": 12,
       "norm_label": "architecture.md"
     },
     {
@@ -3933,7 +3942,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L1",
       "id": "codebase_architecture_architecture",
-      "community": 14,
+      "community": 12,
       "norm_label": "architecture"
     },
     {
@@ -3942,7 +3951,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L3",
       "id": "codebase_architecture_core_sections_required",
-      "community": 14,
+      "community": 12,
       "norm_label": "core sections (required)"
     },
     {
@@ -3951,7 +3960,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L5",
       "id": "codebase_architecture_1_architectural_style",
-      "community": 14,
+      "community": 12,
       "norm_label": "1) architectural style"
     },
     {
@@ -3960,7 +3969,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L14",
       "id": "codebase_architecture_2_system_flow",
-      "community": 14,
+      "community": 12,
       "norm_label": "2) system flow"
     },
     {
@@ -3969,7 +3978,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L16",
       "id": "codebase_architecture_codeblock_1",
-      "community": 14,
+      "community": 12,
       "norm_label": "code:text ([http request] -> [app/main.py] -> [app/api/routers/*] -> [a)"
     },
     {
@@ -3978,7 +3987,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L26",
       "id": "codebase_architecture_3_layer_module_responsibilities",
-      "community": 14,
+      "community": 12,
       "norm_label": "3) layer/module responsibilities"
     },
     {
@@ -3987,7 +3996,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L36",
       "id": "codebase_architecture_4_reused_patterns",
-      "community": 14,
+      "community": 12,
       "norm_label": "4) reused patterns"
     },
     {
@@ -3996,7 +4005,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L44",
       "id": "codebase_architecture_5_graphify_insights_core_abstractions",
-      "community": 14,
+      "community": 12,
       "norm_label": "5) graphify insights (core abstractions)"
     },
     {
@@ -4005,7 +4014,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L61",
       "id": "codebase_architecture_6_known_architectural_risks",
-      "community": 14,
+      "community": 12,
       "norm_label": "6) known architectural risks"
     },
     {
@@ -4014,7 +4023,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L66",
       "id": "codebase_architecture_6_evidence",
-      "community": 14,
+      "community": 12,
       "norm_label": "6) evidence"
     },
     {
@@ -4023,7 +4032,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L74",
       "id": "codebase_architecture_extended_sections_optional",
-      "community": 14,
+      "community": 12,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4122,7 +4131,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L1",
       "id": "docs_codebase_conventions_md",
-      "community": 17,
+      "community": 16,
       "norm_label": "conventions.md"
     },
     {
@@ -4131,7 +4140,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L1",
       "id": "codebase_conventions_coding_conventions",
-      "community": 17,
+      "community": 16,
       "norm_label": "coding conventions"
     },
     {
@@ -4140,7 +4149,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L3",
       "id": "codebase_conventions_core_sections_required",
-      "community": 17,
+      "community": 16,
       "norm_label": "core sections (required)"
     },
     {
@@ -4149,7 +4158,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L5",
       "id": "codebase_conventions_1_naming_rules",
-      "community": 17,
+      "community": 16,
       "norm_label": "1) naming rules"
     },
     {
@@ -4158,7 +4167,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L14",
       "id": "codebase_conventions_2_formatting_and_linting",
-      "community": 17,
+      "community": 16,
       "norm_label": "2) formatting and linting"
     },
     {
@@ -4167,7 +4176,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L20",
       "id": "codebase_conventions_codeblock_1",
-      "community": 17,
+      "community": 16,
       "norm_label": "code:bash (black app tests)"
     },
     {
@@ -4176,7 +4185,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L27",
       "id": "codebase_conventions_3_import_and_module_conventions",
-      "community": 17,
+      "community": 16,
       "norm_label": "3) import and module conventions"
     },
     {
@@ -4185,7 +4194,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L33",
       "id": "codebase_conventions_4_error_and_logging_conventions",
-      "community": 17,
+      "community": 16,
       "norm_label": "4) error and logging conventions"
     },
     {
@@ -4194,7 +4203,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L39",
       "id": "codebase_conventions_5_testing_conventions",
-      "community": 17,
+      "community": 16,
       "norm_label": "5) testing conventions"
     },
     {
@@ -4203,7 +4212,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L45",
       "id": "codebase_conventions_6_evidence",
-      "community": 17,
+      "community": 16,
       "norm_label": "6) evidence"
     },
     {
@@ -4212,7 +4221,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L52",
       "id": "codebase_conventions_extended_sections_optional",
-      "community": 17,
+      "community": 16,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4482,7 +4491,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L1",
       "id": "docs_codebase_testing_md",
-      "community": 18,
+      "community": 17,
       "norm_label": "testing.md"
     },
     {
@@ -4491,7 +4500,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L1",
       "id": "codebase_testing_testing_patterns",
-      "community": 18,
+      "community": 17,
       "norm_label": "testing patterns"
     },
     {
@@ -4500,7 +4509,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L3",
       "id": "codebase_testing_core_sections_required",
-      "community": 18,
+      "community": 17,
       "norm_label": "core sections (required)"
     },
     {
@@ -4509,7 +4518,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L5",
       "id": "codebase_testing_1_test_stack_and_commands",
-      "community": 18,
+      "community": 17,
       "norm_label": "1) test stack and commands"
     },
     {
@@ -4518,7 +4527,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L11",
       "id": "codebase_testing_codeblock_1",
-      "community": 18,
+      "community": 17,
       "norm_label": "code:bash (pytest)"
     },
     {
@@ -4527,7 +4536,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L17",
       "id": "codebase_testing_2_test_layout",
-      "community": 18,
+      "community": 17,
       "norm_label": "2) test layout"
     },
     {
@@ -4536,7 +4545,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L23",
       "id": "codebase_testing_3_test_scope_matrix",
-      "community": 18,
+      "community": 17,
       "norm_label": "3) test scope matrix"
     },
     {
@@ -4545,7 +4554,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L31",
       "id": "codebase_testing_4_mocking_and_isolation_strategy",
-      "community": 18,
+      "community": 17,
       "norm_label": "4) mocking and isolation strategy"
     },
     {
@@ -4554,7 +4563,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L37",
       "id": "codebase_testing_5_coverage_and_quality_signals",
-      "community": 18,
+      "community": 17,
       "norm_label": "5) coverage and quality signals"
     },
     {
@@ -4563,7 +4572,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L43",
       "id": "codebase_testing_6_evidence",
-      "community": 18,
+      "community": 17,
       "norm_label": "6) evidence"
     },
     {
@@ -4572,7 +4581,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L49",
       "id": "codebase_testing_extended_sections_optional",
-      "community": 18,
+      "community": 17,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4581,7 +4590,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L1",
       "id": "docs_superpowers_plans_2026_05_08_task_grouping_and_due_time_md",
-      "community": 10,
+      "community": 8,
       "norm_label": "2026-05-08-task-grouping-and-due-time.md"
     },
     {
@@ -4590,7 +4599,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L1",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_grouping_due_time_implementation_plan",
-      "community": 10,
+      "community": 8,
       "norm_label": "task grouping & due time implementation plan"
     },
     {
@@ -4599,7 +4608,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L13",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_1_backend_group_model_migration",
-      "community": 10,
+      "community": 8,
       "norm_label": "task 1: backend - group model & migration"
     },
     {
@@ -4608,7 +4617,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L23",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_1",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (from __future__ import annotations)"
     },
     {
@@ -4617,7 +4626,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L51",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_2",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (# add to imports if needed)"
     },
     {
@@ -4626,7 +4635,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L60",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_3",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (# inside task class:)"
     },
     {
@@ -4635,7 +4644,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L68",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_4",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (from app.models.group import group)"
     },
     {
@@ -4644,7 +4653,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L78",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_5",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:bash (git add app/models/ alembic/versions/)"
     },
     {
@@ -4653,7 +4662,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L85",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_2_backend_group_schemas_crud",
-      "community": 10,
+      "community": 8,
       "norm_label": "task 2: backend - group schemas & crud"
     },
     {
@@ -4662,7 +4671,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L94",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_6",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (from datetime import datetime)"
     },
     {
@@ -4671,7 +4680,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L119",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_7",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (# add group_id to taskcreaterequest and taskupdaterequest)"
     },
     {
@@ -4680,7 +4689,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L128",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_8",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (from typing import optional)"
     },
     {
@@ -4689,7 +4698,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L161",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_9",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:bash (git add app/schemas/ app/crud/)"
     },
     {
@@ -4698,7 +4707,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L168",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_3_backend_group_api_router",
-      "community": 10,
+      "community": 8,
       "norm_label": "task 3: backend - group api router"
     },
     {
@@ -4707,7 +4716,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L184",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_10",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:python (from app.api.routers import group)"
     },
     {
@@ -4716,7 +4725,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L193",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_11",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:bash (git add app/api/routers/ app/main.py)"
     },
     {
@@ -4725,7 +4734,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L200",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_4_frontend_api_hook_updates",
-      "community": 10,
+      "community": 8,
       "norm_label": "task 4: frontend - api hook updates"
     },
     {
@@ -4734,7 +4743,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L206",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_12",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:typescript (export interface group {)"
     },
     {
@@ -4743,7 +4752,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L226",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_13",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:bash (git add src/hooks/useapi.ts)"
     },
     {
@@ -4752,7 +4761,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L233",
       "id": "plans_2026_05_08_task_grouping_and_due_time_task_5_frontend_ui_enhancements",
-      "community": 10,
+      "community": 8,
       "norm_label": "task 5: frontend - ui enhancements"
     },
     {
@@ -4761,7 +4770,7 @@
       "source_file": "docs/superpowers/plans/2026-05-08-task-grouping-and-due-time.md",
       "source_location": "L252",
       "id": "plans_2026_05_08_task_grouping_and_due_time_codeblock_14",
-      "community": 10,
+      "community": 8,
       "norm_label": "code:bash (git add src/components/)"
     },
     {
@@ -4770,7 +4779,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L1",
       "id": "docs_superpowers_specs_2026_05_08_task_grouping_and_due_time_design_md",
-      "community": 12,
+      "community": 10,
       "norm_label": "2026-05-08-task-grouping-and-due-time-design.md"
     },
     {
@@ -4779,7 +4788,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L1",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_design_spec_task_grouping_due_time_enhancement",
-      "community": 12,
+      "community": 10,
       "norm_label": "design spec: task grouping & due time enhancement"
     },
     {
@@ -4788,7 +4797,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L7",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_1_overview",
-      "community": 12,
+      "community": 10,
       "norm_label": "1. overview"
     },
     {
@@ -4797,7 +4806,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L10",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_2_objectives",
-      "community": 12,
+      "community": 10,
       "norm_label": "2. objectives"
     },
     {
@@ -4806,7 +4815,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L16",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_3_backend_design_task_buddy_backend",
-      "community": 12,
+      "community": 10,
       "norm_label": "3. backend design (`task-buddy-backend`)"
     },
     {
@@ -4815,7 +4824,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L18",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_3_1_models_app_models_task_py_and_new_app_models_group_py",
-      "community": 12,
+      "community": 10,
       "norm_label": "3.1. models (`app/models/task.py` and new `app/models/group.py`)"
     },
     {
@@ -4824,7 +4833,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L20",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_group_model",
-      "community": 12,
+      "community": 10,
       "norm_label": "`group` model"
     },
     {
@@ -4833,7 +4842,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L28",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_task_model_update",
-      "community": 12,
+      "community": 10,
       "norm_label": "`task` model (update)"
     },
     {
@@ -4842,7 +4851,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L33",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_3_2_schemas_app_schemas_group_py_and_update_app_schemas_task_py",
-      "community": 12,
+      "community": 10,
       "norm_label": "3.2. schemas (`app/schemas/group.py` and update `app/schemas/task.py`)"
     },
     {
@@ -4851,7 +4860,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L35",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_group_schemas",
-      "community": 12,
+      "community": 10,
       "norm_label": "`group` schemas"
     },
     {
@@ -4860,7 +4869,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L39",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_task_schemas_update",
-      "community": 12,
+      "community": 10,
       "norm_label": "`task` schemas (update)"
     },
     {
@@ -4869,7 +4878,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L43",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_3_3_api_endpoints",
-      "community": 12,
+      "community": 10,
       "norm_label": "3.3. api endpoints"
     },
     {
@@ -4878,7 +4887,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L50",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_4_frontend_design_task_buddy_frontend",
-      "community": 12,
+      "community": 10,
       "norm_label": "4. frontend design (`task-buddy-frontend`)"
     },
     {
@@ -4887,7 +4896,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L52",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_4_1_api_integration_src_hooks_useapi_ts",
-      "community": 12,
+      "community": 10,
       "norm_label": "4.1. api integration (`src/hooks/useapi.ts`)"
     },
     {
@@ -4896,7 +4905,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L58",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_4_2_ui_components",
-      "community": 12,
+      "community": 10,
       "norm_label": "4.2. ui components"
     },
     {
@@ -4905,7 +4914,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L60",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_newtaskmodal",
-      "community": 12,
+      "community": 10,
       "norm_label": "`newtaskmodal`"
     },
     {
@@ -4914,7 +4923,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L66",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_taskcard",
-      "community": 12,
+      "community": 10,
       "norm_label": "`taskcard`"
     },
     {
@@ -4923,7 +4932,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L71",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_dashboard_sidebar",
-      "community": 12,
+      "community": 10,
       "norm_label": "`dashboard` / `sidebar`"
     },
     {
@@ -4932,7 +4941,7 @@
       "source_file": "docs/superpowers/specs/2026-05-08-task-grouping-and-due-time-design.md",
       "source_location": "L75",
       "id": "specs_2026_05_08_task_grouping_and_due_time_design_5_success_criteria",
-      "community": 12,
+      "community": 10,
       "norm_label": "5. success criteria"
     },
     {
@@ -4967,7 +4976,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L49",
-      "community": 47,
+      "community": 55,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_49"
     },
@@ -4976,7 +4985,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L48",
-      "community": 48,
+      "community": 56,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_48"
     },
@@ -4994,7 +5003,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L149",
-      "community": 16,
+      "community": 14,
       "norm_label": "retrieve the current user's profile information.",
       "id": "routers_user_rationale_149"
     },
@@ -5003,7 +5012,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L161",
-      "community": 16,
+      "community": 14,
       "norm_label": "update the current user's username.     checks for uniqueness and length.",
       "id": "routers_user_rationale_161"
     },
@@ -5021,7 +5030,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L220",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_220"
     },
@@ -5057,7 +5066,7 @@
       "file_type": "rationale",
       "source_file": "app/database.py",
       "source_location": "L10",
-      "community": 2,
+      "community": 28,
       "norm_label": "ensures the database url uses an async driver.",
       "id": "app_database_rationale_10"
     },
@@ -5066,7 +5075,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L47",
-      "community": 49,
+      "community": 57,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_47"
     },
@@ -5075,7 +5084,7 @@
       "file_type": "rationale",
       "source_file": "app/database.py",
       "source_location": "L8",
-      "community": 2,
+      "community": 28,
       "norm_label": "ensures the database url uses an async driver.",
       "id": "app_database_rationale_8"
     },
@@ -5084,7 +5093,7 @@
       "file_type": "rationale",
       "source_file": "app/dependencies.py",
       "source_location": "L14",
-      "community": 19,
+      "community": 18,
       "norm_label": "validate x-token header.          this is a simple token validation dependency",
       "id": "app_dependencies_rationale_14"
     },
@@ -5093,7 +5102,7 @@
       "file_type": "rationale",
       "source_file": "app/dependencies.py",
       "source_location": "L25",
-      "community": 19,
+      "community": 18,
       "norm_label": "validate query token parameter.          optional query parameter for basic to",
       "id": "app_dependencies_rationale_25"
     },
@@ -5102,7 +5111,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L126",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a confirmation email with smtp and brevo api fallback.      the logic is br",
       "id": "app_tasks_rationale_126"
     },
@@ -5111,7 +5120,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L168",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a password reset email with smtp and brevo api fallback.",
       "id": "app_tasks_rationale_168"
     },
@@ -5120,7 +5129,7 @@
       "file_type": "rationale",
       "source_file": "app/api/dependencies.py",
       "source_location": "L14",
-      "community": 28,
+      "community": 33,
       "norm_label": "optional query token validation for api routes.          this is a simple quer",
       "id": "api_dependencies_rationale_14"
     },
@@ -5129,7 +5138,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/audit.py",
       "source_location": "L22",
-      "community": 29,
+      "community": 34,
       "norm_label": "retrieve audit logs for the current user.",
       "id": "routers_audit_rationale_22"
     },
@@ -5156,7 +5165,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L150",
-      "community": 16,
+      "community": 14,
       "norm_label": "retrieve the current user's profile information.",
       "id": "routers_user_rationale_150"
     },
@@ -5165,7 +5174,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L162",
-      "community": 16,
+      "community": 14,
       "norm_label": "update the current user's username.     checks for uniqueness and length.",
       "id": "routers_user_rationale_162"
     },
@@ -5183,7 +5192,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L221",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_221"
     },
@@ -5237,7 +5246,7 @@
       "file_type": "rationale",
       "source_file": "tests/conftest.py",
       "source_location": "L109",
-      "community": 15,
+      "community": 13,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests.",
       "id": "tests_conftest_rationale_109"
     },
@@ -5246,7 +5255,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
-      "community": 31,
+      "community": 39,
       "norm_label": "test that alembic migration can run against a clean database successfully.",
       "id": "tests_test_migrations_rationale_6"
     },
@@ -5255,7 +5264,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_seed.py",
       "source_location": "L7",
-      "community": 4,
+      "community": 26,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r",
       "id": "tests_test_seed_rationale_7"
     },
@@ -5300,7 +5309,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L132",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a confirmation email with smtp and brevo api fallback.      the logic is br",
       "id": "app_tasks_rationale_132"
     },
@@ -5309,7 +5318,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L174",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a password reset email with smtp and brevo api fallback.",
       "id": "app_tasks_rationale_174"
     },
@@ -5318,7 +5327,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/audit.py",
       "source_location": "L17",
-      "community": 29,
+      "community": 34,
       "norm_label": "retrieve audit logs for the current user.",
       "id": "routers_audit_rationale_17"
     },
@@ -5372,7 +5381,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L138",
-      "community": 16,
+      "community": 14,
       "norm_label": "retrieve the current user's profile information.",
       "id": "routers_user_rationale_138"
     },
@@ -5390,7 +5399,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L212",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_212"
     },
@@ -5426,7 +5435,7 @@
       "file_type": "code",
       "source_file": "app/models/audit.py",
       "source_location": "L13",
-      "community": 2,
+      "community": 27,
       "norm_label": "auditlogcreate",
       "id": "models_audit_auditlogcreate"
     },
@@ -5471,7 +5480,7 @@
       "file_type": "code",
       "source_file": "app/models/tag.py",
       "source_location": "L5",
-      "community": 2,
+      "community": 31,
       "norm_label": "tagcreate",
       "id": "models_tag_tagcreate"
     },
@@ -5480,7 +5489,7 @@
       "file_type": "code",
       "source_file": "app/models/tag.py",
       "source_location": "L9",
-      "community": 2,
+      "community": 31,
       "norm_label": "tagresponse",
       "id": "models_tag_tagresponse"
     },
@@ -5552,7 +5561,7 @@
       "file_type": "code",
       "source_file": "app/models/user.py",
       "source_location": "L10",
-      "community": 4,
+      "community": 11,
       "norm_label": "userin",
       "id": "models_user_userin"
     },
@@ -5606,7 +5615,7 @@
       "file_type": "rationale",
       "source_file": "tests/conftest.py",
       "source_location": "L105",
-      "community": 15,
+      "community": 13,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests.",
       "id": "tests_conftest_rationale_105"
     },
@@ -5615,7 +5624,7 @@
       "file_type": "document",
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L44",
-      "community": 14,
+      "community": 12,
       "norm_label": "5) known architectural risks",
       "id": "codebase_architecture_5_known_architectural_risks"
     },
@@ -5624,7 +5633,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L44",
-      "community": 50,
+      "community": 58,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_44"
     },
@@ -5633,7 +5642,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L85",
-      "community": 7,
+      "community": 6,
       "norm_label": "helper to generate subject and body from confirmation url or direct inputs.",
       "id": "app_tasks_rationale_85"
     },
@@ -5642,7 +5651,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L100",
-      "community": 7,
+      "community": 6,
       "norm_label": "helper to mark a user as having a failed email confirmation in the database.",
       "id": "app_tasks_rationale_100"
     },
@@ -5651,7 +5660,7 @@
       "file_type": "rationale",
       "source_file": "app/tasks.py",
       "source_location": "L128",
-      "community": 7,
+      "community": 6,
       "norm_label": "send a confirmation email with smtp and brevo api fallback.      the logic is br",
       "id": "app_tasks_rationale_128"
     },
@@ -5669,7 +5678,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L119",
-      "community": 16,
+      "community": 14,
       "norm_label": "retrieve the current user's profile information.",
       "id": "routers_user_rationale_119"
     },
@@ -5678,7 +5687,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L130",
-      "community": 16,
+      "community": 14,
       "norm_label": "update the current user's username.     checks for uniqueness and length.",
       "id": "routers_user_rationale_130"
     },
@@ -5696,7 +5705,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L193",
-      "community": 26,
+      "community": 29,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_193"
     },
@@ -5704,7 +5713,7 @@
       "label": "Claude Code Guidance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "community": 2,
+      "community": 36,
       "norm_label": "claude code guidance",
       "id": "claude_code"
     },
@@ -5720,7 +5729,7 @@
       "label": "SQLAlchemy ORM",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 2,
+      "community": 27,
       "norm_label": "sqlalchemy orm",
       "id": "sqlalchemy"
     },
@@ -5728,7 +5737,7 @@
       "label": "PostgreSQL Database",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 2,
+      "community": 36,
       "norm_label": "postgresql database",
       "id": "postgresql"
     },
@@ -5736,7 +5745,7 @@
       "label": "Docker Containerization",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 51,
+      "community": 59,
       "norm_label": "docker containerization",
       "id": "docker"
     },
@@ -5744,7 +5753,7 @@
       "label": "Task Buddy Backend",
       "file_type": "document",
       "source_file": "README.md",
-      "community": 2,
+      "community": 36,
       "norm_label": "task buddy backend",
       "id": "task_buddy_backend"
     },
@@ -5752,7 +5761,7 @@
       "label": "Docker Compose Configuration",
       "file_type": "document",
       "source_file": "docker-compose.yml",
-      "community": 2,
+      "community": 36,
       "norm_label": "docker compose configuration",
       "id": "docker_compose"
     }
@@ -7564,9 +7573,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L4",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "fastapi",
-      "confidence_score": 1.0
+      "target": "fastapi"
     },
     {
       "relation": "contains",
@@ -7574,9 +7583,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L26",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_list_groups",
-      "confidence_score": 1.0
+      "target": "routers_group_list_groups"
     },
     {
       "relation": "contains",
@@ -7584,9 +7593,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L34",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_group_create_group"
     },
     {
       "relation": "contains",
@@ -7594,9 +7603,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L62",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_get_group",
-      "confidence_score": 1.0
+      "target": "routers_group_get_group"
     },
     {
       "relation": "contains",
@@ -7604,9 +7613,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L77",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_list_group_tasks",
-      "confidence_score": 1.0
+      "target": "routers_group_list_group_tasks"
     },
     {
       "relation": "contains",
@@ -7614,9 +7623,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L92",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_update_group",
-      "confidence_score": 1.0
+      "target": "routers_group_update_group"
     },
     {
       "relation": "contains",
@@ -7624,9 +7633,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L126",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_group_py",
-      "target": "routers_group_delete_group",
-      "confidence_score": 1.0
+      "target": "routers_group_delete_group"
     },
     {
       "relation": "calls",
@@ -7646,9 +7655,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L84",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_group_list_group_tasks",
-      "target": "routers_group_get_group",
-      "confidence_score": 1.0
+      "target": "routers_group_get_group"
     },
     {
       "relation": "calls",
@@ -7657,9 +7666,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L99",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_group_update_group",
-      "target": "routers_group_get_group",
-      "confidence_score": 1.0
+      "target": "routers_group_get_group"
     },
     {
       "relation": "calls",
@@ -7668,9 +7677,9 @@
       "source_file": "app/api/routers/group.py",
       "source_location": "L132",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_group_delete_group",
-      "target": "routers_group_get_group",
-      "confidence_score": 1.0
+      "target": "routers_group_get_group"
     },
     {
       "relation": "calls",
@@ -7817,9 +7826,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L47",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_api_routers_task_py",
-      "target": "routers_task_verify_group_ownership",
-      "confidence_score": 1.0
+      "target": "routers_task_verify_group_ownership"
     },
     {
       "relation": "contains",
@@ -8048,9 +8057,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L95",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_create_task",
-      "target": "routers_task_verify_group_ownership",
-      "confidence_score": 1.0
+      "target": "routers_task_verify_group_ownership"
     },
     {
       "relation": "calls",
@@ -8059,9 +8068,9 @@
       "source_file": "app/api/routers/task.py",
       "source_location": "L139",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_task_update_task",
-      "target": "routers_task_verify_group_ownership",
-      "confidence_score": 1.0
+      "target": "routers_task_verify_group_ownership"
     },
     {
       "relation": "calls",
@@ -9190,9 +9199,9 @@
       "source_file": "app/crud/task.py",
       "source_location": "L29",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_crud_task_py",
-      "target": "crud_task_get_tasks_by_group",
-      "confidence_score": 1.0
+      "target": "crud_task_get_tasks_by_group"
     },
     {
       "relation": "contains",
@@ -11452,9 +11461,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L3",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "sqlalchemy",
-      "confidence_score": 1.0
+      "target": "sqlalchemy"
     },
     {
       "relation": "contains",
@@ -11462,9 +11471,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L6",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "contains",
@@ -11472,9 +11481,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L15",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_second_user",
-      "confidence_score": 1.0
+      "target": "routers_test_group_second_user"
     },
     {
       "relation": "contains",
@@ -11482,9 +11491,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L46",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_create_group"
     },
     {
       "relation": "contains",
@@ -11492,9 +11501,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L59",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_list_groups",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_list_groups"
     },
     {
       "relation": "contains",
@@ -11502,9 +11511,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L72",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_get_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_get_group"
     },
     {
       "relation": "contains",
@@ -11512,9 +11521,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L83",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_update_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_update_group"
     },
     {
       "relation": "contains",
@@ -11522,9 +11531,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L95",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_delete_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_delete_group"
     },
     {
       "relation": "contains",
@@ -11532,9 +11541,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L112",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_group_idor_protection",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_group_idor_protection"
     },
     {
       "relation": "contains",
@@ -11542,9 +11551,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L141",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_task_group_idor_protection",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_task_group_idor_protection"
     },
     {
       "relation": "contains",
@@ -11552,9 +11561,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L175",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "tests_routers_test_group_py",
-      "target": "routers_test_group_test_list_group_tasks",
-      "confidence_score": 1.0
+      "target": "routers_test_group_test_list_group_tasks"
     },
     {
       "relation": "calls",
@@ -11563,9 +11572,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L60",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_list_groups",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11574,9 +11583,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L73",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_get_group",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11585,9 +11594,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L84",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_update_group",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11596,9 +11605,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L96",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_delete_group",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11607,9 +11616,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L116",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_group_idor_protection",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11618,9 +11627,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L145",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_task_group_idor_protection",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "calls",
@@ -11629,9 +11638,9 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L176",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "routers_test_group_test_list_group_tasks",
-      "target": "routers_test_group_create_group",
-      "confidence_score": 1.0
+      "target": "routers_test_group_create_group"
     },
     {
       "relation": "imports_from",
@@ -11970,6 +11979,16 @@
       "source_file": "tests/routers/test_task.py",
       "source_location": "L326",
       "weight": 1.0,
+      "source": "tests_routers_test_task_py",
+      "target": "routers_test_task_test_get_tasks_filtered_by_group",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/routers/test_task.py",
+      "source_location": "L326",
+      "weight": 1.0,
       "confidence_score": 1.0,
       "source": "tests_routers_test_task_py",
       "target": "routers_test_task_test_detach_tag"
@@ -12005,6 +12024,17 @@
       "confidence_score": 1.0,
       "source": "routers_test_task_test_reuse_tag_across_tasks",
       "target": "routers_test_task_create_task"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "EXTRACTED",
+      "source_file": "tests/routers/test_task.py",
+      "source_location": "L338",
+      "weight": 1.0,
+      "source": "routers_test_task_test_get_tasks_filtered_by_group",
+      "target": "routers_test_task_create_task",
+      "confidence_score": 1.0
     },
     {
       "relation": "calls",
@@ -13947,5 +13977,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "f87ad6c0650ff8da55d945b1653c783b3586270c"
+  "built_at_commit": "5c128b2cd28a94f083dacc761ade8c335da7edc0"
 }
