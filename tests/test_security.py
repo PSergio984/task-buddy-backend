@@ -3,8 +3,9 @@ import datetime
 import pytest
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
-from app.crud.user import get_user_by_id
+
 from app import security
+from app.crud.user import get_user_by_id
 
 
 def test_get_subject_for_token_type_valid_access_token():

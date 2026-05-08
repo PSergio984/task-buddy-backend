@@ -1,5 +1,5 @@
 import logging
-from urllib.parse import urlparse, urlunparse, parse_qs, urlencode
+from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 
@@ -38,6 +38,11 @@ def get_async_database_url(url: str | None) -> str:
                     query["ssl"] = ["true"]
                 else:
                     query["ssl"] = [ssl_value]
+
+        # Strip other unsupported libpq parameters
+        for param in ["channel_binding", "gssencmode", "target_session_attrs"]:
+            if param in query:
+                query.pop(param)
 
         new_query = urlencode(query, doseq=True)
         return urlunparse(parsed._replace(query=new_query))

@@ -1,8 +1,7 @@
-from typing import cast
 from logging.config import fileConfig
+from typing import cast
 
-from sqlalchemy import engine_from_config
-from sqlalchemy import pool
+from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
@@ -15,16 +14,17 @@ config = context.config
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
 
-import os
-import sys
+import os  # noqa: E402
+import sys  # noqa: E402
+
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
-from app.models.base import Base
-from app.models.user import User
-from app.models.task import Task, SubTask
-from app.models.tag import Tag
-from app.models.audit import AuditLog
-from app.config import config as app_config
+from app.config import config as app_config  # noqa: E402
+from app.models.audit import AuditLog  # noqa: E402, F401
+from app.models.base import Base  # noqa: E402
+from app.models.tag import Tag  # noqa: E402, F401
+from app.models.task import SubTask, Task  # noqa: E402, F401
+from app.models.user import User  # noqa: E402, F401
 
 # add your model's MetaData object here
 # for 'autogenerate' support

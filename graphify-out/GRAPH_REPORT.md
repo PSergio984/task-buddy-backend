@@ -1,16 +1,16 @@
 # Graph Report - task-buddy-backend  (2026-05-08)
 
 ## Corpus Check
-- 66 files · ~15,680 words
+- 66 files · ~15,771 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 547 nodes · 688 edges · 43 communities (30 shown, 13 thin omitted)
+- 548 nodes · 689 edges · 43 communities (30 shown, 13 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 73 edges (avg confidence: 0.73)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `01e833dd`
+- Built from commit: `8b16188e`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -88,8 +88,8 @@ Cohesion: 0.06
 Nodes (42): BaseModel, get_system_overview(), SystemOverview, TagDistribution, TaskStats, SubTaskCreateRequest, SubTaskCreateResponse, SubTaskUpdateRequest (+34 more)
 
 ### Community 2 - "SQLAlchemy Models"
-Cohesion: 0.06
-Nodes (18): Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, run_migrations_offline(), run_migrations_online(), get_async_database_url(), Ensures the database URL uses an async driver. (+10 more)
+Cohesion: 0.05
+Nodes (20): Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, run_migrations_offline(), run_migrations_online(), get_async_database_url(), Ensures the database URL uses an async driver. (+12 more)
 
 ### Community 3 - "Task Creation Logic"
 Cohesion: 0.06
@@ -136,32 +136,32 @@ Cohesion: 0.15
 Nodes (12): 1) Architectural Style, 2) System Flow, 3) Layer/Module Responsibilities, 4) Reused Patterns, 5) Graphify Insights (Core Abstractions), 5) Known Architectural Risks, 6) Evidence, 6) Known Architectural Risks (+4 more)
 
 ### Community 14 - "Migration Tests"
-Cohesion: 0.17
-Nodes (4): mock_httpx_client(), Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests.
-
-### Community 15 - "Project Metadata"
 Cohesion: 0.18
 Nodes (10): 1) Naming Rules, 2) Formatting and Linting, 3) Import and Module Conventions, 4) Error and Logging Conventions, 5) Testing Conventions, 6) Evidence, code:bash (black app tests), Coding Conventions (+2 more)
 
-### Community 16 - "App Main Package"
+### Community 15 - "Project Metadata"
 Cohesion: 0.18
 Nodes (10): 1) Test Stack and Commands, 2) Test Layout, 3) Test Scope Matrix, 4) Mocking and Isolation Strategy, 5) Coverage and Quality Signals, 6) Evidence, code:bash (pytest), Core Sections (Required) (+2 more)
 
-### Community 17 - "API Package"
+### Community 16 - "App Main Package"
 Cohesion: 0.2
 Nodes (9): 1) Top Risks (Prioritized), 2) Technical Debt, 3) Security Concerns, 4) Performance and Scaling Concerns, 5) Fragile/High-Churn Areas, 6) `[ASK USER]` Questions, 7) Evidence, Codebase Concerns (+1 more)
 
-### Community 18 - "API Routers"
+### Community 17 - "API Package"
 Cohesion: 0.2
 Nodes (9): 1) Integration Inventory, 2) Data Stores, 3) Secrets and Credentials Handling, 4) Reliability and Failure Behavior, 5) Observability for Integrations, 6) Evidence, Core Sections (Required), Extended Sections (Optional) (+1 more)
 
-### Community 19 - "CRUD Layer"
+### Community 18 - "API Routers"
 Cohesion: 0.2
 Nodes (9): 1) Runtime Summary, 2) Production Frameworks and Dependencies, 3) Development Toolchain, 4) Key Commands, 5) Environment and Config, 6) Evidence, code:bash (pip install -e ".[dev]"), Core Sections (Required) (+1 more)
 
-### Community 20 - "Internal Modules"
+### Community 19 - "CRUD Layer"
 Cohesion: 0.22
 Nodes (9): get_my_profile(), Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length., Retrieve the current user's profile information., Retrieve the current user's profile information., Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length., Update the current user's username.     Checks for uniqueness and length. (+1 more)
+
+### Community 20 - "Internal Modules"
+Cohesion: 0.22
+Nodes (3): attach_tag_to_task(), Attaches a tag to a task. Returns True if a new link was created., Attaches a tag to a task. Returns True if a new link was created.
 
 ### Community 21 - "Model Layer"
 Cohesion: 0.22
@@ -176,7 +176,7 @@ Cohesion: 0.5
 Nodes (3): Test that alembic migration can run against a clean database successfully., Test that alembic migration can run against a clean database successfully., test_alembic_migrations()
 
 ## Knowledge Gaps
-- **169 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `Initial migration  Revision ID: a6e267909ed1 Revises:  Create Date: 2026-05-`, `Add audit logs table  Revision ID: e7d04c90bc13 Revises: a6e267909ed1 Create Dat` (+164 more)
+- **170 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `Initial migration  Revision ID: a6e267909ed1 Revises:  Create Date: 2026-05-`, `Add audit logs table  Revision ID: e7d04c90bc13 Revises: a6e267909ed1 Create Dat` (+165 more)
   These have ≤1 connection - possible missing edges or undocumented components.
 - **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
@@ -185,8 +185,8 @@ _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `FastAPI Framework` connect `App Configuration` to `Database Migrations`, `User Authentication`, `Security Tests`, `FastAPI Dependencies`, `Seed Data Scripts`?**
   _High betweenness centrality (0.190) - this node is a cross-community bridge._
-- **Why does `SQLAlchemy ORM` connect `SQLAlchemy Models` to `User Authentication`, `Audit Logging System`, `Security Tests`, `App Configuration`, `Background Tasks & Email`, `Migration Tests`?**
-  _High betweenness centrality (0.188) - this node is a cross-community bridge._
+- **Why does `SQLAlchemy ORM` connect `SQLAlchemy Models` to `User Authentication`, `Audit Logging System`, `Security Tests`, `App Configuration`, `Background Tasks & Email`, `Internal Modules`?**
+  _High betweenness centrality (0.190) - this node is a cross-community bridge._
 - **Why does `User` connect `Audit Logging System` to `User Authentication`, `User Profile API`?**
   _High betweenness centrality (0.066) - this node is a cross-community bridge._
 - **Are the 10 inferred relationships involving `log_action()` (e.g. with `create_task()` and `update_task()`) actually correct?**
@@ -194,6 +194,6 @@ _Questions this graph is uniquely positioned to answer:_
 - **Are the 3 inferred relationships involving `send_confirmation_email()` (e.g. with `test_send_confirmation_email()` and `test_send_confirmation_email_api_error()`) actually correct?**
   _`send_confirmation_email()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi` to the rest of the system?**
-  _169 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _170 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Database Migrations` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._

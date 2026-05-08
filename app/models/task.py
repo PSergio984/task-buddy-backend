@@ -34,11 +34,11 @@ class Task(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="tasks")
-    subtasks: Mapped[list["SubTask"]] = relationship(
+    user: Mapped[User] = relationship(back_populates="tasks")
+    subtasks: Mapped[list[SubTask]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
     )
-    tags: Mapped[list["Tag"]] = relationship(
+    tags: Mapped[list[Tag]] = relationship(
         secondary=task_tags, back_populates="tasks"
     )
 

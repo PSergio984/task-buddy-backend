@@ -24,8 +24,8 @@ class Tag(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="tags")
-    tasks: Mapped[list["Task"]] = relationship(
+    user: Mapped[User] = relationship(back_populates="tags")
+    tasks: Mapped[list[Task]] = relationship(
         secondary="tbl_task_tags", back_populates="tags"
     )
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
 
 from sqlalchemy import DateTime, ForeignKey, String, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -21,12 +21,12 @@ class AuditLog(Base):
     )
     action: Mapped[str] = mapped_column(String, nullable=False)
     target_type: Mapped[str] = mapped_column(String, nullable=False)
-    target_id: Mapped[Optional[int]] = mapped_column(nullable=True)
-    details: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    target_id: Mapped[int | None] = mapped_column(nullable=True)
+    details: Mapped[str | None] = mapped_column(String, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 
     # Relationships
-    user: Mapped["User"] = relationship(back_populates="audit_logs")
+    user: Mapped[User] = relationship(back_populates="audit_logs")
 
     def __repr__(self) -> str:
         return f"<AuditLog(id={self.id}, action={self.action}, target_type={self.target_type})>"
