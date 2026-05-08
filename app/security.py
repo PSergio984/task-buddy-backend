@@ -47,20 +47,13 @@ def reset_token_expire_time() -> int:
     return RESET_TOKEN_EXPIRE_MINUTES
 
 
-def _get_secret_key() -> str:
-    if SECRET_KEY:
-        return SECRET_KEY
-    raise RuntimeError("SECRET_KEY is not set. Set SECRET_KEY (or PROD_SECRET_KEY in production).")
-
-
 def create_access_token(user_id: int) -> str:
     logger.debug("Creating access token for user_id=%s", user_id)
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=access_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "access"}
-    secret = _get_secret_key()
-    jwt_encoded = jwt.encode(jwt_payload, secret, algorithm=ALGORITHM)
+    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -70,8 +63,7 @@ def create_confirm_token(user_id: int) -> str:
         minutes=confirm_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "confirm"}
-    secret = _get_secret_key()
-    jwt_encoded = jwt.encode(jwt_payload, secret, algorithm=ALGORITHM)
+    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -81,8 +73,7 @@ def create_reset_token(user_id: int) -> str:
         minutes=reset_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "reset"}
-    secret = _get_secret_key()
-    jwt_encoded = jwt.encode(jwt_payload, secret, algorithm=ALGORITHM)
+    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -98,7 +89,7 @@ def get_subject_for_token_type(
     token: str, expected_type: Literal["access", "confirm", "reset"]
 ) -> str:
     try:
-        payload = jwt.decode(token, _get_secret_key(), algorithms=[ALGORITHM])
+        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
     except ExpiredSignatureError as e:
         raise create_credentials_exception("Token has expired") from e
 
@@ -131,7 +122,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         # Note: Transaction commit is handled by the caller (router)
 
     if not user.confirmed:
-        raise create_credentials_exception("Email not confirmed")
+        raise create_credentials_exception("Invalid credentials")
     return user
 
 
