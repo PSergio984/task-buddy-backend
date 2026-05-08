@@ -1,8 +1,8 @@
 import os
 from functools import lru_cache
-from typing import Optional
+from typing import Any, Optional, Union
 
-from pydantic import model_validator
+from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
@@ -23,7 +23,7 @@ class GlobalConfig(BaseConfig):
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
+    ALLOWED_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://localhost:5173"]
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
@@ -34,6 +34,20 @@ class GlobalConfig(BaseConfig):
     MAIL_SMTP_USERNAME: Optional[str] = None
     MAIL_SMTP_PASSWORD: Optional[str] = None
     MAIL_SMTP_USE_TLS: bool = True
+
+    @field_validator("ALLOWED_ORIGINS", mode="before")
+    @classmethod
+    def assemble_cors_origins(cls, v: Any) -> list[str]:
+        if isinstance(v, str) and not v.startswith("["):
+            return [i.strip() for i in v.split(",")]
+        elif isinstance(v, str):
+            import json
+
+            try:
+                return json.loads(v)
+            except json.JSONDecodeError:
+                return [v]
+        return v
 
 
 class DevConfig(GlobalConfig):

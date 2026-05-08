@@ -241,7 +241,7 @@
       "label": "ensure_secret_key()",
       "file_type": "code",
       "source_file": "app/config.py",
-      "source_location": "L47",
+      "source_location": "L48",
       "id": "app_config_ensure_secret_key",
       "community": 10,
       "norm_label": "ensure_secret_key()"
@@ -250,7 +250,7 @@
       "label": "TestConfig",
       "file_type": "code",
       "source_file": "app/config.py",
-      "source_location": "L56",
+      "source_location": "L57",
       "id": "app_config_testconfig",
       "community": 10,
       "norm_label": "testconfig"
@@ -259,7 +259,7 @@
       "label": "get_config()",
       "file_type": "code",
       "source_file": "app/config.py",
-      "source_location": "L65",
+      "source_location": "L67",
       "id": "app_config_get_config",
       "community": 10,
       "norm_label": "get_config()"
@@ -268,8 +268,8 @@
       "label": "Fail-fast in production when SECRET_KEY is not set.",
       "file_type": "rationale",
       "source_file": "app/config.py",
-      "source_location": "L48",
-      "id": "app_config_rationale_48",
+      "source_location": "L49",
+      "id": "app_config_rationale_49",
       "community": 38,
       "norm_label": "fail-fast in production when secret_key is not set."
     },
@@ -4234,6 +4234,15 @@
       "norm_label": "extended sections (optional)"
     },
     {
+      "label": "Fail-fast in production when SECRET_KEY is not set.",
+      "file_type": "rationale",
+      "source_file": "app/config.py",
+      "source_location": "L48",
+      "community": 41,
+      "norm_label": "fail-fast in production when secret_key is not set.",
+      "id": "app_config_rationale_48"
+    },
+    {
       "label": "_get_secret_key()",
       "file_type": "code",
       "source_file": "app/security.py",
@@ -4319,7 +4328,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L47",
-      "community": 41,
+      "community": 42,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_47"
     },
@@ -4877,7 +4886,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L44",
-      "community": 42,
+      "community": 43,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_44"
     },
@@ -4989,7 +4998,7 @@
       "label": "Docker Containerization",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 43,
+      "community": 44,
       "norm_label": "docker containerization",
       "id": "docker"
     },
@@ -12128,5 +12137,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "31c406b858c966565a3055b0cd7f5bc48730ba4d"
+  "built_at_commit": "1d5c75bd477ee5d9385ff3d667e6618332474f1b"
 }

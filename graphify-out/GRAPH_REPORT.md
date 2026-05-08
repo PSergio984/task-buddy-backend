@@ -1,16 +1,16 @@
 # Graph Report - task-buddy-backend  (2026-05-08)
 
 ## Corpus Check
-- 67 files · ~16,130 words
+- 67 files · ~16,139 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 557 nodes · 698 edges · 44 communities (31 shown, 13 thin omitted)
+- 558 nodes · 698 edges · 45 communities (31 shown, 14 thin omitted)
 - Extraction: 89% EXTRACTED · 11% INFERRED · 0% AMBIGUOUS · INFERRED: 74 edges (avg confidence: 0.74)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `31c406b8`
+- Built from commit: `1d5c75bd`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -53,6 +53,7 @@
 - [[_COMMUNITY_Community 41|Community 41]]
 - [[_COMMUNITY_Community 42|Community 42]]
 - [[_COMMUNITY_Community 43|Community 43]]
+- [[_COMMUNITY_Community 44|Community 44]]
 
 ## God Nodes (most connected - your core abstractions)
 1. `SQLAlchemy ORM` - 17 edges
@@ -78,7 +79,7 @@
 - `test_reset_password_success()` --calls--> `create_reset_token()`  [INFERRED]
   tests/routers/test_password_reset.py → app/security.py
 
-## Communities (44 total, 13 thin omitted)
+## Communities (45 total, 14 thin omitted)
 
 ### Community 0 - "Database Migrations"
 Cohesion: 0.05
@@ -181,24 +182,24 @@ Cohesion: 0.5
 Nodes (3): Test that alembic migration can run against a clean database successfully., Test that alembic migration can run against a clean database successfully., test_alembic_migrations()
 
 ## Knowledge Gaps
-- **177 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `Initial migration  Revision ID: a6e267909ed1 Revises: Create Date: 2026-05-0`, `Add audit logs table  Revision ID: e7d04c90bc13 Revises: a6e267909ed1 Create Dat` (+172 more)
+- **178 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `Initial migration  Revision ID: a6e267909ed1 Revises: Create Date: 2026-05-0`, `Add audit logs table  Revision ID: e7d04c90bc13 Revises: a6e267909ed1 Create Dat` (+173 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **13 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **14 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
 - **Why does `FastAPI Framework` connect `Security Tests` to `Database Migrations`, `User Authentication`, `Audit Logging System`, `FastAPI Dependencies`, `Seed Data Scripts`?**
-  _High betweenness centrality (0.195) - this node is a cross-community bridge._
+  _High betweenness centrality (0.194) - this node is a cross-community bridge._
 - **Why does `SQLAlchemy ORM` connect `SQLAlchemy Models` to `Database Migrations`, `User Authentication`, `Audit Logging System`, `Security Tests`, `User Profile API`, `Background Tasks & Email`, `Migration Tests`?**
-  _High betweenness centrality (0.192) - this node is a cross-community bridge._
+  _High betweenness centrality (0.191) - this node is a cross-community bridge._
 - **Why does `User` connect `User Profile API` to `User Authentication`, `App Configuration`?**
-  _High betweenness centrality (0.066) - this node is a cross-community bridge._
+  _High betweenness centrality (0.065) - this node is a cross-community bridge._
 - **Are the 10 inferred relationships involving `log_action()` (e.g. with `create_task()` and `update_task()`) actually correct?**
   _`log_action()` has 10 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 3 inferred relationships involving `send_confirmation_email()` (e.g. with `test_send_confirmation_email()` and `test_send_confirmation_email_api_error()`) actually correct?**
   _`send_confirmation_email()` has 3 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi` to the rest of the system?**
-  _177 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _178 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Database Migrations` be split into smaller, more focused modules?**
   _Cohesion score 0.05 - nodes in this community are weakly interconnected._
