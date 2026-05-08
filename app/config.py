@@ -22,6 +22,7 @@ class GlobalConfig(BaseConfig):
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
+    REDIS_URL: str = "redis://localhost:6379/0"
     DB_FORCE_ROLL_BACK: bool = False
     ALLOWED_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://localhost:5173"]
     RATE_LIMIT_ENABLED: bool = True
@@ -101,6 +102,7 @@ SECRET_KEY = (
     or os.environ.get("PROD_SECRET_KEY")
 )
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
+REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
 CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
 RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
