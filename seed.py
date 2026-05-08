@@ -43,10 +43,10 @@ async def seed_data():
                 email=email,
                 password=get_password_hash(password),
                 confirmed=True,
-                confirmation_failed=False
+                confirmation_failed=False,
             )
             session.add(new_user)
-            await session.flush() # Get ID
+            await session.flush()  # Get ID
 
             # 2. Create Tags
             tag_names = ["Work", "Personal", "Urgent", "Shopping"]
@@ -66,25 +66,34 @@ async def seed_data():
                 title="Complete Project Presentation",
                 description="Finish the slide deck for tomorrow's meeting",
                 due_date=now + timedelta(days=1),
-                completed=False
+                completed=False,
             )
             session.add(task1)
             await session.flush()
 
             # Link tags
             from app.models.task import task_tags
+
             await session.execute(
-                task_tags.insert().values([
-                    {"task_id": task1.id, "tag_id": tag_map["Work"].id},
-                    {"task_id": task1.id, "tag_id": tag_map["Urgent"].id},
-                ])
+                task_tags.insert().values(
+                    [
+                        {"task_id": task1.id, "tag_id": tag_map["Work"].id},
+                        {"task_id": task1.id, "tag_id": tag_map["Urgent"].id},
+                    ]
+                )
             )
 
             # Subtasks
             subtasks1 = [
-                SubTask(user_id=new_user.id, task_id=task1.id, title="Create outline", completed=True),
-                SubTask(user_id=new_user.id, task_id=task1.id, title="Draft slides", completed=False),
-                SubTask(user_id=new_user.id, task_id=task1.id, title="Review with team", completed=False),
+                SubTask(
+                    user_id=new_user.id, task_id=task1.id, title="Create outline", completed=True
+                ),
+                SubTask(
+                    user_id=new_user.id, task_id=task1.id, title="Draft slides", completed=False
+                ),
+                SubTask(
+                    user_id=new_user.id, task_id=task1.id, title="Review with team", completed=False
+                ),
             ]
             session.add_all(subtasks1)
 
@@ -94,22 +103,26 @@ async def seed_data():
                 title="Weekly Groceries",
                 description="Get food for the week",
                 due_date=now + timedelta(days=2),
-                completed=False
+                completed=False,
             )
             session.add(task2)
             await session.flush()
 
             # Link tags
             await session.execute(
-                task_tags.insert().values([
-                    {"task_id": task2.id, "tag_id": tag_map["Personal"].id},
-                    {"task_id": task2.id, "tag_id": tag_map["Shopping"].id},
-                ])
+                task_tags.insert().values(
+                    [
+                        {"task_id": task2.id, "tag_id": tag_map["Personal"].id},
+                        {"task_id": task2.id, "tag_id": tag_map["Shopping"].id},
+                    ]
+                )
             )
 
             # Subtasks
             subtasks2 = [
-                SubTask(user_id=new_user.id, task_id=task2.id, title="Milk & Eggs", completed=False),
+                SubTask(
+                    user_id=new_user.id, task_id=task2.id, title="Milk & Eggs", completed=False
+                ),
                 SubTask(user_id=new_user.id, task_id=task2.id, title="Vegetables", completed=False),
             ]
             session.add_all(subtasks2)
@@ -120,6 +133,7 @@ async def seed_data():
             await session.rollback()
             print(f"Error during seeding: {e}")
             raise
+
 
 if __name__ == "__main__":
     asyncio.run(seed_data())

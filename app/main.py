@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 
-from app.api.routers import audit, stats, task, user
+from app.api.routers import audit, group, stats, task, user
 from app.config import DevConfig, config
 from app.limiter import limiter
 from app.logging_conf import configure_logging
@@ -40,6 +40,7 @@ app.add_middleware(CorrelationIdMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(user.router, prefix="/api/v1/users")
+app.include_router(group.router, prefix="/api/v1/groups")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 

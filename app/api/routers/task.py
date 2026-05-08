@@ -55,10 +55,13 @@ async def verify_group_ownership(db: AsyncSession, group_id: int | None, user_id
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    completed: Annotated[bool | None, Query()] = None
+    completed: Annotated[bool | None, Query()] = None,
+    group_id: Annotated[int | None, Query()] = None,
 ):
     logger.info("GET / - fetching tasks for user %s", current_user.id)
-    tasks = await task_crud.get_tasks(db, user_id=current_user.id, completed=completed)
+    tasks = await task_crud.get_tasks(
+        db, user_id=current_user.id, completed=completed, group_id=group_id
+    )
     logger.info("GET / - fetched %s tasks", len(tasks))
     return tasks
 

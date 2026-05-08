@@ -12,10 +12,17 @@ from app.schemas.task import (
 )
 
 
-async def get_tasks(db: AsyncSession, user_id: int, completed: Optional[bool] = None) -> list[Task]:
+async def get_tasks(
+    db: AsyncSession,
+    user_id: int,
+    completed: Optional[bool] = None,
+    group_id: Optional[int] = None,
+) -> list[Task]:
     query = select(Task).where(Task.user_id == user_id)
     if completed is not None:
         query = query.where(Task.completed == completed)
+    if group_id is not None:
+        query = query.where(Task.group_id == group_id)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -24,6 +31,12 @@ async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Optional[Tas
     query = select(Task).where(Task.id == task_id, Task.user_id == user_id)
     result = await db.execute(query)
     return result.scalar_one_or_none()
+
+
+async def get_tasks_by_group(db: AsyncSession, group_id: int, user_id: int) -> list[Task]:
+    query = select(Task).where(Task.group_id == group_id, Task.user_id == user_id)
+    result = await db.execute(query)
+    return list(result.scalars().all())
 
 
 async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest) -> Task:

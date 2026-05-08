@@ -323,6 +323,35 @@ async def test_delete_subtask(
 
 
 @pytest.mark.anyio
+async def test_get_tasks_filtered_by_group(
+    async_client: AsyncClient, logged_in_token: str
+):
+    # Create a group
+    group_resp = await async_client.post(
+        "/api/v1/groups/",
+        json={"name": "Work", "color": "blue"},
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    group_id = group_resp.json()["id"]
+
+    # Create tasks: one in group, one out
+    task_in = await create_task({"title": "In Group", "group_id": group_id}, async_client, logged_in_token)
+    task_out = await create_task({"title": "Out of Group"}, async_client, logged_in_token)
+
+    # Fetch with group_id filter
+    response = await async_client.get(
+        f"/api/v1/tasks/?group_id={group_id}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data) == 1
+    assert data[0]["id"] == task_in["id"]
+    assert data[0]["group_id"] == group_id
+
+
+@pytest.mark.anyio
 async def test_detach_tag(
     async_client: AsyncClient, created_task: dict, created_tag: dict, logged_in_token: str
 ):
