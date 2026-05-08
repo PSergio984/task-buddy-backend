@@ -33,6 +33,7 @@ dependencies = [
     "alembic>=1.12.0",  # Database migrations
     "psycopg2-binary>=2.9.0",  # PostgreSQL driver for Alembic
     "asyncpg>=0.28.0",  # Async PostgreSQL driver for FastAPI
+    "httpx>=0.24.0",
 ]
 
 [project.optional-dependencies]
@@ -45,7 +46,6 @@ dev = [
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "isort>=5.12.0",
-    "httpx>=0.24.0",
 ]
 database = [
     "sqlalchemy>=2.0.0",
