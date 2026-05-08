@@ -22,6 +22,8 @@ argon2-cffi-bindings==25.1.0
     # via argon2-cffi
 asgi-correlation-id==4.3.4
     # via task-buddy-backend (pyproject.toml)
+asyncpg==0.31.0
+    # via task-buddy-backend (pyproject.toml)
 certifi==2026.4.22
     # via sentry-sdk
 cffi==2.0.0
@@ -67,6 +69,8 @@ packaging==26.2
     #   asgi-correlation-id
     #   limits
 passlib==1.7.4
+    # via task-buddy-backend (pyproject.toml)
+psycopg2-binary==2.9.12
     # via task-buddy-backend (pyproject.toml)
 pyasn1==0.6.3
     # via
