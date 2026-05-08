@@ -5,6 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import group as group_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
@@ -33,6 +34,7 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 NOT_AUTHORIZED_MODIFY_TASK = "Not authorized to modify this task"
 NOT_AUTHORIZED_VIEW_TAGS = "Not authorized to view this task's tags"
 TAG_NOT_FOUND = "Tag not found"
+INVALID_GROUP_ID = "Invalid group_id"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
@@ -42,10 +44,11 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
-# Centralize task ownership checks so endpoints stay consistent.
-def ensure_task_owner(task_obj, current_user: User, detail: str) -> None:
-    if task_obj.user_id != current_user.id:
-        raise HTTPException(status_code=403, detail=detail)
+async def verify_group_ownership(db: AsyncSession, group_id: int | None, user_id: int) -> None:
+    if group_id is not None:
+        db_group = await group_crud.get_group(db, group_id=group_id, user_id=user_id)
+        if not db_group:
+            raise HTTPException(status_code=400, detail=INVALID_GROUP_ID)
 
 
 @router.get("/", response_model=list[TaskCreateResponse])
@@ -89,10 +92,12 @@ async def create_task(
 ):
     logger.info("POST / - creating task title=%s", task_in.title)
 
+    await verify_group_ownership(db, task_in.group_id, current_user.id)
+
     db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
-    # Commit transaction
-    await db.commit()
+    # Flush to get ID for audit log
+    await db.flush()
     await db.refresh(db_task)
 
     await log_action(
@@ -103,7 +108,8 @@ async def create_task(
         target_id=db_task.id,
         details=f"Created task: {db_task.title}",
     )
-    await db.commit() # Commit the log too
+    await db.commit()
+    await db.refresh(db_task)
 
     logger.info("POST / - created task id=%s", db_task.id)
     return db_task
@@ -128,6 +134,9 @@ async def update_task(
     if not update_data:
         logger.warning("PUT /%s - no fields to update", task_id)
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
+
+    if "group_id" in update_data:
+        await verify_group_ownership(db, task_update.group_id, current_user.id)
 
     await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 
