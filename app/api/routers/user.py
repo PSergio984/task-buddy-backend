@@ -116,6 +116,8 @@ async def login(
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     auth_user = await authenticate_user(db, form_data.username, form_data.password)
+    # Commit any potential lazy migration (password re-hash)
+    await db.commit()
     access_token = create_access_token(auth_user.id)
     return {"access_token": access_token, "token_type": "bearer"}
 
