@@ -9,6 +9,7 @@ class TaskCreateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
+    group_id: Optional[int] = None
 
 
 class TaskCreateResponse(TaskCreateRequest):
@@ -45,6 +46,7 @@ class TaskUpdateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
+    group_id: Optional[int] = None
 
 
 class SubTaskUpdateRequest(BaseModel):
