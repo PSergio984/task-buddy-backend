@@ -8,7 +8,7 @@ The journey starts with refining the architectural core (transaction management 
 
 - [x] **Phase 1: Architecture Refinement** - Standardize CRUD transactions and API literals.
 - [x] **Phase 2: Security Hardening** - Upgrade hashing and enforce strict security headers/CORS.
-- [/] **Phase 3: Centralized Auditing** - Automate mutation logging for all core entities.
+- [/] **Phase 3: Auditing & Task Management** - Automate mutation logging and enhance task grouping/scheduling.
 - [ ] **Phase 4: Reliability & Scale** - Implement background task workers and stress-test transactions.
 
 ## Phase Details
@@ -40,17 +40,20 @@ Plans:
 Plans:
 - [ ] 02-01: Security middleware and password hashing upgrade.
 
-### Phase 3: Centralized Auditing
-**Goal**: Ensure every state change is automatically recorded with high fidelity.
+### Phase 3: Auditing & Task Management
+**Goal**: Ensure state change accountability and enhance task organization.
 **Depends on**: Phase 2
-**Requirements**: AUDI-01, AUDI-02
+**Requirements**: AUDI-01, AUDI-02, TASK-01, TASK-02
 **Success Criteria**:
   1. Mutation logging happens automatically on CRUD calls.
   2. Audit logs capture field-level diffs.
-**Plans**: 1 plan
+  3. Dynamic relational task grouping is implemented.
+  4. Precise due time selection and display is supported end-to-end.
+**Plans**: 2 plans
 
 Plans:
 - [ ] 03-01: Implement automated audit logging decorator/middleware.
+- [ ] 03-02: Relational task grouping and enhanced due time support.
 
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.
@@ -72,7 +75,7 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Architecture Refinement | 2/2 | Completed | 2026-05-08 |
 | 2. Security Hardening | 1/1 | Completed | 2026-05-08 |
-| 3. Centralized Auditing | 0/1 | In-progress | - |
+| 3. Auditing & Task Management | 0/2 | In-progress | - |
 | 4. Reliability & Scale | 0/2 | Not started | - |
 
 ---

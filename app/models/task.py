@@ -9,8 +9,10 @@ from sqlalchemy.orm import Mapped, mapped_column, relationship
 from app.models.base import Base
 
 if TYPE_CHECKING:
+    from app.models.group import Group
     from app.models.tag import Tag
     from app.models.user import User
+
 
 # Association table for Task <-> Tag
 task_tags = Table(
@@ -27,6 +29,9 @@ class Task(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
+    group_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tbl_groups.id", ondelete="SET NULL"), nullable=True
+    )
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
@@ -35,12 +40,12 @@ class Task(Base):
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tasks")
+    group: Mapped[Group | None] = relationship(back_populates="tasks")
     subtasks: Mapped[list[SubTask]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
     )
-    tags: Mapped[list[Tag]] = relationship(
-        secondary=task_tags, back_populates="tasks"
-    )
+    tags: Mapped[list[Tag]] = relationship(secondary=task_tags, back_populates="tasks")
+
 
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, title={self.title}, completed={self.completed})>"

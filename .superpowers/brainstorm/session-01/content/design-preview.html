@@ -1,0 +1,113 @@
+<h2>Design Preview: Phase 3 Enhancements</h2>
+<p class="subtitle">Visualizing the new Task Grouping and Due Time features</p>
+
+<div class="section">
+  <h3>1. Relational Task Grouping</h3>
+  <p>The hardcoded "Category" is replaced with dynamic, user-defined "Groups".</p>
+  
+  <div class="mockup">
+    <div class="mockup-header">Dashboard: Tasks by Group</div>
+    <div class="mockup-body">
+      <div style="display: flex; gap: 20px;">
+        <div class="mock-sidebar" style="width: 200px; padding: 10px; border-right: 1px solid #ddd;">
+          <div class="label">Groups</div>
+          <div style="margin-top: 10px;">
+            <div style="padding: 5px; background: #eef; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #4a90e2;"></div>
+              <span>Engineering</span>
+            </div>
+            <div style="padding: 5px; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #f5a623;"></div>
+              <span>Personal</span>
+            </div>
+            <div style="padding: 5px; border-radius: 4px; margin-bottom: 5px; display: flex; align-items: center; gap: 8px;">
+              <div style="width: 12px; height: 12px; border-radius: 50%; background: #7ed321;"></div>
+              <span>Groceries</span>
+            </div>
+            <button class="mock-button" style="width: 100%; margin-top: 10px; font-size: 12px;">+ New Group</button>
+          </div>
+        </div>
+        <div class="mock-content" style="flex: 1; padding: 10px;">
+          <div class="label">Engineering Tasks</div>
+          <div style="margin-top: 10px;">
+            <div class="card" style="margin-bottom: 10px; padding: 10px;">
+              <strong>Implement Group Model</strong>
+              <div style="font-size: 12px; color: #666;">Relational backend setup</div>
+            </div>
+            <div class="card" style="padding: 10px;">
+              <strong>Update Task Schemas</strong>
+              <div style="font-size: 12px; color: #666;">Include group_id</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>2. Enhanced Due Time</h3>
+  <p>Support for precise time selection and high-fidelity display.</p>
+  
+  <div class="split">
+    <div class="mockup">
+      <div class="mockup-header">New Task Modal</div>
+      <div class="mockup-body" style="padding: 20px;">
+        <div style="margin-bottom: 15px;">
+          <label class="label">Title</label>
+          <input class="mock-input" value="Refine Phase 3 Plan" style="width: 100%;">
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label class="label">Group</label>
+          <div style="display: flex; gap: 10px;">
+            <div class="mock-nav" style="flex: 1; padding: 8px; border: 1px solid #ddd; border-radius: 4px; background: #fff;">Engineering</div>
+          </div>
+        </div>
+        <div style="margin-bottom: 15px;">
+          <label class="label">Due Date & Time</label>
+          <input class="mock-input" type="datetime-local" value="2026-05-10T14:30" style="width: 100%;">
+        </div>
+        <button class="mock-button" style="width: 100%; background: #4a90e2; color: white;">Save Task</button>
+      </div>
+    </div>
+    
+    <div class="mockup">
+      <div class="mockup-header">Task Card Preview</div>
+      <div class="mockup-body" style="padding: 20px;">
+        <div class="card" style="padding: 15px; border-left: 4px solid #4a90e2;">
+          <div style="display: flex; justify-content: space-between; align-items: start;">
+            <div>
+              <div class="label" style="color: #4a90e2;">Engineering</div>
+              <h4 style="margin: 5px 0;">Refine Phase 3 Plan</h4>
+            </div>
+            <div style="background: #f0f0f0; padding: 4px 8px; border-radius: 4px; font-size: 11px;">PENDING</div>
+          </div>
+          <div style="margin-top: 15px; display: flex; align-items: center; gap: 6px; color: #d0021b; font-weight: bold; font-size: 13px;">
+            <span style="font-size: 16px;">📅</span>
+            May 10, 2:30 PM
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="section">
+  <h3>Ready to proceed with Section 3: Frontend Design?</h3>
+  <div class="options">
+    <div class="option" data-choice="yes" onclick="toggleSelect(this)">
+      <div class="letter">A</div>
+      <div class="content">
+        <h3>Yes, proceed</h3>
+        <p>This design looks great, let's move to the frontend spec.</p>
+      </div>
+    </div>
+    <div class="option" data-choice="refine" onclick="toggleSelect(this)">
+      <div class="letter">B</div>
+      <div class="content">
+        <h3>Let's refine something</h3>
+        <p>I have some changes or questions about this visual direction.</p>
+      </div>
+    </div>
+  </div>
+</div>

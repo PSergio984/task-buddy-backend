@@ -22,6 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.config import config as app_config  # noqa: E402
 from app.models.audit import AuditLog  # noqa: E402, F401
 from app.models.base import Base  # noqa: E402
+from app.models.group import Group  # noqa: E402, F401
 from app.models.tag import Tag  # noqa: E402, F401
 from app.models.task import SubTask, Task  # noqa: E402, F401
 from app.models.user import User  # noqa: E402, F401
@@ -57,6 +58,7 @@ def run_migrations_offline() -> None:
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
+        render_as_batch=True,
     )
 
     with context.begin_transaction():
@@ -78,7 +80,9 @@ def run_migrations_online() -> None:
 
     with connectable.connect() as connection:
         context.configure(
-            connection=connection, target_metadata=target_metadata
+            connection=connection,
+            target_metadata=target_metadata,
+            render_as_batch=True,
         )
 
         with context.begin_transaction():
