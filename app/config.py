@@ -23,7 +23,7 @@ class GlobalConfig(BaseConfig):
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
     DB_FORCE_ROLL_BACK: bool = False
-    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000"]
+    ALLOWED_ORIGINS: list[str] = ["http://localhost:3000", "http://localhost:5173"]
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
@@ -41,6 +41,7 @@ class DevConfig(GlobalConfig):
 
 
 class ProdConfig(GlobalConfig):
+    DEBUG: bool = False
     model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
     @model_validator(mode="after")
@@ -57,6 +58,7 @@ class TestConfig(GlobalConfig):
     DATABASE_URL: str = "sqlite:///./test.db"
     DB_FORCE_ROLL_BACK: bool = False
     RATE_LIMIT_ENABLED: bool = False
+    DEBUG: bool = False
 
     model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
 
