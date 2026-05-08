@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from sqlalchemy import select
 
 from app.database import AsyncSessionLocal
+from app.models.audit import AuditLog
 from app.models.tag import Tag
 from app.models.task import SubTask, Task
 from app.models.user import User
