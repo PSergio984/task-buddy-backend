@@ -9,8 +9,12 @@ async def test_security_headers(async_client: AsyncClient):
     response = await async_client.get("/api/v1/tasks")
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
-    assert response.headers["X-XSS-Protection"] == "1; mode=block"
+    # X-XSS-Protection is deprecated and removed
+    assert "X-XSS-Protection" not in response.headers
     assert "Content-Security-Policy" in response.headers
+    csp = response.headers["Content-Security-Policy"]
+    assert "default-src 'self'" in csp
+    assert "https://cdn.jsdelivr.net" in csp
     assert response.headers["Referrer-Policy"] == "strict-origin-when-cross-origin"
     assert "Permissions-Policy" in response.headers
     assert "geolocation=()" in response.headers["Permissions-Policy"]
