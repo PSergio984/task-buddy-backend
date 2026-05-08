@@ -8,55 +8,60 @@ from app.config import config
 logger = logging.getLogger(__name__)
 
 
-def get_async_database_url(url: str | None) -> str:
+def get_async_database_url(url: str | None) -> tuple[str, dict]:
     """
     Ensures the database URL uses an async driver and handles driver-specific query parameters.
+    Returns a tuple of (sanitized_url, connect_args).
     """
     if not url:
-        return ""
+        return "", {}
 
+    c_args = {}
     if url.startswith("sqlite://"):
-        return url.replace("sqlite://", "sqlite+aiosqlite://")
+        if "aiosqlite" not in url:
+            url = url.replace("sqlite://", "sqlite+aiosqlite://")
+        c_args["check_same_thread"] = False
+        return url, c_args
 
-    if url.startswith("postgresql://") or url.startswith("postgres://"):
-        # Replace scheme
-        if url.startswith("postgres://"):
-            url = url.replace("postgres://", "postgresql+asyncpg://", 1)
-        else:
-            url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
+    # Handle postgresql and postgres schemes
+    if "postgresql" in url or "postgres" in url:
+        # Ensure the async driver is used
+        if "asyncpg" not in url:
+            if url.startswith("postgres://"):
+                url = url.replace("postgres://", "postgresql+asyncpg://", 1)
+            else:
+                url = url.replace("postgresql://", "postgresql+asyncpg://", 1)
 
-        # Handle sslmode for asyncpg
+        # Handle libpq parameters for asyncpg compatibility
         parsed = urlparse(url)
         query = parse_qs(parsed.query)
 
+        # asyncpg compatibility: move sslmode to connect_args as 'ssl'
         if "sslmode" in query:
-            # asyncpg uses 'ssl' instead of 'sslmode'
             ssl_value = query.pop("sslmode")[0]
-            if "ssl" not in query:
-                # Map sslmode=require to ssl=true for asyncpg compatibility
-                if ssl_value in ["require", "prefer", "allow"]:
-                    query["ssl"] = ["true"]
-                else:
-                    query["ssl"] = [ssl_value]
+            if ssl_value in ["require", "prefer", "allow", "verify-ca", "verify-full"]:
+                c_args["ssl"] = True
+            elif ssl_value == "disable":
+                c_args["ssl"] = False
 
         # Strip other unsupported libpq parameters
-        for param in ["channel_binding", "gssencmode", "target_session_attrs"]:
+        for param in ["channel_binding", "gssencmode", "target_session_attrs", "ssl"]:
             if param in query:
+                # If 'ssl' is in query, use it for c_args if not already set
+                if param == "ssl" and "ssl" not in c_args:
+                    val = query[param][0].lower()
+                    c_args["ssl"] = val == "true"
                 query.pop(param)
 
         new_query = urlencode(query, doseq=True)
-        return urlunparse(parsed._replace(query=new_query))
+        sanitized_url = urlunparse(parsed._replace(query=new_query))
+        return sanitized_url, c_args
 
-    return url
+    return url, {}
 
 
-# Get the async-compatible URL
-ASYNC_DATABASE_URL = get_async_database_url(config.DATABASE_URL)
-
-# Configure engine arguments
-connect_args = {}
-if ASYNC_DATABASE_URL.startswith("sqlite"):
-    connect_args["check_same_thread"] = False
+# Get the async-compatible URL and connection arguments
+ASYNC_DATABASE_URL, connect_args = get_async_database_url(config.DATABASE_URL)
 
 # Create the async engine
 engine = create_async_engine(
