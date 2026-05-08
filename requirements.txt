@@ -132,3 +132,4 @@ websockets==16.0
     # via uvicorn
 wrapt==2.1.2
     # via deprecated
+zipp>=3.19.1 # not directly required, pinned by Snyk to avoid a vulnerability
