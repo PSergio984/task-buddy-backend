@@ -10,7 +10,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.audit import AuditLog
-    from app.models.group import Group
+    from app.models.project import Project
     from app.models.tag import Tag
     from app.models.task import Task
 
@@ -22,14 +22,14 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     confirmed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
     confirmation_failed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
 
     # Relationships
     tasks: Mapped[list[Task]] = relationship(back_populates="user", cascade="all, delete-orphan")
     tags: Mapped[list[Tag]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    groups: Mapped[list[Group]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    projects: Mapped[list[Project]] = relationship(back_populates="user", cascade="all, delete-orphan")
     audit_logs: Mapped[list[AuditLog]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

@@ -23,7 +23,7 @@ class AuditLog(Base):
     target_type: Mapped[str] = mapped_column(String, nullable=False)
     target_id: Mapped[int | None] = mapped_column(nullable=True)
     details: Mapped[str | None] = mapped_column(String, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="audit_logs")

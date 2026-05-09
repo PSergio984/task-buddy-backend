@@ -9,7 +9,14 @@ from app.models.user import User
 from app.schemas.audit import AuditLog as AuditLogSchema
 from app.security import get_current_user
 
-router = APIRouter(prefix="/audit", tags=["audit"])
+router = APIRouter(
+    prefix="/audit",
+    tags=["audit"],
+    responses={
+        400: {"description": "Bad request"},
+        401: {"description": "Not authenticated"},
+    },
+)
 
 @router.get("/logs", response_model=list[AuditLogSchema])
 async def get_audit_logs(

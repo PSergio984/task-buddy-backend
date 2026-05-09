@@ -4,7 +4,6 @@ from httpx import AsyncClient
 from app.main import app
 
 
-@pytest.mark.anyio
 async def test_security_headers(async_client: AsyncClient):
     response = await async_client.get("/api/v1/tasks")
     assert response.headers["X-Frame-Options"] == "DENY"
@@ -19,20 +18,17 @@ async def test_security_headers(async_client: AsyncClient):
     assert "Permissions-Policy" in response.headers
     assert "geolocation=()" in response.headers["Permissions-Policy"]
 
-@pytest.mark.anyio
 async def test_cors_allowed_origin(async_client: AsyncClient):
     # Default allowed origin is http://localhost:3000
     headers = {"Origin": "http://localhost:3000"}
     response = await async_client.options("/api/v1/users/register", headers=headers)
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
-@pytest.mark.anyio
 async def test_cors_disallowed_origin(async_client: AsyncClient):
     headers = {"Origin": "http://evil.com"}
     response = await async_client.options("/api/v1/users/register", headers=headers)
     assert "access-control-allow-origin" not in response.headers or response.headers["access-control-allow-origin"] != "http://evil.com"
 
-@pytest.mark.anyio
 async def test_rate_limiting_register(async_client: AsyncClient, mocker):
     # Enable limiter specifically for this test
     app.state.limiter.enabled = True

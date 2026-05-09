@@ -4,21 +4,21 @@ from typing import Optional
 from pydantic import BaseModel, ConfigDict
 
 
-class GroupBase(BaseModel):
+class ProjectBase(BaseModel):
     name: str
     color: Optional[str] = None
 
 
-class GroupCreateRequest(GroupBase):
+class ProjectCreateRequest(ProjectBase):
     pass
 
 
-class GroupUpdateRequest(BaseModel):
+class ProjectUpdateRequest(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
 
 
-class GroupResponse(GroupBase):
+class ProjectResponse(ProjectBase):
     model_config = ConfigDict(from_attributes=True)
 
     id: int

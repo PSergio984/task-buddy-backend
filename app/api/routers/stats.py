@@ -9,7 +9,14 @@ from app.models.user import User
 from app.schemas.stats import SystemOverview
 from app.security import get_current_user
 
-router = APIRouter(prefix="/stats", tags=["stats"])
+router = APIRouter(
+    prefix="/stats",
+    tags=["stats"],
+    responses={
+        400: {"description": "Bad request"},
+        401: {"description": "Not authenticated"},
+    },
+)
 
 @router.get("/overview", response_model=SystemOverview)
 async def get_system_overview(

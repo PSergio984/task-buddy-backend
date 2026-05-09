@@ -21,7 +21,7 @@ class Tag(Base):
         ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
     )
     name: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tags")

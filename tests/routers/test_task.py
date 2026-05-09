@@ -49,7 +49,6 @@ async def created_tag(created_task: dict, async_client: AsyncClient, logged_in_t
     return await create_tag("Important", created_task["id"], async_client, logged_in_token)
 
 
-@pytest.mark.anyio
 async def test_create_task(
     db, async_client: AsyncClient, logged_in_token: str, confirmed_user: dict
 ):
@@ -60,14 +59,12 @@ async def test_create_task(
     )
 
     assert response.status_code == 201
-    assert {
-        "id": 1,
-        "title": body["title"],
-        "user_id": confirmed_user["id"],
-    }.items() <= response.json().items()
+    data = response.json()
+    assert data["title"] == body["title"]
+    assert data["user_id"] == confirmed_user["id"]
+    assert "id" in data
 
 
-@pytest.mark.anyio
 async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token: str):
 
     response = await async_client.post(
@@ -77,7 +74,6 @@ async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token:
     assert response.status_code == 422
 
 
-@pytest.mark.anyio
 async def test_create_task_expired_token(
     db, async_client: AsyncClient, confirmed_user: dict, monkeypatch
 ):
@@ -94,7 +90,6 @@ async def test_create_task_expired_token(
     )
 
 
-@pytest.mark.anyio
 async def test_get_all_tasks(async_client: AsyncClient, created_task: dict, logged_in_token: str):
     response = await async_client.get(
         "/api/v1/tasks/", headers={"Authorization": f"Bearer {logged_in_token}"}
@@ -104,7 +99,6 @@ async def test_get_all_tasks(async_client: AsyncClient, created_task: dict, logg
     assert response.json() == [created_task]
 
 
-@pytest.mark.anyio
 async def test_create_subtask(
     async_client: AsyncClient,
     created_task: dict,
@@ -126,7 +120,6 @@ async def test_create_subtask(
     }.items() <= response.json().items()
 
 
-@pytest.mark.anyio
 async def test_get_subtasks_on_task(
     async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
 ):
@@ -139,7 +132,6 @@ async def test_get_subtasks_on_task(
     assert response.json() == [created_subtask]
 
 
-@pytest.mark.anyio
 async def test_get_subtasks_on_task_empty(
     async_client: AsyncClient, created_task: dict, logged_in_token: str
 ):
@@ -152,7 +144,6 @@ async def test_get_subtasks_on_task_empty(
     assert response.json() == []
 
 
-@pytest.mark.anyio
 async def test_get_task_with_subtasks(
     async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
 ):
@@ -168,7 +159,6 @@ async def test_get_task_with_subtasks(
     }
 
 
-@pytest.mark.anyio
 async def test_get_missing_task_with_subtasks(
     async_client: AsyncClient, created_subtask: dict, created_task: dict, logged_in_token: str
 ):
@@ -179,7 +169,6 @@ async def test_get_missing_task_with_subtasks(
     assert response.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_create_tag(
     async_client: AsyncClient,
     created_task: dict,
@@ -202,7 +191,6 @@ async def test_create_tag(
     }.items() <= response.json().items()
 
 
-@pytest.mark.anyio
 async def test_get_tags_on_task(
     async_client: AsyncClient,
     created_task: dict,
@@ -218,7 +206,6 @@ async def test_get_tags_on_task(
     assert response.json() == [created_tag]
 
 
-@pytest.mark.anyio
 async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_token: str):
     response = await async_client.get(
         "/api/v1/tasks/999/tags",
@@ -228,7 +215,6 @@ async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_tok
     assert response.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_reuse_tag_across_tasks(db, async_client: AsyncClient, logged_in_token: str):
     first_task = await create_task({"title": "Task One"}, async_client, logged_in_token)
     second_task = await create_task({"title": "Task Two"}, async_client, logged_in_token)
@@ -250,7 +236,6 @@ async def test_reuse_tag_across_tasks(db, async_client: AsyncClient, logged_in_t
     assert second_response.json() == [first_tag]
 
 
-@pytest.mark.anyio
 async def test_update_task(async_client: AsyncClient, created_task: dict, logged_in_token: str):
     response = await async_client.put(
         f"/api/v1/tasks/{created_task['id']}",
@@ -268,7 +253,6 @@ async def test_update_task(async_client: AsyncClient, created_task: dict, logged
     assert get_resp.json()["completed"] is True
 
 
-@pytest.mark.anyio
 async def test_delete_task(async_client: AsyncClient, created_task: dict, logged_in_token: str):
     response = await async_client.delete(
         f"/api/v1/tasks/{created_task['id']}",
@@ -284,7 +268,6 @@ async def test_delete_task(async_client: AsyncClient, created_task: dict, logged
     assert get_resp.status_code == 404
 
 
-@pytest.mark.anyio
 async def test_update_subtask(
     async_client: AsyncClient, created_subtask: dict, logged_in_token: str
 ):
@@ -304,7 +287,6 @@ async def test_update_subtask(
     assert get_resp.json()["completed"] is True
 
 
-@pytest.mark.anyio
 async def test_delete_subtask(
     async_client: AsyncClient, created_subtask: dict, logged_in_token: str
 ):
@@ -322,25 +304,25 @@ async def test_delete_subtask(
     assert get_resp.status_code == 404
 
 
-@pytest.mark.anyio
-async def test_get_tasks_filtered_by_group(
+async def test_get_tasks_filtered_by_project(
     async_client: AsyncClient, logged_in_token: str
 ):
-    # Create a group
-    group_resp = await async_client.post(
-        "/api/v1/groups/",
+    # Create a project
+    project_resp = await async_client.post(
+        "/api/v1/projects/",
         json={"name": "Work", "color": "blue"},
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
-    group_id = group_resp.json()["id"]
+    assert project_resp.status_code == 201
+    project_id = project_resp.json()["id"]
 
-    # Create tasks: one in group, one out
-    task_in = await create_task({"title": "In Group", "group_id": group_id}, async_client, logged_in_token)
-    task_out = await create_task({"title": "Out of Group"}, async_client, logged_in_token)
+    # Create tasks: one in project, one out
+    task_in = await create_task({"title": "In Project", "project_id": project_id}, async_client, logged_in_token)
+    task_out = await create_task({"title": "Out of Project"}, async_client, logged_in_token)
 
-    # Fetch with group_id filter
+    # Fetch with project_id filter
     response = await async_client.get(
-        f"/api/v1/tasks/?group_id={group_id}",
+        f"/api/v1/tasks/?project_id={project_id}",
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
 
@@ -348,10 +330,12 @@ async def test_get_tasks_filtered_by_group(
     data = response.json()
     assert len(data) == 1
     assert data[0]["id"] == task_in["id"]
-    assert data[0]["group_id"] == group_id
+    assert data[0]["project_id"] == project_id
+    
+    # Assert that the task out of project is NOT in the results
+    assert task_out["id"] not in [t["id"] for t in data]
 
 
-@pytest.mark.anyio
 async def test_detach_tag(
     async_client: AsyncClient, created_task: dict, created_tag: dict, logged_in_token: str
 ):
@@ -369,7 +353,6 @@ async def test_detach_tag(
     assert created_tag not in get_resp.json()
 
 
-@pytest.mark.anyio
 async def test_delete_tag(async_client: AsyncClient, created_tag: dict, logged_in_token: str):
     response = await async_client.delete(
         f"/api/v1/tasks/tags/{created_tag['id']}",

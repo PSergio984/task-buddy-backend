@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud import group as group_crud
+from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
@@ -34,42 +34,51 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 NOT_AUTHORIZED_MODIFY_TASK = "Not authorized to modify this task"
 NOT_AUTHORIZED_VIEW_TAGS = "Not authorized to view this task's tags"
 TAG_NOT_FOUND = "Tag not found"
-INVALID_GROUP_ID = "Invalid group_id"
+INVALID_PROJECT_ID = "Invalid project_id"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={
+        404: {"description": TASK_NOT_FOUND},
+        400: {
+            "description": "Bad Request - Invalid parameters or missing fields",
+            "content": {
+                "application/json": {
+                    "example": {"detail": BAD_REQUEST}
+                }
+            }
+        },
+        401: {"description": "Not authenticated"},
+    },
 )
 
 logger = logging.getLogger(__name__)
 
 
-async def verify_group_ownership(db: AsyncSession, group_id: int | None, user_id: int) -> None:
-    if group_id is not None:
-        db_group = await group_crud.get_group(db, group_id=group_id, user_id=user_id)
-        if not db_group:
-            raise HTTPException(status_code=400, detail=INVALID_GROUP_ID)
+async def verify_project_ownership(db: AsyncSession, project_id: int | None, user_id: int) -> None:
+    if project_id is not None:
+        db_project = await project_crud.get_project(db, project_id=project_id, user_id=user_id)
+        if not db_project:
+            raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
-@router.get("/", response_model=list[TaskCreateResponse])
+@router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     completed: Annotated[bool | None, Query()] = None,
-    group_id: Annotated[int | None, Query()] = None,
+    project_id: Annotated[int | None, Query()] = None,
+    tag_id: Annotated[int | None, Query()] = None,
 ):
-    logger.info("GET / - fetching tasks for user %s", current_user.id)
     tasks = await task_crud.get_tasks(
-        db, user_id=current_user.id, completed=completed, group_id=group_id
+        db, user_id=current_user.id, completed=completed, project_id=project_id, tag_id=tag_id
     )
-    logger.info("GET / - fetched %s tasks", len(tasks))
     return tasks
-
 
 @router.get(
     "/{task_id}",
     response_model=TaskCreateResponse,
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def get_task(
     task_id: int,
@@ -83,11 +92,9 @@ async def get_task(
         logger.warning("GET /%s - task not found", task_id)
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    logger.info("GET /%s - task found", task_id)
     return task
 
-
-@router.post("/", response_model=TaskCreateResponse, status_code=201)
+@router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
 async def create_task(
     task_in: TaskCreateRequest,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -95,24 +102,33 @@ async def create_task(
 ):
     logger.info("POST / - creating task title=%s", task_in.title)
 
-    await verify_group_ownership(db, task_in.group_id, current_user.id)
+    await verify_project_ownership(db, task_in.project_id, current_user.id)
+    
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
-    db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
+        # Flush to get ID for audit log
+        await db.flush()
+        await db.refresh(db_task)
 
-    # Flush to get ID for audit log
-    await db.flush()
-    await db.refresh(db_task)
+        await log_action(
+            db=db,
+            user_id=current_user.id,
+            action=AuditAction.CREATE,
+            target_type="TASK",
+            target_id=db_task.id,
+            details=f"Created task: {db_task.title}",
+        )
+        await db.commit()
+        await db.refresh(db_task)
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning("Integrity error creating task: %s", str(e))
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.CREATE,
-        target_type="TASK",
-        target_id=db_task.id,
-        details=f"Created task: {db_task.title}",
-    )
-    await db.commit()
-    await db.refresh(db_task)
+    # Ensure tags are loaded for serialization
+    await db_task.awaitable_attrs.tags
 
     logger.info("POST / - created task id=%s", db_task.id)
     return db_task
@@ -138,28 +154,38 @@ async def update_task(
         logger.warning("PUT /%s - no fields to update", task_id)
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
-    if "group_id" in update_data:
-        await verify_group_ownership(db, task_update.group_id, current_user.id)
+    if "project_id" in update_data:
+        await verify_project_ownership(db, task_update.project_id, current_user.id)
 
-    await task_crud.update_task(db, db_task=db_task, task_in=task_update)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Updated task fields: {', '.join(update_data.keys())}",
-    )
-    await db.commit()
+        await log_action(
+            db=db,
+            user_id=current_user.id,
+            action=AuditAction.UPDATE,
+            target_type="TASK",
+            target_id=task_id,
+            details=f"Updated task '{db_task.title}': {', '.join(update_data.keys())}",
+        )
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning("Integrity error updating task: %s", str(e))
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
+
+    # Ensure tags are loaded for serialization
+    await db_task.awaitable_attrs.tags
 
     logger.info("PUT /%s - task updated", task_id)
-    return {"message": "Task updated successfully"}
+    return db_task
 
 
-@router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}})
+@router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def delete_task(
     task_id: int,
+
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -168,10 +194,16 @@ async def delete_task(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
+    task_title = db_task.title
     await task_crud.delete_task(db, db_task=db_task)
 
     await log_action(
-        db=db, user_id=current_user.id, action=AuditAction.DELETE, target_type="TASK", target_id=task_id
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.DELETE,
+        target_type="TASK",
+        target_id=task_id,
+        details=f"Deleted task: {task_title}",
     )
     await db.commit()
 
@@ -182,7 +214,7 @@ async def delete_task(
 @router.get(
     "/{task_id}/subtask",
     response_model=list[SubTaskCreateResponse],
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def get_subtasks_on_task_list(
     task_id: int,
@@ -196,7 +228,7 @@ async def get_subtasks_on_task_list(
 
 
 @router.get(
-    "/{task_id}/subtasks", response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}}
+    "/{task_id}/subtasks", response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}}
 )
 async def get_task_with_subtasks(
     task_id: int,
@@ -218,7 +250,7 @@ async def get_task_with_subtasks(
     "/subtask",
     response_model=SubTaskCreateResponse,
     status_code=201,
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def create_subtask(
     subtask_in: SubTaskCreateRequest,
@@ -252,7 +284,7 @@ async def create_subtask(
 @router.get(
     "/subtask/{subtask_id}",
     response_model=SubTaskCreateResponse,
-    responses={404: {"description": SUBTASK_NOT_FOUND}},
+    responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def get_subtask(
     subtask_id: int,
@@ -298,7 +330,7 @@ async def update_subtask(
         action=AuditAction.UPDATE,
         target_type="SUBTASK",
         target_id=subtask_id,
-        details=f"Updated subtask fields: {', '.join(update_data.keys())}",
+        details=f"Updated subtask '{db_subtask.title}' on task {db_subtask.task_id}: {', '.join(update_data.keys())}",
     )
     await db.commit()
 
@@ -306,7 +338,7 @@ async def update_subtask(
     return {"message": "Subtask updated successfully"}
 
 
-@router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}})
+@router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def delete_subtask(
     subtask_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -317,10 +349,17 @@ async def delete_subtask(
     if not db_subtask:
         raise HTTPException(status_code=404, detail=SUBTASK_NOT_FOUND)
 
+    subtask_title = db_subtask.title
+    task_id = db_subtask.task_id
     await task_crud.delete_subtask(db, db_subtask=db_subtask)
 
     await log_action(
-        db=db, user_id=current_user.id, action=AuditAction.DELETE, target_type="SUBTASK", target_id=subtask_id
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.DELETE,
+        target_type="SUBTASK",
+        target_id=subtask_id,
+        details=f"Deleted subtask '{subtask_title}' from task {task_id}",
     )
     await db.commit()
 
@@ -330,7 +369,7 @@ async def delete_subtask(
 
 # --- Tag Endpoints ---
 
-@router.get("/tags/", response_model=list[TagResponse])
+@router.get("/tags/", response_model=list[TagResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tags(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
@@ -338,7 +377,7 @@ async def get_all_tags(
     return await tag_crud.get_user_tags(db, user_id=current_user.id)
 
 
-@router.post("/tags/", response_model=TagResponse, status_code=201)
+@router.post("/tags/", response_model=TagResponse, status_code=201, responses={400: {"description": "Tag already exists or invalid request"}})
 async def create_tag(
     tag_in: TagCreate,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -354,7 +393,7 @@ async def create_tag(
     return db_tag
 
 
-@router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}})
+@router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def delete_tag(
     tag_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -373,7 +412,7 @@ async def delete_tag(
     return {"message": "Tag deleted successfully"}
 
 
-@router.post("/{task_id}/tags", response_model=TagResponse, status_code=201)
+@router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def create_and_attach_tag(
     task_id: int,
     tag_in: TagCreate,
@@ -401,7 +440,7 @@ async def create_and_attach_tag(
 @router.get(
     "/{task_id}/tags",
     response_model=list[TagResponse],
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 async def get_tags_on_task(
     task_id: int,
@@ -415,7 +454,7 @@ async def get_tags_on_task(
     return await tag_crud.get_tags_on_task(db, task_id=task_id)
 
 
-@router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}})
+@router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}, 400: {"description": BAD_REQUEST}})
 async def attach_tag_to_task(
     task_id: int,
     tag_id: int,
@@ -440,7 +479,7 @@ async def attach_tag_to_task(
     return {"message": "Tag attached successfully"}
 
 
-@router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}})
+@router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def detach_tag_from_task(
     task_id: int,
     tag_id: int,

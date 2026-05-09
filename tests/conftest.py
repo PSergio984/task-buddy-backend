@@ -1,52 +1,108 @@
+import pytest
 from collections.abc import AsyncGenerator, Generator
 from unittest.mock import AsyncMock
 
-import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import event, select, update
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
-from app.database import AsyncSessionLocal, engine
+import app.database as app_db
+from app.dependencies import get_db
 from app.main import app
 from app.models.base import Base
 from app.models.user import User
 
+import tempfile
+import os
+
+# Unique file-backed database for this session
+_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+_db_path = _db_file.name
+_db_file.close()
+
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
+test_engine = create_async_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False},
+    poolclass=NullPool
+)
+
+# Cleanup the temp file after the session
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_temp_db():
+    yield
+    if os.path.exists(_db_path):
+        os.remove(_db_path)
+
+# Enable SQLite foreign key enforcement
+@event.listens_for(test_engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
+TestSessionLocal = async_sessionmaker(
+    bind=test_engine,
+    class_=AsyncSession,
+    expire_on_commit=False,
+    autocommit=False,
+    autoflush=False
+)
+
+# Patch app.database globally
+app_db.engine = test_engine
+app_db.AsyncSessionLocal = TestSessionLocal
+
+# Override get_db dependency
+async def override_get_db() -> AsyncGenerator:
+    async with TestSessionLocal() as session:
+        yield session
+
+app.dependency_overrides[get_db] = override_get_db
+
+# Disable rate limiting for tests
+app.state.limiter.enabled = False
+
+# Mock Redis for security blacklist checks
+@pytest.fixture(autouse=True)
+def mock_redis_security(mocker):
+    mocker.patch("app.security.is_token_blacklisted", return_value=False)
+    mocker.patch("app.security.blacklist_token", return_value=None)
 
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
 
+@pytest.fixture(scope="session", autouse=True)
+async def setup_db_schema():
+    async with test_engine.begin() as conn:
+        await conn.run_sync(Base.metadata.drop_all)
+        await conn.run_sync(Base.metadata.create_all)
+    yield
+    await test_engine.dispose()
 
 @pytest.fixture()
 async def db() -> AsyncGenerator:
-    # Use sync engine for schema operations (simpler for SQLite tests)
-    # But wait, we are using create_async_engine.
-    # For schema drop/create we should use async engine too if possible,
-    # or just use the sync-style metadata.create_all with engine.connect() if it's a sync engine.
-    # Actually, SQLAlchemy 2.0 with AsyncEngine needs run_sync.
+    # Clear all data before each test
+    async with test_engine.begin() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            await conn.execute(table.delete())
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.drop_all)
-        await conn.run_sync(Base.metadata.create_all)
-
-    async with AsyncSessionLocal() as session:
-        # Clear child tables before parents to respect FK constraints.
-        # This is optional if we just drop/create each time, but good practice.
+    async with TestSessionLocal() as session:
         yield session
         await session.rollback() # Ensure nothing leaks
-
 
 @pytest.fixture()
 def client() -> Generator:
     yield TestClient(app)
-
 
 @pytest.fixture(scope="session")
 async def async_client() -> AsyncGenerator:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver/") as ac:
         yield ac
-
 
 @pytest.fixture()
 async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
@@ -56,26 +112,17 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
         "password": "testpassword",
     }
     response = await async_client.post("/api/v1/users/register", json=user_data)
-
-    assert response.status_code == 201, (
-        f"Registration failed with status {response.status_code}: {response.json()}"
-    )
-
-    from sqlalchemy import select
+    assert response.status_code == 201, f"User registration failed: {response.text}"
+    
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
-    assert user is not None, (
-        f"User not found in database after registration for email: {user_data['email']}"
-    )
-
+    assert user is not None, f"User {user_data['email']} was not found in DB after registration"
     user_data["id"] = user.id
     return user_data
 
-
 @pytest.fixture()
 async def confirmed_user(db: AsyncSession, registered_user: dict) -> dict:
-    from sqlalchemy import update
     stmt = (
         update(User).where(User.email == registered_user["email"]).values(confirmed=True)
     )
@@ -83,24 +130,17 @@ async def confirmed_user(db: AsyncSession, registered_user: dict) -> dict:
     await db.commit()
     return registered_user
 
-
 @pytest.fixture()
 async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> str:
     response = await async_client.post(
         "/api/v1/users/token",
         data={"username": confirmed_user["email"], "password": confirmed_user["password"]},
     )
-    assert response.status_code == 200, (
-        f"Login failed with status {response.status_code}: {response.json()}"
-    )
-
+    assert response.status_code == 200, f"Login failed: {response.text}"
     payload = response.json()
     token = payload.get("access_token")
-    assert isinstance(token, str) and token, (
-        f"Login response did not include a valid access_token: {payload}"
-    )
+    assert token, "Login response missing access_token"
     return token
-
 
 @pytest.fixture(autouse=True)
 def mock_httpx_client(mocker):

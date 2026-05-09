@@ -22,7 +22,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.config import config as app_config  # noqa: E402
 from app.models.audit import AuditLog  # noqa: E402, F401
 from app.models.base import Base  # noqa: E402
-from app.models.group import Group  # noqa: E402, F401
+from app.models.project import Project  # noqa: E402, F401
 from app.models.tag import Tag  # noqa: E402, F401
 from app.models.task import SubTask, Task  # noqa: E402, F401
 from app.models.user import User  # noqa: E402, F401
@@ -32,7 +32,9 @@ from app.models.user import User  # noqa: E402, F401
 target_metadata = Base.metadata
 if app_config.DATABASE_URL is None:
     raise ValueError("DATABASE_URL is not set in the configuration.")
-config.set_main_option("sqlalchemy.url", cast(str, app_config.DATABASE_URL))
+config.set_main_option(
+    "sqlalchemy.url", cast(str, app_config.DATABASE_URL).replace("%", "%%")
+)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:
