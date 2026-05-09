@@ -40,7 +40,11 @@ async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Optional[Tas
 
 
 async def get_tasks_by_project(db: AsyncSession, project_id: int, user_id: int) -> list[Task]:
-    query = select(Task).where(Task.project_id == project_id, Task.user_id == user_id)
+    query = (
+        select(Task)
+        .where(Task.project_id == project_id, Task.user_id == user_id)
+        .options(selectinload(Task.tags))
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -56,12 +60,10 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
     db.add(db_task)
     await db.flush()
     
-    # Process tags
+    # Process tags (normalized and deduped)
     if tag_names:
-        for name in tag_names:
-            name = name.strip()
-            if not name:
-                continue
+        unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
+        for name in unique_tags:
             db_tag = await tag_crud.get_tag_by_name(db, user_id=user_id, name=name)
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=user_id, tag_in=TagCreate(name=name))
@@ -85,10 +87,8 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
         stmt = task_tags.delete().where(task_tags.c.task_id == db_task.id)
         await db.execute(stmt)
         
-        for name in tag_names:
-            name = name.strip()
-            if not name:
-                continue
+        unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
+        for name in unique_tags:
             db_tag = await tag_crud.get_tag_by_name(db, user_id=db_task.user_id, name=name)
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=db_task.user_id, tag_in=TagCreate(name=name))

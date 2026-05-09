@@ -18,6 +18,16 @@ test_engine = create_async_engine(
     connect_args={"check_same_thread": False},
     poolclass=NullPool
 )
+
+# Enable SQLite foreign key enforcement
+from sqlalchemy import event
+
+@event.listens_for(test_engine.sync_engine, "connect")
+def set_sqlite_pragma(dbapi_connection, connection_record):
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
+
 TestSessionLocal = async_sessionmaker(
     bind=test_engine,
     class_=AsyncSession,
@@ -41,6 +51,13 @@ app.dependency_overrides[get_db] = override_get_db
 
 # Disable rate limiting for tests
 app.state.limiter.enabled = False
+
+# Mock Redis for security blacklist checks
+@pytest.fixture(autouse=True)
+def mock_redis_security(mocker):
+    mocker.patch("app.security.is_token_blacklisted", return_value=False)
+    mocker.patch("app.security.blacklist_token", return_value=None)
+    return
 
 @pytest.fixture(scope="session")
 def anyio_backend():
@@ -83,13 +100,14 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
         "password": "testpassword",
     }
     response = await async_client.post("/api/v1/users/register", json=user_data)
+    assert response.status_code == 201, f"User registration failed: {response.text}"
     
     from sqlalchemy import select
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
-    if user:
-        user_data["id"] = str(user.id)
+    assert user is not None, f"User {user_data['email']} was not found in DB after registration"
+    user_data["id"] = user.id
     return user_data
 
 @pytest.fixture()

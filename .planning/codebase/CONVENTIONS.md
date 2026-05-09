@@ -19,6 +19,7 @@
 **Request/Response:**
 - Always use Pydantic schemas in `app/schemas/`.
 - Prefer explicit status codes (e.g., `status_code=status.HTTP_201_CREATED`).
+- Document all potential `HTTPException` status codes (especially 404, 400, 401, 403) in the `responses` parameter of the endpoint decorator. This ensures they are properly reflected in the OpenAPI (Swagger) documentation.
 - Standard error response format (handled via FastAPI defaults or custom exception handlers).
 
 **Authentication:**

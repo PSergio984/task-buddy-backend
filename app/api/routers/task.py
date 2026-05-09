@@ -62,8 +62,6 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
             raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
-from sqlalchemy.orm import selectinload, attributes
-
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -75,28 +73,7 @@ async def get_all_tasks(
     tasks = await task_crud.get_tasks(
         db, user_id=current_user.id, completed=completed, project_id=project_id, tag_id=tag_id
     )
-    
-    response_list = []
-    for task in tasks:
-        await task.awaitable_attrs.tags
-        task_data = {
-            "id": task.id,
-            "user_id": task.user_id,
-            "project_id": task.project_id,
-            "title": task.title,
-            "description": task.description,
-            "completed": task.completed,
-            "priority": task.priority,
-            "due_date": task.due_date,
-            "created_at": task.created_at,
-            "tags": [
-                {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
-                for tag in task.tags
-            ]
-        }
-        response_list.append(task_data)
-
-    return response_list
+    return tasks
 
 @router.get(
     "/{task_id}",
@@ -115,22 +92,7 @@ async def get_task(
         logger.warning("GET /%s - task not found", task_id)
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    await task.awaitable_attrs.tags
-    return {
-        "id": task.id,
-        "user_id": task.user_id,
-        "project_id": task.project_id,
-        "title": task.title,
-        "description": task.description,
-        "completed": task.completed,
-        "priority": task.priority,
-        "due_date": task.due_date,
-        "created_at": task.created_at,
-        "tags": [
-            {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
-            for tag in task.tags
-        ]
-    }
+    return task
 
 @router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
 async def create_task(
@@ -447,7 +409,7 @@ async def delete_tag(
     return {"message": "Tag deleted successfully"}
 
 
-@router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
+@router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def create_and_attach_tag(
     task_id: int,
     tag_in: TagCreate,

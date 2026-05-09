@@ -3,26 +3,27 @@ import logging
 import random
 from datetime import datetime, timedelta, timezone
 
+from sqlalchemy import delete, select
+
 from app.database import AsyncSessionLocal
 from app.models.user import User
 from app.models.project import Project
-from app.models.task import Task, SubTask, TaskPriority, task_tags
+from app.models.task import SubTask, Task, TaskPriority, task_tags
 from app.models.tag import Tag
 from app.security import get_password_hash
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
 async def seed_data():
     logger.info("Starting database seed with expanded content...")
-    
+
     async with AsyncSessionLocal() as session:
-        from sqlalchemy import select, delete
-        
         # Identify or Create Demo User
         result = await session.execute(select(User).where(User.email == "demo@example.com"))
         user = result.scalar_one_or_none()
-        
+
         if not user:
             logger.info("Creating demo user...")
             user = User(
@@ -35,11 +36,10 @@ async def seed_data():
             await session.flush()
         else:
             logger.info("Demo user identified. Purging existing data for clean seed...")
-            # Purge associations first
-            # Since task_tags is a Table object, we need to handle it slightly differently if not using relationships
-            # But since we're deleting tasks and tags, CASCADE should handle it.
-            # To be safe, manual purge of associations:
-            await session.execute(delete(task_tags))
+            # Purge associations first for THIS user only
+            user_task_ids = select(Task.id).where(Task.user_id == user.id)
+            await session.execute(delete(task_tags).where(task_tags.c.task_id.in_(user_task_ids)))
+
             await session.execute(delete(SubTask).where(SubTask.user_id == user.id))
             await session.execute(delete(Task).where(Task.user_id == user.id))
             await session.execute(delete(Tag).where(Tag.user_id == user.id))

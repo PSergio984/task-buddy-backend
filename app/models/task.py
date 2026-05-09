@@ -5,6 +5,7 @@ from datetime import datetime
 from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, ForeignKey, String, Table, func
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -30,8 +31,6 @@ task_tags = Table(
     Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
-
-from sqlalchemy.ext.asyncio import AsyncAttrs
 
 class Task(AsyncAttrs, Base):
     __tablename__ = "tbl_tasks"

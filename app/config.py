@@ -30,6 +30,7 @@ class GlobalConfig(BaseConfig):
         "http://127.0.0.1:3000",
         "http://127.0.0.1:5173",
     ]
+    COOKIE_SECURE: bool = False
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
@@ -65,6 +66,7 @@ class DevConfig(GlobalConfig):
 
 class ProdConfig(GlobalConfig):
     DEBUG: bool = False
+    COOKIE_SECURE: bool = True
     model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
     @model_validator(mode="after")
@@ -114,3 +116,4 @@ REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
 CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
 RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
+COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)

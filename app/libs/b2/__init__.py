@@ -2,12 +2,13 @@ import logging
 from functools import lru_cache
 
 import b2sdk.v2 as b2
+
 from app.config import config
 
 logger = logging.getLogger(__name__)
 
 
-@lru_cache()
+@lru_cache
 def b2_api():
     info = b2.InMemoryAccountInfo()
     b2_api = b2.B2Api(info)  # type: ignore
@@ -16,7 +17,7 @@ def b2_api():
     return b2_api
 
 
-@lru_cache()
+@lru_cache
 def b2_get_bucket(api: b2.B2Api):
     if not config.B2_BUCKET_NAME:
         raise ValueError("B2_BUCKET_NAME is not configured")

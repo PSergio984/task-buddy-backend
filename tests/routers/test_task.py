@@ -313,6 +313,7 @@ async def test_get_tasks_filtered_by_project(
         json={"name": "Work", "color": "blue"},
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
+    assert project_resp.status_code == 201
     project_id = project_resp.json()["id"]
 
     # Create tasks: one in project, one out
@@ -330,6 +331,9 @@ async def test_get_tasks_filtered_by_project(
     assert len(data) == 1
     assert data[0]["id"] == task_in["id"]
     assert data[0]["project_id"] == project_id
+    
+    # Assert that the task out of project is NOT in the results
+    assert task_out["id"] not in [t["id"] for t in data]
 
 
 async def test_detach_tag(

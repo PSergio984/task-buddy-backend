@@ -22,6 +22,7 @@ from app.schemas.user import (
 )
 from app.security import (
     authenticate_user,
+    blacklist_token,
     create_access_token,
     create_confirm_token,
     create_reset_token,
@@ -31,7 +32,7 @@ from app.security import (
     oauth2_scheme,
     verify_password,
 )
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, COOKIE_SECURE, SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -42,6 +43,7 @@ TOKEN_PATH = "/token"
 
 EMAIL_ALREADY_REGISTERED = "Email already exists"
 AUTH_CREDENTIALS_ERROR = "Could not validate credentials"
+USER_NOT_FOUND = "User not found"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
@@ -90,7 +92,7 @@ async def register_user(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False,
+        secure=COOKIE_SECURE,
         samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
@@ -99,11 +101,11 @@ async def register_user(
     return {
         "detail": "User registered successfully.",
         "access_token": access_token,
-        "user": db_user
+        "user": User.model_validate(db_user)
     }
 
 
-@router.post("/resend-confirmation", responses={400: {"description": "Email already confirmed or invalid request"}})
+@router.post("/resend-confirmation", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Email already confirmed or invalid request"}})
 @limiter.limit("5/minute")
 async def resend_confirmation(
     background_tasks: BackgroundTasks,
@@ -114,7 +116,7 @@ async def resend_confirmation(
     """Resend a confirmation email for an existing, unconfirmed user."""
     user = await user_crud.get_user_by_email(db, email)
     if user is None:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=USER_NOT_FOUND)
     if user.confirmed:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Email already confirmed"
@@ -149,8 +151,8 @@ async def login(
         key="access_token",
         value=access_token,
         httponly=True,
-        secure=False, # Set to True in production (HTTPS)
-        samesite="lax", # Strict might be too restrictive for cross-site if dev env differs
+        secure=COOKIE_SECURE,
+        samesite="lax",
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -176,7 +178,7 @@ async def login(
     }
 
 
-@router.get("/confirm/{token}", responses={400: {"description": "Invalid confirmation token"}})
+@router.get("/confirm/{token}", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid confirmation token"}})
 async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]):
     subject = get_subject_for_token_type(token, expected_type="confirm")
     try:
@@ -191,7 +193,7 @@ async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            detail=USER_NOT_FOUND,
         )
 
     await user_crud.update_user_confirmation(db, db_user=user, confirmed=True)
@@ -237,6 +239,7 @@ async def update_username(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken"
         )
 
+    old_username = current_user.username
     await user_crud.update_user(db, db_user=current_user, update_data={"username": new_username})
     
     await log_action(
@@ -245,7 +248,7 @@ async def update_username(
         action=AuditAction.UPDATE,
         target_type="USER",
         target_id=current_user.id,
-        details=f"Updated username from {current_user.username} to {new_username}",
+        details=f"Updated username from {old_username} to {new_username}",
     )
     await db.commit()
 
@@ -307,6 +310,25 @@ async def logout(
         
         if token:
             current_user = await get_current_user(token, db)
+            
+            # Blacklist the token
+            from jose import jwt
+            import datetime
+            
+            try:
+                if SECRET_KEY:
+                    payload = jwt.decode(token, str(SECRET_KEY), algorithms=[ALGORITHM])
+                    exp = payload.get("exp")
+                    if exp:
+                        now = datetime.datetime.now(datetime.timezone.utc).timestamp()
+                        ttl = int(exp - now)
+                        if ttl > 0:
+                            await blacklist_token(token, ttl)
+                else:
+                    logger.warning("SECRET_KEY not configured; skipping token blacklisting")
+            except Exception as e:
+                logger.debug("Could not blacklist token during logout: %s", str(e))
+
             await log_action(
                 db=db,
                 user_id=current_user.id,
@@ -325,7 +347,7 @@ async def logout(
         path="/",
         httponly=True,
         samesite="lax",
-        secure=False, # Set to True in production with HTTPS
+        secure=COOKIE_SECURE,
     )
     return {"detail": "Successfully logged out."}
 
@@ -352,7 +374,7 @@ async def forgot_password(
 
     background_tasks.add_task(
         tasks.send_password_reset_email,
-        user.email,
+        request.email,
         reset_url=reset_url,
         suppress_exceptions=True,
     )
@@ -369,7 +391,7 @@ async def reset_password_page(token: str):
     return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
 
 
-@router.post("/reset-password", responses={400: {"description": "Invalid reset token or weak password"}})
+@router.post("/reset-password", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
 @limiter.limit("5/minute")
 async def reset_password(
     request: ResetPasswordRequest,
@@ -398,7 +420,7 @@ async def reset_password(
     if not user:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
-            detail="User not found",
+            detail=USER_NOT_FOUND,
         )
 
     hashed_password = get_password_hash(request.new_password)

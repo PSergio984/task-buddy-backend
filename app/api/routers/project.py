@@ -64,7 +64,7 @@ async def create_project(
     logger.info("POST / - created project id=%s", db_project.id)
     return db_project
 
-@router.get("/{project_id}", response_model=ProjectResponse)
+@router.get("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}})
 async def get_project(
     project_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -79,7 +79,7 @@ async def get_project(
     logger.info("GET /%s - project found", project_id)
     return db_project
 
-@router.get("/{project_id}/tasks", response_model=list[TaskCreateResponse])
+@router.get("/{project_id}/tasks", response_model=list[TaskCreateResponse], responses={404: {"description": PROJECT_NOT_FOUND}})
 async def list_project_tasks(
     project_id: int,
     current_user: Annotated[User, Depends(get_current_user)],
@@ -93,26 +93,9 @@ async def list_project_tasks(
         raise HTTPException(status_code=404, detail=PROJECT_NOT_FOUND)
 
     tasks = await task_crud.get_tasks_by_project(db, project_id=project_id, user_id=current_user.id)
-    
-    # Manually build response to include tags and project_id correctly mapped
-    response = []
-    for task in tasks:
-        task_data = {
-            "id": task.id,
-            "title": task.title,
-            "description": task.description,
-            "completed": task.completed,
-            "priority": task.priority,
-            "due_date": task.due_date,
-            "project_id": task.project_id,
-            "created_at": task.created_at,
-            "tags": [{"id": t.id, "name": t.name} for t in task.tags]
-        }
-        response.append(task_data)
-        
-    return response
+    return tasks
 
-@router.put("/{project_id}", response_model=ProjectResponse)
+@router.put("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}, 400: {"description": NO_FIELDS_TO_UPDATE}})
 async def update_project(
     project_id: int,
     project_update: ProjectUpdateRequest,
@@ -146,7 +129,7 @@ async def update_project(
     logger.info("PUT /%s - project updated", project_id)
     return db_project
 
-@router.delete("/{project_id}")
+@router.delete("/{project_id}", responses={404: {"description": PROJECT_NOT_FOUND}})
 async def delete_project(
     project_id: int,
     current_user: Annotated[User, Depends(get_current_user)],

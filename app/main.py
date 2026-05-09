@@ -94,6 +94,3 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
     return response
 
-
-    uvicorn.run(app, host="localhost", port=8000)
-

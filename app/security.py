@@ -30,9 +30,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=
 # Initialize Redis client
 redis_client = None
 try:
-    import redis
+    from redis import asyncio as aioredis
 
-    redis_client = redis.from_url(REDIS_URL, decode_responses=True)
+    redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
 except (ImportError, Exception) as e:
     logger.warning("Redis could not be initialized: %s", str(e))
 
@@ -73,28 +73,36 @@ def reset_token_expire_time() -> int:
     return RESET_TOKEN_EXPIRE_MINUTES
 
 
-def blacklist_token(token: str, expires_in: int) -> None:
+import hashlib
+
+async def blacklist_token(token: str, expires_in: int) -> None:
     """Blacklist a JWT token in Redis with a TTL."""
     if redis_client is None:
         logger.error("Redis client is not initialized; cannot blacklist token.")
         return
     try:
-        redis_client.setex(f"blacklist:{token}", expires_in, "true")
+        # Store a hash of the token to keep Redis keys short and secure
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        await redis_client.setex(f"blacklist:{token_hash}", expires_in, "true")
         logger.debug("Token blacklisted successfully.")
     except Exception as e:
         logger.error("Failed to blacklist token in Redis: %s", str(e))
+        # Failsafe: if we can't blacklist, we should probably know
+        raise
 
 
-def is_token_blacklisted(token: str) -> bool:
+async def is_token_blacklisted(token: str) -> bool:
     """Check if a JWT token is present in the Redis blacklist."""
     if redis_client is None:
         logger.warning("Redis client is not initialized; assuming token is not blacklisted.")
         return False
     try:
-        return redis_client.exists(f"blacklist:{token}") > 0
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        return await redis_client.exists(f"blacklist:{token_hash}") > 0
     except Exception as e:
         logger.error("Failed to check token blacklist in Redis: %s", str(e))
-        return False
+        # Security first: if Redis check fails, reject the token
+        raise create_credentials_exception("Security check failed") from e
 
 
 def create_access_token(user_id: int) -> str:
@@ -180,7 +188,7 @@ async def get_current_user(
     token: Annotated[str, Depends(get_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
-    if is_token_blacklisted(token):
+    if await is_token_blacklisted(token):
         raise create_credentials_exception("Token is blacklisted")
 
     subject = get_subject_for_token_type(token, expected_type="access")
