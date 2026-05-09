@@ -28,6 +28,7 @@ from app.security import (
     get_subject_for_token_type,
     verify_password,
 )
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
 
 logger = logging.getLogger(__name__)
 
@@ -132,7 +133,15 @@ async def login(
         path="/",
     )
     
-    return {"access_token": access_token, "token_type": "bearer"}
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": auth_user.id,
+            "username": auth_user.username,
+            "email": auth_user.email,
+        },
+    }
 
 
 @router.get("/confirm/{token}")

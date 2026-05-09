@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, func
+from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, ForeignKey, String, Table, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
@@ -12,6 +13,12 @@ if TYPE_CHECKING:
     from app.models.group import Group
     from app.models.tag import Tag
     from app.models.user import User
+
+
+class TaskPriority(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
 
 # Association table for Task <-> Tag
@@ -35,6 +42,9 @@ class Task(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
+    priority: Mapped[TaskPriority] = mapped_column(
+        SQLEnum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
+    )
     due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
 

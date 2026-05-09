@@ -57,10 +57,11 @@ async def get_all_tasks(
     db: Annotated[AsyncSession, Depends(get_db)],
     completed: Annotated[bool | None, Query()] = None,
     group_id: Annotated[int | None, Query()] = None,
+    tag_id: Annotated[int | None, Query()] = None,
 ):
     logger.info("GET / - fetching tasks for user %s", current_user.id)
     tasks = await task_crud.get_tasks(
-        db, user_id=current_user.id, completed=completed, group_id=group_id
+        db, user_id=current_user.id, completed=completed, group_id=group_id, tag_id=tag_id
     )
     logger.info("GET / - fetched %s tasks", len(tasks))
     return tasks

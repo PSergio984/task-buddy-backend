@@ -3,13 +3,18 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
+from app.models.task import TaskPriority
+from app.schemas.tag import TagResponse
+
 
 class TaskCreateRequest(BaseModel):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
+    priority: TaskPriority = TaskPriority.MEDIUM
     group_id: Optional[int] = None
+    tags: list[str] = []
 
 
 class TaskCreateResponse(TaskCreateRequest):
@@ -18,6 +23,7 @@ class TaskCreateResponse(TaskCreateRequest):
     user_id: int
     id: int
     created_at: datetime
+    tags: list[TagResponse] = []
 
 
 class SubTaskCreateRequest(BaseModel):
@@ -46,7 +52,9 @@ class TaskUpdateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
+    priority: Optional[TaskPriority] = None
     group_id: Optional[int] = None
+    tags: Optional[list[str]] = None
 
 
 class SubTaskUpdateRequest(BaseModel):
