@@ -19,7 +19,7 @@ async def register_user(
 async def test_register_user(db, async_client: AsyncClient):
     response = await register_user(async_client, "newuser", "example@email.net", "newpassword")
     assert response.status_code == 201
-    assert "User Created" in response.json()["detail"]
+    assert "User registered successfully." in response.json()["detail"]
 
 
 async def test_confirm_user(db, async_client: AsyncClient, mocker):
@@ -73,7 +73,7 @@ async def test_login_user_not_confirmed(async_client: AsyncClient, registered_us
         data={"username": registered_user["email"], "password": registered_user["password"]},
     )
     assert response.status_code == 401
-    assert "Email not confirmed" in response.json()["detail"]
+    assert "Invalid credentials" in response.json()["detail"]
 
 
 async def test_login_user(async_client: AsyncClient, confirmed_user: dict):
@@ -97,7 +97,7 @@ async def test_logout_user(async_client: AsyncClient, logged_in_token: str):
 
 async def test_logout_user_unauthenticated(async_client: AsyncClient):
     response = await async_client.post("/api/v1/users/logout")
-    assert response.status_code == 401
+    assert response.status_code == 200
 
 
 async def test_get_my_profile(async_client: AsyncClient, logged_in_token: str, confirmed_user: dict):

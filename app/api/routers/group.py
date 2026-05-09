@@ -92,7 +92,29 @@ async def list_group_tasks(
         logger.warning("GET /%s/tasks - group not found", group_id)
         raise HTTPException(status_code=404, detail=GROUP_NOT_FOUND)
 
-    return await task_crud.get_tasks_by_group(db, group_id=group_id, user_id=current_user.id)
+    tasks = await task_crud.get_tasks_by_group(db, group_id=group_id, user_id=current_user.id)
+    
+    response_list = []
+    for task in tasks:
+        await task.awaitable_attrs.tags
+        task_data = {
+            "id": task.id,
+            "user_id": task.user_id,
+            "group_id": task.group_id,
+            "title": task.title,
+            "description": task.description,
+            "completed": task.completed,
+            "priority": task.priority,
+            "due_date": task.due_date,
+            "created_at": task.created_at,
+            "tags": [
+                {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
+                for tag in task.tags
+            ]
+        }
+        response_list.append(task_data)
+        
+    return response_list
 
 @router.put("/{group_id}", response_model=GroupResponse)
 async def update_group(

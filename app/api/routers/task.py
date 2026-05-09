@@ -82,6 +82,7 @@ async def get_all_tasks(
         task_data = {
             "id": task.id,
             "user_id": task.user_id,
+            "group_id": task.group_id,
             "title": task.title,
             "description": task.description,
             "completed": task.completed,
@@ -94,7 +95,7 @@ async def get_all_tasks(
             ]
         }
         response_list.append(task_data)
-    
+
     return response_list
 
 @router.get(
@@ -118,6 +119,7 @@ async def get_task(
     return {
         "id": task.id,
         "user_id": task.user_id,
+        "group_id": task.group_id,
         "title": task.title,
         "description": task.description,
         "completed": task.completed,
@@ -130,7 +132,6 @@ async def get_task(
         ]
     }
 
-
 @router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
 async def create_task(
     task_in: TaskCreateRequest,
@@ -140,26 +141,6 @@ async def create_task(
     logger.info("POST / - creating task title=%s", task_in.title)
 
     await verify_group_ownership(db, task_in.group_id, current_user.id)
-    db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
-    
-    # Eager load tags and return manually serialized dictionary
-    await db_task.awaitable_attrs.tags
-    
-    return {
-        "id": db_task.id,
-        "user_id": db_task.user_id,
-        "title": db_task.title,
-        "description": db_task.description,
-        "completed": db_task.completed,
-        "priority": db_task.priority,
-        "due_date": db_task.due_date,
-        "created_at": db_task.created_at,
-        "tags": [
-            {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
-            for tag in db_task.tags
-        ]
-    }
-
     db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
     # Flush to get ID for audit log
@@ -177,8 +158,25 @@ async def create_task(
     await db.commit()
     await db.refresh(db_task)
 
+    # Eager load tags and return manually serialized dictionary
+    await db_task.awaitable_attrs.tags
+
     logger.info("POST / - created task id=%s", db_task.id)
-    return db_task
+    return {
+        "id": db_task.id,
+        "user_id": db_task.user_id,
+        "group_id": db_task.group_id,
+        "title": db_task.title,
+        "description": db_task.description,
+        "completed": db_task.completed,
+        "priority": db_task.priority,
+        "due_date": db_task.due_date,
+        "created_at": db_task.created_at,
+        "tags": [
+            {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
+            for tag in db_task.tags
+        ]
+    }
 
 
 @router.put(

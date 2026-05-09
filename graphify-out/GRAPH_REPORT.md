@@ -1,16 +1,16 @@
 # Graph Report - task-buddy-backend  (2026-05-09)
 
 ## Corpus Check
-- 77 files · ~20,675 words
+- 79 files · ~21,390 words
 - Verdict: corpus is large enough that graph structure adds value.
 
 ## Summary
-- 686 nodes · 879 edges · 69 communities (49 shown, 20 thin omitted)
-- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 105 edges (avg confidence: 0.69)
+- 708 nodes · 907 edges · 73 communities (51 shown, 22 thin omitted)
+- Extraction: 88% EXTRACTED · 12% INFERRED · 0% AMBIGUOUS · INFERRED: 112 edges (avg confidence: 0.7)
 - Token cost: 0 input · 0 output
 
 ## Graph Freshness
-- Built from commit: `684d38a4`
+- Built from commit: `9ac798ad`
 - Run `git rev-parse HEAD` and compare to check if the graph is stale.
 - Run `graphify update .` after code changes (no API cost).
 
@@ -42,6 +42,7 @@
 - [[_COMMUNITY_Misc Utils|Misc Utils]]
 - [[_COMMUNITY_Security Validation|Security Validation]]
 - [[_COMMUNITY_Misc Init|Misc Init]]
+- [[_COMMUNITY_Docker Configuration|Docker Configuration]]
 - [[_COMMUNITY_Community 28|Community 28]]
 - [[_COMMUNITY_Community 29|Community 29]]
 - [[_COMMUNITY_Community 30|Community 30]]
@@ -56,12 +57,12 @@
 - [[_COMMUNITY_Community 39|Community 39]]
 - [[_COMMUNITY_Community 40|Community 40]]
 - [[_COMMUNITY_Community 41|Community 41]]
-- [[_COMMUNITY_Community 43|Community 43]]
+- [[_COMMUNITY_Community 42|Community 42]]
 - [[_COMMUNITY_Community 44|Community 44]]
 - [[_COMMUNITY_Community 45|Community 45]]
 - [[_COMMUNITY_Community 46|Community 46]]
 - [[_COMMUNITY_Community 47|Community 47]]
-- [[_COMMUNITY_Community 50|Community 50]]
+- [[_COMMUNITY_Community 48|Community 48]]
 - [[_COMMUNITY_Community 51|Community 51]]
 - [[_COMMUNITY_Community 52|Community 52]]
 - [[_COMMUNITY_Community 53|Community 53]]
@@ -70,43 +71,46 @@
 - [[_COMMUNITY_Community 56|Community 56]]
 - [[_COMMUNITY_Community 57|Community 57]]
 - [[_COMMUNITY_Community 58|Community 58]]
+- [[_COMMUNITY_Community 59|Community 59]]
 - [[_COMMUNITY_Community 60|Community 60]]
-- [[_COMMUNITY_Community 63|Community 63]]
-- [[_COMMUNITY_Community 64|Community 64]]
-- [[_COMMUNITY_Community 65|Community 65]]
+- [[_COMMUNITY_Community 62|Community 62]]
 - [[_COMMUNITY_Community 66|Community 66]]
 - [[_COMMUNITY_Community 67|Community 67]]
 - [[_COMMUNITY_Community 68|Community 68]]
+- [[_COMMUNITY_Community 69|Community 69]]
+- [[_COMMUNITY_Community 70|Community 70]]
+- [[_COMMUNITY_Community 71|Community 71]]
+- [[_COMMUNITY_Community 72|Community 72]]
 
 ## God Nodes (most connected - your core abstractions)
-1. `SQLAlchemy ORM` - 23 edges
-2. `log_action()` - 17 edges
+1. `SQLAlchemy ORM` - 24 edges
+2. `log_action()` - 22 edges
 3. `Task Buddy Backend` - 15 edges
 4. `send_confirmation_email()` - 13 edges
 5. `get_task()` - 13 edges
 6. `TaskPriority` - 13 edges
 7. `FastAPI Framework` - 13 edges
-8. `Tag` - 11 edges
-9. `Frontend Lint Cleanup Implementation Plan` - 11 edges
-10. `update_password()` - 10 edges
+8. `update_password()` - 12 edges
+9. `logout()` - 11 edges
+10. `reset_password()` - 11 edges
 
 ## Surprising Connections (you probably didn't know these)
 - `seed_data()` --calls--> `get_password_hash()`  [INFERRED]
   seed.py → app/security.py
+- `seed_data()` --calls--> `Task`  [INFERRED]
+  seed.py → app/models/task.py
+- `test_seed_data()` --calls--> `seed_data()`  [INFERRED]
+  tests/test_seed.py → seed.py
 - `test_url_transformation_extended()` --calls--> `get_async_database_url()`  [INFERRED]
   test_db_url_extended.py → app/database.py
 - `test_reset_password_success()` --calls--> `create_reset_token()`  [INFERRED]
   tests/routers/test_password_reset.py → app/security.py
-- `test_reset_password_expired_token()` --calls--> `create_reset_token()`  [INFERRED]
-  tests/routers/test_password_reset.py → app/security.py
-- `test_reset_password_too_short()` --calls--> `create_reset_token()`  [INFERRED]
-  tests/routers/test_password_reset.py → app/security.py
 
-## Communities (69 total, 20 thin omitted)
+## Communities (73 total, 22 thin omitted)
 
 ### Community 0 - "Database Migrations"
-Cohesion: 0.05
-Nodes (56): Base, BaseModel, create_tag(), create_subtask(), create_task(), update_task(), DeclarativeBase, AuditLog (+48 more)
+Cohesion: 0.06
+Nodes (45): BaseModel, get_system_overview(), create_task(), update_task(), Enum, SubTaskCreateRequest, SubTaskCreateResponse, SubTaskUpdateRequest (+37 more)
 
 ### Community 1 - "User Authentication"
 Cohesion: 0.04
@@ -133,128 +137,132 @@ Cohesion: 0.11
 Nodes (10): BaseConfig, DevConfig, GlobalConfig, ProdConfig, TestConfig, configure_logging(), EmailObfuscationFilter, obfuscated() (+2 more)
 
 ### Community 7 - "User Profile API"
-Cohesion: 0.1
-Nodes (20): code:bash (git add src/components/audit-trail.tsx), code:bash (git add src/components/auth/RegisterForm.tsx), code:bash (git add src/components/sidebar.tsx), code:bash (git add src/components/system-overview.tsx), code:bash (git add src/components/task-card.tsx), code:bash (git add src/components/topnav.tsx), code:bash (git add src/contexts/ProtectedRoute.tsx), code:bash (git add src/pages/LoginPage.tsx) (+12 more)
+Cohesion: 0.2
+Nodes (20): access_token_expire_time(), authenticate_user(), blacklist_token(), confirm_token_expire_time(), create_access_token(), create_confirm_token(), create_credentials_exception(), get_current_user() (+12 more)
 
 ### Community 8 - "Background Tasks & Email"
 Cohesion: 0.1
-Nodes (20): code:python (from __future__ import annotations), code:python (from app.api.routers import group), code:bash (git add app/api/routers/ app/main.py), code:typescript (export interface Group {), code:bash (git add src/hooks/useApi.ts), code:bash (git add src/components/), code:python (# Add to imports if needed), code:python (# Inside Task class:) (+12 more)
+Nodes (20): code:bash (git add src/components/audit-trail.tsx), code:bash (git add src/components/auth/RegisterForm.tsx), code:bash (git add src/components/sidebar.tsx), code:bash (git add src/components/system-overview.tsx), code:bash (git add src/components/task-card.tsx), code:bash (git add src/components/topnav.tsx), code:bash (git add src/contexts/ProtectedRoute.tsx), code:bash (git add src/pages/LoginPage.tsx) (+12 more)
 
 ### Community 9 - "Pytest Fixtures"
+Cohesion: 0.1
+Nodes (20): code:python (from __future__ import annotations), code:python (from app.api.routers import group), code:bash (git add app/api/routers/ app/main.py), code:typescript (export interface Group {), code:bash (git add src/hooks/useApi.ts), code:bash (git add src/components/), code:python (# Add to imports if needed), code:python (# Inside Task class:) (+12 more)
+
+### Community 10 - "FastAPI Dependencies"
 Cohesion: 0.13
 Nodes (6): register_user(), test_confirm_user(), test_confirm_user_expired_token(), test_register_user(), test_register_user_duplicate_email(), test_update_username_taken()
 
-### Community 10 - "FastAPI Dependencies"
+### Community 11 - "Seed Data Scripts"
 Cohesion: 0.11
 Nodes (18): 1. Overview, 2. Objectives, 3.1. Models (`app/models/task.py` and new `app/models/group.py`), 3.2. Schemas (`app/schemas/group.py` and update `app/schemas/task.py`), 3.3. API Endpoints, 3. Backend Design (`task-buddy-backend`), 4.1. API Integration (`src/hooks/useApi.ts`), 4.2. UI Components (+10 more)
 
-### Community 11 - "Seed Data Scripts"
-Cohesion: 0.22
-Nodes (17): access_token_expire_time(), authenticate_user(), confirm_token_expire_time(), create_access_token(), create_confirm_token(), create_credentials_exception(), get_current_user(), get_password_hash() (+9 more)
-
 ### Community 12 - "Audit Log Tests"
-Cohesion: 0.13
-Nodes (15): get_my_profile(), Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length., Retrieve the current user's profile information., Retrieve the current user's profile information., Retrieve the current user's profile information., Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length. (+7 more)
+Cohesion: 0.12
+Nodes (17): get_my_profile(), Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length., Retrieve the current user's profile information., Retrieve the current user's profile information., Retrieve the current user's profile information., Retrieve the current user's profile information., Update the current user's username.     Checks for uniqueness and length. (+9 more)
 
 ### Community 13 - "Statistics Tests"
+Cohesion: 0.19
+Nodes (9): AsyncAttrs, Base, DeclarativeBase, AuditLog, Base, Group, Task, User (+1 more)
+
+### Community 14 - "Migration Tests"
+Cohesion: 0.13
+Nodes (5): mock_httpx_client(), Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests.
+
+### Community 15 - "Project Metadata"
 Cohesion: 0.15
 Nodes (12): 1) Architectural Style, 2) System Flow, 3) Layer/Module Responsibilities, 4) Reused Patterns, 5) Graphify Insights (Core Abstractions), 5) Known Architectural Risks, 6) Evidence, 6) Known Architectural Risks (+4 more)
 
-### Community 14 - "Migration Tests"
-Cohesion: 0.17
-Nodes (12): Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl, Reset user password using a valid reset token., Reset user password using a valid reset token., Reset user password using a valid reset token., Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl (+4 more)
-
-### Community 15 - "Project Metadata"
-Cohesion: 0.17
-Nodes (4): mock_httpx_client(), Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests., Mock httpx.AsyncClient to prevent real HTTP requests during tests.
-
 ### Community 16 - "App Main Package"
-Cohesion: 0.31
-Nodes (8): create_group(), test_delete_group(), test_get_group(), test_group_idor_protection(), test_list_group_tasks(), test_list_groups(), test_task_group_idor_protection(), test_update_group()
+Cohesion: 0.18
+Nodes (10): Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi (+2 more)
 
 ### Community 17 - "API Package"
 Cohesion: 0.18
-Nodes (10): 1) Naming Rules, 2) Formatting and Linting, 3) Import and Module Conventions, 4) Error and Logging Conventions, 5) Testing Conventions, 6) Evidence, code:bash (black app tests), Coding Conventions (+2 more)
+Nodes (7): Claude Code Guidance, Docker Compose Configuration, AuditLogCreate, PostgreSQL Database, SQLAlchemy ORM, Task Buddy Backend, Add audit logs table  Revision ID: e7d04c90bc13 Revises: a6e267909ed1 Create Dat
 
 ### Community 18 - "API Routers"
+Cohesion: 0.31
+Nodes (8): create_group(), test_delete_group(), test_get_group(), test_group_idor_protection(), test_list_group_tasks(), test_list_groups(), test_task_group_idor_protection(), test_update_group()
+
+### Community 19 - "CRUD Layer"
+Cohesion: 0.18
+Nodes (10): 1) Naming Rules, 2) Formatting and Linting, 3) Import and Module Conventions, 4) Error and Logging Conventions, 5) Testing Conventions, 6) Evidence, code:bash (black app tests), Coding Conventions (+2 more)
+
+### Community 20 - "Internal Modules"
 Cohesion: 0.18
 Nodes (10): 1) Test Stack and Commands, 2) Test Layout, 3) Test Scope Matrix, 4) Mocking and Isolation Strategy, 5) Coverage and Quality Signals, 6) Evidence, code:bash (pytest), Core Sections (Required) (+2 more)
 
-### Community 19 - "CRUD Layer"
+### Community 21 - "Model Layer"
 Cohesion: 0.2
 Nodes (9): get_db(), get_query_token(), get_token_header(), Shared dependencies used across multiple routes and modules.  This module contai, Validate X-Token header.          This is a simple token validation dependency, Validate X-Token header.      This is a simple token validation dependency., Validate query token parameter.          Optional query parameter for basic to, Validate query token parameter.      Optional query parameter for basic token va (+1 more)
 
-### Community 20 - "Internal Modules"
+### Community 22 - "Schema Layer"
+Cohesion: 0.24
+Nodes (6): create_reset_token(), reset_token_expire_time(), FastAPI Framework, test_reset_password_expired_token(), test_reset_password_success(), test_reset_password_too_short()
+
+### Community 23 - "Tests Suite"
+Cohesion: 0.24
+Nodes (8): SystemOverview, TagDistribution, TaskStats, get_system_overview(), Retrieve a summary of tasks and tag distribution for the current user., Retrieve a summary of tasks and tag distribution for the current user., Retrieve a summary of tasks and tag distribution for the current user., Retrieve a summary of tasks and tag distribution for the current user.
+
+### Community 24 - "Misc Utils"
 Cohesion: 0.2
 Nodes (9): 1) Top Risks (Prioritized), 2) Technical Debt, 3) Security Concerns, 4) Performance and Scaling Concerns, 5) Fragile/High-Churn Areas, 6) `[ASK USER]` Questions, 7) Evidence, Codebase Concerns (+1 more)
 
-### Community 21 - "Model Layer"
+### Community 25 - "Security Validation"
 Cohesion: 0.2
 Nodes (9): 1) Integration Inventory, 2) Data Stores, 3) Secrets and Credentials Handling, 4) Reliability and Failure Behavior, 5) Observability for Integrations, 6) Evidence, Core Sections (Required), Extended Sections (Optional) (+1 more)
 
-### Community 22 - "Schema Layer"
+### Community 26 - "Misc Init"
 Cohesion: 0.2
 Nodes (9): 1) Runtime Summary, 2) Production Frameworks and Dependencies, 3) Development Toolchain, 4) Key Commands, 5) Environment and Config, 6) Evidence, code:bash (pip install -e ".[dev]"), Core Sections (Required) (+1 more)
 
-### Community 23 - "Tests Suite"
+### Community 27 - "Docker Configuration"
 Cohesion: 0.22
-Nodes (8): Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'offline' mode.      This configures the context with just a U, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, Run migrations in 'online' mode.      In this scenario we need to create an Engi, run_migrations_offline(), run_migrations_online()
-
-### Community 24 - "Misc Utils"
-Cohesion: 0.28
-Nodes (5): create_reset_token(), reset_token_expire_time(), test_reset_password_expired_token(), test_reset_password_success(), test_reset_password_too_short()
-
-### Community 25 - "Security Validation"
-Cohesion: 0.28
-Nodes (7): SystemOverview, TagDistribution, TaskStats, get_system_overview(), Retrieve a summary of tasks and tag distribution for the current user., Retrieve a summary of tasks and tag distribution for the current user., Retrieve a summary of tasks and tag distribution for the current user.
-
-### Community 26 - "Misc Init"
-Cohesion: 0.22
-Nodes (3): attach_tag_to_task(), Attaches a tag to a task. Returns True if a new link was created., Attaches a tag to a task. Returns True if a new link was created.
+Nodes (8): confirm_email(), login(), Resend a confirmation email for an existing, unconfirmed user., Resend a confirmation email for an existing, unconfirmed user.      The endpoi, Resend a confirmation email for an existing, unconfirmed user.      The endpoi, Resend a confirmation email for an existing, unconfirmed user., Resend a confirmation email for an existing, unconfirmed user., resend_confirmation()
 
 ### Community 28 - "Community 28"
 Cohesion: 0.22
-Nodes (8): 1) Top-Level Map, 2) Entry Points, 3) Module Boundaries, 4) Naming and Organization Rules, 5) Evidence, Codebase Structure, Core Sections (Required), Extended Sections (Optional)
+Nodes (3): attach_tag_to_task(), Attaches a tag to a task. Returns True if a new link was created., Attaches a tag to a task. Returns True if a new link was created.
 
 ### Community 29 - "Community 29"
-Cohesion: 0.25
-Nodes (7): confirm_email(), Resend a confirmation email for an existing, unconfirmed user.      The endpoi, Resend a confirmation email for an existing, unconfirmed user.      The endpoi, Resend a confirmation email for an existing, unconfirmed user., Resend a confirmation email for an existing, unconfirmed user., register_user(), resend_confirmation()
+Cohesion: 0.22
+Nodes (8): 1) Top-Level Map, 2) Entry Points, 3) Module Boundaries, 4) Naming and Organization Rules, 5) Evidence, Codebase Structure, Core Sections (Required), Extended Sections (Optional)
 
 ### Community 30 - "Community 30"
 Cohesion: 0.25
-Nodes (8): logout(), Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user.     Since the application uses stateless JWTs, the cli, Update the current user's password securely.     Verifies the current password, Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user., Logout the current user.
+Nodes (8): Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl, Update the current user's password securely.     Verifies the current password, Initiate password reset flow by sending an email with a reset token., Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl, Placeholder for the reset password page.     In a real app, this would be handl, reset_password_page()
 
 ### Community 31 - "Community 31"
-Cohesion: 0.29
-Nodes (7): Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, update_password()
+Cohesion: 0.25
+Nodes (8): logout(), Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user.     Since the application uses stateless JWTs, the cli, Update the current user's password securely.     Verifies the current password, Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user.     Since the application uses stateless JWTs, the cli, Logout the current user., Logout the current user. Clears the session cookie regardless of authentication
 
 ### Community 32 - "Community 32"
-Cohesion: 0.43
-Nodes (6): blacklist_token(), Blacklist a JWT token in Redis with a TTL., Enum, AuditAction, TaskStatus, str
+Cohesion: 0.29
+Nodes (5): create_tag(), create_subtask(), Tag, SubTask, seed_data()
 
 ### Community 33 - "Community 33"
 Cohesion: 0.29
-Nodes (6): Claude Code Guidance, Docker Compose Configuration, AuditLogCreate, PostgreSQL Database, SQLAlchemy ORM, Task Buddy Backend
+Nodes (5): get_async_database_url(), Ensures the database URL uses an async driver., Ensures the database URL uses an async driver and handles driver-specific query, Ensures the database URL uses an async driver., test_url_transformation_extended()
 
 ### Community 34 - "Community 34"
 Cohesion: 0.29
-Nodes (5): get_async_database_url(), Ensures the database URL uses an async driver., Ensures the database URL uses an async driver and handles driver-specific query, Ensures the database URL uses an async driver., test_url_transformation_extended()
+Nodes (7): Reset user password using a valid reset token., Reset user password using a valid reset token., Reset user password using a valid reset token., Reset user password using a valid reset token., Reset user password using a valid reset token., Reset user password using a valid reset token., reset_password()
 
 ### Community 35 - "Community 35"
+Cohesion: 0.29
+Nodes (7): forgot_password(), Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token., Logout the current user., Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token.
+
+### Community 36 - "Community 36"
+Cohesion: 0.29
+Nodes (7): Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, Update the current user's password securely.     Verifies the current password, update_password()
+
+### Community 37 - "Community 37"
 Cohesion: 0.47
 Nodes (5): downgrade(), get_fk_name(), add_group_model_v2  Revision ID: 38d622ba3db7 Revises: e7d04c90bc13 Create Date:, Helper to find foreign key name dynamically., upgrade()
 
-### Community 36 - "Community 36"
-Cohesion: 0.33
-Nodes (6): forgot_password(), Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token., Initiate password reset flow by sending an email with a reset token.
-
-### Community 37 - "Community 37"
-Cohesion: 0.33
-Nodes (5): FastAPI Framework, get_audit_logs(), Retrieve audit logs for the current user., Retrieve audit logs for the current user., Retrieve audit logs for the current user.
-
 ### Community 38 - "Community 38"
-Cohesion: 0.47
-Nodes (4): get_system_overview(), SystemOverview, TagDistribution, TaskStats
+Cohesion: 0.33
+Nodes (5): get_audit_logs(), Retrieve audit logs for the current user., Retrieve audit logs for the current user., Retrieve audit logs for the current user., Retrieve audit logs for the current user.
 
 ### Community 40 - "Community 40"
 Cohesion: 0.33
@@ -264,33 +272,37 @@ Nodes (4): code:block1 (DATABASE_URL=postgresql://user:password@localhost/task_b
 Cohesion: 0.4
 Nodes (4): get_query_token(), API-specific dependencies.  These dependencies are specific to the API routers, Optional query token validation for API routes.      This is a simple query-ba, Optional query token validation for API routes.          This is a simple quer
 
-### Community 43 - "Community 43"
+### Community 42 - "Community 42"
+Cohesion: 0.4
+Nodes (4): Test that the seeding script successfully populates a confirmed user,     with r, Test that the seeding script successfully populates a confirmed user,     with, Test that the seeding script successfully populates a confirmed user,     with r, test_seed_data()
+
+### Community 47 - "Community 47"
 Cohesion: 0.5
 Nodes (3): Admin module.  Contains admin-only functionality and operations. Not exposed, Admin update endpoint., update_admin()
 
-### Community 47 - "Community 47"
+### Community 48 - "Community 48"
 Cohesion: 0.5
 Nodes (3): Test that alembic migration can run against a clean database successfully., Test that alembic migration can run against a clean database successfully., test_alembic_migrations()
 
 ## Knowledge Gaps
-- **231 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `add priority to tasks  Revision ID: 2935b98be508 Revises: 38d622ba3db7 Create Da`, `add_group_model_v2  Revision ID: 38d622ba3db7 Revises: e7d04c90bc13 Create Date:` (+226 more)
+- **246 isolated node(s):** `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi`, `add priority to tasks  Revision ID: 2935b98be508 Revises: 38d622ba3db7 Create Da`, `add_group_model_v2  Revision ID: 38d622ba3db7 Revises: e7d04c90bc13 Create Date:` (+241 more)
   These have ≤1 connection - possible missing edges or undocumented components.
-- **20 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
+- **22 thin communities (<3 nodes) omitted from report** — run `graphify query` to explore isolated nodes.
 
 ## Suggested Questions
 _Questions this graph is uniquely positioned to answer:_
 
-- **Why does `SQLAlchemy ORM` connect `Community 33` to `Database Migrations`, `SQLAlchemy Models`, `Community 35`, `Task Creation Logic`, `Community 34`, `Community 38`, `Community 39`, `Community 44`, `Community 45`, `Community 46`, `Project Metadata`, `App Main Package`, `Tests Suite`, `Security Validation`, `Misc Init`, `Docker Configuration`?**
-  _High betweenness centrality (0.180) - this node is a cross-community bridge._
-- **Why does `FastAPI Framework` connect `Community 37` to `Community 33`, `SQLAlchemy Models`, `App Configuration`, `Pytest Fixtures`, `Community 41`, `Seed Data Scripts`, `Community 43`, `CRUD Layer`, `Misc Utils`, `Security Validation`, `Community 29`?**
-  _High betweenness centrality (0.157) - this node is a cross-community bridge._
-- **Why does `TaskPriority` connect `Database Migrations` to `Community 32`?**
-  _High betweenness centrality (0.055) - this node is a cross-community bridge._
-- **Are the 13 inferred relationships involving `log_action()` (e.g. with `create_group()` and `update_group()`) actually correct?**
-  _`log_action()` has 13 INFERRED edges - model-reasoned connections that need verification._
+- **Why does `SQLAlchemy ORM` connect `API Package` to `Community 32`, `Database Migrations`, `SQLAlchemy Models`, `Task Creation Logic`, `Community 33`, `Community 37`, `Community 39`, `Community 44`, `Community 45`, `Community 46`, `Statistics Tests`, `App Main Package`, `Migration Tests`, `API Routers`, `Community 51`, `Tests Suite`, `Community 28`?**
+  _High betweenness centrality (0.186) - this node is a cross-community bridge._
+- **Why does `FastAPI Framework` connect `Schema Layer` to `SQLAlchemy Models`, `Community 38`, `App Configuration`, `User Profile API`, `Community 41`, `FastAPI Dependencies`, `Community 47`, `API Package`, `Model Layer`, `Tests Suite`, `Docker Configuration`?**
+  _High betweenness centrality (0.143) - this node is a cross-community bridge._
+- **Why does `TaskPriority` connect `Database Migrations` to `Community 32`, `Statistics Tests`, `User Profile API`?**
+  _High betweenness centrality (0.054) - this node is a cross-community bridge._
+- **Are the 18 inferred relationships involving `log_action()` (e.g. with `create_group()` and `update_group()`) actually correct?**
+  _`log_action()` has 18 INFERRED edges - model-reasoned connections that need verification._
 - **Are the 12 inferred relationships involving `str` (e.g. with `blacklist_token()` and `is_token_blacklisted()`) actually correct?**
   _`str` has 12 INFERRED edges - model-reasoned connections that need verification._
 - **What connects `Project structure overview and getting started guide.  This file provides a qu`, `Run migrations in 'offline' mode.      This configures the context with just a U`, `Run migrations in 'online' mode.      In this scenario we need to create an Engi` to the rest of the system?**
-  _231 weakly-connected nodes found - possible documentation gaps or missing edges._
+  _246 weakly-connected nodes found - possible documentation gaps or missing edges._
 - **Should `Database Migrations` be split into smaller, more focused modules?**
-  _Cohesion score 0.05 - nodes in this community are weakly interconnected._
+  _Cohesion score 0.06 - nodes in this community are weakly interconnected._

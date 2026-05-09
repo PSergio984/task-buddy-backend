@@ -59,11 +59,10 @@ async def test_create_task(
     )
 
     assert response.status_code == 201
-    assert {
-        "id": 1,
-        "title": body["title"],
-        "user_id": confirmed_user["id"],
-    }.items() <= response.json().items()
+    data = response.json()
+    assert data["title"] == body["title"]
+    assert data["user_id"] == confirmed_user["id"]
+    assert "id" in data
 
 
 async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token: str):
