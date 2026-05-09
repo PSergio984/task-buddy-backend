@@ -1,8 +1,10 @@
+import datetime
 import logging
 from typing import Annotated
 
 from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
 from fastapi.security import OAuth2PasswordRequestForm
+from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import tasks
@@ -312,9 +314,6 @@ async def logout(
             current_user = await get_current_user(token, db)
             
             # Blacklist the token
-            from jose import jwt
-            import datetime
-            
             try:
                 if SECRET_KEY:
                     payload = jwt.decode(token, str(SECRET_KEY), algorithms=[ALGORITHM])

@@ -1,6 +1,6 @@
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import update
+from sqlalchemy import select, update
 from app.models.user import User
 
 async def create_project(name: str, client: AsyncClient, token: str) -> dict:
@@ -35,7 +35,6 @@ async def second_user(db, async_client: AsyncClient) -> dict:
     user_data["token"] = response.json()["access_token"]
     
     # Get ID
-    from sqlalchemy import select
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user_data["id"] = result.scalar_one().id

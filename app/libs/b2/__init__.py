@@ -10,6 +10,10 @@ logger = logging.getLogger(__name__)
 
 @lru_cache
 def b2_api():
+    if not config.B2_KEY_ID or not config.B2_APPLICATION_KEY:
+        logger.error("B2_KEY_ID or B2_APPLICATION_KEY not configured")
+        raise ValueError("Backblaze B2 credentials missing")
+
     info = b2.InMemoryAccountInfo()
     b2_api = b2.B2Api(info)  # type: ignore
 
@@ -26,7 +30,7 @@ def b2_get_bucket(api: b2.B2Api):
 
 def b2_upload_file(local_file: str, file_name: str) -> str:
     api = b2_api()
-    logger.debug(f"Uploading {local_file} to B2 as {file_name}")
+    logger.debug("Uploading %s to B2 as %s", local_file, file_name)
 
     # Uploading the file to the specified bucket
     uploaded_file = b2_get_bucket(api).upload_local_file(local_file=local_file, file_name=file_name)
@@ -34,6 +38,6 @@ def b2_upload_file(local_file: str, file_name: str) -> str:
     # Generating the public download URL
     download_url = api.get_download_url_for_fileid(uploaded_file.id_)
 
-    logger.debug(f"Uploaded {local_file} to B2 successfully and got download URL {download_url}")
+    logger.debug("Uploaded %s to B2 successfully and got download URL %s", local_file, download_url)
 
     return download_url

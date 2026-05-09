@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from app.models.task import TaskPriority
 from app.schemas.tag import TagResponse
@@ -14,7 +14,7 @@ class TaskCreateRequest(BaseModel):
     completed: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
     project_id: Optional[int] = None
-    tags: list[str] = []
+    tags: list[str] = Field(default_factory=list)
 
 
 class TaskCreateResponse(TaskCreateRequest):
@@ -23,7 +23,7 @@ class TaskCreateResponse(TaskCreateRequest):
     user_id: int
     id: int
     created_at: datetime
-    tags: list[TagResponse] = []
+    tags: list[TagResponse] = Field(default_factory=list)
 
 
 TaskCreateResponse.model_rebuild()

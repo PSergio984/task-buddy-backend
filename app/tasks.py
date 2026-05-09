@@ -5,8 +5,11 @@ import ssl
 from email.message import EmailMessage
 
 import httpx
+from sqlalchemy import update
 
 from app.config import config
+from app.database import AsyncSessionLocal
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -103,11 +106,6 @@ def _get_confirmation_content(
 async def _record_confirmation_failure(to_email: str) -> None:
     """Helper to mark a user as having a failed email confirmation in the database."""
     try:
-        from sqlalchemy import update
-
-        from app.database import AsyncSessionLocal
-        from app.models.user import User
-
         async with AsyncSessionLocal() as db:
             stmt = update(User).where(User.email == to_email).values(confirmation_failed=True)
             await db.execute(stmt)

@@ -113,5 +113,6 @@ def downgrade() -> None:
     op.drop_table('tbl_users')
     
     # Drop custom enum type
-    op.execute("DROP TYPE IF EXISTS taskpriority")
+    if op.get_bind().dialect.name == "postgresql":
+        op.execute("DROP TYPE IF EXISTS taskpriority")
     # ### end Alembic commands ###

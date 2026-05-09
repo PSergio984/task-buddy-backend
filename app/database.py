@@ -18,6 +18,8 @@ def _handle_sqlite(url: str) -> tuple[str, dict]:
 def _sanitize_pg_params(query: dict[str, list[str]]) -> dict:
     """Extracts and sanitizes PostgreSQL connection arguments."""
     c_args = {}
+    
+    # Precedence: sslmode handled first, then 'ssl' if not already set by sslmode
     if "sslmode" in query:
         ssl_value = query.pop("sslmode")[0]
         if ssl_value in ["require", "prefer", "allow", "verify-ca", "verify-full"]:
@@ -25,11 +27,16 @@ def _sanitize_pg_params(query: dict[str, list[str]]) -> dict:
         elif ssl_value == "disable":
             c_args["ssl"] = False
 
-    for param in ["channel_binding", "gssencmode", "target_session_attrs", "ssl"]:
+    if "ssl" in query:
+        ssl_val = query.pop("ssl")[0].lower()
+        if "ssl" not in c_args:
+            c_args["ssl"] = ssl_val == "true"
+
+    # Remove other unsupported libpq parameters
+    for param in ["channel_binding", "gssencmode", "target_session_attrs"]:
         if param in query:
-            if param == "ssl" and "ssl" not in c_args:
-                c_args["ssl"] = query[param][0].lower() == "true"
             query.pop(param)
+            
     return c_args
 
 

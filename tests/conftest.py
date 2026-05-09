@@ -4,24 +4,39 @@ from unittest.mock import AsyncMock
 
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
+from sqlalchemy import event, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
+import app.database as app_db
+from app.dependencies import get_db
 from app.main import app
 from app.models.base import Base
 from app.models.user import User
 
-# Force SQLite for testing
-TEST_DATABASE_URL = "sqlite+aiosqlite:///./test.db"
+import tempfile
+import os
+
+# Unique file-backed database for this session
+_db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
+_db_path = _db_file.name
+_db_file.close()
+
+TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
     poolclass=NullPool
 )
 
-# Enable SQLite foreign key enforcement
-from sqlalchemy import event
+# Cleanup the temp file after the session
+@pytest.fixture(scope="session", autouse=True)
+def cleanup_temp_db():
+    yield
+    if os.path.exists(_db_path):
+        os.remove(_db_path)
 
+# Enable SQLite foreign key enforcement
 @event.listens_for(test_engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
@@ -37,7 +52,6 @@ TestSessionLocal = async_sessionmaker(
 )
 
 # Patch app.database globally
-import app.database as app_db
 app_db.engine = test_engine
 app_db.AsyncSessionLocal = TestSessionLocal
 
@@ -46,7 +60,6 @@ async def override_get_db() -> AsyncGenerator:
     async with TestSessionLocal() as session:
         yield session
 
-from app.dependencies import get_db
 app.dependency_overrides[get_db] = override_get_db
 
 # Disable rate limiting for tests
@@ -57,7 +70,6 @@ app.state.limiter.enabled = False
 def mock_redis_security(mocker):
     mocker.patch("app.security.is_token_blacklisted", return_value=False)
     mocker.patch("app.security.blacklist_token", return_value=None)
-    return
 
 @pytest.fixture(scope="session")
 def anyio_backend():
@@ -102,7 +114,6 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
     response = await async_client.post("/api/v1/users/register", json=user_data)
     assert response.status_code == 201, f"User registration failed: {response.text}"
     
-    from sqlalchemy import select
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
@@ -112,7 +123,6 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
 
 @pytest.fixture()
 async def confirmed_user(db: AsyncSession, registered_user: dict) -> dict:
-    from sqlalchemy import update
     stmt = (
         update(User).where(User.email == registered_user["email"]).values(confirmed=True)
     )

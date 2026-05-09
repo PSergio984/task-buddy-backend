@@ -5,7 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from sqlalchemy.orm import selectinload
 from app.crud import tag as tag_crud
-from app.models.task import SubTask, Task
+from app.models.task import SubTask, Task, task_tags
 from app.schemas.tag import TagCreate
 from app.schemas.task import (
     SubTaskCreateRequest,
@@ -83,7 +83,6 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
     db.add(db_task)
     
     if tag_names is not None:
-        from app.models.task import task_tags
         stmt = task_tags.delete().where(task_tags.c.task_id == db_task.id)
         await db.execute(stmt)
         

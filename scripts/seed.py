@@ -36,7 +36,7 @@ async def seed_data():
         else:
             logger.info("Demo user identified. Purging existing data for clean seed...")
             # Purge associations first for THIS user only
-            user_task_ids = select(Task.id).where(Task.user_id == user.id)
+            user_task_ids = select(Task.id).where(Task.user_id == user.id).scalar_subquery()
             await session.execute(delete(task_tags).where(task_tags.c.task_id.in_(user_task_ids)))
 
             await session.execute(delete(SubTask).where(SubTask.user_id == user.id))

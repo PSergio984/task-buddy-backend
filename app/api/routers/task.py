@@ -103,42 +103,35 @@ async def create_task(
     logger.info("POST / - creating task title=%s", task_in.title)
 
     await verify_project_ownership(db, task_in.project_id, current_user.id)
-    db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
+    
+    from sqlalchemy.exc import IntegrityError
+    try:
+        db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
-    # Flush to get ID for audit log
-    await db.flush()
-    await db.refresh(db_task)
+        # Flush to get ID for audit log
+        await db.flush()
+        await db.refresh(db_task)
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.CREATE,
-        target_type="TASK",
-        target_id=db_task.id,
-        details=f"Created task: {db_task.title}",
-    )
-    await db.commit()
-    await db.refresh(db_task)
+        await log_action(
+            db=db,
+            user_id=current_user.id,
+            action=AuditAction.CREATE,
+            target_type="TASK",
+            target_id=db_task.id,
+            details=f"Created task: {db_task.title}",
+        )
+        await db.commit()
+        await db.refresh(db_task)
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning("Integrity error creating task: %s", str(e))
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
-    # Eager load tags and return manually serialized dictionary
+    # Ensure tags are loaded for serialization
     await db_task.awaitable_attrs.tags
 
     logger.info("POST / - created task id=%s", db_task.id)
-    return {
-        "id": db_task.id,
-        "user_id": db_task.user_id,
-        "project_id": db_task.project_id,
-        "title": db_task.title,
-        "description": db_task.description,
-        "completed": db_task.completed,
-        "priority": db_task.priority,
-        "due_date": db_task.due_date,
-        "created_at": db_task.created_at,
-        "tags": [
-            {"id": tag.id, "user_id": tag.user_id, "name": tag.name, "created_at": tag.created_at}
-            for tag in db_task.tags
-        ]
-    }
+    return db_task
 
 
 @router.put(
@@ -164,25 +157,35 @@ async def update_task(
     if "project_id" in update_data:
         await verify_project_ownership(db, task_update.project_id, current_user.id)
 
-    await task_crud.update_task(db, db_task=db_task, task_in=task_update)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Updated task '{db_task.title}': {', '.join(update_data.keys())}",
-    )
-    await db.commit()
+        await log_action(
+            db=db,
+            user_id=current_user.id,
+            action=AuditAction.UPDATE,
+            target_type="TASK",
+            target_id=task_id,
+            details=f"Updated task '{db_task.title}': {', '.join(update_data.keys())}",
+        )
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning("Integrity error updating task: %s", str(e))
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
+
+    # Ensure tags are loaded for serialization
+    await db_task.awaitable_attrs.tags
 
     logger.info("PUT /%s - task updated", task_id)
-    return {"message": "Task updated successfully"}
+    return db_task
 
 
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 async def delete_task(
     task_id: int,
+
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):

@@ -46,20 +46,24 @@ async def create_project(
 
     db_project = await project_crud.create_project(db, user_id=current_user.id, project_in=project_in)
 
-    # Flush to get ID for audit log
     await db.flush()
     await db.refresh(db_project)
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.CREATE,
-        target_type="PROJECT",
-        target_id=db_project.id,
-        details=f"Created project: {db_project.name}",
-    )
-    await db.commit()
-    await db.refresh(db_project)
+    from sqlalchemy.exc import IntegrityError
+    try:
+        await log_action(
+            db=db,
+            user_id=current_user.id,
+            action=AuditAction.CREATE,
+            target_type="PROJECT",
+            target_id=db_project.id,
+            details=f"Created project: {db_project.name}",
+        )
+        await db.commit()
+    except IntegrityError as e:
+        await db.rollback()
+        logger.warning("Integrity error creating project: %s", str(e))
+        raise HTTPException(status_code=400, detail="Project with this name already exists")
 
     logger.info("POST / - created project id=%s", db_project.id)
     return db_project

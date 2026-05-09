@@ -1,4 +1,5 @@
 import os
+import json
 from functools import lru_cache
 from typing import Any, Optional, Union
 
@@ -51,8 +52,6 @@ class GlobalConfig(BaseConfig):
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, str):
-            import json
-
             try:
                 return json.loads(v)
             except json.JSONDecodeError:

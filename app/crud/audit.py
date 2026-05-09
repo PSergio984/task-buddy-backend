@@ -1,5 +1,6 @@
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditLog
@@ -33,8 +34,7 @@ async def get_audit_logs(
     offset: int = 0,
     action: Optional[str] = None,
     target_type: Optional[str] = None,
-) -> list[AuditLog]:
-    from sqlalchemy import select
+    ) -> list[AuditLog]:
     query = select(AuditLog).where(AuditLog.user_id == user_id)
     if action:
         query = query.where(AuditLog.action == action)

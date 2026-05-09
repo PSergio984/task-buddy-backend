@@ -13,9 +13,9 @@ from app.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     CONFIRM_TOKEN_EXPIRE_MINUTES,
+    REDIS_URL,
     RESET_TOKEN_EXPIRE_MINUTES,
     SECRET_KEY,
-    REDIS_URL,
 )
 from app.crud.user import get_user_by_email
 from app.crud.user import get_user_by_id as crud_get_user_by_id
@@ -30,12 +30,13 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=
 
 # Initialize Redis client
 redis_client = None
-try:
-    from redis import asyncio as aioredis
+if REDIS_URL:
+    try:
+        from redis import asyncio as aioredis
 
-    redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
-except (ImportError, Exception) as e:
-    logger.warning("Redis could not be initialized: %s", str(e))
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    except ImportError as e:
+        logger.warning("Redis could not be initialized: %s", str(e))
 
 
 async def get_token(
@@ -50,7 +51,7 @@ async def get_token(
     token = request.cookies.get("access_token")
     if token:
         return token
-        
+
     raise create_credentials_exception("Not authenticated")
 
 
@@ -100,8 +101,8 @@ async def is_token_blacklisted(token: str) -> bool:
         return await redis_client.exists(f"blacklist:{token_hash}") > 0
     except Exception as e:
         logger.error("Failed to check token blacklist in Redis: %s", str(e))
-        # Fail-open: allow request if blacklist check fails
-        return False
+        # Fail-closed: reject token if security check fails
+        raise create_credentials_exception("Token validation unavailable") from e
 
 
 def create_access_token(user_id: int) -> str:
@@ -147,10 +148,9 @@ def get_subject_for_token_type(
 ) -> str:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except ExpiredSignatureError as e:
-        raise create_credentials_exception("Token has expired") from e
-
     except JWTError as e:
+        if isinstance(e, ExpiredSignatureError):
+            raise create_credentials_exception("Token has expired") from e
         logger.debug("JWT decode error: %s", str(e))
         raise create_credentials_exception("Invalid token") from e
 
@@ -199,5 +199,8 @@ async def get_current_user(
     user = await crud_get_user_by_id(db, user_id=user_id)
     if user is None:
         raise create_credentials_exception("Could not find user for this token")
+
+    if not user.confirmed:
+        raise create_credentials_exception("Email not confirmed")
 
     return user
