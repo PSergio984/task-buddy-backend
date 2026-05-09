@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.crud import group as group_crud
+from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
@@ -34,7 +34,7 @@ NO_FIELDS_TO_UPDATE = "No fields to update"
 NOT_AUTHORIZED_MODIFY_TASK = "Not authorized to modify this task"
 NOT_AUTHORIZED_VIEW_TAGS = "Not authorized to view this task's tags"
 TAG_NOT_FOUND = "Tag not found"
-INVALID_GROUP_ID = "Invalid group_id"
+INVALID_PROJECT_ID = "Invalid project_id"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
@@ -55,11 +55,11 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
-async def verify_group_ownership(db: AsyncSession, group_id: int | None, user_id: int) -> None:
-    if group_id is not None:
-        db_group = await group_crud.get_group(db, group_id=group_id, user_id=user_id)
-        if not db_group:
-            raise HTTPException(status_code=400, detail=INVALID_GROUP_ID)
+async def verify_project_ownership(db: AsyncSession, project_id: int | None, user_id: int) -> None:
+    if project_id is not None:
+        db_project = await project_crud.get_project(db, project_id=project_id, user_id=user_id)
+        if not db_project:
+            raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
 from sqlalchemy.orm import selectinload, attributes
@@ -69,11 +69,11 @@ async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     completed: Annotated[bool | None, Query()] = None,
-    group_id: Annotated[int | None, Query()] = None,
+    project_id: Annotated[int | None, Query()] = None,
     tag_id: Annotated[int | None, Query()] = None,
 ):
     tasks = await task_crud.get_tasks(
-        db, user_id=current_user.id, completed=completed, group_id=group_id, tag_id=tag_id
+        db, user_id=current_user.id, completed=completed, project_id=project_id, tag_id=tag_id
     )
     
     response_list = []
@@ -82,7 +82,7 @@ async def get_all_tasks(
         task_data = {
             "id": task.id,
             "user_id": task.user_id,
-            "group_id": task.group_id,
+            "project_id": task.project_id,
             "title": task.title,
             "description": task.description,
             "completed": task.completed,
@@ -119,7 +119,7 @@ async def get_task(
     return {
         "id": task.id,
         "user_id": task.user_id,
-        "group_id": task.group_id,
+        "project_id": task.project_id,
         "title": task.title,
         "description": task.description,
         "completed": task.completed,
@@ -140,7 +140,7 @@ async def create_task(
 ):
     logger.info("POST / - creating task title=%s", task_in.title)
 
-    await verify_group_ownership(db, task_in.group_id, current_user.id)
+    await verify_project_ownership(db, task_in.project_id, current_user.id)
     db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
     # Flush to get ID for audit log
@@ -165,7 +165,7 @@ async def create_task(
     return {
         "id": db_task.id,
         "user_id": db_task.user_id,
-        "group_id": db_task.group_id,
+        "project_id": db_task.project_id,
         "title": db_task.title,
         "description": db_task.description,
         "completed": db_task.completed,
@@ -199,8 +199,8 @@ async def update_task(
         logger.warning("PUT /%s - no fields to update", task_id)
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
-    if "group_id" in update_data:
-        await verify_group_ownership(db, task_update.group_id, current_user.id)
+    if "project_id" in update_data:
+        await verify_project_ownership(db, task_update.project_id, current_user.id)
 
     await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 

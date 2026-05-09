@@ -10,7 +10,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.audit import AuditLog
-    from app.models.group import Group
+    from app.models.project import Project
     from app.models.tag import Tag
     from app.models.task import Task
 
@@ -29,7 +29,7 @@ class User(Base):
     # Relationships
     tasks: Mapped[list[Task]] = relationship(back_populates="user", cascade="all, delete-orphan")
     tags: Mapped[list[Tag]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    groups: Mapped[list[Group]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    projects: Mapped[list[Project]] = relationship(back_populates="user", cascade="all, delete-orphan")
     audit_logs: Mapped[list[AuditLog]] = relationship(back_populates="user", cascade="all, delete-orphan")
 
     def __repr__(self) -> str:

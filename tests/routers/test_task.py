@@ -304,24 +304,24 @@ async def test_delete_subtask(
     assert get_resp.status_code == 404
 
 
-async def test_get_tasks_filtered_by_group(
+async def test_get_tasks_filtered_by_project(
     async_client: AsyncClient, logged_in_token: str
 ):
-    # Create a group
-    group_resp = await async_client.post(
-        "/api/v1/groups/",
+    # Create a project
+    project_resp = await async_client.post(
+        "/api/v1/projects/",
         json={"name": "Work", "color": "blue"},
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
-    group_id = group_resp.json()["id"]
+    project_id = project_resp.json()["id"]
 
-    # Create tasks: one in group, one out
-    task_in = await create_task({"title": "In Group", "group_id": group_id}, async_client, logged_in_token)
-    task_out = await create_task({"title": "Out of Group"}, async_client, logged_in_token)
+    # Create tasks: one in project, one out
+    task_in = await create_task({"title": "In Project", "project_id": project_id}, async_client, logged_in_token)
+    task_out = await create_task({"title": "Out of Project"}, async_client, logged_in_token)
 
-    # Fetch with group_id filter
+    # Fetch with project_id filter
     response = await async_client.get(
-        f"/api/v1/tasks/?group_id={group_id}",
+        f"/api/v1/tasks/?project_id={project_id}",
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
 
@@ -329,7 +329,7 @@ async def test_get_tasks_filtered_by_group(
     data = response.json()
     assert len(data) == 1
     assert data[0]["id"] == task_in["id"]
-    assert data[0]["group_id"] == group_id
+    assert data[0]["project_id"] == project_id
 
 
 async def test_detach_tag(

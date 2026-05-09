@@ -13,7 +13,7 @@ class TaskCreateRequest(BaseModel):
     due_date: Optional[datetime] = None
     completed: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
-    group_id: Optional[int] = None
+    project_id: Optional[int] = None
     tags: list[str] = []
 
 
@@ -56,7 +56,7 @@ class TaskUpdateRequest(BaseModel):
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
     priority: Optional[TaskPriority] = None
-    group_id: Optional[int] = None
+    project_id: Optional[int] = None
     tags: Optional[list[str]] = None
 
 

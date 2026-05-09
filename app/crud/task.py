@@ -19,14 +19,14 @@ async def get_tasks(
     db: AsyncSession,
     user_id: int,
     completed: Optional[bool] = None,
-    group_id: Optional[int] = None,
+    project_id: Optional[int] = None,
     tag_id: Optional[int] = None,
 ) -> list[Task]:
     query = select(Task).where(Task.user_id == user_id).options(selectinload(Task.tags))
     if completed is not None:
         query = query.where(Task.completed == completed)
-    if group_id is not None:
-        query = query.where(Task.group_id == group_id)
+    if project_id is not None:
+        query = query.where(Task.project_id == project_id)
     if tag_id is not None:
         query = query.where(Task.tags.any(id=tag_id))
     result = await db.execute(query)
@@ -39,8 +39,8 @@ async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Optional[Tas
     return result.scalar_one_or_none()
 
 
-async def get_tasks_by_group(db: AsyncSession, group_id: int, user_id: int) -> list[Task]:
-    query = select(Task).where(Task.group_id == group_id, Task.user_id == user_id)
+async def get_tasks_by_project(db: AsyncSession, project_id: int, user_id: int) -> list[Task]:
+    query = select(Task).where(Task.project_id == project_id, Task.user_id == user_id)
     result = await db.execute(query)
     return list(result.scalars().all())
 
