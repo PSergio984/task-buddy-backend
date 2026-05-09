@@ -32,7 +32,9 @@ from app.models.user import User  # noqa: E402, F401
 target_metadata = Base.metadata
 if app_config.DATABASE_URL is None:
     raise ValueError("DATABASE_URL is not set in the configuration.")
-config.set_main_option("sqlalchemy.url", cast(str, app_config.DATABASE_URL))
+config.set_main_option(
+    "sqlalchemy.url", cast(str, app_config.DATABASE_URL).replace("%", "%%")
+)
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

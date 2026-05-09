@@ -42,7 +42,6 @@ async def second_user(db, async_client: AsyncClient) -> dict:
     
     return user_data
 
-@pytest.mark.anyio
 async def test_create_group(async_client: AsyncClient, logged_in_token: str):
     response = await async_client.post(
         "/api/v1/groups/",
@@ -55,7 +54,6 @@ async def test_create_group(async_client: AsyncClient, logged_in_token: str):
     assert data["color"] == "red"
     assert "id" in data
 
-@pytest.mark.anyio
 async def test_list_groups(async_client: AsyncClient, logged_in_token: str):
     await create_group("Group 1", async_client, logged_in_token)
     await create_group("Group 2", async_client, logged_in_token)
@@ -68,7 +66,6 @@ async def test_list_groups(async_client: AsyncClient, logged_in_token: str):
     data = response.json()
     assert len(data) == 2
 
-@pytest.mark.anyio
 async def test_get_group(async_client: AsyncClient, logged_in_token: str):
     group = await create_group("My Group", async_client, logged_in_token)
     
@@ -79,7 +76,6 @@ async def test_get_group(async_client: AsyncClient, logged_in_token: str):
     assert response.status_code == 200
     assert response.json()["name"] == "My Group"
 
-@pytest.mark.anyio
 async def test_update_group(async_client: AsyncClient, logged_in_token: str):
     group = await create_group("Old Name", async_client, logged_in_token)
     
@@ -91,7 +87,6 @@ async def test_update_group(async_client: AsyncClient, logged_in_token: str):
     assert response.status_code == 200
     assert response.json()["name"] == "New Name"
 
-@pytest.mark.anyio
 async def test_delete_group(async_client: AsyncClient, logged_in_token: str):
     group = await create_group("To Delete", async_client, logged_in_token)
     
@@ -108,7 +103,6 @@ async def test_delete_group(async_client: AsyncClient, logged_in_token: str):
     )
     assert response.status_code == 404
 
-@pytest.mark.anyio
 async def test_group_idor_protection(
     async_client: AsyncClient, logged_in_token: str, second_user: dict
 ):
@@ -137,7 +131,6 @@ async def test_group_idor_protection(
     )
     assert response.status_code == 404
 
-@pytest.mark.anyio
 async def test_task_group_idor_protection(
     async_client: AsyncClient, logged_in_token: str, second_user: dict
 ):
@@ -171,7 +164,6 @@ async def test_task_group_idor_protection(
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid group_id"
 
-@pytest.mark.anyio
 async def test_list_group_tasks(async_client: AsyncClient, logged_in_token: str):
     group = await create_group("Work", async_client, logged_in_token)
     

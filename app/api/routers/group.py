@@ -16,11 +16,17 @@ from app.security import get_current_user
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(tags=["groups"])
-
 # Error Messages
 GROUP_NOT_FOUND = "Group not found"
 NO_FIELDS_TO_UPDATE = "No fields to update"
+
+router = APIRouter(
+    tags=["groups"],
+    responses={
+        404: {"description": GROUP_NOT_FOUND},
+        400: {"description": "Bad request"},
+    },
+)
 
 @router.get("/", response_model=list[GroupResponse])
 async def list_groups(
@@ -114,7 +120,7 @@ async def update_group(
         action=AuditAction.UPDATE,
         target_type="GROUP",
         target_id=group_id,
-        details=f"Updated group fields: {', '.join(update_data.keys())}",
+        details=f"Updated group '{db_group.name}': {', '.join(update_data.keys())}",
     )
     await db.commit()
     await db.refresh(db_group)

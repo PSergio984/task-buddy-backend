@@ -8,8 +8,10 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app import tasks
 from app.crud import user as user_crud
 from app.dependencies import get_db
+from app.internal.audit import log_action
 from app.limiter import limiter
 from app.models.user import User as UserORM
+from app.schemas.enums import AuditAction
 from app.schemas.user import (
     ForgotPasswordRequest,
     PasswordUpdate,
@@ -26,6 +28,7 @@ from app.security import (
     get_current_user,
     get_password_hash,
     get_subject_for_token_type,
+    oauth2_scheme,
     verify_password,
 )
 from app.config import ACCESS_TOKEN_EXPIRE_MINUTES
@@ -40,7 +43,12 @@ TOKEN_PATH = "/token"
 EMAIL_ALREADY_REGISTERED = "Email already exists"
 AUTH_CREDENTIALS_ERROR = "Could not validate credentials"
 
-router = APIRouter(tags=[ROUTER_TAG])
+router = APIRouter(
+    tags=[ROUTER_TAG],
+    responses={
+        400: {"description": "Bad request"},
+    }
+)
 
 
 @router.post(
@@ -51,6 +59,7 @@ async def register_user(
     user: UserCreateRequest,
     background_tasks: BackgroundTasks,
     request: Request,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     logger.debug("Attempting to register user with email: %s", user.email)
@@ -76,12 +85,25 @@ async def register_user(
         suppress_exceptions=True,
     )
 
+    access_token = create_access_token(db_user.id)
+    response.set_cookie(
+        key="access_token",
+        value=access_token,
+        httponly=True,
+        secure=False,
+        samesite="lax",
+        max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
+        path="/",
+    )
+
     return {
-        "detail": "User Created: User registered successfully. Please check your email to confirm."
+        "detail": "User registered successfully.",
+        "access_token": access_token,
+        "user": db_user
     }
 
 
-@router.post("/resend-confirmation")
+@router.post("/resend-confirmation", responses={400: {"description": "Email already confirmed or invalid request"}})
 @limiter.limit("5/minute")
 async def resend_confirmation(
     background_tasks: BackgroundTasks,
@@ -133,6 +155,16 @@ async def login(
         path="/",
     )
     
+    await log_action(
+        db=db,
+        user_id=auth_user.id,
+        action=AuditAction.LOGIN,
+        target_type="USER",
+        target_id=auth_user.id,
+        details=f"User logged in: {auth_user.username}",
+    )
+    await db.commit()
+    
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -144,7 +176,7 @@ async def login(
     }
 
 
-@router.get("/confirm/{token}")
+@router.get("/confirm/{token}", responses={400: {"description": "Invalid confirmation token"}})
 async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]):
     subject = get_subject_for_token_type(token, expected_type="confirm")
     try:
@@ -176,7 +208,7 @@ async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_us
     return current_user
 
 
-@router.patch("/me/username")
+@router.patch("/me/username", responses={400: {"description": "Invalid username or already taken"}})
 async def update_username(
     username_data: UsernameUpdate,
     current_user: Annotated[UserORM, Depends(get_current_user)],
@@ -206,12 +238,21 @@ async def update_username(
         )
 
     await user_crud.update_user(db, db_user=current_user, update_data={"username": new_username})
+    
+    await log_action(
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.UPDATE,
+        target_type="USER",
+        target_id=current_user.id,
+        details=f"Updated username from {current_user.username} to {new_username}",
+    )
     await db.commit()
 
     return {"message": "Username updated successfully"}
 
 
-@router.patch("/me/password")
+@router.patch("/me/password", responses={400: {"description": "Incorrect current password or weak new password"}})
 async def update_password(
     password_data: PasswordUpdate,
     current_user: Annotated[UserORM, Depends(get_current_user)],
@@ -234,6 +275,15 @@ async def update_password(
 
     hashed_password = get_password_hash(password_data.new_password)
     await user_crud.update_user(db, db_user=current_user, update_data={"password": hashed_password})
+    
+    await log_action(
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.UPDATE,
+        target_type="USER",
+        target_id=current_user.id,
+        details="User updated password",
+    )
     await db.commit()
 
     return {"message": "Password updated successfully"}
@@ -242,12 +292,41 @@ async def update_password(
 @router.post("/logout")
 async def logout(
     response: Response,
-    current_user: Annotated[UserORM, Depends(get_current_user)]
+    request: Request,
+    db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """
-    Logout the current user.
+    Logout the current user. Clears the session cookie regardless of authentication status.
     """
-    response.delete_cookie(key="access_token", path="/")
+    try:
+        # Attempt to get the current user for logging purposes
+        # We manually call get_token logic here to avoid the automatic 401
+        token = await oauth2_scheme(request)
+        if not token:
+            token = request.cookies.get("access_token")
+        
+        if token:
+            current_user = await get_current_user(token, db)
+            await log_action(
+                db=db,
+                user_id=current_user.id,
+                action=AuditAction.LOGOUT,
+                target_type="USER",
+                target_id=current_user.id,
+                details=f"User logged out: {current_user.username}",
+            )
+            await db.commit()
+    except Exception as e:
+        # If authentication fails, we still want to clear the cookie
+        logger.debug("Logout audit logging skipped: %s", str(e))
+    
+    response.delete_cookie(
+        key="access_token",
+        path="/",
+        httponly=True,
+        samesite="lax",
+        secure=False, # Set to True in production with HTTPS
+    )
     return {"detail": "Successfully logged out."}
 
 
@@ -290,7 +369,7 @@ async def reset_password_page(token: str):
     return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
 
 
-@router.post("/reset-password")
+@router.post("/reset-password", responses={400: {"description": "Invalid reset token or weak password"}})
 @limiter.limit("5/minute")
 async def reset_password(
     request: ResetPasswordRequest,
@@ -324,6 +403,15 @@ async def reset_password(
 
     hashed_password = get_password_hash(request.new_password)
     await user_crud.update_user(db, db_user=user, update_data={"password": hashed_password})
+    
+    await log_action(
+        db=db,
+        user_id=user.id,
+        action=AuditAction.UPDATE,
+        target_type="USER",
+        target_id=user.id,
+        details="User reset password via token",
+    )
     await db.commit()
 
     return {"detail": "Password reset successfully"}

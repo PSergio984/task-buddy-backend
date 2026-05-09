@@ -3,6 +3,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from sqlalchemy.orm import selectinload
 from app.crud import tag as tag_crud
 from app.models.task import SubTask, Task
 from app.schemas.tag import TagCreate
@@ -21,7 +22,7 @@ async def get_tasks(
     group_id: Optional[int] = None,
     tag_id: Optional[int] = None,
 ) -> list[Task]:
-    query = select(Task).where(Task.user_id == user_id)
+    query = select(Task).where(Task.user_id == user_id).options(selectinload(Task.tags))
     if completed is not None:
         query = query.where(Task.completed == completed)
     if group_id is not None:
@@ -33,7 +34,7 @@ async def get_tasks(
 
 
 async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Optional[Task]:
-    query = select(Task).where(Task.id == task_id, Task.user_id == user_id)
+    query = select(Task).where(Task.id == task_id, Task.user_id == user_id).options(selectinload(Task.tags))
     result = await db.execute(query)
     return result.scalar_one_or_none()
 

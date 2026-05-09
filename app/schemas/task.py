@@ -26,6 +26,9 @@ class TaskCreateResponse(TaskCreateRequest):
     tags: list[TagResponse] = []
 
 
+TaskCreateResponse.model_rebuild()
+
+
 class SubTaskCreateRequest(BaseModel):
     task_id: int
     title: str

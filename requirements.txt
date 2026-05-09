@@ -158,3 +158,6 @@ websockets==16.0
     # via uvicorn
 wrapt==2.1.2
     # via deprecated
+
+b2sdk
+aiofiles

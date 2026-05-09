@@ -9,7 +9,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "project_structure_py",
-      "community": 49,
+      "community": 50,
       "norm_label": "project_structure.py"
     },
     {
@@ -18,7 +18,7 @@
       "source_file": "PROJECT_STRUCTURE.py",
       "source_location": "L1",
       "id": "task_buddy_backend_project_structure_rationale_1",
-      "community": 49,
+      "community": 50,
       "norm_label": "project structure overview and getting started guide.  this file provides a qu"
     },
     {
@@ -27,7 +27,7 @@
       "source_file": "seed.py",
       "source_location": "L1",
       "id": "seed_py",
-      "community": 29,
+      "community": 0,
       "norm_label": "seed.py"
     },
     {
@@ -36,7 +36,7 @@
       "source_file": "seed.py",
       "source_location": "L14",
       "id": "task_buddy_backend_seed_seed_data",
-      "community": 29,
+      "community": 0,
       "norm_label": "seed_data()"
     },
     {
@@ -45,7 +45,7 @@
       "source_file": "test_db_url_extended.py",
       "source_location": "L1",
       "id": "test_db_url_extended_py",
-      "community": 33,
+      "community": 34,
       "norm_label": "test_db_url_extended.py"
     },
     {
@@ -54,7 +54,7 @@
       "source_file": "test_db_url_extended.py",
       "source_location": "L4",
       "id": "task_buddy_backend_test_db_url_extended_test_url_transformation_extended",
-      "community": 33,
+      "community": 34,
       "norm_label": "test_url_transformation_extended()"
     },
     {
@@ -63,7 +63,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L1",
       "id": "alembic_env_py",
-      "community": 27,
+      "community": 23,
       "norm_label": "env.py"
     },
     {
@@ -72,7 +72,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L43",
       "id": "alembic_env_run_migrations_offline",
-      "community": 27,
+      "community": 23,
       "norm_label": "run_migrations_offline()"
     },
     {
@@ -81,7 +81,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L68",
       "id": "alembic_env_run_migrations_online",
-      "community": 27,
+      "community": 23,
       "norm_label": "run_migrations_online()"
     },
     {
@@ -90,7 +90,7 @@
       "source_file": "alembic/env.py",
       "source_location": "L44",
       "id": "alembic_env_rationale_44",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'offline' mode.      this configures the context with just a u"
     },
     {
@@ -99,8 +99,44 @@
       "source_file": "alembic/env.py",
       "source_location": "L69",
       "id": "alembic_env_rationale_69",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'online' mode.      in this scenario we need to create an engi"
+    },
+    {
+      "label": "2935b98be508_add_priority_to_tasks.py",
+      "file_type": "code",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L1",
+      "id": "alembic_versions_2935b98be508_add_priority_to_tasks_py",
+      "community": 44,
+      "norm_label": "2935b98be508_add_priority_to_tasks.py"
+    },
+    {
+      "label": "upgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L21",
+      "id": "versions_2935b98be508_add_priority_to_tasks_upgrade",
+      "community": 44,
+      "norm_label": "upgrade()"
+    },
+    {
+      "label": "downgrade()",
+      "file_type": "code",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L30",
+      "id": "versions_2935b98be508_add_priority_to_tasks_downgrade",
+      "community": 44,
+      "norm_label": "downgrade()"
+    },
+    {
+      "label": "add priority to tasks  Revision ID: 2935b98be508 Revises: 38d622ba3db7 Create Da",
+      "file_type": "rationale",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L1",
+      "id": "versions_2935b98be508_add_priority_to_tasks_rationale_1",
+      "community": 44,
+      "norm_label": "add priority to tasks  revision id: 2935b98be508 revises: 38d622ba3db7 create da"
     },
     {
       "label": "38d622ba3db7_add_group_model_v2.py",
@@ -108,7 +144,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L1",
       "id": "alembic_versions_38d622ba3db7_add_group_model_v2_py",
-      "community": 36,
+      "community": 35,
       "norm_label": "38d622ba3db7_add_group_model_v2.py"
     },
     {
@@ -117,7 +153,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L22",
       "id": "versions_38d622ba3db7_add_group_model_v2_get_fk_name",
-      "community": 36,
+      "community": 35,
       "norm_label": "get_fk_name()"
     },
     {
@@ -126,7 +162,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L33",
       "id": "versions_38d622ba3db7_add_group_model_v2_upgrade",
-      "community": 36,
+      "community": 35,
       "norm_label": "upgrade()"
     },
     {
@@ -135,7 +171,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L102",
       "id": "versions_38d622ba3db7_add_group_model_v2_downgrade",
-      "community": 36,
+      "community": 35,
       "norm_label": "downgrade()"
     },
     {
@@ -144,7 +180,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L1",
       "id": "versions_38d622ba3db7_add_group_model_v2_rationale_1",
-      "community": 36,
+      "community": 35,
       "norm_label": "add_group_model_v2  revision id: 38d622ba3db7 revises: e7d04c90bc13 create date:"
     },
     {
@@ -153,7 +189,7 @@
       "source_file": "alembic/versions/38d622ba3db7_add_group_model_v2.py",
       "source_location": "L23",
       "id": "versions_38d622ba3db7_add_group_model_v2_rationale_23",
-      "community": 36,
+      "community": 35,
       "norm_label": "helper to find foreign key name dynamically."
     },
     {
@@ -162,7 +198,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "alembic_versions_a6e267909ed1_initial_migration_py",
-      "community": 18,
+      "community": 46,
       "norm_label": "a6e267909ed1_initial_migration.py"
     },
     {
@@ -171,7 +207,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L26",
       "id": "versions_a6e267909ed1_initial_migration_upgrade",
-      "community": 18,
+      "community": 46,
       "norm_label": "upgrade()"
     },
     {
@@ -180,7 +216,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L86",
       "id": "versions_a6e267909ed1_initial_migration_downgrade",
-      "community": 18,
+      "community": 46,
       "norm_label": "downgrade()"
     },
     {
@@ -189,7 +225,7 @@
       "source_file": "alembic/versions/a6e267909ed1_initial_migration.py",
       "source_location": "L1",
       "id": "versions_a6e267909ed1_initial_migration_rationale_1",
-      "community": 18,
+      "community": 46,
       "norm_label": "initial migration  revision id: a6e267909ed1 revises: create date: 2026-05-0"
     },
     {
@@ -198,7 +234,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "alembic_versions_e7d04c90bc13_add_audit_logs_table_py",
-      "community": 18,
+      "community": 45,
       "norm_label": "e7d04c90bc13_add_audit_logs_table.py"
     },
     {
@@ -207,7 +243,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L22",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_upgrade",
-      "community": 18,
+      "community": 45,
       "norm_label": "upgrade()"
     },
     {
@@ -216,7 +252,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L39",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_downgrade",
-      "community": 18,
+      "community": 45,
       "norm_label": "downgrade()"
     },
     {
@@ -225,7 +261,7 @@
       "source_file": "alembic/versions/e7d04c90bc13_add_audit_logs_table.py",
       "source_location": "L1",
       "id": "versions_e7d04c90bc13_add_audit_logs_table_rationale_1",
-      "community": 18,
+      "community": 45,
       "norm_label": "add audit logs table  revision id: e7d04c90bc13 revises: a6e267909ed1 create dat"
     },
     {
@@ -234,7 +270,7 @@
       "source_file": "api/__init__.py",
       "source_location": "L1",
       "id": "api_init_py",
-      "community": 58,
+      "community": 59,
       "norm_label": "__init__.py"
     },
     {
@@ -333,7 +369,7 @@
       "source_file": "app/config.py",
       "source_location": "L64",
       "id": "app_config_rationale_64",
-      "community": 59,
+      "community": 60,
       "norm_label": "fail-fast in production when secret_key is not set."
     },
     {
@@ -342,7 +378,7 @@
       "source_file": "app/database.py",
       "source_location": "L1",
       "id": "app_database_py",
-      "community": 33,
+      "community": 34,
       "norm_label": "database.py"
     },
     {
@@ -351,7 +387,7 @@
       "source_file": "app/database.py",
       "source_location": "L11",
       "id": "app_database_get_async_database_url",
-      "community": 33,
+      "community": 34,
       "norm_label": "get_async_database_url()"
     },
     {
@@ -360,7 +396,7 @@
       "source_file": "app/database.py",
       "source_location": "L12",
       "id": "app_database_rationale_12",
-      "community": 33,
+      "community": 34,
       "norm_label": "ensures the database url uses an async driver and handles driver-specific query"
     },
     {
@@ -369,7 +405,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_py",
-      "community": 21,
+      "community": 19,
       "norm_label": "dependencies.py"
     },
     {
@@ -378,7 +414,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L17",
       "id": "app_dependencies_get_token_header",
-      "community": 21,
+      "community": 19,
       "norm_label": "get_token_header()"
     },
     {
@@ -387,7 +423,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L28",
       "id": "app_dependencies_get_query_token",
-      "community": 21,
+      "community": 19,
       "norm_label": "get_query_token()"
     },
     {
@@ -396,7 +432,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L41",
       "id": "app_dependencies_get_db",
-      "community": 21,
+      "community": 19,
       "norm_label": "get_db()"
     },
     {
@@ -405,7 +441,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L1",
       "id": "app_dependencies_rationale_1",
-      "community": 21,
+      "community": 19,
       "norm_label": "shared dependencies used across multiple routes and modules.  this module contai"
     },
     {
@@ -414,7 +450,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L18",
       "id": "app_dependencies_rationale_18",
-      "community": 21,
+      "community": 19,
       "norm_label": "validate x-token header.      this is a simple token validation dependency."
     },
     {
@@ -423,7 +459,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L29",
       "id": "app_dependencies_rationale_29",
-      "community": 21,
+      "community": 19,
       "norm_label": "validate query token parameter.      optional query parameter for basic token va"
     },
     {
@@ -432,7 +468,7 @@
       "source_file": "app/dependencies.py",
       "source_location": "L42",
       "id": "app_dependencies_rationale_42",
-      "community": 21,
+      "community": 19,
       "norm_label": "dependency to provide an asyncsession to routers.     ensures the session is clo"
     },
     {
@@ -441,7 +477,7 @@
       "source_file": "app/limiter.py",
       "source_location": "L1",
       "id": "app_limiter_py",
-      "community": 60,
+      "community": 61,
       "norm_label": "limiter.py"
     },
     {
@@ -603,7 +639,7 @@
       "source_file": "app/security.py",
       "source_location": "L72",
       "id": "app_security_reset_token_expire_time",
-      "community": 28,
+      "community": 24,
       "norm_label": "reset_token_expire_time()"
     },
     {
@@ -612,7 +648,7 @@
       "source_file": "app/security.py",
       "source_location": "L76",
       "id": "app_security_blacklist_token",
-      "community": 34,
+      "community": 32,
       "norm_label": "blacklist_token()"
     },
     {
@@ -648,7 +684,7 @@
       "source_file": "app/security.py",
       "source_location": "L120",
       "id": "app_security_create_reset_token",
-      "community": 28,
+      "community": 24,
       "norm_label": "create_reset_token()"
     },
     {
@@ -657,7 +693,7 @@
       "source_file": "app/security.py",
       "source_location": "L130",
       "id": "app_security_get_password_hash",
-      "community": 22,
+      "community": 11,
       "norm_label": "get_password_hash()"
     },
     {
@@ -702,7 +738,7 @@
       "source_file": "app/security.py",
       "source_location": "L77",
       "id": "app_security_rationale_77",
-      "community": 34,
+      "community": 32,
       "norm_label": "blacklist a jwt token in redis with a ttl."
     },
     {
@@ -855,7 +891,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_py",
-      "community": 50,
+      "community": 51,
       "norm_label": "__init__.py"
     },
     {
@@ -864,7 +900,7 @@
       "source_file": "app/__init__.py",
       "source_location": "L1",
       "id": "app_init_rationale_1",
-      "community": 50,
+      "community": 51,
       "norm_label": "task buddy backend - fastapi application main package initialization file."
     },
     {
@@ -873,7 +909,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "app_api_dependencies_py",
-      "community": 42,
+      "community": 41,
       "norm_label": "dependencies.py"
     },
     {
@@ -882,7 +918,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L11",
       "id": "api_dependencies_get_query_token",
-      "community": 42,
+      "community": 41,
       "norm_label": "get_query_token()"
     },
     {
@@ -891,7 +927,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L1",
       "id": "api_dependencies_rationale_1",
-      "community": 42,
+      "community": 41,
       "norm_label": "api-specific dependencies.  these dependencies are specific to the api routers"
     },
     {
@@ -900,7 +936,7 @@
       "source_file": "app/api/dependencies.py",
       "source_location": "L12",
       "id": "api_dependencies_rationale_12",
-      "community": 42,
+      "community": 41,
       "norm_label": "optional query token validation for api routes.      this is a simple query-ba"
     },
     {
@@ -909,7 +945,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "app_api_init_py",
-      "community": 51,
+      "community": 52,
       "norm_label": "__init__.py"
     },
     {
@@ -918,7 +954,7 @@
       "source_file": "app/api/__init__.py",
       "source_location": "L1",
       "id": "api_init_rationale_1",
-      "community": 51,
+      "community": 52,
       "norm_label": "api package - contains all api routes and related modules."
     },
     {
@@ -1017,7 +1053,7 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L1",
       "id": "app_api_routers_stats_py",
-      "community": 0,
+      "community": 25,
       "norm_label": "stats.py"
     },
     {
@@ -1026,7 +1062,7 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L15",
       "id": "routers_stats_get_system_overview",
-      "community": 0,
+      "community": 25,
       "norm_label": "get_system_overview()"
     },
     {
@@ -1035,7 +1071,7 @@
       "source_file": "app/api/routers/stats.py",
       "source_location": "L19",
       "id": "routers_stats_rationale_19",
-      "community": 0,
+      "community": 25,
       "norm_label": "retrieve a summary of tasks and tag distribution for the current user."
     },
     {
@@ -1069,7 +1105,7 @@
       "label": "get_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L74",
+      "source_location": "L75",
       "id": "routers_task_get_task",
       "community": 2,
       "norm_label": "get_task()"
@@ -1078,7 +1114,7 @@
       "label": "create_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L91",
+      "source_location": "L92",
       "id": "routers_task_create_task",
       "community": 2,
       "norm_label": "create_task()"
@@ -1087,7 +1123,7 @@
       "label": "update_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L125",
+      "source_location": "L126",
       "id": "routers_task_update_task",
       "community": 2,
       "norm_label": "update_task()"
@@ -1096,7 +1132,7 @@
       "label": "delete_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L161",
+      "source_location": "L162",
       "id": "routers_task_delete_task",
       "community": 2,
       "norm_label": "delete_task()"
@@ -1105,7 +1141,7 @@
       "label": "get_subtasks_on_task_list()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L187",
+      "source_location": "L188",
       "id": "routers_task_get_subtasks_on_task_list",
       "community": 2,
       "norm_label": "get_subtasks_on_task_list()"
@@ -1114,7 +1150,7 @@
       "label": "get_task_with_subtasks()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L201",
+      "source_location": "L202",
       "id": "routers_task_get_task_with_subtasks",
       "community": 2,
       "norm_label": "get_task_with_subtasks()"
@@ -1123,7 +1159,7 @@
       "label": "create_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L223",
+      "source_location": "L224",
       "id": "routers_task_create_subtask",
       "community": 2,
       "norm_label": "create_subtask()"
@@ -1132,7 +1168,7 @@
       "label": "get_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L257",
+      "source_location": "L258",
       "id": "routers_task_get_subtask",
       "community": 2,
       "norm_label": "get_subtask()"
@@ -1141,7 +1177,7 @@
       "label": "update_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L277",
+      "source_location": "L278",
       "id": "routers_task_update_subtask",
       "community": 2,
       "norm_label": "update_subtask()"
@@ -1150,7 +1186,7 @@
       "label": "delete_subtask()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L310",
+      "source_location": "L311",
       "id": "routers_task_delete_subtask",
       "community": 2,
       "norm_label": "delete_subtask()"
@@ -1159,7 +1195,7 @@
       "label": "get_all_tags()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L334",
+      "source_location": "L335",
       "id": "routers_task_get_all_tags",
       "community": 2,
       "norm_label": "get_all_tags()"
@@ -1168,7 +1204,7 @@
       "label": "create_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L342",
+      "source_location": "L343",
       "id": "routers_task_create_tag",
       "community": 2,
       "norm_label": "create_tag()"
@@ -1177,7 +1213,7 @@
       "label": "delete_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L358",
+      "source_location": "L359",
       "id": "routers_task_delete_tag",
       "community": 2,
       "norm_label": "delete_tag()"
@@ -1186,7 +1222,7 @@
       "label": "create_and_attach_tag()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L377",
+      "source_location": "L378",
       "id": "routers_task_create_and_attach_tag",
       "community": 2,
       "norm_label": "create_and_attach_tag()"
@@ -1195,7 +1231,7 @@
       "label": "get_tags_on_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L406",
+      "source_location": "L407",
       "id": "routers_task_get_tags_on_task",
       "community": 2,
       "norm_label": "get_tags_on_task()"
@@ -1204,7 +1240,7 @@
       "label": "attach_tag_to_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L419",
+      "source_location": "L420",
       "id": "routers_task_attach_tag_to_task",
       "community": 2,
       "norm_label": "attach_tag_to_task()"
@@ -1213,7 +1249,7 @@
       "label": "detach_tag_from_task()",
       "file_type": "code",
       "source_file": "app/api/routers/task.py",
-      "source_location": "L444",
+      "source_location": "L445",
       "id": "routers_task_detach_tag_from_task",
       "community": 2,
       "norm_label": "detach_tag_from_task()"
@@ -1224,7 +1260,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L1",
       "id": "app_api_routers_user_py",
-      "community": 22,
+      "community": 29,
       "norm_label": "user.py"
     },
     {
@@ -1233,7 +1269,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L50",
       "id": "routers_user_register_user",
-      "community": 22,
+      "community": 29,
       "norm_label": "register_user()"
     },
     {
@@ -1242,7 +1278,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L86",
       "id": "routers_user_resend_confirmation",
-      "community": 41,
+      "community": 29,
       "norm_label": "resend_confirmation()"
     },
     {
@@ -1260,7 +1296,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L148",
       "id": "routers_user_confirm_email",
-      "community": 22,
+      "community": 29,
       "norm_label": "confirm_email()"
     },
     {
@@ -1287,7 +1323,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L215",
       "id": "routers_user_update_password",
-      "community": 35,
+      "community": 31,
       "norm_label": "update_password()"
     },
     {
@@ -1296,7 +1332,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L243",
       "id": "routers_user_logout",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout()"
     },
     {
@@ -1305,7 +1341,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L256",
       "id": "routers_user_forgot_password",
-      "community": 15,
+      "community": 36,
       "norm_label": "forgot_password()"
     },
     {
@@ -1314,7 +1350,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L285",
       "id": "routers_user_reset_password_page",
-      "community": 15,
+      "community": 14,
       "norm_label": "reset_password_page()"
     },
     {
@@ -1323,7 +1359,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L295",
       "id": "routers_user_reset_password",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset_password()"
     },
     {
@@ -1332,7 +1368,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L92",
       "id": "routers_user_rationale_92",
-      "community": 41,
+      "community": 29,
       "norm_label": "resend a confirmation email for an existing, unconfirmed user."
     },
     {
@@ -1359,7 +1395,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L220",
       "id": "routers_user_rationale_220",
-      "community": 32,
+      "community": 30,
       "norm_label": "update the current user's password securely.     verifies the current password"
     },
     {
@@ -1368,7 +1404,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L247",
       "id": "routers_user_rationale_247",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user."
     },
     {
@@ -1377,7 +1413,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L262",
       "id": "routers_user_rationale_262",
-      "community": 15,
+      "community": 36,
       "norm_label": "initiate password reset flow by sending an email with a reset token."
     },
     {
@@ -1386,7 +1422,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L286",
       "id": "routers_user_rationale_286",
-      "community": 15,
+      "community": 14,
       "norm_label": "placeholder for the reset password page.     in a real app, this would be handl"
     },
     {
@@ -1395,7 +1431,7 @@
       "source_file": "app/api/routers/user.py",
       "source_location": "L300",
       "id": "routers_user_rationale_300",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset user password using a valid reset token."
     },
     {
@@ -1404,7 +1440,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "app_api_routers_init_py",
-      "community": 52,
+      "community": 53,
       "norm_label": "__init__.py"
     },
     {
@@ -1413,7 +1449,7 @@
       "source_file": "app/api/routers/__init__.py",
       "source_location": "L1",
       "id": "routers_init_rationale_1",
-      "community": 52,
+      "community": 53,
       "norm_label": "api routers package - contains all endpoint routers."
     },
     {
@@ -1449,7 +1485,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L1",
       "id": "app_crud_group_py",
-      "community": 38,
+      "community": 39,
       "norm_label": "group.py"
     },
     {
@@ -1458,7 +1494,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L10",
       "id": "crud_group_get_groups",
-      "community": 38,
+      "community": 39,
       "norm_label": "get_groups()"
     },
     {
@@ -1467,7 +1503,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L16",
       "id": "crud_group_get_group",
-      "community": 38,
+      "community": 39,
       "norm_label": "get_group()"
     },
     {
@@ -1476,7 +1512,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L22",
       "id": "crud_group_create_group",
-      "community": 38,
+      "community": 39,
       "norm_label": "create_group()"
     },
     {
@@ -1485,7 +1521,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L32",
       "id": "crud_group_update_group",
-      "community": 38,
+      "community": 39,
       "norm_label": "update_group()"
     },
     {
@@ -1494,7 +1530,7 @@
       "source_file": "app/crud/group.py",
       "source_location": "L41",
       "id": "crud_group_delete_group",
-      "community": 38,
+      "community": 39,
       "norm_label": "delete_group()"
     },
     {
@@ -1503,7 +1539,7 @@
       "source_file": "app/crud/stats.py",
       "source_location": "L1",
       "id": "app_crud_stats_py",
-      "community": 0,
+      "community": 38,
       "norm_label": "stats.py"
     },
     {
@@ -1512,7 +1548,7 @@
       "source_file": "app/crud/stats.py",
       "source_location": "L9",
       "id": "crud_stats_get_system_overview",
-      "community": 0,
+      "community": 38,
       "norm_label": "get_system_overview()"
     },
     {
@@ -1521,7 +1557,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L1",
       "id": "app_crud_tag_py",
-      "community": 30,
+      "community": 26,
       "norm_label": "tag.py"
     },
     {
@@ -1530,7 +1566,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L11",
       "id": "crud_tag_get_user_tags",
-      "community": 30,
+      "community": 26,
       "norm_label": "get_user_tags()"
     },
     {
@@ -1539,7 +1575,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L17",
       "id": "crud_tag_get_tag_by_name",
-      "community": 30,
+      "community": 26,
       "norm_label": "get_tag_by_name()"
     },
     {
@@ -1548,7 +1584,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L23",
       "id": "crud_tag_create_tag",
-      "community": 39,
+      "community": 0,
       "norm_label": "create_tag()"
     },
     {
@@ -1557,7 +1593,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L33",
       "id": "crud_tag_delete_tag",
-      "community": 30,
+      "community": 26,
       "norm_label": "delete_tag()"
     },
     {
@@ -1566,7 +1602,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L37",
       "id": "crud_tag_attach_tag_to_task",
-      "community": 30,
+      "community": 26,
       "norm_label": "attach_tag_to_task()"
     },
     {
@@ -1575,7 +1611,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L55",
       "id": "crud_tag_detach_tag_from_task",
-      "community": 30,
+      "community": 26,
       "norm_label": "detach_tag_from_task()"
     },
     {
@@ -1584,7 +1620,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L63",
       "id": "crud_tag_get_tags_on_task",
-      "community": 30,
+      "community": 26,
       "norm_label": "get_tags_on_task()"
     },
     {
@@ -1593,7 +1629,7 @@
       "source_file": "app/crud/tag.py",
       "source_location": "L38",
       "id": "crud_tag_rationale_38",
-      "community": 30,
+      "community": 26,
       "norm_label": "attaches a tag to a task. returns true if a new link was created."
     },
     {
@@ -1602,106 +1638,106 @@
       "source_file": "app/crud/task.py",
       "source_location": "L1",
       "id": "app_crud_task_py",
-      "community": 23,
+      "community": 27,
       "norm_label": "task.py"
     },
     {
       "label": "get_tasks()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L15",
+      "source_location": "L17",
       "id": "crud_task_get_tasks",
-      "community": 23,
+      "community": 27,
       "norm_label": "get_tasks()"
     },
     {
       "label": "get_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L30",
+      "source_location": "L35",
       "id": "crud_task_get_task",
-      "community": 23,
+      "community": 27,
       "norm_label": "get_task()"
     },
     {
       "label": "get_tasks_by_group()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L36",
+      "source_location": "L41",
       "id": "crud_task_get_tasks_by_group",
-      "community": 23,
+      "community": 27,
       "norm_label": "get_tasks_by_group()"
     },
     {
       "label": "create_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L42",
+      "source_location": "L47",
       "id": "crud_task_create_task",
-      "community": 13,
+      "community": 0,
       "norm_label": "create_task()"
     },
     {
       "label": "update_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L53",
+      "source_location": "L74",
       "id": "crud_task_update_task",
-      "community": 23,
+      "community": 0,
       "norm_label": "update_task()"
     },
     {
       "label": "delete_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L62",
+      "source_location": "L102",
       "id": "crud_task_delete_task",
-      "community": 23,
+      "community": 27,
       "norm_label": "delete_task()"
     },
     {
       "label": "create_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L67",
+      "source_location": "L107",
       "id": "crud_task_create_subtask",
-      "community": 29,
+      "community": 0,
       "norm_label": "create_subtask()"
     },
     {
       "label": "get_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L80",
+      "source_location": "L120",
       "id": "crud_task_get_subtask",
-      "community": 23,
+      "community": 27,
       "norm_label": "get_subtask()"
     },
     {
       "label": "update_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L86",
+      "source_location": "L126",
       "id": "crud_task_update_subtask",
-      "community": 23,
+      "community": 27,
       "norm_label": "update_subtask()"
     },
     {
       "label": "delete_subtask()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L95",
+      "source_location": "L135",
       "id": "crud_task_delete_subtask",
-      "community": 23,
+      "community": 27,
       "norm_label": "delete_subtask()"
     },
     {
       "label": "get_subtasks_on_task()",
       "file_type": "code",
       "source_file": "app/crud/task.py",
-      "source_location": "L99",
+      "source_location": "L139",
       "id": "crud_task_get_subtasks_on_task",
-      "community": 23,
+      "community": 27,
       "norm_label": "get_subtasks_on_task()"
     },
     {
@@ -1773,7 +1809,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "app_crud_init_py",
-      "community": 53,
+      "community": 54,
       "norm_label": "__init__.py"
     },
     {
@@ -1782,7 +1818,7 @@
       "source_file": "app/crud/__init__.py",
       "source_location": "L1",
       "id": "crud_init_rationale_1",
-      "community": 53,
+      "community": 54,
       "norm_label": "crud operations - database interaction functions."
     },
     {
@@ -1791,7 +1827,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L1",
       "id": "app_internal_admin_py",
-      "community": 44,
+      "community": 43,
       "norm_label": "admin.py"
     },
     {
@@ -1800,7 +1836,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L14",
       "id": "internal_admin_update_admin",
-      "community": 44,
+      "community": 43,
       "norm_label": "update_admin()"
     },
     {
@@ -1809,7 +1845,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L1",
       "id": "internal_admin_rationale_1",
-      "community": 44,
+      "community": 43,
       "norm_label": "admin module.  contains admin-only functionality and operations. not exposed"
     },
     {
@@ -1818,7 +1854,7 @@
       "source_file": "app/internal/admin.py",
       "source_location": "L15",
       "id": "internal_admin_rationale_15",
-      "community": 44,
+      "community": 43,
       "norm_label": "admin update endpoint."
     },
     {
@@ -1854,7 +1890,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "app_internal_init_py",
-      "community": 54,
+      "community": 55,
       "norm_label": "__init__.py"
     },
     {
@@ -1863,7 +1899,7 @@
       "source_file": "app/internal/__init__.py",
       "source_location": "L1",
       "id": "internal_init_rationale_1",
-      "community": 54,
+      "community": 55,
       "norm_label": "internal modules - internal-only functionality."
     },
     {
@@ -1872,7 +1908,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L1",
       "id": "app_models_audit_py",
-      "community": 18,
+      "community": 33,
       "norm_label": "audit.py"
     },
     {
@@ -1881,7 +1917,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L15",
       "id": "models_audit_auditlog",
-      "community": 13,
+      "community": 0,
       "norm_label": "auditlog"
     },
     {
@@ -1890,7 +1926,7 @@
       "source_file": "",
       "source_location": "",
       "id": "base",
-      "community": 13,
+      "community": 0,
       "norm_label": "base"
     },
     {
@@ -1899,7 +1935,7 @@
       "source_file": "app/models/audit.py",
       "source_location": "L31",
       "id": "models_audit_auditlog_repr",
-      "community": 13,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
@@ -1908,7 +1944,7 @@
       "source_file": "app/models/base.py",
       "source_location": "L1",
       "id": "app_models_base_py",
-      "community": 13,
+      "community": 0,
       "norm_label": "base.py"
     },
     {
@@ -1917,7 +1953,7 @@
       "source_file": "app/models/base.py",
       "source_location": "L13",
       "id": "models_base_base",
-      "community": 13,
+      "community": 0,
       "norm_label": "base"
     },
     {
@@ -1926,7 +1962,7 @@
       "source_file": "",
       "source_location": "",
       "id": "declarativebase",
-      "community": 13,
+      "community": 0,
       "norm_label": "declarativebase"
     },
     {
@@ -1935,7 +1971,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L1",
       "id": "app_models_group_py",
-      "community": 13,
+      "community": 0,
       "norm_label": "group.py"
     },
     {
@@ -1944,7 +1980,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L16",
       "id": "models_group_group",
-      "community": 13,
+      "community": 0,
       "norm_label": "group"
     },
     {
@@ -1953,7 +1989,7 @@
       "source_file": "app/models/group.py",
       "source_location": "L29",
       "id": "models_group_group_repr",
-      "community": 13,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
@@ -1962,7 +1998,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L1",
       "id": "app_models_tag_py",
-      "community": 39,
+      "community": 0,
       "norm_label": "tag.py"
     },
     {
@@ -1971,7 +2007,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L16",
       "id": "models_tag_tag",
-      "community": 39,
+      "community": 0,
       "norm_label": "tag"
     },
     {
@@ -1980,7 +2016,7 @@
       "source_file": "app/models/tag.py",
       "source_location": "L36",
       "id": "models_tag_tag_repr",
-      "community": 39,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
@@ -1993,39 +2029,57 @@
       "norm_label": "task.py"
     },
     {
+      "label": "TaskPriority",
+      "file_type": "code",
+      "source_file": "app/models/task.py",
+      "source_location": "L18",
+      "id": "models_task_taskpriority",
+      "community": 0,
+      "norm_label": "taskpriority"
+    },
+    {
+      "label": "str",
+      "file_type": "code",
+      "source_file": "",
+      "source_location": "",
+      "id": "str",
+      "community": 32,
+      "norm_label": "str"
+    },
+    {
       "label": "Task",
       "file_type": "code",
       "source_file": "app/models/task.py",
-      "source_location": "L27",
+      "source_location": "L34",
       "id": "models_task_task",
-      "community": 13,
+      "community": 0,
       "norm_label": "task"
     },
     {
       "label": ".__repr__()",
       "file_type": "code",
       "source_file": "app/models/task.py",
-      "source_location": "L50",
+      "source_location": "L60",
       "id": "models_task_task_repr",
-      "community": 13,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
       "label": "SubTask",
       "file_type": "code",
       "source_file": "app/models/task.py",
-      "source_location": "L54",
+      "source_location": "L64",
       "id": "models_task_subtask",
-      "community": 29,
+      "community": 0,
       "norm_label": "subtask"
     },
     {
       "label": ".__repr__()",
       "file_type": "code",
       "source_file": "app/models/task.py",
-      "source_location": "L69",
+      "source_location": "L79",
       "id": "models_task_subtask_repr",
-      "community": 29,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
@@ -2043,7 +2097,7 @@
       "source_file": "app/models/user.py",
       "source_location": "L18",
       "id": "models_user_user",
-      "community": 13,
+      "community": 0,
       "norm_label": "user"
     },
     {
@@ -2052,7 +2106,7 @@
       "source_file": "app/models/user.py",
       "source_location": "L35",
       "id": "models_user_user_repr",
-      "community": 13,
+      "community": 0,
       "norm_label": ".__repr__()"
     },
     {
@@ -2061,7 +2115,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "app_models_init_py",
-      "community": 55,
+      "community": 56,
       "norm_label": "__init__.py"
     },
     {
@@ -2070,7 +2124,7 @@
       "source_file": "app/models/__init__.py",
       "source_location": "L1",
       "id": "models_init_rationale_1",
-      "community": 55,
+      "community": 56,
       "norm_label": "database models - sqlalchemy orm models."
     },
     {
@@ -2115,7 +2169,7 @@
       "source_file": "app/schemas/enums.py",
       "source_location": "L1",
       "id": "app_schemas_enums_py",
-      "community": 34,
+      "community": 32,
       "norm_label": "enums.py"
     },
     {
@@ -2124,17 +2178,8 @@
       "source_file": "app/schemas/enums.py",
       "source_location": "L4",
       "id": "schemas_enums_taskstatus",
-      "community": 34,
+      "community": 32,
       "norm_label": "taskstatus"
-    },
-    {
-      "label": "str",
-      "file_type": "code",
-      "source_file": "",
-      "source_location": "",
-      "id": "str",
-      "community": 34,
-      "norm_label": "str"
     },
     {
       "label": "Enum",
@@ -2142,7 +2187,7 @@
       "source_file": "",
       "source_location": "",
       "id": "enum",
-      "community": 34,
+      "community": 32,
       "norm_label": "enum"
     },
     {
@@ -2151,7 +2196,7 @@
       "source_file": "app/schemas/enums.py",
       "source_location": "L10",
       "id": "schemas_enums_auditaction",
-      "community": 34,
+      "community": 32,
       "norm_label": "auditaction"
     },
     {
@@ -2205,7 +2250,7 @@
       "source_file": "app/schemas/stats.py",
       "source_location": "L1",
       "id": "app_schemas_stats_py",
-      "community": 0,
+      "community": 38,
       "norm_label": "stats.py"
     },
     {
@@ -2214,7 +2259,7 @@
       "source_file": "app/schemas/stats.py",
       "source_location": "L4",
       "id": "schemas_stats_taskstats",
-      "community": 0,
+      "community": 38,
       "norm_label": "taskstats"
     },
     {
@@ -2223,7 +2268,7 @@
       "source_file": "app/schemas/stats.py",
       "source_location": "L10",
       "id": "schemas_stats_tagdistribution",
-      "community": 0,
+      "community": 38,
       "norm_label": "tagdistribution"
     },
     {
@@ -2232,7 +2277,7 @@
       "source_file": "app/schemas/stats.py",
       "source_location": "L14",
       "id": "schemas_stats_systemoverview",
-      "community": 0,
+      "community": 38,
       "norm_label": "systemoverview"
     },
     {
@@ -2275,7 +2320,7 @@
       "label": "TaskCreateRequest",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L7",
+      "source_location": "L10",
       "id": "schemas_task_taskcreaterequest",
       "community": 0,
       "norm_label": "taskcreaterequest"
@@ -2284,7 +2329,7 @@
       "label": "TaskCreateResponse",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L15",
+      "source_location": "L20",
       "id": "schemas_task_taskcreateresponse",
       "community": 0,
       "norm_label": "taskcreateresponse"
@@ -2293,7 +2338,7 @@
       "label": "SubTaskCreateRequest",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L23",
+      "source_location": "L29",
       "id": "schemas_task_subtaskcreaterequest",
       "community": 0,
       "norm_label": "subtaskcreaterequest"
@@ -2302,7 +2347,7 @@
       "label": "SubTaskCreateResponse",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L31",
+      "source_location": "L37",
       "id": "schemas_task_subtaskcreateresponse",
       "community": 0,
       "norm_label": "subtaskcreateresponse"
@@ -2311,7 +2356,7 @@
       "label": "TaskWithSubTasks",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L39",
+      "source_location": "L45",
       "id": "schemas_task_taskwithsubtasks",
       "community": 0,
       "norm_label": "taskwithsubtasks"
@@ -2320,7 +2365,7 @@
       "label": "TaskUpdateRequest",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L44",
+      "source_location": "L50",
       "id": "schemas_task_taskupdaterequest",
       "community": 0,
       "norm_label": "taskupdaterequest"
@@ -2329,7 +2374,7 @@
       "label": "SubTaskUpdateRequest",
       "file_type": "code",
       "source_file": "app/schemas/task.py",
-      "source_location": "L52",
+      "source_location": "L60",
       "id": "schemas_task_subtaskupdaterequest",
       "community": 0,
       "norm_label": "subtaskupdaterequest"
@@ -2412,7 +2457,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "app_schemas_init_py",
-      "community": 56,
+      "community": 57,
       "norm_label": "__init__.py"
     },
     {
@@ -2421,7 +2466,7 @@
       "source_file": "app/schemas/__init__.py",
       "source_location": "L1",
       "id": "schemas_init_rationale_1",
-      "community": 56,
+      "community": 57,
       "norm_label": "pydantic schemas - data validation models for request/response."
     },
     {
@@ -2430,7 +2475,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L1",
       "id": "tests_conftest_py",
-      "community": 16,
+      "community": 15,
       "norm_label": "conftest.py"
     },
     {
@@ -2439,7 +2484,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L16",
       "id": "tests_conftest_anyio_backend",
-      "community": 16,
+      "community": 15,
       "norm_label": "anyio_backend()"
     },
     {
@@ -2448,7 +2493,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L21",
       "id": "tests_conftest_db",
-      "community": 16,
+      "community": 15,
       "norm_label": "db()"
     },
     {
@@ -2457,7 +2502,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L40",
       "id": "tests_conftest_client",
-      "community": 16,
+      "community": 15,
       "norm_label": "client()"
     },
     {
@@ -2466,7 +2511,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L45",
       "id": "tests_conftest_async_client",
-      "community": 16,
+      "community": 15,
       "norm_label": "async_client()"
     },
     {
@@ -2475,7 +2520,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L52",
       "id": "tests_conftest_registered_user",
-      "community": 16,
+      "community": 15,
       "norm_label": "registered_user()"
     },
     {
@@ -2484,7 +2529,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L77",
       "id": "tests_conftest_confirmed_user",
-      "community": 16,
+      "community": 15,
       "norm_label": "confirmed_user()"
     },
     {
@@ -2493,7 +2538,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L88",
       "id": "tests_conftest_logged_in_token",
-      "community": 16,
+      "community": 15,
       "norm_label": "logged_in_token()"
     },
     {
@@ -2502,7 +2547,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L106",
       "id": "tests_conftest_mock_httpx_client",
-      "community": 16,
+      "community": 15,
       "norm_label": "mock_httpx_client()"
     },
     {
@@ -2511,7 +2556,7 @@
       "source_file": "tests/conftest.py",
       "source_location": "L107",
       "id": "tests_conftest_rationale_107",
-      "community": 16,
+      "community": 15,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests."
     },
     {
@@ -2520,7 +2565,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L1",
       "id": "tests_test_migrations_py",
-      "community": 46,
+      "community": 47,
       "norm_label": "test_migrations.py"
     },
     {
@@ -2529,7 +2574,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
       "id": "tests_test_migrations_test_alembic_migrations",
-      "community": 46,
+      "community": 47,
       "norm_label": "test_alembic_migrations()"
     },
     {
@@ -2538,7 +2583,7 @@
       "source_file": "tests/test_migrations.py",
       "source_location": "L7",
       "id": "tests_test_migrations_rationale_7",
-      "community": 46,
+      "community": 47,
       "norm_label": "test that alembic migration can run against a clean database successfully."
     },
     {
@@ -2736,7 +2781,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L1",
       "id": "tests_test_security_hardening_py",
-      "community": 43,
+      "community": 42,
       "norm_label": "test_security_hardening.py"
     },
     {
@@ -2745,7 +2790,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L8",
       "id": "tests_test_security_hardening_test_security_headers",
-      "community": 43,
+      "community": 42,
       "norm_label": "test_security_headers()"
     },
     {
@@ -2754,7 +2799,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L23",
       "id": "tests_test_security_hardening_test_cors_allowed_origin",
-      "community": 43,
+      "community": 42,
       "norm_label": "test_cors_allowed_origin()"
     },
     {
@@ -2763,7 +2808,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L30",
       "id": "tests_test_security_hardening_test_cors_disallowed_origin",
-      "community": 43,
+      "community": 42,
       "norm_label": "test_cors_disallowed_origin()"
     },
     {
@@ -2772,7 +2817,7 @@
       "source_file": "tests/test_security_hardening.py",
       "source_location": "L36",
       "id": "tests_test_security_hardening_test_rate_limiting_register",
-      "community": 43,
+      "community": 42,
       "norm_label": "test_rate_limiting_register()"
     },
     {
@@ -2781,7 +2826,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L1",
       "id": "tests_test_seed_py",
-      "community": 29,
+      "community": 0,
       "norm_label": "test_seed.py"
     },
     {
@@ -2790,7 +2835,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L8",
       "id": "tests_test_seed_test_seed_data",
-      "community": 29,
+      "community": 0,
       "norm_label": "test_seed_data()"
     },
     {
@@ -2799,7 +2844,7 @@
       "source_file": "tests/test_seed.py",
       "source_location": "L9",
       "id": "tests_test_seed_rationale_9",
-      "community": 29,
+      "community": 0,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r"
     },
     {
@@ -2844,7 +2889,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_py",
-      "community": 57,
+      "community": 58,
       "norm_label": "__init__.py"
     },
     {
@@ -2853,7 +2898,7 @@
       "source_file": "tests/__init__.py",
       "source_location": "L1",
       "id": "tests_init_rationale_1",
-      "community": 57,
+      "community": 58,
       "norm_label": "tests package - contains all application tests."
     },
     {
@@ -2862,7 +2907,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L1",
       "id": "tests_routers_test_audit_py",
-      "community": 47,
+      "community": 48,
       "norm_label": "test_audit.py"
     },
     {
@@ -2871,7 +2916,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L6",
       "id": "routers_test_audit_test_get_audit_logs_empty",
-      "community": 47,
+      "community": 48,
       "norm_label": "test_get_audit_logs_empty()"
     },
     {
@@ -2880,7 +2925,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L15",
       "id": "routers_test_audit_test_audit_log_after_task_creation",
-      "community": 47,
+      "community": 48,
       "norm_label": "test_audit_log_after_task_creation()"
     },
     {
@@ -2889,7 +2934,7 @@
       "source_file": "tests/routers/test_audit.py",
       "source_location": "L42",
       "id": "routers_test_audit_test_audit_log_filtering",
-      "community": 47,
+      "community": 48,
       "norm_label": "test_audit_log_filtering()"
     },
     {
@@ -2898,7 +2943,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L1",
       "id": "tests_routers_test_group_py",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_group.py"
     },
     {
@@ -2907,7 +2952,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L6",
       "id": "routers_test_group_create_group",
-      "community": 17,
+      "community": 16,
       "norm_label": "create_group()"
     },
     {
@@ -2916,7 +2961,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L15",
       "id": "routers_test_group_second_user",
-      "community": 17,
+      "community": 16,
       "norm_label": "second_user()"
     },
     {
@@ -2925,7 +2970,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L46",
       "id": "routers_test_group_test_create_group",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_create_group()"
     },
     {
@@ -2934,7 +2979,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L59",
       "id": "routers_test_group_test_list_groups",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_list_groups()"
     },
     {
@@ -2943,7 +2988,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L72",
       "id": "routers_test_group_test_get_group",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_get_group()"
     },
     {
@@ -2952,7 +2997,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L83",
       "id": "routers_test_group_test_update_group",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_update_group()"
     },
     {
@@ -2961,7 +3006,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L95",
       "id": "routers_test_group_test_delete_group",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_delete_group()"
     },
     {
@@ -2970,7 +3015,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L112",
       "id": "routers_test_group_test_group_idor_protection",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_group_idor_protection()"
     },
     {
@@ -2979,7 +3024,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L141",
       "id": "routers_test_group_test_task_group_idor_protection",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_task_group_idor_protection()"
     },
     {
@@ -2988,7 +3033,7 @@
       "source_file": "tests/routers/test_group.py",
       "source_location": "L175",
       "id": "routers_test_group_test_list_group_tasks",
-      "community": 17,
+      "community": 16,
       "norm_label": "test_list_group_tasks()"
     },
     {
@@ -2997,7 +3042,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L1",
       "id": "tests_routers_test_password_reset_py",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_password_reset.py"
     },
     {
@@ -3006,7 +3051,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L9",
       "id": "routers_test_password_reset_test_forgot_password_success",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_forgot_password_success()"
     },
     {
@@ -3015,7 +3060,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L26",
       "id": "routers_test_password_reset_test_forgot_password_user_not_found",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_forgot_password_user_not_found()"
     },
     {
@@ -3024,7 +3069,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L39",
       "id": "routers_test_password_reset_test_reset_password_success",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_reset_password_success()"
     },
     {
@@ -3033,7 +3078,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L66",
       "id": "routers_test_password_reset_test_reset_password_invalid_token",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_reset_password_invalid_token()"
     },
     {
@@ -3042,7 +3087,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L77",
       "id": "routers_test_password_reset_test_reset_password_expired_token",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_reset_password_expired_token()"
     },
     {
@@ -3051,7 +3096,7 @@
       "source_file": "tests/routers/test_password_reset.py",
       "source_location": "L92",
       "id": "routers_test_password_reset_test_reset_password_too_short",
-      "community": 28,
+      "community": 24,
       "norm_label": "test_reset_password_too_short()"
     },
     {
@@ -3060,7 +3105,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L1",
       "id": "tests_routers_test_stats_py",
-      "community": 48,
+      "community": 49,
       "norm_label": "test_stats.py"
     },
     {
@@ -3069,7 +3114,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L6",
       "id": "routers_test_stats_test_get_stats_overview_empty",
-      "community": 48,
+      "community": 49,
       "norm_label": "test_get_stats_overview_empty()"
     },
     {
@@ -3078,7 +3123,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L18",
       "id": "routers_test_stats_test_stats_with_data",
-      "community": 48,
+      "community": 49,
       "norm_label": "test_stats_with_data()"
     },
     {
@@ -3087,7 +3132,7 @@
       "source_file": "tests/routers/test_stats.py",
       "source_location": "L44",
       "id": "routers_test_stats_test_tag_distribution",
-      "community": 48,
+      "community": 49,
       "norm_label": "test_tag_distribution()"
     },
     {
@@ -3510,7 +3555,7 @@
       "source_file": "tests/routers/__init__.py",
       "source_location": "L1",
       "id": "tests_routers_init_py",
-      "community": 61,
+      "community": 62,
       "norm_label": "__init__.py"
     },
     {
@@ -3996,7 +4041,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L1",
       "id": "docs_codebase_architecture_md",
-      "community": 14,
+      "community": 13,
       "norm_label": "architecture.md"
     },
     {
@@ -4005,7 +4050,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L1",
       "id": "codebase_architecture_architecture",
-      "community": 14,
+      "community": 13,
       "norm_label": "architecture"
     },
     {
@@ -4014,7 +4059,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L3",
       "id": "codebase_architecture_core_sections_required",
-      "community": 14,
+      "community": 13,
       "norm_label": "core sections (required)"
     },
     {
@@ -4023,7 +4068,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L5",
       "id": "codebase_architecture_1_architectural_style",
-      "community": 14,
+      "community": 13,
       "norm_label": "1) architectural style"
     },
     {
@@ -4032,7 +4077,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L14",
       "id": "codebase_architecture_2_system_flow",
-      "community": 14,
+      "community": 13,
       "norm_label": "2) system flow"
     },
     {
@@ -4041,7 +4086,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L16",
       "id": "codebase_architecture_codeblock_1",
-      "community": 14,
+      "community": 13,
       "norm_label": "code:text ([http request] -> [app/main.py] -> [app/api/routers/*] -> [a)"
     },
     {
@@ -4050,7 +4095,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L26",
       "id": "codebase_architecture_3_layer_module_responsibilities",
-      "community": 14,
+      "community": 13,
       "norm_label": "3) layer/module responsibilities"
     },
     {
@@ -4059,7 +4104,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L36",
       "id": "codebase_architecture_4_reused_patterns",
-      "community": 14,
+      "community": 13,
       "norm_label": "4) reused patterns"
     },
     {
@@ -4068,7 +4113,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L44",
       "id": "codebase_architecture_5_graphify_insights_core_abstractions",
-      "community": 14,
+      "community": 13,
       "norm_label": "5) graphify insights (core abstractions)"
     },
     {
@@ -4077,7 +4122,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L61",
       "id": "codebase_architecture_6_known_architectural_risks",
-      "community": 14,
+      "community": 13,
       "norm_label": "6) known architectural risks"
     },
     {
@@ -4086,7 +4131,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L66",
       "id": "codebase_architecture_6_evidence",
-      "community": 14,
+      "community": 13,
       "norm_label": "6) evidence"
     },
     {
@@ -4095,7 +4140,7 @@
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L74",
       "id": "codebase_architecture_extended_sections_optional",
-      "community": 14,
+      "community": 13,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4104,7 +4149,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L1",
       "id": "docs_codebase_concerns_md",
-      "community": 24,
+      "community": 20,
       "norm_label": "concerns.md"
     },
     {
@@ -4113,7 +4158,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L1",
       "id": "codebase_concerns_codebase_concerns",
-      "community": 24,
+      "community": 20,
       "norm_label": "codebase concerns"
     },
     {
@@ -4122,7 +4167,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L3",
       "id": "codebase_concerns_core_sections_required",
-      "community": 24,
+      "community": 20,
       "norm_label": "core sections (required)"
     },
     {
@@ -4131,7 +4176,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L5",
       "id": "codebase_concerns_1_top_risks_prioritized",
-      "community": 24,
+      "community": 20,
       "norm_label": "1) top risks (prioritized)"
     },
     {
@@ -4140,7 +4185,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L14",
       "id": "codebase_concerns_2_technical_debt",
-      "community": 24,
+      "community": 20,
       "norm_label": "2) technical debt"
     },
     {
@@ -4149,7 +4194,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L24",
       "id": "codebase_concerns_3_security_concerns",
-      "community": 24,
+      "community": 20,
       "norm_label": "3) security concerns"
     },
     {
@@ -4158,7 +4203,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L32",
       "id": "codebase_concerns_4_performance_and_scaling_concerns",
-      "community": 24,
+      "community": 20,
       "norm_label": "4) performance and scaling concerns"
     },
     {
@@ -4167,7 +4212,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L39",
       "id": "codebase_concerns_5_fragile_high_churn_areas",
-      "community": 24,
+      "community": 20,
       "norm_label": "5) fragile/high-churn areas"
     },
     {
@@ -4176,7 +4221,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L46",
       "id": "codebase_concerns_6_ask_user_questions",
-      "community": 24,
+      "community": 20,
       "norm_label": "6) `[ask user]` questions"
     },
     {
@@ -4185,7 +4230,7 @@
       "source_file": "docs/codebase/CONCERNS.md",
       "source_location": "L54",
       "id": "codebase_concerns_7_evidence",
-      "community": 24,
+      "community": 20,
       "norm_label": "7) evidence"
     },
     {
@@ -4194,7 +4239,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L1",
       "id": "docs_codebase_conventions_md",
-      "community": 19,
+      "community": 17,
       "norm_label": "conventions.md"
     },
     {
@@ -4203,7 +4248,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L1",
       "id": "codebase_conventions_coding_conventions",
-      "community": 19,
+      "community": 17,
       "norm_label": "coding conventions"
     },
     {
@@ -4212,7 +4257,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L3",
       "id": "codebase_conventions_core_sections_required",
-      "community": 19,
+      "community": 17,
       "norm_label": "core sections (required)"
     },
     {
@@ -4221,7 +4266,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L5",
       "id": "codebase_conventions_1_naming_rules",
-      "community": 19,
+      "community": 17,
       "norm_label": "1) naming rules"
     },
     {
@@ -4230,7 +4275,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L14",
       "id": "codebase_conventions_2_formatting_and_linting",
-      "community": 19,
+      "community": 17,
       "norm_label": "2) formatting and linting"
     },
     {
@@ -4239,7 +4284,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L20",
       "id": "codebase_conventions_codeblock_1",
-      "community": 19,
+      "community": 17,
       "norm_label": "code:bash (black app tests)"
     },
     {
@@ -4248,7 +4293,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L27",
       "id": "codebase_conventions_3_import_and_module_conventions",
-      "community": 19,
+      "community": 17,
       "norm_label": "3) import and module conventions"
     },
     {
@@ -4257,7 +4302,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L33",
       "id": "codebase_conventions_4_error_and_logging_conventions",
-      "community": 19,
+      "community": 17,
       "norm_label": "4) error and logging conventions"
     },
     {
@@ -4266,7 +4311,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L39",
       "id": "codebase_conventions_5_testing_conventions",
-      "community": 19,
+      "community": 17,
       "norm_label": "5) testing conventions"
     },
     {
@@ -4275,7 +4320,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L45",
       "id": "codebase_conventions_6_evidence",
-      "community": 19,
+      "community": 17,
       "norm_label": "6) evidence"
     },
     {
@@ -4284,7 +4329,7 @@
       "source_file": "docs/codebase/CONVENTIONS.md",
       "source_location": "L52",
       "id": "codebase_conventions_extended_sections_optional",
-      "community": 19,
+      "community": 17,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4293,7 +4338,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L1",
       "id": "docs_codebase_integrations_md",
-      "community": 25,
+      "community": 21,
       "norm_label": "integrations.md"
     },
     {
@@ -4302,7 +4347,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L1",
       "id": "codebase_integrations_external_integrations",
-      "community": 25,
+      "community": 21,
       "norm_label": "external integrations"
     },
     {
@@ -4311,7 +4356,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L3",
       "id": "codebase_integrations_core_sections_required",
-      "community": 25,
+      "community": 21,
       "norm_label": "core sections (required)"
     },
     {
@@ -4320,7 +4365,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L5",
       "id": "codebase_integrations_1_integration_inventory",
-      "community": 25,
+      "community": 21,
       "norm_label": "1) integration inventory"
     },
     {
@@ -4329,7 +4374,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L13",
       "id": "codebase_integrations_2_data_stores",
-      "community": 25,
+      "community": 21,
       "norm_label": "2) data stores"
     },
     {
@@ -4338,7 +4383,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L20",
       "id": "codebase_integrations_3_secrets_and_credentials_handling",
-      "community": 25,
+      "community": 21,
       "norm_label": "3) secrets and credentials handling"
     },
     {
@@ -4347,7 +4392,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L26",
       "id": "codebase_integrations_4_reliability_and_failure_behavior",
-      "community": 25,
+      "community": 21,
       "norm_label": "4) reliability and failure behavior"
     },
     {
@@ -4356,7 +4401,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L32",
       "id": "codebase_integrations_5_observability_for_integrations",
-      "community": 25,
+      "community": 21,
       "norm_label": "5) observability for integrations"
     },
     {
@@ -4365,7 +4410,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L38",
       "id": "codebase_integrations_6_evidence",
-      "community": 25,
+      "community": 21,
       "norm_label": "6) evidence"
     },
     {
@@ -4374,7 +4419,7 @@
       "source_file": "docs/codebase/INTEGRATIONS.md",
       "source_location": "L45",
       "id": "codebase_integrations_extended_sections_optional",
-      "community": 25,
+      "community": 21,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4383,7 +4428,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L1",
       "id": "docs_codebase_stack_md",
-      "community": 26,
+      "community": 22,
       "norm_label": "stack.md"
     },
     {
@@ -4392,7 +4437,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L1",
       "id": "codebase_stack_technology_stack",
-      "community": 26,
+      "community": 22,
       "norm_label": "technology stack"
     },
     {
@@ -4401,7 +4446,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L3",
       "id": "codebase_stack_core_sections_required",
-      "community": 26,
+      "community": 22,
       "norm_label": "core sections (required)"
     },
     {
@@ -4410,7 +4455,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L5",
       "id": "codebase_stack_1_runtime_summary",
-      "community": 26,
+      "community": 22,
       "norm_label": "1) runtime summary"
     },
     {
@@ -4419,7 +4464,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L14",
       "id": "codebase_stack_2_production_frameworks_and_dependencies",
-      "community": 26,
+      "community": 22,
       "norm_label": "2) production frameworks and dependencies"
     },
     {
@@ -4428,7 +4473,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L31",
       "id": "codebase_stack_3_development_toolchain",
-      "community": 26,
+      "community": 22,
       "norm_label": "3) development toolchain"
     },
     {
@@ -4437,7 +4482,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L41",
       "id": "codebase_stack_4_key_commands",
-      "community": 26,
+      "community": 22,
       "norm_label": "4) key commands"
     },
     {
@@ -4446,7 +4491,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L43",
       "id": "codebase_stack_codeblock_1",
-      "community": 26,
+      "community": 22,
       "norm_label": "code:bash (pip install -e \".[dev]\")"
     },
     {
@@ -4455,7 +4500,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L52",
       "id": "codebase_stack_5_environment_and_config",
-      "community": 26,
+      "community": 22,
       "norm_label": "5) environment and config"
     },
     {
@@ -4464,7 +4509,7 @@
       "source_file": "docs/codebase/STACK.md",
       "source_location": "L58",
       "id": "codebase_stack_6_evidence",
-      "community": 26,
+      "community": 22,
       "norm_label": "6) evidence"
     },
     {
@@ -4473,7 +4518,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L1",
       "id": "docs_codebase_structure_md",
-      "community": 31,
+      "community": 28,
       "norm_label": "structure.md"
     },
     {
@@ -4482,7 +4527,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L1",
       "id": "codebase_structure_codebase_structure",
-      "community": 31,
+      "community": 28,
       "norm_label": "codebase structure"
     },
     {
@@ -4491,7 +4536,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L3",
       "id": "codebase_structure_core_sections_required",
-      "community": 31,
+      "community": 28,
       "norm_label": "core sections (required)"
     },
     {
@@ -4500,7 +4545,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L5",
       "id": "codebase_structure_1_top_level_map",
-      "community": 31,
+      "community": 28,
       "norm_label": "1) top-level map"
     },
     {
@@ -4509,7 +4554,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L19",
       "id": "codebase_structure_2_entry_points",
-      "community": 31,
+      "community": 28,
       "norm_label": "2) entry points"
     },
     {
@@ -4518,7 +4563,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L25",
       "id": "codebase_structure_3_module_boundaries",
-      "community": 31,
+      "community": 28,
       "norm_label": "3) module boundaries"
     },
     {
@@ -4527,7 +4572,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L35",
       "id": "codebase_structure_4_naming_and_organization_rules",
-      "community": 31,
+      "community": 28,
       "norm_label": "4) naming and organization rules"
     },
     {
@@ -4536,7 +4581,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L41",
       "id": "codebase_structure_5_evidence",
-      "community": 31,
+      "community": 28,
       "norm_label": "5) evidence"
     },
     {
@@ -4545,7 +4590,7 @@
       "source_file": "docs/codebase/STRUCTURE.md",
       "source_location": "L48",
       "id": "codebase_structure_extended_sections_optional",
-      "community": 31,
+      "community": 28,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -4554,7 +4599,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L1",
       "id": "docs_codebase_testing_md",
-      "community": 20,
+      "community": 18,
       "norm_label": "testing.md"
     },
     {
@@ -4563,7 +4608,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L1",
       "id": "codebase_testing_testing_patterns",
-      "community": 20,
+      "community": 18,
       "norm_label": "testing patterns"
     },
     {
@@ -4572,7 +4617,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L3",
       "id": "codebase_testing_core_sections_required",
-      "community": 20,
+      "community": 18,
       "norm_label": "core sections (required)"
     },
     {
@@ -4581,7 +4626,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L5",
       "id": "codebase_testing_1_test_stack_and_commands",
-      "community": 20,
+      "community": 18,
       "norm_label": "1) test stack and commands"
     },
     {
@@ -4590,7 +4635,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L11",
       "id": "codebase_testing_codeblock_1",
-      "community": 20,
+      "community": 18,
       "norm_label": "code:bash (pytest)"
     },
     {
@@ -4599,7 +4644,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L17",
       "id": "codebase_testing_2_test_layout",
-      "community": 20,
+      "community": 18,
       "norm_label": "2) test layout"
     },
     {
@@ -4608,7 +4653,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L23",
       "id": "codebase_testing_3_test_scope_matrix",
-      "community": 20,
+      "community": 18,
       "norm_label": "3) test scope matrix"
     },
     {
@@ -4617,7 +4662,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L31",
       "id": "codebase_testing_4_mocking_and_isolation_strategy",
-      "community": 20,
+      "community": 18,
       "norm_label": "4) mocking and isolation strategy"
     },
     {
@@ -4626,7 +4671,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L37",
       "id": "codebase_testing_5_coverage_and_quality_signals",
-      "community": 20,
+      "community": 18,
       "norm_label": "5) coverage and quality signals"
     },
     {
@@ -4635,7 +4680,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L43",
       "id": "codebase_testing_6_evidence",
-      "community": 20,
+      "community": 18,
       "norm_label": "6) evidence"
     },
     {
@@ -4644,7 +4689,7 @@
       "source_file": "docs/codebase/TESTING.md",
       "source_location": "L49",
       "id": "codebase_testing_extended_sections_optional",
-      "community": 20,
+      "community": 18,
       "norm_label": "extended sections (optional)"
     },
     {
@@ -5201,7 +5246,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L63",
-      "community": 62,
+      "community": 63,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_63"
     },
@@ -5210,7 +5255,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L91",
-      "community": 41,
+      "community": 29,
       "norm_label": "resend a confirmation email for an existing, unconfirmed user.",
       "id": "routers_user_rationale_91"
     },
@@ -5237,7 +5282,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L211",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_211"
     },
@@ -5246,7 +5291,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L238",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user.",
       "id": "routers_user_rationale_238"
     },
@@ -5255,7 +5300,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L253",
-      "community": 15,
+      "community": 36,
       "norm_label": "initiate password reset flow by sending an email with a reset token.",
       "id": "routers_user_rationale_253"
     },
@@ -5264,7 +5309,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L277",
-      "community": 15,
+      "community": 14,
       "norm_label": "placeholder for the reset password page.     in a real app, this would be handl",
       "id": "routers_user_rationale_277"
     },
@@ -5273,7 +5318,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L291",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset user password using a valid reset token.",
       "id": "routers_user_rationale_291"
     },
@@ -5300,7 +5345,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L198",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_198"
     },
@@ -5309,7 +5354,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L222",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_222"
     },
@@ -5318,7 +5363,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L276",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset user password using a valid reset token.",
       "id": "routers_user_rationale_276"
     },
@@ -5336,7 +5381,7 @@
       "file_type": "rationale",
       "source_file": "alembic/env.py",
       "source_location": "L43",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'offline' mode.      this configures the context with just a u",
       "id": "alembic_env_rationale_43"
     },
@@ -5345,7 +5390,7 @@
       "file_type": "rationale",
       "source_file": "alembic/env.py",
       "source_location": "L67",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'online' mode.      in this scenario we need to create an engi",
       "id": "alembic_env_rationale_67"
     },
@@ -5354,7 +5399,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L49",
-      "community": 63,
+      "community": 64,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_49"
     },
@@ -5363,7 +5408,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L48",
-      "community": 64,
+      "community": 65,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_48"
     },
@@ -5399,7 +5444,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L196",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_196"
     },
@@ -5408,7 +5453,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L236",
-      "community": 15,
+      "community": 36,
       "norm_label": "initiate password reset flow by sending an email with a reset token.",
       "id": "routers_user_rationale_236"
     },
@@ -5417,7 +5462,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L260",
-      "community": 15,
+      "community": 14,
       "norm_label": "placeholder for the reset password page.     in a real app, this would be handl",
       "id": "routers_user_rationale_260"
     },
@@ -5426,7 +5471,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L274",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset user password using a valid reset token.",
       "id": "routers_user_rationale_274"
     },
@@ -5435,7 +5480,7 @@
       "file_type": "rationale",
       "source_file": "app/database.py",
       "source_location": "L10",
-      "community": 33,
+      "community": 34,
       "norm_label": "ensures the database url uses an async driver.",
       "id": "app_database_rationale_10"
     },
@@ -5444,7 +5489,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L47",
-      "community": 65,
+      "community": 66,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_47"
     },
@@ -5453,7 +5498,7 @@
       "file_type": "rationale",
       "source_file": "app/database.py",
       "source_location": "L8",
-      "community": 33,
+      "community": 34,
       "norm_label": "ensures the database url uses an async driver.",
       "id": "app_database_rationale_8"
     },
@@ -5462,7 +5507,7 @@
       "file_type": "rationale",
       "source_file": "app/dependencies.py",
       "source_location": "L14",
-      "community": 21,
+      "community": 19,
       "norm_label": "validate x-token header.          this is a simple token validation dependency",
       "id": "app_dependencies_rationale_14"
     },
@@ -5471,7 +5516,7 @@
       "file_type": "rationale",
       "source_file": "app/dependencies.py",
       "source_location": "L25",
-      "community": 21,
+      "community": 19,
       "norm_label": "validate query token parameter.          optional query parameter for basic to",
       "id": "app_dependencies_rationale_25"
     },
@@ -5498,7 +5543,7 @@
       "file_type": "rationale",
       "source_file": "app/api/dependencies.py",
       "source_location": "L14",
-      "community": 42,
+      "community": 41,
       "norm_label": "optional query token validation for api routes.          this is a simple quer",
       "id": "api_dependencies_rationale_14"
     },
@@ -5516,7 +5561,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/stats.py",
       "source_location": "L17",
-      "community": 0,
+      "community": 25,
       "norm_label": "retrieve a summary of tasks and tag distribution for the current user.",
       "id": "routers_stats_rationale_17"
     },
@@ -5543,7 +5588,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L197",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_197"
     },
@@ -5552,7 +5597,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L221",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_221"
     },
@@ -5561,7 +5606,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L237",
-      "community": 15,
+      "community": 36,
       "norm_label": "initiate password reset flow by sending an email with a reset token.",
       "id": "routers_user_rationale_237"
     },
@@ -5570,7 +5615,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L261",
-      "community": 15,
+      "community": 14,
       "norm_label": "placeholder for the reset password page.     in a real app, this would be handl",
       "id": "routers_user_rationale_261"
     },
@@ -5579,7 +5624,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L275",
-      "community": 22,
+      "community": 14,
       "norm_label": "reset user password using a valid reset token.",
       "id": "routers_user_rationale_275"
     },
@@ -5588,7 +5633,7 @@
       "file_type": "rationale",
       "source_file": "app/crud/tag.py",
       "source_location": "L35",
-      "community": 30,
+      "community": 26,
       "norm_label": "attaches a tag to a task. returns true if a new link was created.",
       "id": "crud_tag_rationale_35"
     },
@@ -5606,7 +5651,7 @@
       "file_type": "rationale",
       "source_file": "tests/conftest.py",
       "source_location": "L109",
-      "community": 16,
+      "community": 15,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests.",
       "id": "tests_conftest_rationale_109"
     },
@@ -5615,7 +5660,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_migrations.py",
       "source_location": "L6",
-      "community": 46,
+      "community": 47,
       "norm_label": "test that alembic migration can run against a clean database successfully.",
       "id": "tests_test_migrations_rationale_6"
     },
@@ -5624,7 +5669,7 @@
       "file_type": "rationale",
       "source_file": "tests/test_seed.py",
       "source_location": "L7",
-      "community": 29,
+      "community": 0,
       "norm_label": "test that the seeding script successfully populates a confirmed user,     with r",
       "id": "tests_test_seed_rationale_7"
     },
@@ -5633,7 +5678,7 @@
       "file_type": "rationale",
       "source_file": "alembic/env.py",
       "source_location": "L38",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'offline' mode.      this configures the context with just a u",
       "id": "alembic_env_rationale_38"
     },
@@ -5642,7 +5687,7 @@
       "file_type": "rationale",
       "source_file": "alembic/env.py",
       "source_location": "L62",
-      "community": 27,
+      "community": 23,
       "norm_label": "run migrations in 'online' mode.      in this scenario we need to create an engi",
       "id": "alembic_env_rationale_62"
     },
@@ -5696,7 +5741,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/stats.py",
       "source_location": "L12",
-      "community": 0,
+      "community": 25,
       "norm_label": "retrieve a summary of tasks and tag distribution for the current user.",
       "id": "routers_stats_rationale_12"
     },
@@ -5732,7 +5777,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L82",
-      "community": 41,
+      "community": 29,
       "norm_label": "resend a confirmation email for an existing, unconfirmed user.      the endpoi",
       "id": "routers_user_rationale_82"
     },
@@ -5750,7 +5795,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L186",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_186"
     },
@@ -5759,7 +5804,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L212",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_212"
     },
@@ -5768,7 +5813,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L225",
-      "community": 15,
+      "community": 36,
       "norm_label": "initiate password reset flow by sending an email with a reset token.",
       "id": "routers_user_rationale_225"
     },
@@ -5777,7 +5822,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L251",
-      "community": 15,
+      "community": 14,
       "norm_label": "placeholder for the reset password page.     in a real app, this would be handl",
       "id": "routers_user_rationale_251"
     },
@@ -5795,7 +5840,7 @@
       "file_type": "code",
       "source_file": "app/models/audit.py",
       "source_location": "L13",
-      "community": 18,
+      "community": 33,
       "norm_label": "auditlogcreate",
       "id": "models_audit_auditlogcreate"
     },
@@ -5804,7 +5849,7 @@
       "file_type": "code",
       "source_file": "app/models/stats.py",
       "source_location": "L1",
-      "community": 0,
+      "community": 25,
       "norm_label": "stats.py",
       "id": "app_models_stats_py"
     },
@@ -5813,7 +5858,7 @@
       "file_type": "code",
       "source_file": "app/models/stats.py",
       "source_location": "L3",
-      "community": 0,
+      "community": 25,
       "norm_label": "taskstats",
       "id": "models_stats_taskstats"
     },
@@ -5822,7 +5867,7 @@
       "file_type": "code",
       "source_file": "app/models/stats.py",
       "source_location": "L9",
-      "community": 0,
+      "community": 25,
       "norm_label": "tagdistribution",
       "id": "models_stats_tagdistribution"
     },
@@ -5831,7 +5876,7 @@
       "file_type": "code",
       "source_file": "app/models/stats.py",
       "source_location": "L13",
-      "community": 0,
+      "community": 25,
       "norm_label": "systemoverview",
       "id": "models_stats_systemoverview"
     },
@@ -5840,7 +5885,7 @@
       "file_type": "code",
       "source_file": "app/models/tag.py",
       "source_location": "L5",
-      "community": 39,
+      "community": 0,
       "norm_label": "tagcreate",
       "id": "models_tag_tagcreate"
     },
@@ -5849,7 +5894,7 @@
       "file_type": "code",
       "source_file": "app/models/tag.py",
       "source_location": "L9",
-      "community": 39,
+      "community": 0,
       "norm_label": "tagresponse",
       "id": "models_tag_tagresponse"
     },
@@ -5921,7 +5966,7 @@
       "file_type": "code",
       "source_file": "app/models/user.py",
       "source_location": "L10",
-      "community": 13,
+      "community": 0,
       "norm_label": "userin",
       "id": "models_user_userin"
     },
@@ -5975,7 +6020,7 @@
       "file_type": "rationale",
       "source_file": "tests/conftest.py",
       "source_location": "L105",
-      "community": 16,
+      "community": 15,
       "norm_label": "mock httpx.asyncclient to prevent real http requests during tests.",
       "id": "tests_conftest_rationale_105"
     },
@@ -5984,7 +6029,7 @@
       "file_type": "document",
       "source_file": "docs/codebase/ARCHITECTURE.md",
       "source_location": "L44",
-      "community": 14,
+      "community": 13,
       "norm_label": "5) known architectural risks",
       "id": "codebase_architecture_5_known_architectural_risks"
     },
@@ -5993,7 +6038,7 @@
       "file_type": "rationale",
       "source_file": "app/config.py",
       "source_location": "L44",
-      "community": 66,
+      "community": 67,
       "norm_label": "fail-fast in production when secret_key is not set.",
       "id": "app_config_rationale_44"
     },
@@ -6029,7 +6074,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L71",
-      "community": 41,
+      "community": 29,
       "norm_label": "resend a confirmation email for an existing, unconfirmed user.      the endpoi",
       "id": "routers_user_rationale_71"
     },
@@ -6056,7 +6101,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L167",
-      "community": 35,
+      "community": 31,
       "norm_label": "update the current user's password securely.     verifies the current password",
       "id": "routers_user_rationale_167"
     },
@@ -6065,7 +6110,7 @@
       "file_type": "rationale",
       "source_file": "app/api/routers/user.py",
       "source_location": "L193",
-      "community": 32,
+      "community": 30,
       "norm_label": "logout the current user.     since the application uses stateless jwts, the cli",
       "id": "routers_user_rationale_193"
     },
@@ -6073,7 +6118,7 @@
       "label": "Claude Code Guidance",
       "file_type": "document",
       "source_file": "CLAUDE.md",
-      "community": 45,
+      "community": 33,
       "norm_label": "claude code guidance",
       "id": "claude_code"
     },
@@ -6089,7 +6134,7 @@
       "label": "SQLAlchemy ORM",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 18,
+      "community": 33,
       "norm_label": "sqlalchemy orm",
       "id": "sqlalchemy"
     },
@@ -6097,7 +6142,7 @@
       "label": "PostgreSQL Database",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 45,
+      "community": 33,
       "norm_label": "postgresql database",
       "id": "postgresql"
     },
@@ -6105,7 +6150,7 @@
       "label": "Docker Containerization",
       "file_type": "rationale",
       "source_file": "README.md",
-      "community": 67,
+      "community": 68,
       "norm_label": "docker containerization",
       "id": "docker"
     },
@@ -6113,7 +6158,7 @@
       "label": "Task Buddy Backend",
       "file_type": "document",
       "source_file": "README.md",
-      "community": 45,
+      "community": 33,
       "norm_label": "task buddy backend",
       "id": "task_buddy_backend"
     },
@@ -6121,7 +6166,7 @@
       "label": "Docker Compose Configuration",
       "file_type": "document",
       "source_file": "docker-compose.yml",
-      "community": 45,
+      "community": 33,
       "norm_label": "docker compose configuration",
       "id": "docker_compose"
     }
@@ -6324,6 +6369,47 @@
       "confidence_score": 1.0,
       "source": "alembic_env_rationale_62",
       "target": "alembic_env_run_migrations_online"
+    },
+    {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L11",
+      "weight": 1.0,
+      "source": "alembic_versions_2935b98be508_add_priority_to_tasks_py",
+      "target": "sqlalchemy",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L21",
+      "weight": 1.0,
+      "source": "alembic_versions_2935b98be508_add_priority_to_tasks_py",
+      "target": "versions_2935b98be508_add_priority_to_tasks_upgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L30",
+      "weight": 1.0,
+      "source": "alembic_versions_2935b98be508_add_priority_to_tasks_py",
+      "target": "versions_2935b98be508_add_priority_to_tasks_downgrade",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "rationale_for",
+      "confidence": "EXTRACTED",
+      "source_file": "alembic/versions/2935b98be508_add_priority_to_tasks.py",
+      "source_location": "L1",
+      "weight": 1.0,
+      "source": "versions_2935b98be508_add_priority_to_tasks_rationale_1",
+      "target": "alembic_versions_2935b98be508_add_priority_to_tasks_py",
+      "confidence_score": 1.0
     },
     {
       "relation": "imports",
@@ -6982,9 +7068,9 @@
       "source_file": "app/security.py",
       "source_location": "L76",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_blacklist_token",
-      "confidence_score": 1.0
+      "target": "app_security_blacklist_token"
     },
     {
       "relation": "contains",
@@ -6992,9 +7078,9 @@
       "source_file": "app/security.py",
       "source_location": "L88",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_py",
-      "target": "app_security_is_token_blacklisted",
-      "confidence_score": 1.0
+      "target": "app_security_is_token_blacklisted"
     },
     {
       "relation": "contains",
@@ -7189,9 +7275,9 @@
       "source_file": "app/security.py",
       "source_location": "L77",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_rationale_77",
-      "target": "app_security_blacklist_token",
-      "confidence_score": 1.0
+      "target": "app_security_blacklist_token"
     },
     {
       "relation": "calls",
@@ -7211,9 +7297,9 @@
       "source_file": "app/security.py",
       "source_location": "L183",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_get_current_user",
-      "target": "app_security_is_token_blacklisted",
-      "confidence_score": 1.0
+      "target": "app_security_is_token_blacklisted"
     },
     {
       "relation": "rationale_for",
@@ -7221,9 +7307,9 @@
       "source_file": "app/security.py",
       "source_location": "L89",
       "weight": 1.0,
+      "confidence_score": 1.0,
       "source": "app_security_rationale_89",
-      "target": "app_security_is_token_blacklisted",
-      "confidence_score": 1.0
+      "target": "app_security_is_token_blacklisted"
     },
     {
       "relation": "calls",
@@ -7241,22 +7327,22 @@
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
-      "source_file": "app/security.py",
-      "source_location": "L63",
+      "source_file": "app/api/routers/user.py",
+      "source_location": "L100",
       "weight": 1.0,
-      "source": "app_security_create_access_token",
-      "target": "str"
+      "source": "routers_user_login",
+      "target": "app_security_create_access_token"
     },
     {
       "relation": "calls",
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
-      "source_file": "app/api/routers/user.py",
-      "source_location": "L100",
+      "source_file": "app/security.py",
+      "source_location": "L63",
       "weight": 1.0,
-      "source": "routers_user_login",
-      "target": "app_security_create_access_token"
+      "source": "app_security_create_access_token",
+      "target": "str"
     },
     {
       "relation": "calls",
@@ -7268,17 +7354,6 @@
       "confidence_score": 1.0,
       "source": "app_security_create_access_token",
       "target": "app_security_get_secret_key"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "app/security.py",
-      "source_location": "L74",
-      "weight": 1.0,
-      "source": "app_security_create_confirm_token",
-      "target": "str"
     },
     {
       "relation": "calls",
@@ -7305,6 +7380,17 @@
     {
       "relation": "calls",
       "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/security.py",
+      "source_location": "L74",
+      "weight": 1.0,
+      "source": "app_security_create_confirm_token",
+      "target": "str"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
       "confidence": "EXTRACTED",
       "source_file": "app/security.py",
       "source_location": "L66",
@@ -7312,17 +7398,6 @@
       "confidence_score": 1.0,
       "source": "app_security_create_confirm_token",
       "target": "app_security_get_secret_key"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "app/security.py",
-      "source_location": "L85",
-      "weight": 1.0,
-      "source": "app_security_create_reset_token",
-      "target": "str"
     },
     {
       "relation": "calls",
@@ -7367,6 +7442,17 @@
       "weight": 1.0,
       "source": "routers_test_password_reset_test_reset_password_too_short",
       "target": "app_security_create_reset_token"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/security.py",
+      "source_location": "L85",
+      "weight": 1.0,
+      "source": "app_security_create_reset_token",
+      "target": "str"
     },
     {
       "relation": "calls",
@@ -7461,17 +7547,6 @@
       "context": "call",
       "confidence": "INFERRED",
       "confidence_score": 0.8,
-      "source_file": "app/security.py",
-      "source_location": "L108",
-      "weight": 1.0,
-      "source": "app_security_get_subject_for_token_type",
-      "target": "str"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
       "source_file": "app/api/routers/user.py",
       "source_location": "L106",
       "weight": 1.0,
@@ -7488,6 +7563,17 @@
       "weight": 1.0,
       "source": "routers_user_reset_password",
       "target": "app_security_get_subject_for_token_type"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/security.py",
+      "source_location": "L108",
+      "weight": 1.0,
+      "source": "app_security_get_subject_for_token_type",
+      "target": "str"
     },
     {
       "relation": "calls",
@@ -9936,6 +10022,28 @@
       "confidence": "INFERRED",
       "confidence_score": 0.8,
       "source_file": "app/crud/task.py",
+      "source_location": "L66",
+      "weight": 1.0,
+      "source": "crud_task_create_task",
+      "target": "schemas_tag_tagcreate"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/crud/task.py",
+      "source_location": "L93",
+      "weight": 1.0,
+      "source": "crud_task_update_task",
+      "target": "schemas_tag_tagcreate"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "app/crud/task.py",
       "source_location": "L48",
       "weight": 1.0,
       "source": "crud_task_create_subtask",
@@ -10354,6 +10462,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "app/models/task.py",
+      "source_location": "L10",
+      "weight": 0.8,
+      "source": "models_task_taskpriority",
+      "target": "models_base_base",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/models/task.py",
       "source_location": "L7",
       "weight": 0.8,
       "confidence_score": 0.5,
@@ -10430,6 +10548,16 @@
       "confidence_score": 0.5,
       "source": "models_group_group",
       "target": "schemas_user_user"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/models/task.py",
+      "source_location": "L13",
+      "weight": 0.8,
+      "source": "models_task_taskpriority",
+      "target": "models_group_group",
+      "confidence_score": 0.5
     },
     {
       "relation": "uses",
@@ -10526,6 +10654,16 @@
       "relation": "uses",
       "confidence": "INFERRED",
       "source_file": "app/models/task.py",
+      "source_location": "L14",
+      "weight": 0.8,
+      "source": "models_task_taskpriority",
+      "target": "models_tag_tag",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/models/task.py",
       "source_location": "L11",
       "weight": 0.8,
       "confidence_score": 0.5,
@@ -10543,6 +10681,17 @@
       "target": "models_tag_tag"
     },
     {
+      "relation": "imports",
+      "context": "import",
+      "confidence": "EXTRACTED",
+      "source_file": "app/models/task.py",
+      "source_location": "L3",
+      "weight": 1.0,
+      "source": "app_models_task_py",
+      "target": "enum",
+      "confidence_score": 1.0
+    },
+    {
       "relation": "imports_from",
       "context": "import",
       "confidence": "EXTRACTED",
@@ -10552,6 +10701,16 @@
       "confidence_score": 1.0,
       "source": "app_models_task_py",
       "target": "sqlalchemy"
+    },
+    {
+      "relation": "contains",
+      "confidence": "EXTRACTED",
+      "source_file": "app/models/task.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "app_models_task_py",
+      "target": "models_task_taskpriority",
+      "confidence_score": 1.0
     },
     {
       "relation": "contains",
@@ -10642,6 +10801,160 @@
       "confidence_score": 1.0,
       "source": "app_models_task_py",
       "target": "models_task_subtaskupdaterequest"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "app/models/task.py",
+      "source_location": "L18",
+      "weight": 1.0,
+      "source": "models_task_taskpriority",
+      "target": "str",
+      "confidence_score": 1.0
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/models/task.py",
+      "source_location": "L15",
+      "weight": 0.8,
+      "source": "models_task_taskpriority",
+      "target": "schemas_user_user",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_taskcreaterequest",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_taskcreateresponse",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskcreaterequest",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskcreateresponse",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_taskwithsubtasks",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_taskupdaterequest",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L6",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskupdaterequest",
+      "target": "models_task_taskpriority",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "app/schemas/enums.py",
+      "source_location": "L4",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "schemas_enums_taskstatus",
+      "target": "str"
+    },
+    {
+      "relation": "inherits",
+      "confidence": "EXTRACTED",
+      "source_file": "app/schemas/enums.py",
+      "source_location": "L10",
+      "weight": 1.0,
+      "confidence_score": 1.0,
+      "source": "schemas_enums_auditaction",
+      "target": "str"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_security.py",
+      "source_location": "L13",
+      "weight": 1.0,
+      "source": "tests_test_security_test_get_subject_for_token_type_valid_access_token",
+      "target": "str"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/test_security.py",
+      "source_location": "L20",
+      "weight": 1.0,
+      "source": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token",
+      "target": "str"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/routers/test_user.py",
+      "source_location": "L32",
+      "weight": 1.0,
+      "source": "routers_test_user_test_confirm_user",
+      "target": "str"
+    },
+    {
+      "relation": "calls",
+      "context": "call",
+      "confidence": "INFERRED",
+      "confidence_score": 0.8,
+      "source_file": "tests/routers/test_user.py",
+      "source_location": "L52",
+      "weight": 1.0,
+      "source": "routers_test_user_test_confirm_user_expired_token",
+      "target": "str"
     },
     {
       "relation": "method",
@@ -11223,71 +11536,7 @@
       "weight": 1.0,
       "confidence_score": 1.0,
       "source": "schemas_enums_taskstatus",
-      "target": "str"
-    },
-    {
-      "relation": "inherits",
-      "confidence": "EXTRACTED",
-      "source_file": "app/schemas/enums.py",
-      "source_location": "L4",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "schemas_enums_taskstatus",
       "target": "enum"
-    },
-    {
-      "relation": "inherits",
-      "confidence": "EXTRACTED",
-      "source_file": "app/schemas/enums.py",
-      "source_location": "L10",
-      "weight": 1.0,
-      "confidence_score": 1.0,
-      "source": "schemas_enums_auditaction",
-      "target": "str"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_security.py",
-      "source_location": "L13",
-      "weight": 1.0,
-      "source": "tests_test_security_test_get_subject_for_token_type_valid_access_token",
-      "target": "str"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/test_security.py",
-      "source_location": "L20",
-      "weight": 1.0,
-      "source": "tests_test_security_test_get_subject_for_token_type_valid_confirm_token",
-      "target": "str"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/routers/test_user.py",
-      "source_location": "L32",
-      "weight": 1.0,
-      "source": "routers_test_user_test_confirm_user",
-      "target": "str"
-    },
-    {
-      "relation": "calls",
-      "context": "call",
-      "confidence": "INFERRED",
-      "confidence_score": 0.8,
-      "source_file": "tests/routers/test_user.py",
-      "source_location": "L52",
-      "weight": 1.0,
-      "source": "routers_test_user_test_confirm_user_expired_token",
-      "target": "str"
     },
     {
       "relation": "inherits",
@@ -11418,6 +11667,76 @@
       "confidence_score": 1.0,
       "source": "schemas_tag_tagresponse",
       "target": "schemas_tag_tagcreate"
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_taskcreaterequest",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_taskcreateresponse",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskcreaterequest",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskcreateresponse",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_taskwithsubtasks",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_taskupdaterequest",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
+    },
+    {
+      "relation": "uses",
+      "confidence": "INFERRED",
+      "source_file": "app/schemas/task.py",
+      "source_location": "L7",
+      "weight": 0.8,
+      "source": "schemas_task_subtaskupdaterequest",
+      "target": "schemas_tag_tagresponse",
+      "confidence_score": 0.5
     },
     {
       "relation": "contains",
@@ -14813,5 +15132,5 @@
     }
   ],
   "hyperedges": [],
-  "built_at_commit": "e41274f25139f3a64c3e0bafbf3ee124f23e40b1"
+  "built_at_commit": "684d38a4b1dde41297278a1779ac9b7a10c91f81"
 }

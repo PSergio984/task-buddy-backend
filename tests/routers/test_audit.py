@@ -2,7 +2,6 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.anyio
 async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: str):
     response = await async_client.get(
         "/api/v1/audit/logs",
@@ -11,7 +10,6 @@ async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: 
     assert response.status_code == 200
     assert response.json() == []
 
-@pytest.mark.anyio
 async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_in_token: str):
     # 1. Create a task
     task_data = {"title": "Test Task", "description": "Testing audit logs"}
@@ -38,7 +36,6 @@ async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_i
     assert task_log["target_id"] == task_id
     assert "Test Task" in task_log["details"]
 
-@pytest.mark.anyio
 async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: str):
     # Create another task to ensure multiple logs
     await async_client.post(

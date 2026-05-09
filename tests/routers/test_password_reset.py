@@ -5,7 +5,6 @@ from httpx import AsyncClient
 from app.security import create_reset_token
 
 
-@pytest.mark.anyio
 async def test_forgot_password_success(async_client: AsyncClient, confirmed_user: dict, mocker):
     spy = mocker.spy(BackgroundTasks, "add_task")
 
@@ -22,7 +21,6 @@ async def test_forgot_password_success(async_client: AsyncClient, confirmed_user
     reset_url = spy.call_args[1]["reset_url"]
     assert "/api/v1/users/reset-password/" in reset_url
 
-@pytest.mark.anyio
 async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker):
     spy = mocker.spy(BackgroundTasks, "add_task")
 
@@ -35,7 +33,6 @@ async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker)
     assert "reset link has been sent" in response.json()["detail"]
     assert not spy.called
 
-@pytest.mark.anyio
 async def test_reset_password_success(async_client: AsyncClient, confirmed_user: dict, db):
     # Create a valid reset token
     reset_token = create_reset_token(confirmed_user["id"])
@@ -62,7 +59,6 @@ async def test_reset_password_success(async_client: AsyncClient, confirmed_user:
     )
     assert login_response.status_code == 200
 
-@pytest.mark.anyio
 async def test_reset_password_invalid_token(async_client: AsyncClient):
     response = await async_client.post(
         "/api/v1/users/reset-password",
@@ -73,7 +69,6 @@ async def test_reset_password_invalid_token(async_client: AsyncClient):
     )
     assert response.status_code == 401
 
-@pytest.mark.anyio
 async def test_reset_password_expired_token(async_client: AsyncClient, confirmed_user: dict, mocker):
     mocker.patch("app.security.reset_token_expire_time", return_value=-1)
     reset_token = create_reset_token(confirmed_user["id"])
@@ -88,7 +83,6 @@ async def test_reset_password_expired_token(async_client: AsyncClient, confirmed
     assert response.status_code == 401
     assert "Token has expired" in response.json()["detail"]
 
-@pytest.mark.anyio
 async def test_reset_password_too_short(async_client: AsyncClient, confirmed_user: dict):
     reset_token = create_reset_token(confirmed_user["id"])
 

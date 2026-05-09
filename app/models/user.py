@@ -22,7 +22,7 @@ class User(Base):
     username: Mapped[str] = mapped_column(String, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     password: Mapped[str] = mapped_column(String, nullable=False)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     confirmed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
     confirmation_failed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
 

@@ -24,7 +24,12 @@ class GlobalConfig(BaseConfig):
     DATABASE_URL: Optional[str] = None
     REDIS_URL: str = "redis://localhost:6379/0"
     DB_FORCE_ROLL_BACK: bool = False
-    ALLOWED_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://localhost:5173"]
+    ALLOWED_ORIGINS: Union[list[str], str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173"
+    ]
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None

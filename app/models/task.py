@@ -27,11 +27,13 @@ task_tags = Table(
     Base.metadata,
     Column("task_id", ForeignKey("tbl_tasks.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", ForeignKey("tbl_tags.id", ondelete="CASCADE"), primary_key=True),
-    Column("created_at", DateTime, server_default=func.now()),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
 
-class Task(Base):
+from sqlalchemy.ext.asyncio import AsyncAttrs
+
+class Task(AsyncAttrs, Base):
     __tablename__ = "tbl_tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -45,8 +47,8 @@ class Task(Base):
     priority: Mapped[TaskPriority] = mapped_column(
         SQLEnum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
     )
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tasks")
@@ -70,8 +72,8 @@ class SubTask(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     task: Mapped[Task] = relationship(back_populates="subtasks")

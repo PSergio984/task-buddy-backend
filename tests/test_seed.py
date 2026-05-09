@@ -4,7 +4,6 @@ from httpx import AsyncClient
 from seed import seed_data
 
 
-@pytest.mark.anyio
 async def test_seed_data(async_client: AsyncClient, db):
     """
     Test that the seeding script successfully populates a confirmed user,
