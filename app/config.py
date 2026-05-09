@@ -28,7 +28,7 @@ class GlobalConfig(BaseConfig):
         "http://localhost:3000",
         "http://localhost:5173",
         "http://127.0.0.1:3000",
-        "http://127.0.0.1:5173"
+        "http://127.0.0.1:5173",
     ]
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
@@ -40,6 +40,9 @@ class GlobalConfig(BaseConfig):
     MAIL_SMTP_USERNAME: Optional[str] = None
     MAIL_SMTP_PASSWORD: Optional[str] = None
     MAIL_SMTP_USE_TLS: bool = True
+    B2_KEY_ID: Optional[str] = None
+    B2_APPLICATION_KEY: Optional[str] = None
+    B2_BUCKET_NAME: Optional[str] = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod

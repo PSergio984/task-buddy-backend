@@ -89,7 +89,7 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()
     if user:
-        user_data["id"] = user.id
+        user_data["id"] = str(user.id)
     return user_data
 
 @pytest.fixture()
