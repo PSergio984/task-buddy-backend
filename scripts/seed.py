@@ -12,7 +12,6 @@ from app.models.task import SubTask, Task, TaskPriority, task_tags
 from app.models.tag import Tag
 from app.security import get_password_hash
 
-logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
 
@@ -146,4 +145,5 @@ async def seed_data():
         logger.info(f"Database seeding complete! Total tasks: {len(tasks)}, Projects: {len(projects)}")
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.INFO)
     asyncio.run(seed_data())

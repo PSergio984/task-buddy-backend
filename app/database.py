@@ -56,7 +56,7 @@ def get_async_database_url(url: str | None) -> tuple[str, dict]:
     if not url:
         return "", {}
 
-    if url.startswith("sqlite://"):
+    if url.startswith("sqlite"):
         return _handle_sqlite(url)
 
     if "postgresql" in url or "postgres" in url:

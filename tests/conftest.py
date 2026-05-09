@@ -126,8 +126,10 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
         "/api/v1/users/token",
         data={"username": confirmed_user["email"], "password": confirmed_user["password"]},
     )
+    assert response.status_code == 200, f"Login failed: {response.text}"
     payload = response.json()
-    token = payload.get("access_token", "")
+    token = payload.get("access_token")
+    assert token, "Login response missing access_token"
     return token
 
 @pytest.fixture(autouse=True)

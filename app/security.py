@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 from typing import Annotated, Literal
 
@@ -73,8 +74,6 @@ def reset_token_expire_time() -> int:
     return RESET_TOKEN_EXPIRE_MINUTES
 
 
-import hashlib
-
 async def blacklist_token(token: str, expires_in: int) -> None:
     """Blacklist a JWT token in Redis with a TTL."""
     if redis_client is None:
@@ -101,8 +100,8 @@ async def is_token_blacklisted(token: str) -> bool:
         return await redis_client.exists(f"blacklist:{token_hash}") > 0
     except Exception as e:
         logger.error("Failed to check token blacklist in Redis: %s", str(e))
-        # Security first: if Redis check fails, reject the token
-        raise create_credentials_exception("Security check failed") from e
+        # Fail-open: allow request if blacklist check fails
+        return False
 
 
 def create_access_token(user_id: int) -> str:

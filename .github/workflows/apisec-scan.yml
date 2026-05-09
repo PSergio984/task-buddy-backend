@@ -52,12 +52,23 @@ jobs:
       security-events: write # for github/codeql-action/upload-sarif to upload SARIF results
       actions: read # only required for a private repository by github/codeql-action/upload-sarif to get the Action run status
     runs-on: ubuntu-latest
+    env:
+      DATABASE_URL: "sqlite+aiosqlite:///./test.db"
+      SECRET_KEY: test-secret-key-for-ci-purposes-only
+      ALGORITHM: HS256
+      ACCESS_TOKEN_EXPIRE_MINUTES: 30
+      LOG_LEVEL: INFO
 
     steps:
       - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.10"
       - name: Start your API
         run: |
           pip install -r requirements.txt
+          alembic upgrade head
           uvicorn app.main:app --host 0.0.0.0 --port 8080 &
           sleep 5
 
@@ -69,7 +80,7 @@ jobs:
           # The Password of the APIsec user with which the scans will be executed
           apisec-password: ${{ secrets.apisec_password}}
           # The name of the project for security scan
-          apisec-project: "VAmPI"
+          apisec-project: "task-buddy-backend"
           # The name of the sarif format result file The file is written only if this property is provided.
           sarif-result-file: "apisec-results.sarif"
       - name: Import results
