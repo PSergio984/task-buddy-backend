@@ -14,7 +14,7 @@ with engine.begin() as conn:
     conn.execute(sa.text('DELETE FROM alembic_version'))
     print('Cleared alembic_version table.')
 engine.dispose()
-" || echo "Warning: could not clear alembic_version (table may not exist yet, proceeding)"
+" || { echo "FATAL: could not clear alembic_version — check DATABASE_URL is set correctly"; exit 1; }
     alembic stamp head
     alembic upgrade head
 fi
