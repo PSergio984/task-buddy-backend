@@ -9,7 +9,7 @@ import random
 import sys
 from datetime import datetime, timedelta, timezone
 
-import bcrypt
+from passlib.context import CryptContext
 from dotenv import load_dotenv
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
@@ -19,6 +19,9 @@ load_dotenv()
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# Must match security.py exactly so seed passwords pass verify_password()
+pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto")
 
 
 def get_database_url():
@@ -80,7 +83,7 @@ def seed():  # noqa: C901
 
             if not row:
                 logger.info("Creating demo user...")
-                hashed = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode()
+                hashed = pwd_context.hash("password123")
                 res = conn.execute(
                     text("""
                     INSERT INTO tbl_users (username, email, password, confirmed)
