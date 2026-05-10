@@ -22,7 +22,10 @@ async def get_tasks(
     project_id: Optional[int] = None,
     tag_id: Optional[int] = None,
 ) -> list[Task]:
-    query = select(Task).where(Task.user_id == user_id).options(selectinload(Task.tags))
+    query = select(Task).where(Task.user_id == user_id).options(
+        selectinload(Task.tags),
+        selectinload(Task.subtasks)
+    )
     if completed is not None:
         query = query.where(Task.completed == completed)
     if project_id is not None:
@@ -34,7 +37,10 @@ async def get_tasks(
 
 
 async def get_task(db: AsyncSession, task_id: int, user_id: int) -> Optional[Task]:
-    query = select(Task).where(Task.id == task_id, Task.user_id == user_id).options(selectinload(Task.tags))
+    query = select(Task).where(Task.id == task_id, Task.user_id == user_id).options(
+        selectinload(Task.tags),
+        selectinload(Task.subtasks)
+    )
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -43,7 +49,10 @@ async def get_tasks_by_project(db: AsyncSession, project_id: int, user_id: int) 
     query = (
         select(Task)
         .where(Task.project_id == project_id, Task.user_id == user_id)
-        .options(selectinload(Task.tags))
+        .options(
+            selectinload(Task.tags),
+            selectinload(Task.subtasks)
+        )
     )
     result = await db.execute(query)
     return list(result.scalars().all())
@@ -52,6 +61,7 @@ async def get_tasks_by_project(db: AsyncSession, project_id: int, user_id: int) 
 async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest) -> Task:
     task_data = task_in.model_dump()
     tag_names = task_data.pop("tags", [])
+    subtasks_data = task_data.pop("subtasks", [])
 
     db_task = Task(
         **task_data,
@@ -70,6 +80,17 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
 
             await tag_crud.attach_tag_to_task(db, task_id=db_task.id, tag_id=db_tag.id)
 
+    # Process nested subtasks
+    if subtasks_data:
+        for st_data in subtasks_data:
+            db_subtask = SubTask(
+                **st_data,
+                task_id=db_task.id,
+                user_id=user_id
+            )
+            db.add(db_subtask)
+
+    await db.flush()
     await db.refresh(db_task)
     return db_task
 

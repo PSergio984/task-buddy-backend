@@ -127,8 +127,9 @@ async def create_task(
         logger.warning("Integrity error creating task: %s", str(e))
         raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID) from e
 
-    # Ensure tags are loaded for serialization
+    # Ensure tags and subtasks are loaded for serialization
     await db_task.awaitable_attrs.tags
+    await db_task.awaitable_attrs.subtasks
 
     logger.info("POST / - created task id=%s", db_task.id)
     return db_task
@@ -161,13 +162,21 @@ async def update_task(
     try:
         await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 
+        # Include values for important fields
+        details_list = []
+        for k, v in update_data.items():
+            if k in ["completed", "priority", "status"]:
+                details_list.append(f"{k}: {v}")
+            else:
+                details_list.append(k)
+
         await log_action(
             db=db,
             user_id=current_user.id,
             action=AuditAction.UPDATE,
             target_type="TASK",
             target_id=task_id,
-            details=f"Updated task '{db_task.title}': {', '.join(update_data.keys())}",
+            details=f"Updated task '{db_task.title}': {', '.join(details_list)}",
         )
         await db.commit()
     except IntegrityError as e:
@@ -175,8 +184,9 @@ async def update_task(
         logger.warning("Integrity error updating task: %s", str(e))
         raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID) from e
 
-    # Ensure tags are loaded for serialization
+    # Ensure tags and subtasks are loaded for serialization
     await db_task.awaitable_attrs.tags
+    await db_task.awaitable_attrs.subtasks
 
     logger.info("PUT /%s - task updated", task_id)
     return db_task
@@ -324,13 +334,21 @@ async def update_subtask(
 
     await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
 
+    # Include values for important fields
+    details_list = []
+    for k, v in update_data.items():
+        if k in ["completed"]:
+            details_list.append(f"{k}: {v}")
+        else:
+            details_list.append(k)
+
     await log_action(
         db=db,
         user_id=current_user.id,
         action=AuditAction.UPDATE,
         target_type="SUBTASK",
         target_id=subtask_id,
-        details=f"Updated subtask '{db_subtask.title}' on task {db_subtask.task_id}: {', '.join(update_data.keys())}",
+        details=f"Updated subtask '{db_subtask.title}' on task {db_subtask.task_id}: {', '.join(details_list)}",
     )
     await db.commit()
 
@@ -432,6 +450,16 @@ async def create_and_attach_tag(
 
     # Attach to task
     await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id)
+
+    await log_action(
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.UPDATE,
+        target_type="TASK",
+        target_id=task_id,
+        details=f"Attached tag '{db_tag.name}' to task: {db_task.title}",
+    )
+
     await db.commit()
     await db.refresh(db_tag)
     return db_tag
@@ -475,6 +503,15 @@ async def attach_tag_to_task(
     if not attached:
         return {"message": "Tag already attached"}
 
+    await log_action(
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.UPDATE,
+        target_type="TASK",
+        target_id=task_id,
+        details=f"Attached existing tag to task: {db_task.title}",
+    )
+
     await db.commit()
     return {"message": "Tag attached successfully"}
 
@@ -492,6 +529,16 @@ async def detach_tag_from_task(
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
     await tag_crud.detach_tag_from_task(db, task_id=task_id, tag_id=tag_id)
+
+    await log_action(
+        db=db,
+        user_id=current_user.id,
+        action=AuditAction.UPDATE,
+        target_type="TASK",
+        target_id=task_id,
+        details=f"Detached tag from task: {db_task.title}",
+    )
+
     await db.commit()
     return {"message": "Tag detached successfully"}
 

@@ -119,13 +119,21 @@ async def update_project(
 
     await project_crud.update_project(db, db_project=db_project, project_in=project_update)
 
+    # Include values for important fields
+    details_list = []
+    for k, v in update_data.items():
+        if k in ["name", "description"]:
+            details_list.append(f"{k}: {v}")
+        else:
+            details_list.append(k)
+
     await log_action(
         db=db,
         user_id=current_user.id,
         action=AuditAction.UPDATE,
         target_type="PROJECT",
         target_id=project_id,
-        details=f"Updated project '{db_project.name}': {', '.join(update_data.keys())}",
+        details=f"Updated project '{db_project.name}': {', '.join(details_list)}",
     )
     await db.commit()
     await db.refresh(db_project)

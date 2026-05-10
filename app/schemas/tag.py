@@ -1,10 +1,13 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel, ConfigDict
 
 
 class TagCreate(BaseModel):
     name: str
+    color: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class TagResponse(TagCreate):

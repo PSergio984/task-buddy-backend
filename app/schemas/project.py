@@ -7,6 +7,7 @@ from pydantic import BaseModel, ConfigDict
 class ProjectBase(BaseModel):
     name: str
     color: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class ProjectCreateRequest(ProjectBase):
@@ -16,6 +17,7 @@ class ProjectCreateRequest(ProjectBase):
 class ProjectUpdateRequest(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
+    icon: Optional[str] = None
 
 
 class ProjectResponse(ProjectBase):
