@@ -8,9 +8,9 @@ import os
 import random
 from datetime import datetime, timedelta, timezone
 
+import bcrypt
 import psycopg2
 import psycopg2.extras
-from passlib.hash import bcrypt
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ DATABASE_URL = os.environ["DATABASE_URL"]
 CONN_STR = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
-def seed():
+def seed():  # noqa: C901
     env = os.environ.get("APP_ENV", "development").lower()
     seed_allowed = os.environ.get("SEED_ALLOWED", "").lower()
     if env == "production" and seed_allowed != "true":
@@ -42,7 +42,7 @@ def seed():
 
         if not row:
             logger.info("Creating demo user...")
-            hashed = bcrypt.hash("password123")
+            hashed = bcrypt.hashpw(b"password123", bcrypt.gensalt()).decode()
             cur.execute(
                 """
                 INSERT INTO tbl_users (username, email, password, confirmed)
@@ -51,7 +51,10 @@ def seed():
                 """,
                 ("demouser", "demo@example.com", hashed, True),
             )
-            user_id = cur.fetchone()["id"]
+            row2 = cur.fetchone()
+            if row2 is None:
+                raise RuntimeError("INSERT tbl_users RETURNING id returned nothing — check schema")
+            user_id = row2["id"]
         else:
             user_id = row["id"]
             logger.info("Demo user found. Purging existing seed data...")
@@ -81,7 +84,10 @@ def seed():
                 "INSERT INTO tbl_projects (name, color, user_id) VALUES (%s, %s, %s) RETURNING id",
                 (name, color, user_id),
             )
-            project_ids.append(cur.fetchone()["id"])
+            proj_row = cur.fetchone()
+            if proj_row is None:
+                raise RuntimeError(f"INSERT tbl_projects RETURNING id returned nothing for '{name}'")
+            project_ids.append(proj_row["id"])
 
         # ── Tags ───────────────────────────────────────────────────
         logger.info("Creating tags...")
@@ -92,7 +98,10 @@ def seed():
                 "INSERT INTO tbl_tags (name, user_id) VALUES (%s, %s) RETURNING id",
                 (name, user_id),
             )
-            tag_ids.append(cur.fetchone()["id"])
+            tag_row = cur.fetchone()
+            if tag_row is None:
+                raise RuntimeError(f"INSERT tbl_tags RETURNING id returned nothing for '{name}'")
+            tag_ids.append(tag_row["id"])
 
         # ── Tasks ──────────────────────────────────────────────────
         logger.info("Creating 24 tasks...")
@@ -138,7 +147,10 @@ def seed():
                 """,
                 (title, desc, user_id, project_ids[p_idx], priority, due, completed),
             )
-            task_ids.append(cur.fetchone()["id"])
+            task_row = cur.fetchone()
+            if task_row is None:
+                raise RuntimeError(f"INSERT tbl_tasks RETURNING id returned nothing for '{title}' — check schema and enum values")
+            task_ids.append(task_row["id"])
 
         # Assign 0-2 random tags per task
         for task_id in task_ids:

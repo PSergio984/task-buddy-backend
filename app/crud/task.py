@@ -2,8 +2,8 @@ from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-
 from sqlalchemy.orm import selectinload
+
 from app.crud import tag as tag_crud
 from app.models.task import SubTask, Task, task_tags
 from app.schemas.tag import TagCreate
@@ -52,14 +52,14 @@ async def get_tasks_by_project(db: AsyncSession, project_id: int, user_id: int) 
 async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest) -> Task:
     task_data = task_in.model_dump()
     tag_names = task_data.pop("tags", [])
-    
+
     db_task = Task(
         **task_data,
         user_id=user_id,
     )
     db.add(db_task)
     await db.flush()
-    
+
     # Process tags (normalized and deduped)
     if tag_names:
         unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
@@ -67,9 +67,9 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
             db_tag = await tag_crud.get_tag_by_name(db, user_id=user_id, name=name)
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=user_id, tag_in=TagCreate(name=name))
-            
+
             await tag_crud.attach_tag_to_task(db, task_id=db_task.id, tag_id=db_tag.id)
-            
+
     await db.refresh(db_task)
     return db_task
 
@@ -77,21 +77,21 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
 async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateRequest) -> Task:
     update_data = task_in.model_dump(exclude_unset=True)
     tag_names = update_data.pop("tags", None)
-    
+
     for field, value in update_data.items():
         setattr(db_task, field, value)
     db.add(db_task)
-    
+
     if tag_names is not None:
         stmt = task_tags.delete().where(task_tags.c.task_id == db_task.id)
         await db.execute(stmt)
-        
+
         unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
         for name in unique_tags:
             db_tag = await tag_crud.get_tag_by_name(db, user_id=db_task.user_id, name=name)
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=db_task.user_id, tag_in=TagCreate(name=name))
-            
+
             await tag_crud.attach_tag_to_task(db, task_id=db_task.id, tag_id=db_tag.id)
 
     await db.flush()

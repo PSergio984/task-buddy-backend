@@ -18,7 +18,7 @@ def _handle_sqlite(url: str) -> tuple[str, dict]:
 def _sanitize_pg_params(query: dict[str, list[str]]) -> dict:
     """Extracts and sanitizes PostgreSQL connection arguments."""
     c_args = {}
-    
+
     # Precedence: sslmode handled first, then 'ssl' if not already set by sslmode
     if "sslmode" in query:
         ssl_value = query.pop("sslmode")[0]
@@ -36,7 +36,7 @@ def _sanitize_pg_params(query: dict[str, list[str]]) -> dict:
     for param in ["channel_binding", "gssencmode", "target_session_attrs"]:
         if param in query:
             query.pop(param)
-            
+
     return c_args
 
 

@@ -63,7 +63,7 @@ async def create_project(
     except IntegrityError as e:
         await db.rollback()
         logger.warning("Integrity error creating project: %s", str(e))
-        raise HTTPException(status_code=400, detail="Project with this name already exists")
+        raise HTTPException(status_code=400, detail="Project with this name already exists") from e
 
     logger.info("POST / - created project id=%s", db_project.id)
     return db_project

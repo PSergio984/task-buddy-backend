@@ -2,12 +2,22 @@ import datetime
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, BackgroundTasks, Body, Depends, HTTPException, Request, Response, status
+from fastapi import (
+    APIRouter,
+    BackgroundTasks,
+    Body,
+    Depends,
+    HTTPException,
+    Request,
+    Response,
+    status,
+)
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import tasks
+from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, COOKIE_SECURE, SECRET_KEY
 from app.crud import user as user_crud
 from app.dependencies import get_db
 from app.internal.audit import log_action
@@ -34,7 +44,6 @@ from app.security import (
     oauth2_scheme,
     verify_password,
 )
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, COOKIE_SECURE, SECRET_KEY
 
 logger = logging.getLogger(__name__)
 
@@ -147,7 +156,7 @@ async def login(
     # Commit any potential lazy migration (password re-hash)
     await db.commit()
     access_token = create_access_token(auth_user.id)
-    
+
     # Set HttpOnly cookie
     response.set_cookie(
         key="access_token",
@@ -158,7 +167,7 @@ async def login(
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
-    
+
     await log_action(
         db=db,
         user_id=auth_user.id,
@@ -168,7 +177,7 @@ async def login(
         details=f"User logged in: {auth_user.username}",
     )
     await db.commit()
-    
+
     return {
         "access_token": access_token,
         "token_type": "bearer",
@@ -243,7 +252,7 @@ async def update_username(
 
     old_username = current_user.username
     await user_crud.update_user(db, db_user=current_user, update_data={"username": new_username})
-    
+
     await log_action(
         db=db,
         user_id=current_user.id,
@@ -280,7 +289,7 @@ async def update_password(
 
     hashed_password = get_password_hash(password_data.new_password)
     await user_crud.update_user(db, db_user=current_user, update_data={"password": hashed_password})
-    
+
     await log_action(
         db=db,
         user_id=current_user.id,
@@ -309,10 +318,10 @@ async def logout(
         token = await oauth2_scheme(request)
         if not token:
             token = request.cookies.get("access_token")
-        
+
         if token:
             current_user = await get_current_user(token, db)
-            
+
             # Blacklist the token
             try:
                 if SECRET_KEY:
@@ -340,7 +349,7 @@ async def logout(
     except Exception as e:
         # If authentication fails, we still want to clear the cookie
         logger.debug("Logout audit logging skipped: %s", str(e))
-    
+
     response.delete_cookie(
         key="access_token",
         path="/",
@@ -424,7 +433,7 @@ async def reset_password(
 
     hashed_password = get_password_hash(request.new_password)
     await user_crud.update_user(db, db_user=user, update_data={"password": hashed_password})
-    
+
     await log_action(
         db=db,
         user_id=user.id,

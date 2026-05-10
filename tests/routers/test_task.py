@@ -331,7 +331,7 @@ async def test_get_tasks_filtered_by_project(
     assert len(data) == 1
     assert data[0]["id"] == task_in["id"]
     assert data[0]["project_id"] == project_id
-    
+
     # Assert that the task out of project is NOT in the results
     assert task_out["id"] not in [t["id"] for t in data]
 

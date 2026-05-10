@@ -103,7 +103,7 @@ async def create_task(
     logger.info("POST / - creating task title=%s", task_in.title)
 
     await verify_project_ownership(db, task_in.project_id, current_user.id)
-    
+
     from sqlalchemy.exc import IntegrityError
     try:
         db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
@@ -125,7 +125,7 @@ async def create_task(
     except IntegrityError as e:
         await db.rollback()
         logger.warning("Integrity error creating task: %s", str(e))
-        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID) from e
 
     # Ensure tags are loaded for serialization
     await db_task.awaitable_attrs.tags
@@ -173,7 +173,7 @@ async def update_task(
     except IntegrityError as e:
         await db.rollback()
         logger.warning("Integrity error updating task: %s", str(e))
-        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
+        raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID) from e
 
     # Ensure tags are loaded for serialization
     await db_task.awaitable_attrs.tags

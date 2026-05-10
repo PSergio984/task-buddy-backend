@@ -1,15 +1,15 @@
 """Initial migration with Projects
 
 Revision ID: 67fff7e05b96
-Revises: 
+Revises:
 Create Date: 2026-05-09 22:08:24.759576
 
 """
 from collections.abc import Sequence
 
-from alembic import op
 import sqlalchemy as sa
 
+from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = '67fff7e05b96'
@@ -111,7 +111,7 @@ def downgrade() -> None:
     op.drop_table('tbl_projects')
     op.drop_table('tbl_audit_logs')
     op.drop_table('tbl_users')
-    
+
     # Drop custom enum type
     if op.get_bind().dialect.name == "postgresql":
         op.execute("DROP TYPE IF EXISTS taskpriority")

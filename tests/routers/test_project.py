@@ -1,7 +1,9 @@
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, update
+
 from app.models.user import User
+
 
 async def create_project(name: str, client: AsyncClient, token: str) -> dict:
     response = await client.post(
@@ -20,12 +22,12 @@ async def second_user(db, async_client: AsyncClient) -> dict:
     }
     response = await async_client.post("/api/v1/users/register", json=user_data)
     assert response.status_code == 201
-    
+
     # Confirm user
     stmt = update(User).where(User.email == user_data["email"]).values(confirmed=True)
     await db.execute(stmt)
     await db.commit()
-    
+
     # Get token
     response = await async_client.post(
         "/api/v1/users/token",
@@ -33,12 +35,12 @@ async def second_user(db, async_client: AsyncClient) -> dict:
     )
     assert response.status_code == 200
     user_data["token"] = response.json()["access_token"]
-    
+
     # Get ID
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user_data["id"] = result.scalar_one().id
-    
+
     return user_data
 
 async def test_create_project(async_client: AsyncClient, logged_in_token: str):
@@ -56,7 +58,7 @@ async def test_create_project(async_client: AsyncClient, logged_in_token: str):
 async def test_list_projects(async_client: AsyncClient, logged_in_token: str):
     await create_project("Project 1", async_client, logged_in_token)
     await create_project("Project 2", async_client, logged_in_token)
-    
+
     response = await async_client.get(
         "/api/v1/projects/",
         headers={"Authorization": f"Bearer {logged_in_token}"}
@@ -67,7 +69,7 @@ async def test_list_projects(async_client: AsyncClient, logged_in_token: str):
 
 async def test_get_project(async_client: AsyncClient, logged_in_token: str):
     project = await create_project("My Project", async_client, logged_in_token)
-    
+
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"}
@@ -77,7 +79,7 @@ async def test_get_project(async_client: AsyncClient, logged_in_token: str):
 
 async def test_update_project(async_client: AsyncClient, logged_in_token: str):
     project = await create_project("Old Name", async_client, logged_in_token)
-    
+
     response = await async_client.put(
         f"/api/v1/projects/{project['id']}",
         json={"name": "New Name"},
@@ -88,13 +90,13 @@ async def test_update_project(async_client: AsyncClient, logged_in_token: str):
 
 async def test_delete_project(async_client: AsyncClient, logged_in_token: str):
     project = await create_project("To Delete", async_client, logged_in_token)
-    
+
     response = await async_client.delete(
         f"/api/v1/projects/{project['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 200
-    
+
     # Verify gone
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}",
@@ -107,14 +109,14 @@ async def test_project_idor_protection(
 ):
     # User 1 creates a project
     project = await create_project("User 1 Project", async_client, logged_in_token)
-    
+
     # User 2 tries to access it
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}",
         headers={"Authorization": f"Bearer {second_user['token']}"}
     )
     assert response.status_code == 404
-    
+
     # User 2 tries to update it
     response = await async_client.put(
         f"/api/v1/projects/{project['id']}",
@@ -122,7 +124,7 @@ async def test_project_idor_protection(
         headers={"Authorization": f"Bearer {second_user['token']}"}
     )
     assert response.status_code == 404
-    
+
     # User 2 tries to delete it
     response = await async_client.delete(
         f"/api/v1/projects/{project['id']}",
@@ -135,7 +137,7 @@ async def test_task_project_idor_protection(
 ):
     # User 1 creates a project
     project = await create_project("User 1 Project", async_client, logged_in_token)
-    
+
     # User 2 tries to create a task in User 1's project
     response = await async_client.post(
         "/api/v1/tasks/",
@@ -144,7 +146,7 @@ async def test_task_project_idor_protection(
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid project_id"
-    
+
     # User 2 creates their own task
     response = await async_client.post(
         "/api/v1/tasks/",
@@ -153,7 +155,7 @@ async def test_task_project_idor_protection(
     )
     assert response.status_code == 201
     task = response.json()
-    
+
     # User 2 tries to update their task to belong to User 1's project
     response = await async_client.put(
         f"/api/v1/tasks/{task['id']}",
@@ -165,7 +167,7 @@ async def test_task_project_idor_protection(
 
 async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: str):
     project = await create_project("Work", async_client, logged_in_token)
-    
+
     # Create tasks in project
     await async_client.post(
         "/api/v1/tasks/",
@@ -183,7 +185,7 @@ async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: st
         json={"title": "Task 3"},
         headers={"Authorization": f"Bearer {logged_in_token}"}
     )
-    
+
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}/tasks",
         headers={"Authorization": f"Bearer {logged_in_token}"}

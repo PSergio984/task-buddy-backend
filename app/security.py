@@ -46,7 +46,7 @@ async def get_token(
     # First check the Authorization header (standard OAuth2)
     if token:
         return token
-    
+
     # Fallback to HttpOnly cookie
     token = request.cookies.get("access_token")
     if token:

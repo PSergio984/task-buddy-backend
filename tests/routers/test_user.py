@@ -1,4 +1,3 @@
-import pytest
 from fastapi import BackgroundTasks
 from httpx import AsyncClient
 

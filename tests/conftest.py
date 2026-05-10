@@ -1,7 +1,9 @@
-import pytest
+import os
+import tempfile
 from collections.abc import AsyncGenerator, Generator
 from unittest.mock import AsyncMock
 
+import pytest
 from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
 from sqlalchemy import event, select, update
@@ -13,9 +15,6 @@ from app.dependencies import get_db
 from app.main import app
 from app.models.base import Base
 from app.models.user import User
-
-import tempfile
-import os
 
 # Unique file-backed database for this session
 _db_file = tempfile.NamedTemporaryFile(suffix=".db", delete=False)
@@ -113,7 +112,7 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
     }
     response = await async_client.post("/api/v1/users/register", json=user_data)
     assert response.status_code == 201, f"User registration failed: {response.text}"
-    
+
     stmt = select(User).where(User.email == user_data["email"])
     result = await db.execute(stmt)
     user = result.scalar_one_or_none()

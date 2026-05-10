@@ -108,6 +108,10 @@ extend-exclude = '''
 '''
 
 [tool.ruff]
+line-length = 100
+target-version = "py39"
+
+[tool.ruff.lint]
 select = [
     "E",     # pycodestyle errors
     "W",     # pycodestyle warnings
@@ -121,8 +125,6 @@ ignore = [
     "E501",  # line-too-long (handled by black)
     "B008",  # function-call-in-default-argument
 ]
-line-length = 100
-target-version = "py39"
 
 [tool.mypy]
 python_version = "3.9"

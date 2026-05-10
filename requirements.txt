@@ -90,6 +90,7 @@ packaging==26.2
     # via
     #   asgi-correlation-id
     #   limits
+bcrypt>=4.0.0
 passlib==1.7.4
     # via task-buddy-backend (pyproject.toml)
 psycopg2-binary==2.9.12

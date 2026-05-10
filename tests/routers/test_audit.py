@@ -1,4 +1,3 @@
-import pytest
 from httpx import AsyncClient
 
 
@@ -39,7 +38,7 @@ async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_i
 
     if task_log is None:
         # Fallback for debugging, if the action is different, we can see the available logs
-        assert False, f"Could not find CREATE TASK log for task_id {task_id}. Available logs: {logs}"
+        raise AssertionError(f"Could not find CREATE TASK log for task_id {task_id}. Available logs: {logs}")
 
     assert task_log["target_id"] == task_id
     assert "Test Task" in task_log.get("details", "")
