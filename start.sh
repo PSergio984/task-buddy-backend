@@ -3,24 +3,29 @@ set -e
 
 echo "Starting migration process..."
 
-# Pre-flight: if critical tables are missing (e.g. alembic was stamped to head
-# but the DDL never completed), wipe migration state so we start fresh.
-# This must run BEFORE alembic upgrade head, because alembic returns exit 0
-# ("already at head") even when tables don't exist, masking the broken state.
+# Pre-flight: detect any partially-created or fully-missing schema.
+# Checks all critical tables — if ANY is missing, clears alembic_version
+# and the orphaned enum so alembic upgrade head runs a clean migration.
+# This must run BEFORE alembic upgrade head because alembic returns exit 0
+# ("already at head") even when tables don't exist, masking broken state.
 python -c "
 import os, sqlalchemy as sa
 url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL')
 if not url: raise SystemExit('DATABASE_URL not set')
 engine = sa.create_engine(url)
+REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs']
 with engine.begin() as conn:
     try:
-        count = conn.execute(sa.text(
-            \"SELECT COUNT(*) FROM information_schema.tables \"
-            \"WHERE table_schema='public' AND table_name='tbl_tasks'\"
-        )).scalar()
+        rows = conn.execute(sa.text(
+            \"SELECT table_name FROM information_schema.tables \"
+            \"WHERE table_schema='public' AND table_name = ANY(:names)\"
+        ), {'names': REQUIRED_TABLES}).fetchall()
+        existing = {r[0] for r in rows}
     except Exception:
-        count = 0
-    if count == 0:
+        existing = set()
+    missing = [t for t in REQUIRED_TABLES if t not in existing]
+    if missing:
+        print(f'Pre-flight: missing tables {missing} — clearing stale migration state.')
         conn.execute(sa.text('''
             CREATE TABLE IF NOT EXISTS alembic_version (
                 version_num VARCHAR(32) NOT NULL,
@@ -29,9 +34,8 @@ with engine.begin() as conn:
         '''))
         conn.execute(sa.text('DELETE FROM alembic_version'))
         conn.execute(sa.text('DROP TYPE IF EXISTS taskpriority'))
-        print('Pre-flight: tables missing — cleared stale migration state.')
     else:
-        print('Pre-flight: schema OK, proceeding normally.')
+        print('Pre-flight: all required tables present, proceeding normally.')
 engine.dispose()
 " || { echo "FATAL: pre-flight check failed"; exit 1; }
 
