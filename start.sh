@@ -12,6 +12,7 @@ python -c "
 import os, sqlalchemy as sa
 url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL')
 if not url: raise SystemExit('DATABASE_URL not set')
+url = url.replace('postgres://', 'postgresql://', 1)
 engine = sa.create_engine(url)
 REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs']
 with engine.begin() as conn:
@@ -62,9 +63,10 @@ engine.dispose()
     alembic upgrade head
 fi
 
-# Idempotent seed (no-ops if records already exist)
+# Idempotent seed — skipped in production unless SEED_ALLOWED=true
+# Use || true so a blocked/skipped seed does not abort startup via set -e
 echo "Running seeding script..."
-python scripts/seed.py
+python scripts/seed.py || true
 
 # Start app
 echo "Starting web server..."
