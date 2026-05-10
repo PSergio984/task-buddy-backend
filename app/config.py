@@ -59,6 +59,14 @@ class GlobalConfig(BaseConfig):
         return v
 
 
+    @model_validator(mode="after")
+    def fix_database_url(self):
+        """Fix postgres:// prefix to postgresql:// for SQLAlchemy 2.0."""
+        if self.DATABASE_URL and self.DATABASE_URL.startswith("postgres://"):
+            self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
+        return self
+
+
 class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
 
