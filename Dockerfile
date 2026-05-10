@@ -19,7 +19,7 @@ COPY app/ app/
 COPY alembic/ alembic/
 COPY alembic.ini .
 COPY start.sh .
-COPY seed.py .
+COPY scripts/ scripts/
 
 # Ensure start script is executable
 RUN chmod +x start.sh

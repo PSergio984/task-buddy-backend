@@ -1,17 +1,25 @@
 from __future__ import annotations
 
+import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, func
+from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, ForeignKey, String, Table, func
+from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.models.base import Base
 
 if TYPE_CHECKING:
-    from app.models.group import Group
+    from app.models.project import Project
     from app.models.tag import Tag
     from app.models.user import User
+
+
+class TaskPriority(str, enum.Enum):
+    LOW = "LOW"
+    MEDIUM = "MEDIUM"
+    HIGH = "HIGH"
 
 
 # Association table for Task <-> Tag
@@ -20,27 +28,30 @@ task_tags = Table(
     Base.metadata,
     Column("task_id", ForeignKey("tbl_tasks.id", ondelete="CASCADE"), primary_key=True),
     Column("tag_id", ForeignKey("tbl_tags.id", ondelete="CASCADE"), primary_key=True),
-    Column("created_at", DateTime, server_default=func.now()),
+    Column("created_at", DateTime(timezone=True), server_default=func.now()),
 )
 
 
-class Task(Base):
+class Task(AsyncAttrs, Base):
     __tablename__ = "tbl_tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
-    group_id: Mapped[int | None] = mapped_column(
-        ForeignKey("tbl_groups.id", ondelete="SET NULL"), nullable=True
+    project_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tbl_projects.id", ondelete="SET NULL"), nullable=True
     )
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    priority: Mapped[TaskPriority] = mapped_column(
+        SQLEnum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
+    )
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tasks")
-    group: Mapped[Group | None] = relationship(back_populates="tasks")
+    project: Mapped[Project | None] = relationship(back_populates="tasks")
     subtasks: Mapped[list[SubTask]] = relationship(
         back_populates="task", cascade="all, delete-orphan"
     )
@@ -60,8 +71,8 @@ class SubTask(Base):
     title: Mapped[str] = mapped_column(String, nullable=False)
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
-    due_date: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, server_default=func.now())
+    due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships
     task: Mapped[Task] = relationship(back_populates="subtasks")

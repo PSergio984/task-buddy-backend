@@ -2,10 +2,11 @@ import datetime
 
 import pytest
 from jose import jwt
+from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import security
-from app.crud.user import get_user_by_id
+from app.crud.user import get_user_by_email, get_user_by_id
 
 
 def test_get_subject_for_token_type_valid_access_token():
@@ -89,67 +90,52 @@ def test_create_confirmation_token():
     ).items()
 
 
-@pytest.mark.anyio
 async def test_get_user(db: AsyncSession, registered_user: dict):
-    from app.crud.user import get_user_by_email
-
     user = await get_user_by_email(db, registered_user["email"])
     assert user is not None
     assert user.email == registered_user["email"]
 
 
-@pytest.mark.anyio
 async def test_get_user_not_found(db: AsyncSession):
-    from app.crud.user import get_user_by_email
-
     user = await get_user_by_email(db, "nonexistent@example.com")
     assert user is None
 
 
-@pytest.mark.anyio
 async def test_authenticate_user(db: AsyncSession, confirmed_user: dict):
     user = await security.authenticate_user(db, confirmed_user["email"], confirmed_user["password"])
     assert user is not None
     assert user.email == confirmed_user["email"]
 
 
-@pytest.mark.anyio
 async def test_authenticate_user_not_found(db: AsyncSession):
     with pytest.raises(security.HTTPException):
         await security.authenticate_user(db, "nonexistent@example.com", "wrong_password")
 
 
-@pytest.mark.anyio
 async def test_authenticate_user_wrong_password(db: AsyncSession, registered_user: dict):
     with pytest.raises(security.HTTPException):
         await security.authenticate_user(db, registered_user["email"], "wrong_password")
 
 
-@pytest.mark.anyio
-async def test_get_current_user(db: AsyncSession, registered_user: dict):
-    token = security.create_access_token(registered_user["id"])
+async def test_get_current_user(db: AsyncSession, confirmed_user: dict):
+    token = security.create_access_token(confirmed_user["id"])
     user = await security.get_current_user(token, db)
     assert user is not None
-    assert user.email == registered_user["email"]
+    assert user.email == confirmed_user["email"]
 
 
-@pytest.mark.anyio
 async def test_get_current_user_invalid_token(db: AsyncSession):
     with pytest.raises(security.HTTPException):
         await security.get_current_user("invalid_token", db)
 
 
-@pytest.mark.anyio
 async def test_get_current_user_wrong_type_token(db: AsyncSession, registered_user: dict):
     token = security.create_confirm_token(registered_user["id"])
     with pytest.raises(security.HTTPException):
         await security.get_current_user(token, db)
 
 
-@pytest.mark.anyio
 async def test_authenticate_user_lazy_migration(db: AsyncSession, confirmed_user: dict):
-    from passlib.context import CryptContext
-
     # Manually set a legacy pbkdf2_sha256 hash for the user
     legacy_ctx = CryptContext(schemes=["pbkdf2_sha256"])
     legacy_hash = legacy_ctx.hash(confirmed_user["password"])

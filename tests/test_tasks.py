@@ -4,7 +4,6 @@ import pytest
 from app.tasks import APIResponseError, send_confirmation_email
 
 
-@pytest.mark.anyio
 async def test_send_confirmation_email(mock_httpx_client):
     await send_confirmation_email("test@example.com", "Test Subject", "Test Body")
     # Verify SMTP (primary path) was called
@@ -16,7 +15,6 @@ async def test_send_confirmation_email(mock_httpx_client):
     mock_httpx_client.smtp_client.send_message.assert_called_once()
 
 
-@pytest.mark.anyio
 async def test_send_confirmation_email_api_error(mock_httpx_client):
     # Force SMTP to fail so we exercise the Brevo API fallback
     mock_httpx_client.smtp_client.send_message.side_effect = OSError("SMTP failed")
@@ -29,7 +27,6 @@ async def test_send_confirmation_email_api_error(mock_httpx_client):
         await send_confirmation_email("test@example.com", "Test Subject", "Test Body")
 
 
-@pytest.mark.anyio
 async def test_send_confirmation_email_falls_back_to_api(mock_httpx_client):
     # Force SMTP to fail so we exercise the Brevo API fallback
     mock_httpx_client.smtp_client.send_message.side_effect = OSError("SMTP failed")

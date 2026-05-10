@@ -1,4 +1,5 @@
 import datetime
+import hashlib
 import logging
 from typing import Annotated, Literal
 
@@ -12,6 +13,7 @@ from app.config import (
     ACCESS_TOKEN_EXPIRE_MINUTES,
     ALGORITHM,
     CONFIRM_TOKEN_EXPIRE_MINUTES,
+    REDIS_URL,
     RESET_TOKEN_EXPIRE_MINUTES,
     SECRET_KEY,
 )
@@ -26,6 +28,16 @@ pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=False)
 
+# Initialize Redis client
+redis_client = None
+if REDIS_URL:
+    try:
+        from redis import asyncio as aioredis
+
+        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+    except ImportError as e:
+        logger.warning("Redis could not be initialized: %s", str(e))
+
 
 async def get_token(
     request: Request,
@@ -39,7 +51,7 @@ async def get_token(
     token = request.cookies.get("access_token")
     if token:
         return token
-        
+
     raise create_credentials_exception("Not authenticated")
 
 
@@ -61,6 +73,36 @@ def confirm_token_expire_time() -> int:
 
 def reset_token_expire_time() -> int:
     return RESET_TOKEN_EXPIRE_MINUTES
+
+
+async def blacklist_token(token: str, expires_in: int) -> None:
+    """Blacklist a JWT token in Redis with a TTL."""
+    if redis_client is None:
+        logger.error("Redis client is not initialized; cannot blacklist token.")
+        return
+    try:
+        # Store a hash of the token to keep Redis keys short and secure
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        await redis_client.setex(f"blacklist:{token_hash}", expires_in, "true")
+        logger.debug("Token blacklisted successfully.")
+    except Exception as e:
+        logger.error("Failed to blacklist token in Redis: %s", str(e))
+        # Failsafe: if we can't blacklist, we should probably know
+        raise
+
+
+async def is_token_blacklisted(token: str) -> bool:
+    """Check if a JWT token is present in the Redis blacklist."""
+    if redis_client is None:
+        logger.warning("Redis client is not initialized; assuming token is not blacklisted.")
+        return False
+    try:
+        token_hash = hashlib.sha256(token.encode()).hexdigest()
+        return await redis_client.exists(f"blacklist:{token_hash}") > 0
+    except Exception as e:
+        logger.error("Failed to check token blacklist in Redis: %s", str(e))
+        # Fail-closed: reject token if security check fails
+        raise create_credentials_exception("Token validation unavailable") from e
 
 
 def create_access_token(user_id: int) -> str:
@@ -106,10 +148,9 @@ def get_subject_for_token_type(
 ) -> str:
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except ExpiredSignatureError as e:
-        raise create_credentials_exception("Token has expired") from e
-
     except JWTError as e:
+        if isinstance(e, ExpiredSignatureError):
+            raise create_credentials_exception("Token has expired") from e
         logger.debug("JWT decode error: %s", str(e))
         raise create_credentials_exception("Invalid token") from e
 
@@ -146,6 +187,8 @@ async def get_current_user(
     token: Annotated[str, Depends(get_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
+    if await is_token_blacklisted(token):
+        raise create_credentials_exception("Token is blacklisted")
 
     subject = get_subject_for_token_type(token, expected_type="access")
     try:
@@ -156,5 +199,8 @@ async def get_current_user(
     user = await crud_get_user_by_id(db, user_id=user_id)
     if user is None:
         raise create_credentials_exception("Could not find user for this token")
+
+    if not user.confirmed:
+        raise create_credentials_exception("Email not confirmed")
 
     return user

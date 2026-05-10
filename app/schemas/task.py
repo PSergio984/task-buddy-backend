@@ -1,7 +1,10 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
+
+from app.models.task import TaskPriority
+from app.schemas.tag import TagResponse
 
 
 class TaskCreateRequest(BaseModel):
@@ -9,7 +12,9 @@ class TaskCreateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
-    group_id: Optional[int] = None
+    priority: TaskPriority = TaskPriority.MEDIUM
+    project_id: Optional[int] = None
+    tags: list[str] = Field(default_factory=list)
 
 
 class TaskCreateResponse(TaskCreateRequest):
@@ -18,6 +23,10 @@ class TaskCreateResponse(TaskCreateRequest):
     user_id: int
     id: int
     created_at: datetime
+    tags: list[TagResponse] = Field(default_factory=list)
+
+
+TaskCreateResponse.model_rebuild()
 
 
 class SubTaskCreateRequest(BaseModel):
@@ -46,7 +55,9 @@ class TaskUpdateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
-    group_id: Optional[int] = None
+    priority: Optional[TaskPriority] = None
+    project_id: Optional[int] = None
+    tags: Optional[list[str]] = None
 
 
 class SubTaskUpdateRequest(BaseModel):

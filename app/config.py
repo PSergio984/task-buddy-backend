@@ -1,4 +1,5 @@
 import os
+import json
 from functools import lru_cache
 from typing import Any, Optional, Union
 
@@ -22,8 +23,15 @@ class GlobalConfig(BaseConfig):
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = None
+    REDIS_URL: str = "redis://localhost:6379/0"
     DB_FORCE_ROLL_BACK: bool = False
-    ALLOWED_ORIGINS: Union[list[str], str] = ["http://localhost:3000", "http://localhost:5173"]
+    ALLOWED_ORIGINS: Union[list[str], str] = [
+        "http://localhost:3000",
+        "http://localhost:5173",
+        "http://127.0.0.1:3000",
+        "http://127.0.0.1:5173",
+    ]
+    COOKIE_SECURE: bool = False
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
@@ -34,6 +42,9 @@ class GlobalConfig(BaseConfig):
     MAIL_SMTP_USERNAME: Optional[str] = None
     MAIL_SMTP_PASSWORD: Optional[str] = None
     MAIL_SMTP_USE_TLS: bool = True
+    B2_KEY_ID: Optional[str] = None
+    B2_APPLICATION_KEY: Optional[str] = None
+    B2_BUCKET_NAME: Optional[str] = None
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -41,8 +52,6 @@ class GlobalConfig(BaseConfig):
         if isinstance(v, str) and not v.startswith("["):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, str):
-            import json
-
             try:
                 return json.loads(v)
             except json.JSONDecodeError:
@@ -56,6 +65,7 @@ class DevConfig(GlobalConfig):
 
 class ProdConfig(GlobalConfig):
     DEBUG: bool = False
+    COOKIE_SECURE: bool = True
     model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
     @model_validator(mode="after")
@@ -101,6 +111,8 @@ SECRET_KEY = (
     or os.environ.get("PROD_SECRET_KEY")
 )
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
+REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
 CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
 RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
+COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)
