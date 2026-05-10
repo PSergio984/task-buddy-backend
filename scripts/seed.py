@@ -9,8 +9,8 @@ import random
 import sys
 from datetime import datetime, timedelta, timezone
 
-from passlib.context import CryptContext
 from dotenv import load_dotenv
+from passlib.context import CryptContext
 from sqlalchemy import create_engine, text
 from sqlalchemy.exc import IntegrityError
 
@@ -70,10 +70,10 @@ def seed():  # noqa: C901
     engine = create_engine(CONN_STR)
     is_pg = "postgresql" in str(engine.url)
 
-    # Parameter marker and type cast differences
-    # PG uses :param, SQLite also supports :param via SQLAlchemy text()
-    # But PG enums need casting
-    priority_type = "::taskpriority" if is_pg else ""
+    # PostgreSQL enum columns require an explicit CAST for string parameters.
+    # We use CAST(:priority AS taskpriority) for PG and plain :priority for SQLite
+    # because SQLAlchemy's text() parser breaks on the :: cast shorthand.
+    priority_sql = "CAST(:priority AS taskpriority)" if is_pg else ":priority"
 
     with engine.begin() as conn:
         try:
@@ -180,7 +180,7 @@ def seed():  # noqa: C901
                 insert_sql = f"""
                 INSERT INTO tbl_tasks
                     (title, description, user_id, project_id, priority, due_date, completed)
-                VALUES (:title, :desc, :user_id, :project_id, :priority{priority_type}, :due_date, :completed)
+                VALUES (:title, :desc, :user_id, :project_id, {priority_sql}, :due_date, :completed)
                 RETURNING id
                 """
 
