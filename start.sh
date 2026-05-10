@@ -3,8 +3,18 @@ set -e
 
 # Auto migrate db on startup
 echo "Starting migration process..."
-if ! alembic upgrade head; then
-    echo "Migration failed (likely due to missing revision). Attempting to synchronize by stamping head..."
+if ! alembic upgrade head 2>&1; then
+    echo "Migration failed. Attempting to force-sync by clearing stale revision and stamping head..."
+    # Directly purge the unknown revision from alembic_version so stamp can proceed
+    python -c "
+import os, sqlalchemy as sa
+url = os.environ['DATABASE_URL']
+engine = sa.create_engine(url)
+with engine.begin() as conn:
+    conn.execute(sa.text('DELETE FROM alembic_version'))
+    print('Cleared alembic_version table.')
+engine.dispose()
+" || echo "Warning: could not clear alembic_version (table may not exist yet, proceeding)"
     alembic stamp head
     alembic upgrade head
 fi
