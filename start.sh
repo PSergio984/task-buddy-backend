@@ -8,7 +8,8 @@ if ! alembic upgrade head 2>&1; then
     # Directly purge the unknown revision from alembic_version so stamp can proceed
     python -c "
 import os, sqlalchemy as sa
-url = os.environ['DATABASE_URL']
+url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL')
+if not url: raise KeyError('DATABASE_URL or PROD_DATABASE_URL not found')
 engine = sa.create_engine(url)
 with engine.begin() as conn:
     conn.execute(sa.text('DELETE FROM alembic_version'))
