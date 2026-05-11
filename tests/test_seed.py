@@ -8,8 +8,10 @@ async def test_seed_data(async_client: AsyncClient, db):
     Test that the seeding script successfully populates a confirmed user,
     with retrievable tasks, projects, subtasks, and tags.
     """
-    # 1. Run seed script
-    await seed_data()
+    # 1. Run seed script with the test database URL
+    # Convert async driver URL to sync for the seed script
+    sync_url = str(db.get_bind().url).replace("+aiosqlite", "")
+    seed_data(sync_url)
 
     # 2. Login as the seeded user
     response = await async_client.post(

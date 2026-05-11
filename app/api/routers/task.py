@@ -160,15 +160,21 @@ async def update_task(
 
     from sqlalchemy.exc import IntegrityError
     try:
-        await task_crud.update_task(db, db_task=db_task, task_in=task_update)
-
-        # Include values for important fields
+        # Capture field-level changes for more granular audit logging
         details_list = []
         for k, v in update_data.items():
-            if k in ["completed", "priority", "status"]:
-                details_list.append(f"{k}: {v}")
-            else:
-                details_list.append(k)
+            old_v = getattr(db_task, k, None)
+            if old_v != v:
+                # Format value for readability
+                old_str = f"'{old_v}'" if old_v is not None else "None"
+                new_str = f"'{v}'" if v is not None else "None"
+                details_list.append(f"{k} from {old_str} to {new_str}")
+
+        await task_crud.update_task(db, db_task=db_task, task_in=task_update)
+
+        details = f"Updated task: {db_task.title}"
+        if details_list:
+            details += f" (fields: {', '.join(details_list)})"
 
         await log_action(
             db=db,
@@ -176,7 +182,7 @@ async def update_task(
             action=AuditAction.UPDATE,
             target_type="TASK",
             target_id=task_id,
-            details=f"Updated task '{db_task.title}': {', '.join(details_list)}",
+            details=details,
         )
         await db.commit()
     except IntegrityError as e:
@@ -283,7 +289,7 @@ async def create_subtask(
         action=AuditAction.CREATE,
         target_type="SUBTASK",
         target_id=db_subtask.id,
-        details=f"Created subtask for task {subtask_in.task_id}: {subtask_in.title}",
+        details=f"Added subtask '{db_subtask.title}' to task '{db_task.title}'",
     )
     await db.commit()
 
@@ -332,15 +338,28 @@ async def update_subtask(
         logger.warning("PUT /subtask/%s - no fields to update", subtask_id)
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
-    await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
-
-    # Include values for important fields
+    # Capture field-level changes for detailed audit logging
+    old_title = db_subtask.title
     details_list = []
     for k, v in update_data.items():
-        if k in ["completed"]:
-            details_list.append(f"{k}: {v}")
-        else:
-            details_list.append(k)
+        old_v = getattr(db_subtask, k, None)
+        if old_v != v:
+            old_str = f"'{old_v}'" if old_v is not None else "None"
+            new_str = f"'{v}'" if v is not None else "None"
+            if k == "completed":
+                details_list.append(f"marked {'completed' if v else 'pending'}")
+            else:
+                details_list.append(f"{k} from {old_str} to {new_str}")
+
+    await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
+
+    # Fetch parent task for title
+    parent_task = await task_crud.get_task(db, task_id=db_subtask.task_id, user_id=current_user.id)
+    parent_title = parent_task.title if parent_task else f"#{db_subtask.task_id}"
+
+    details = f"Updated subtask '{old_title}' on task '{parent_title}'"
+    if details_list:
+        details += f" ({', '.join(details_list)})"
 
     await log_action(
         db=db,
@@ -348,7 +367,7 @@ async def update_subtask(
         action=AuditAction.UPDATE,
         target_type="SUBTASK",
         target_id=subtask_id,
-        details=f"Updated subtask '{db_subtask.title}' on task {db_subtask.task_id}: {', '.join(details_list)}",
+        details=details,
     )
     await db.commit()
 
@@ -371,13 +390,17 @@ async def delete_subtask(
     task_id = db_subtask.task_id
     await task_crud.delete_subtask(db, db_subtask=db_subtask)
 
+    # Fetch parent task for title
+    parent_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
+    parent_title = parent_task.title if parent_task else f"#{task_id}"
+
     await log_action(
         db=db,
         user_id=current_user.id,
         action=AuditAction.DELETE,
         target_type="SUBTASK",
         target_id=subtask_id,
-        details=f"Deleted subtask '{subtask_title}' from task {task_id}",
+        details=f"Deleted subtask '{subtask_title}' from task '{parent_title}'",
     )
     await db.commit()
 

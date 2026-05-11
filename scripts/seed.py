@@ -56,7 +56,7 @@ if not DATABASE_URL:
 CONN_STR = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
-def seed():  # noqa: C901
+def seed_data(override_url=None):  # noqa: C901
     env = os.environ.get("APP_ENV", os.environ.get("ENV_STATE", "development")).lower()
     seed_allowed = os.environ.get("SEED_ALLOWED", "").lower()
 
@@ -65,9 +65,10 @@ def seed():  # noqa: C901
             "Seed script blocked in production. "
             "Set SEED_ALLOWED=true to override (destructive — wipes demo user data)."
         )
-        sys.exit(1)
+        return False
 
-    engine = create_engine(CONN_STR)
+    db_url = override_url or CONN_STR
+    engine = create_engine(db_url)
     is_pg = "postgresql" in str(engine.url)
 
     # PostgreSQL enum columns require an explicit CAST for string parameters.
@@ -227,6 +228,7 @@ def seed():  # noqa: C901
                     )
 
             logger.info(f"Seeding complete. {len(task_ids)} tasks, {len(project_ids)} projects.")
+            return True
 
         except Exception:
             logger.exception("Seeding failed")
@@ -234,5 +236,5 @@ def seed():  # noqa: C901
 
 
 if __name__ == "__main__":
-    seed()
+    seed_data()
 

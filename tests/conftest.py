@@ -32,8 +32,12 @@ test_engine = create_async_engine(
 @pytest.fixture(scope="session", autouse=True)
 def cleanup_temp_db():
     yield
-    if os.path.exists(_db_path):
-        os.remove(_db_path)
+    try:
+        if os.path.exists(_db_path):
+            os.remove(_db_path)
+    except PermissionError:
+        # On Windows, the file may still be locked by the engine disposal process
+        pass
 
 # Enable SQLite foreign key enforcement
 @event.listens_for(test_engine.sync_engine, "connect")

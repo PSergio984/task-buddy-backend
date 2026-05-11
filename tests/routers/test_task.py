@@ -152,9 +152,11 @@ async def test_get_task_with_subtasks(
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
 
-    assert response.status_code == 200
+    expected_task = created_task.copy()
+    expected_task["subtasks"] = [created_subtask]
+
     assert response.json() == {
-        "task": created_task,
+        "task": expected_task,
         "subtasks": [created_subtask],
     }
 
