@@ -3,6 +3,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import RATE_LIMIT_STATS_OVERVIEW
 from app.crud import stats as stats_crud
 from app.dependencies import get_db
 from app.limiter import limiter
@@ -20,7 +21,7 @@ router = APIRouter(
 )
 
 @router.get("/overview", response_model=SystemOverview)
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_STATS_OVERVIEW)
 async def get_system_overview(
     request: Request,
     current_user: Annotated[User, Depends(get_current_user)],

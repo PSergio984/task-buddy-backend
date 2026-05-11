@@ -15,6 +15,18 @@
 - **Library:** `aiosqlite`, `databases[sqlite]`.
 - **Config:** `sqlite:///./test.db`.
 
+**Redis:**
+- **Purpose:** Message broker for Celery and caching.
+- **Config:** `REDIS_URL` in `.env`.
+- **Library:** `redis`.
+
+## Background Processing
+
+**Celery:**
+- **Purpose:** Handling asynchronous tasks like email dispatch and periodic cleanups.
+- **Broker:** Redis.
+- **Config:** Configured in `app/celery_app.py`.
+
 ## External Services
 
 **Brevo (formerly Sendinblue):**

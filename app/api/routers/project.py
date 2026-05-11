@@ -2,6 +2,7 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import project as project_crud
@@ -45,7 +46,6 @@ async def create_project(
 ):
     logger.info("POST / - creating project name=%s", project_in.name)
 
-    from sqlalchemy.exc import IntegrityError
     try:
         db_project = await project_crud.create_project(db, user_id=current_user.id, project_in=project_in)
         await db.commit()
@@ -130,7 +130,7 @@ async def delete_project(
         logger.warning("DELETE /%s - project not found", project_id)
         raise HTTPException(status_code=404, detail=PROJECT_NOT_FOUND)
 
-    await project_crud.delete_project(db, db_project=db_project)
+    await project_crud.delete_project(db, db_project=db_project, user_id=current_user.id)
     await db.commit()
 
     logger.info("DELETE /%s - project deleted", project_id)

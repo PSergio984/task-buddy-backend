@@ -18,7 +18,9 @@ class Project(Base):
     __table_args__ = (UniqueConstraint("user_id", "name", name="uq_project_user_name"),)
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    )
     name: Mapped[str] = mapped_column(String, nullable=False)
     color: Mapped[str | None] = mapped_column(String, nullable=True)
     icon: Mapped[str | None] = mapped_column(String, nullable=True)

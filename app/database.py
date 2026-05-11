@@ -1,4 +1,5 @@
 import logging
+from typing import Any
 from urllib.parse import parse_qs, urlencode, urlparse, urlunparse
 
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
@@ -75,11 +76,20 @@ def get_async_database_url(url: str | None) -> tuple[str, dict]:
 # Get the async-compatible URL and connection arguments
 ASYNC_DATABASE_URL, connect_args = get_async_database_url(config.DATABASE_URL)
 
+# Engine options
+engine_options: dict[str, Any] = {
+    "echo": config.DEBUG,
+    "pool_size": config.DB_POOL_SIZE,
+    "max_overflow": config.DB_MAX_OVERFLOW,
+    "pool_timeout": config.DB_POOL_TIMEOUT,
+    "pool_recycle": config.DB_POOL_RECYCLE,
+}
+
 # Create the async engine
 engine = create_async_engine(
     ASYNC_DATABASE_URL,
     connect_args=connect_args,
-    echo=config.DEBUG,
+    **engine_options
 )
 
 # Create the session factory

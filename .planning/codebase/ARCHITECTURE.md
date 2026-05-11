@@ -47,7 +47,9 @@
 7. **Response:** Router returns data, serialized via Pydantic schema back to JSON.
 
 **Background Tasks:**
-- Handled via FastAPI `BackgroundTasks` in `app/tasks.py` for long-running operations like email dispatch.
+- **Celery:** Used for distributed task processing (email dispatch, heavy data processing) via Redis broker.
+- **Worker:** Separate process runs `celery -A app.celery_app worker`.
+- **Location:** `app/celery_app.py` and `app/tasks.py`.
 
 ## Key Abstractions
 
@@ -62,6 +64,11 @@
 **Rate Limiting:**
 - Implemented via `slowapi` in `app/limiter.py`.
 - Applied per-route to prevent abuse.
+
+**Audit Logging:**
+- Standardized system for tracking user actions (CREATE, UPDATE, DELETE).
+- Implemented via `@audit_log` decorator in the CRUD layer.
+- Logs are stored in the `Audit` model and accessible via `/api/v1/audit/`.
 
 ## Entry Points
 

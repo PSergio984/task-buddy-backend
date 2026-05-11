@@ -182,7 +182,12 @@ def run_async_coroutine(coro):
         return asyncio.run(coro)
 
 
-@celery_app.task(name="app.tasks.send_confirmation_email")
+@celery_app.task(
+    name="app.tasks.send_confirmation_email",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3
+)
 def send_confirmation_email(
     to_email: str,
     subject: str | None = None,
@@ -228,7 +233,12 @@ async def _send_password_reset_email_async(
             ) from api_error
 
 
-@celery_app.task(name="app.tasks.send_password_reset_email")
+@celery_app.task(
+    name="app.tasks.send_password_reset_email",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3
+)
 def send_password_reset_email(to_email: str, reset_url: str) -> None:
     """Celery task to send password reset email."""
     run_async_coroutine(_send_password_reset_email_async(to_email, reset_url, suppress_exceptions=True))
@@ -265,7 +275,12 @@ async def _send_password_changed_confirmation_async(
             ) from api_error
 
 
-@celery_app.task(name="app.tasks.send_password_changed_confirmation")
+@celery_app.task(
+    name="app.tasks.send_password_changed_confirmation",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3
+)
 def send_password_changed_confirmation(to_email: str) -> None:
     """Celery task to send password changed confirmation email."""
     run_async_coroutine(

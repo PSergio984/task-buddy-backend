@@ -13,6 +13,7 @@
 - **Docstrings:** Required for complex functions and classes.
 - **Type Hints:** Mandatory for all function signatures and class attributes.
 - **Imports:** Standard library first, then third-party, then local modules.
+- **Audit Logging:** Use the `@audit_log` decorator on CRUD functions that mutate data (CREATE, UPDATE, DELETE). Ensure the `User` object is available in the context or passed as an argument.
 
 ## API Patterns
 

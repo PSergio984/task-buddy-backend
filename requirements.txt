@@ -6,6 +6,8 @@ aiosqlite==0.22.1
     #   databases
 alembic==1.18.4
     # via task-buddy-backend (pyproject.toml)
+amqp==5.3.1
+    # via kombu
 annotated-doc==0.0.4
     # via fastapi
 annotated-types==0.7.0
@@ -29,6 +31,10 @@ asyncpg==0.31.0
     # via task-buddy-backend (pyproject.toml)
 b2sdk==2.12.0
     # via task-buddy-backend (pyproject.toml)
+billiard==4.2.4
+    # via celery
+celery==5.6.3
+    # via task-buddy-backend (pyproject.toml)
 certifi==2026.4.22
     # via
     #   httpcore
@@ -42,7 +48,18 @@ cffi==2.0.0
 charset-normalizer==3.4.7
     # via requests
 click==8.3.3
-    # via uvicorn
+    # via
+    #   celery
+    #   click-didyoumean
+    #   click-plugins
+    #   click-repl
+    #   uvicorn
+click-didyoumean==0.3.1
+    # via celery
+click-plugins==1.1.1.2
+    # via celery
+click-repl==0.3.0
+    # via celery
 colorama==0.4.6
     # via
     #   click
@@ -74,6 +91,8 @@ idna==3.13
     #   anyio
     #   httpx
     #   requests
+kombu==5.6.2
+    # via celery
 limits==5.8.0
     # via slowapi
 logfury==1.0.1
@@ -89,10 +108,12 @@ mdurl==0.1.2
 packaging==26.2
     # via
     #   asgi-correlation-id
+    #   kombu
     #   limits
-bcrypt>=4.0.0
 passlib==1.7.4
     # via task-buddy-backend (pyproject.toml)
+prompt-toolkit==3.0.52
+    # via click-repl
 psycopg2-binary==2.9.12
     # via task-buddy-backend (pyproject.toml)
 pyasn1==0.6.3
@@ -112,6 +133,8 @@ pydantic-settings==2.14.0
     # via task-buddy-backend (pyproject.toml)
 pygments==2.20.0
     # via rich
+python-dateutil==2.9.0.post0
+    # via celery
 python-dotenv==1.2.2
     # via
     #   pydantic-settings
@@ -135,7 +158,9 @@ rsa==4.9.1
 sentry-sdk==2.59.0
     # via task-buddy-backend (pyproject.toml)
 six==1.17.0
-    # via ecdsa
+    # via
+    #   ecdsa
+    #   python-dateutil
 slowapi==0.1.9
     # via task-buddy-backend (pyproject.toml)
 sqlalchemy==2.0.49
@@ -161,14 +186,27 @@ typing-inspection==0.4.2
     #   fastapi
     #   pydantic
     #   pydantic-settings
+tzdata==2026.2
+    # via
+    #   kombu
+    #   tzlocal
+tzlocal==5.3.1
+    # via celery
 urllib3==2.7.0
     # via
     #   requests
     #   sentry-sdk
 uvicorn==0.46.0
     # via task-buddy-backend (pyproject.toml)
+vine==5.1.0
+    # via
+    #   amqp
+    #   celery
+    #   kombu
 watchfiles==1.1.1
     # via uvicorn
+wcwidth==0.7.0
+    # via prompt-toolkit
 websockets==16.0
     # via uvicorn
 wrapt==2.1.2

@@ -81,7 +81,9 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=user_id, tag_in=TagCreate(name=name))
 
-            await tag_crud.attach_tag_to_task(db, task_id=db_task.id, tag_id=db_tag.id, user_id=user_id)
+            await tag_crud.attach_tag_to_task(
+                db, task_id=db_task.id, tag_id=db_tag.id, user_id=user_id
+            )
 
     # Process nested subtasks
     if subtasks_data:
@@ -117,7 +119,9 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
             if not db_tag:
                 db_tag = await tag_crud.create_tag(db, user_id=db_task.user_id, tag_in=TagCreate(name=name))
 
-            await tag_crud.attach_tag_to_task(db, task_id=db_task.id, tag_id=db_tag.id, user_id=db_task.user_id)
+            await tag_crud.attach_tag_to_task(
+                db, task_id=db_task.id, tag_id=db_tag.id, user_id=db_task.user_id
+            )
 
     await db.flush()
     await db.refresh(db_task)
@@ -125,7 +129,10 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
 
 
 @audit_log(action=AuditAction.DELETE, target_type="TASK")
-async def delete_task(db: AsyncSession, db_task: Task) -> None:
+async def delete_task(db: AsyncSession, db_task: Task, user_id: int | None = None) -> None:
+    """
+    Deletes a task from the database.
+    """
     await db.delete(db_task)
 
 
@@ -161,7 +168,10 @@ async def update_subtask(db: AsyncSession, db_subtask: SubTask, subtask_in: SubT
 
 
 @audit_log(action=AuditAction.DELETE, target_type="SUBTASK")
-async def delete_subtask(db: AsyncSession, db_subtask: SubTask) -> None:
+async def delete_subtask(db: AsyncSession, db_subtask: SubTask, user_id: int | None = None) -> None:
+    """
+    Deletes a subtask from the database.
+    """
     await db.delete(db_subtask)
 
 

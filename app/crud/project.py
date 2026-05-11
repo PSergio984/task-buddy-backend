@@ -8,6 +8,8 @@ from app.models.project import Project
 from app.schemas.enums import AuditAction
 from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 
+PROJECT_TARGET_TYPE = "PROJECT"
+
 
 async def get_projects(db: AsyncSession, user_id: int) -> list[Project]:
     query = select(Project).where(Project.user_id == user_id)
@@ -21,7 +23,7 @@ async def get_project(db: AsyncSession, project_id: int, user_id: int) -> Option
     return result.scalar_one_or_none()
 
 
-@audit_log(action=AuditAction.CREATE, target_type="PROJECT")
+@audit_log(action=AuditAction.CREATE, target_type=PROJECT_TARGET_TYPE)
 async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCreateRequest) -> Project:
     db_project = Project(
         **project_in.model_dump(),
@@ -32,7 +34,11 @@ async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCrea
     return db_project
 
 
-@audit_log(action=AuditAction.UPDATE, target_type="PROJECT", include_diff=True)
+@audit_log(
+    action=AuditAction.UPDATE,
+    target_type=PROJECT_TARGET_TYPE,
+    include_diff=True
+)
 async def update_project(db: AsyncSession, db_project: Project, project_in: ProjectUpdateRequest) -> Project:
     update_data = project_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -42,6 +48,6 @@ async def update_project(db: AsyncSession, db_project: Project, project_in: Proj
     return db_project
 
 
-@audit_log(action=AuditAction.DELETE, target_type="PROJECT")
-async def delete_project(db: AsyncSession, db_project: Project) -> None:
+@audit_log(action=AuditAction.DELETE, target_type=PROJECT_TARGET_TYPE)
+async def delete_project(db: AsyncSession, db_project: Project, user_id: int | None = None) -> None:
     await db.delete(db_project)

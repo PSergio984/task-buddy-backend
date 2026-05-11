@@ -11,6 +11,7 @@ task-buddy-backend/
 │   ├── api/              # API layer
 │   │   ├── routers/      # Endpoint route handlers
 │   │   └── dependencies.py # Shared API dependencies (Auth, DB)
+│   ├── celery_app.py     # Celery configuration
 │   ├── crud/             # Database CRUD logic
 │   ├── internal/         # Internal modules (admin, audit logic)
 │   ├── models/           # SQLAlchemy database models

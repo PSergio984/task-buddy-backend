@@ -12,6 +12,8 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_asyn
 from sqlalchemy.pool import NullPool
 
 import app.database as app_db
+import app.dependencies as app_deps
+import app.tasks as app_tasks
 from app.dependencies import get_db
 from app.main import app
 from app.models.base import Base
@@ -26,7 +28,9 @@ TEST_DATABASE_URL = f"sqlite+aiosqlite:///{_db_path}"
 test_engine = create_async_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
-    poolclass=NullPool
+    pool_size=20,
+    max_overflow=30,
+    pool_timeout=60
 )
 
 # Cleanup the temp file after the session
@@ -45,6 +49,8 @@ def cleanup_temp_db():
 def set_sqlite_pragma(dbapi_connection, connection_record):
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.execute("PRAGMA journal_mode=WAL")
+    cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 
 TestSessionLocal = async_sessionmaker(
@@ -58,6 +64,8 @@ TestSessionLocal = async_sessionmaker(
 # Patch app.database globally
 app_db.engine = test_engine
 app_db.AsyncSessionLocal = TestSessionLocal
+app_deps.AsyncSessionLocal = TestSessionLocal
+app_tasks.AsyncSessionLocal = TestSessionLocal
 
 # Override get_db dependency
 async def override_get_db() -> AsyncGenerator:

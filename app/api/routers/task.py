@@ -180,7 +180,7 @@ async def delete_task(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    await task_crud.delete_task(db, db_task=db_task)
+    await task_crud.delete_task(db, db_task=db_task, user_id=current_user.id)
     await db.commit()
 
     logger.info("DELETE /%s - task deleted", task_id)
@@ -313,7 +313,7 @@ async def delete_subtask(
     if not db_subtask:
         raise HTTPException(status_code=404, detail=SUBTASK_NOT_FOUND)
 
-    await task_crud.delete_subtask(db, db_subtask=db_subtask)
+    await task_crud.delete_subtask(db, db_subtask=db_subtask, user_id=current_user.id)
     await db.commit()
 
     logger.info("DELETE /subtask/%s - subtask deleted", subtask_id)
@@ -342,10 +342,14 @@ async def create_tag(
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
 
-    db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
-    await db.commit()
-    await db.refresh(db_tag)
-    return db_tag
+    try:
+        db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
+        await db.commit()
+        await db.refresh(db_tag)
+        return db_tag
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Tag already exists")
 
 
 @router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
@@ -364,7 +368,7 @@ async def delete_tag(
     if not db_tag:
         raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
 
-    await tag_crud.delete_tag(db, db_tag=db_tag)
+    await tag_crud.delete_tag(db, db_tag=db_tag, user_id=current_user.id)
     await db.commit()
     return {"message": "Tag deleted successfully"}
 
@@ -383,18 +387,36 @@ async def create_and_attach_tag(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    # Check if tag already exists for user
-    db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
-    if not db_tag:
-        db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
-        await db.flush() # Get the tag ID
+    try:
+        # Check if tag already exists for user
+        db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
+        if not db_tag:
+            db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
+            await db.flush() # Get the tag ID
 
-    # Attach to task
-    await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id)
+        # Attach to task
+        await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id)
 
-    await db.commit()
-    await db.refresh(db_tag)
-    return db_tag
+        await db.commit()
+        await db.refresh(db_tag)
+        return db_tag
+    except IntegrityError:
+        await db.rollback()
+        # Retry logic: tag might have been created by another request
+        db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
+        if not db_tag:
+            raise HTTPException(status_code=400, detail="Failed to create or attach tag")
+        
+        # Try attaching again if it was just the creation that failed
+        try:
+            await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id)
+            await db.commit()
+            await db.refresh(db_tag)
+            return db_tag
+        except IntegrityError:
+            await db.rollback()
+            await db.refresh(db_tag)
+            return db_tag
 
 
 @router.get(
@@ -433,11 +455,15 @@ async def attach_tag_to_task(
     if not result_tag.scalar_one_or_none():
         raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
 
-    attached = await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=tag_id)
-    if not attached:
+    try:
+        attached = await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=tag_id, user_id=current_user.id)
+        if not attached:
+            return {"message": "Tag already attached"}
+        await db.commit()
+    except IntegrityError:
+        await db.rollback()
         return {"message": "Tag already attached"}
 
-    await db.commit()
     return {"message": "Tag attached successfully"}
 
 
@@ -455,7 +481,7 @@ async def detach_tag_from_task(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    await tag_crud.detach_tag_from_task(db, task_id=task_id, tag_id=tag_id)
+    await tag_crud.detach_tag_from_task(db, task_id=task_id, tag_id=tag_id, user_id=current_user.id)
 
     await db.commit()
     return {"message": "Tag detached successfully"}

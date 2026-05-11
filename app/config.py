@@ -43,10 +43,15 @@ class GlobalConfig(BaseConfig):
     MAIL_SMTP_USERNAME: Optional[str] = None
     MAIL_SMTP_PASSWORD: Optional[str] = None
     MAIL_SMTP_USE_TLS: bool = True
+    DB_POOL_SIZE: int = 10
+    DB_MAX_OVERFLOW: int = 20
+    DB_POOL_TIMEOUT: int = 30
+    DB_POOL_RECYCLE: int = 1800
     B2_KEY_ID: Optional[str] = None
     B2_APPLICATION_KEY: Optional[str] = None
     B2_BUCKET_NAME: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:5173"
+    RATE_LIMIT_STATS_OVERVIEW: str = "20/minute"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -115,13 +120,17 @@ try:
 except Exception:
     _unprefixed_secret = None
 
-SECRET_KEY: str = (
+_raw_secret: Any = (
     os.environ.get("SECRET_KEY")
     or getattr(config, "SECRET_KEY", None)
     or _unprefixed_secret
     or os.environ.get("PROD_SECRET_KEY")
-    or "dev-secret-key-replace-in-production"
 )
+
+if not _raw_secret:
+    raise RuntimeError("SECRET_KEY must be set via environment or config")
+
+SECRET_KEY: str = str(_raw_secret)
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
 REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
 ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
@@ -130,3 +139,4 @@ RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
 COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)
 COOKIE_SAMESITE = config.COOKIE_SAMESITE
 FRONTEND_URL = config.FRONTEND_URL
+RATE_LIMIT_STATS_OVERVIEW = config.RATE_LIMIT_STATS_OVERVIEW

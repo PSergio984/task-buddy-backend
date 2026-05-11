@@ -27,13 +27,9 @@ class Tag(Base):
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tags")
-    tasks: Mapped[list[Task]] = relationship(
-        secondary="tbl_task_tags", back_populates="tags"
-    )
+    tasks: Mapped[list[Task]] = relationship(secondary="tbl_task_tags", back_populates="tags")
 
-    __table_args__ = (
-        UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "name", name="uq_tbl_tags_user_name"),)
 
     def __repr__(self) -> str:
         return f"<Tag(id={self.id}, name={self.name})>"
