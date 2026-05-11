@@ -3,8 +3,10 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.libs.audit import audit_log
 from app.models.tag import Tag
 from app.models.task import task_tags
+from app.schemas.enums import AuditAction
 from app.schemas.tag import TagCreate
 
 
@@ -20,6 +22,7 @@ async def get_tag_by_name(db: AsyncSession, user_id: int, name: str) -> Optional
     return result.scalar_one_or_none()
 
 
+@audit_log(action=AuditAction.CREATE, target_type="TAG")
 async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
     db_tag = Tag(
         user_id=user_id,
@@ -30,11 +33,13 @@ async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
     return db_tag
 
 
+@audit_log(action=AuditAction.DELETE, target_type="TAG")
 async def delete_tag(db: AsyncSession, db_tag: Tag) -> None:
     await db.delete(db_tag)
 
 
-async def attach_tag_to_task(db: AsyncSession, task_id: int, tag_id: int) -> bool:
+@audit_log(action=AuditAction.UPDATE, target_type="TASK")
+async def attach_tag_to_task(db: AsyncSession, task_id: int, tag_id: int, user_id: int | None = None) -> bool:
     """
     Attaches a tag to a task. Returns True if a new link was created.
     """
@@ -52,7 +57,8 @@ async def attach_tag_to_task(db: AsyncSession, task_id: int, tag_id: int) -> boo
     return True
 
 
-async def detach_tag_from_task(db: AsyncSession, task_id: int, tag_id: int) -> None:
+@audit_log(action=AuditAction.UPDATE, target_type="TASK")
+async def detach_tag_from_task(db: AsyncSession, task_id: int, tag_id: int, user_id: int | None = None) -> None:
     stmt = task_tags.delete().where(
         task_tags.c.task_id == task_id,
         task_tags.c.tag_id == tag_id

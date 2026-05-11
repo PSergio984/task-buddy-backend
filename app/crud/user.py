@@ -3,7 +3,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.libs.audit import audit_log
 from app.models.user import User
+from app.schemas.enums import AuditAction
 from app.schemas.user import UserCreateRequest
 
 
@@ -19,6 +21,7 @@ async def get_user_by_id(db: AsyncSession, user_id: int) -> Optional[User]:
     return result.scalar_one_or_none()
 
 
+@audit_log(action=AuditAction.CREATE, target_type="USER")
 async def create_user(db: AsyncSession, user_in: UserCreateRequest, hashed_password: str) -> User:
     db_user = User(
         username=user_in.username,
@@ -30,6 +33,7 @@ async def create_user(db: AsyncSession, user_in: UserCreateRequest, hashed_passw
     return db_user
 
 
+@audit_log(action=AuditAction.UPDATE, target_type="USER", include_diff=True)
 async def update_user_confirmation(db: AsyncSession, db_user: User, confirmed: bool = True) -> User:
     db_user.confirmed = confirmed
     db_user.confirmation_failed = not confirmed
@@ -44,6 +48,7 @@ async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User
     return result.scalar_one_or_none()
 
 
+@audit_log(action=AuditAction.UPDATE, target_type="USER", include_diff=True, blacklist=["password"])
 async def update_user(db: AsyncSession, db_user: User, update_data: dict) -> User:
     for field, value in update_data.items():
         setattr(db_user, field, value)

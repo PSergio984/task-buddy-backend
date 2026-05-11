@@ -3,7 +3,9 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.libs.audit import audit_log
 from app.models.project import Project
+from app.schemas.enums import AuditAction
 from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 
 
@@ -19,6 +21,7 @@ async def get_project(db: AsyncSession, project_id: int, user_id: int) -> Option
     return result.scalar_one_or_none()
 
 
+@audit_log(action=AuditAction.CREATE, target_type="PROJECT")
 async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCreateRequest) -> Project:
     db_project = Project(
         **project_in.model_dump(),
@@ -29,6 +32,7 @@ async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCrea
     return db_project
 
 
+@audit_log(action=AuditAction.UPDATE, target_type="PROJECT", include_diff=True)
 async def update_project(db: AsyncSession, db_project: Project, project_in: ProjectUpdateRequest) -> Project:
     update_data = project_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
@@ -38,5 +42,6 @@ async def update_project(db: AsyncSession, db_project: Project, project_in: Proj
     return db_project
 
 
+@audit_log(action=AuditAction.DELETE, target_type="PROJECT")
 async def delete_project(db: AsyncSession, db_project: Project) -> None:
     await db.delete(db_project)

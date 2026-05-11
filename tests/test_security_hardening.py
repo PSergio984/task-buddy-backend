@@ -50,9 +50,66 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker):
         # 6th request should be rate limited
         response = await async_client.post("/api/v1/users/register", json=user_data)
         assert response.status_code == 429
-        # SlowAPI's default handler uses "error" instead of "detail"
+        # Our custom handler uses "detail" to match FastAPI defaults
         resp_json = response.json()
-        assert "error" in resp_json
-        assert "Rate limit exceeded" in resp_json["error"]
+        assert "detail" in resp_json
+        assert "Too many attempts" in resp_json["detail"]
     finally:
         app.state.limiter.enabled = False
+
+async def test_rate_limiting_create_project(async_client: AsyncClient, mocker, authenticated_async_client: AsyncClient):
+    # Enable limiter specifically for this test
+    app.state.limiter.enabled = True
+    try:
+        # Mock get_remote_address to ensure we have a consistent key
+        mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
+
+        project_data = {
+            "name": "Rate Limit Project",
+            "description": "Test description",
+        }
+
+        # Hit the limit (10 per minute)
+        for _ in range(10):
+            response = await authenticated_async_client.post("/api/v1/projects/", json=project_data)
+            # We don't care about the result here (could be 201 or 400 if name taken), just not 429
+            assert response.status_code != 429
+
+        # 11th request should be rate limited
+        response = await authenticated_async_client.post("/api/v1/projects/", json=project_data)
+        assert response.status_code == 429
+        resp_json = response.json()
+        assert "detail" in resp_json
+        assert "Too many attempts" in resp_json["detail"]
+    finally:
+        app.state.limiter.enabled = False
+
+
+async def test_rate_limiting_login(async_client: AsyncClient, mocker):
+    # Enable limiter specifically for this test
+    app.state.limiter.enabled = True
+    try:
+        # Mock get_remote_address to ensure we have a consistent key
+        mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
+
+        login_data = {
+            "username": "nonexistentuser@example.com",
+            "password": "wrongpassword",
+        }
+
+        # Hit the limit (5 per minute)
+        for _ in range(5):
+            # We use data= because OAuth2PasswordRequestForm expects form data
+            response = await async_client.post("/api/v1/users/token", data=login_data)
+            # Should be 401 Unauthorized for wrong credentials, but not 429
+            assert response.status_code == 401
+
+        # 6th request should be rate limited
+        response = await async_client.post("/api/v1/users/token", data=login_data)
+        assert response.status_code == 429
+        resp_json = response.json()
+        assert "detail" in resp_json
+        assert "Too many attempts" in resp_json["detail"]
+    finally:
+        app.state.limiter.enabled = False
+

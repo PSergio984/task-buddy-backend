@@ -1,4 +1,3 @@
-from fastapi import BackgroundTasks
 from httpx import AsyncClient, Response
 
 
@@ -22,10 +21,11 @@ async def test_register_user(db, async_client: AsyncClient):
 
 
 async def test_confirm_user(db, async_client: AsyncClient, mocker):
-    spy = mocker.spy(BackgroundTasks, "add_task")
+    mock_delay = mocker.patch("app.tasks.send_confirmation_email.delay")
 
     await register_user(async_client, "testuser", "test@example.net", "1234")
-    confirmation_url = str(spy.call_args[1]["confirmation_url"])
+    assert mock_delay.called
+    confirmation_url = str(mock_delay.call_args[1]["confirmation_url"])
     response = await async_client.get(confirmation_url)
 
     assert response.status_code == 200
@@ -40,10 +40,10 @@ async def test_confirm_user_invalid_token(async_client: AsyncClient):
 async def test_confirm_user_expired_token(async_client: AsyncClient, mocker):
     mocker.patch("app.security.confirm_token_expire_time", return_value=-1)
 
-    spy = mocker.spy(BackgroundTasks, "add_task")
+    mock_delay = mocker.patch("app.tasks.send_confirmation_email.delay")
     await register_user(async_client, "testuser2", "test@exaple.net", "1234")
-    assert spy.called, "Expected add_task to be called during registration"
-    confirmation_url = str(spy.call_args[1]["confirmation_url"])
+    assert mock_delay.called, "Expected send_confirmation_email.delay to be called during registration"
+    confirmation_url = str(mock_delay.call_args[1]["confirmation_url"])
     response = await async_client.get(confirmation_url)
 
     assert response.status_code == 401

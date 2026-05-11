@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,10 +10,9 @@ from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.internal.audit import log_action
+from app.limiter import limiter
 from app.models.tag import Tag
 from app.models.user import User
-from app.schemas.enums import AuditAction
 from app.schemas.tag import TagCreate, TagResponse
 from app.schemas.task import (
     SubTaskCreateRequest,
@@ -63,22 +62,6 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
             raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
-def _generate_update_details(db_obj, update_data: dict) -> list[str]:
-    """Generate a list of strings describing field-level changes for audit logging."""
-    details_list = []
-    for k, v in update_data.items():
-        old_v = getattr(db_obj, k, None)
-        if old_v == v:
-            continue
-
-        if k == "completed":
-            details_list.append(f"marked {'completed' if v else 'pending'}")
-            continue
-
-        old_str = f"'{old_v}'" if old_v is not None else "None"
-        new_str = f"'{v}'" if v is not None else "None"
-        details_list.append(f"{k} from {old_str} to {new_str}")
-    return details_list
 
 
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
@@ -114,8 +97,10 @@ async def get_task(
     return task
 
 @router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
+@limiter.limit("20/minute")
 async def create_task(
     task_in: TaskCreateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -125,19 +110,6 @@ async def create_task(
 
     try:
         db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
-
-        # Flush to get ID for audit log
-        await db.flush()
-        await db.refresh(db_task)
-
-        await log_action(
-            db=db,
-            user_id=current_user.id,
-            action=AuditAction.CREATE,
-            target_type="TASK",
-            target_id=db_task.id,
-            details=f"Created task: {db_task.title}",
-        )
         await db.commit()
         await db.refresh(db_task)
     except IntegrityError as e:
@@ -157,9 +129,11 @@ async def create_task(
     "/{task_id}",
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit("30/minute")
 async def update_task(
     task_id: int,
     task_update: TaskUpdateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -177,24 +151,9 @@ async def update_task(
         await verify_project_ownership(db, task_update.project_id, current_user.id)
 
     try:
-        # Capture field-level changes for more granular audit logging
-        details_list = _generate_update_details(db_task, update_data)
-
         await task_crud.update_task(db, db_task=db_task, task_in=task_update)
-
-        details = f"Updated task: {db_task.title}"
-        if details_list:
-            details += f" (fields: {', '.join(details_list)})"
-
-        await log_action(
-            db=db,
-            user_id=current_user.id,
-            action=AuditAction.UPDATE,
-            target_type="TASK",
-            target_id=task_id,
-            details=details,
-        )
         await db.commit()
+        await db.refresh(db_task)
     except IntegrityError as e:
         await db.rollback()
         logger.warning("Integrity error updating task: %s", str(e))
@@ -209,9 +168,10 @@ async def update_task(
 
 
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("20/minute")
 async def delete_task(
     task_id: int,
-
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -220,17 +180,7 @@ async def delete_task(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    task_title = db_task.title
     await task_crud.delete_task(db, db_task=db_task)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.DELETE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Deleted task: {task_title}",
-    )
     await db.commit()
 
     logger.info("DELETE /%s - task deleted", task_id)
@@ -278,8 +228,10 @@ async def get_task_with_subtasks(
     status_code=201,
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit("30/minute")
 async def create_subtask(
     subtask_in: SubTaskCreateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -292,16 +244,6 @@ async def create_subtask(
     db_subtask = await task_crud.create_subtask(db, task_id=subtask_in.task_id, user_id=current_user.id, subtask_in=subtask_in)
     await db.commit()
     await db.refresh(db_subtask)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.CREATE,
-        target_type="SUBTASK",
-        target_id=db_subtask.id,
-        details=f"Added subtask '{db_subtask.title}' to task '{db_task.title}'",
-    )
-    await db.commit()
 
     logger.info("POST /subtask - created subtask id=%s", db_subtask.id)
     return db_subtask
@@ -330,11 +272,13 @@ async def get_subtask(
 
 @router.put(
     "/subtask/{subtask_id}",
-    responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+    responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": NO_FIELDS_TO_UPDATE}},
 )
+@limiter.limit("30/minute")
 async def update_subtask(
     subtask_id: int,
     subtask_update: SubTaskUpdateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -348,37 +292,19 @@ async def update_subtask(
         logger.warning("PUT /subtask/%s - no fields to update", subtask_id)
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
-    # Capture field-level changes for detailed audit logging
-    old_title = db_subtask.title
-    details_list = _generate_update_details(db_subtask, update_data)
-
     await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
-
-    # Fetch parent task for title
-    parent_task = await task_crud.get_task(db, task_id=db_subtask.task_id, user_id=current_user.id)
-    parent_title = parent_task.title if parent_task else f"#{db_subtask.task_id}"
-
-    details = f"Updated subtask '{old_title}' on task '{parent_title}'"
-    if details_list:
-        details += f" ({', '.join(details_list)})"
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="SUBTASK",
-        target_id=subtask_id,
-        details=details,
-    )
     await db.commit()
+    await db.refresh(db_subtask)
 
     logger.info("PUT /subtask/%s - subtask updated", subtask_id)
     return {"message": "Subtask updated successfully"}
 
 
 @router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("20/minute")
 async def delete_subtask(
     subtask_id: int,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -387,22 +313,7 @@ async def delete_subtask(
     if not db_subtask:
         raise HTTPException(status_code=404, detail=SUBTASK_NOT_FOUND)
 
-    subtask_title = db_subtask.title
-    task_id = db_subtask.task_id
     await task_crud.delete_subtask(db, db_subtask=db_subtask)
-
-    # Fetch parent task for title
-    parent_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
-    parent_title = parent_task.title if parent_task else f"#{task_id}"
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.DELETE,
-        target_type="SUBTASK",
-        target_id=subtask_id,
-        details=f"Deleted subtask '{subtask_title}' from task '{parent_title}'",
-    )
     await db.commit()
 
     logger.info("DELETE /subtask/%s - subtask deleted", subtask_id)
@@ -420,8 +331,10 @@ async def get_all_tags(
 
 
 @router.post("/tags/", response_model=TagResponse, status_code=201, responses={400: {"description": "Tag already exists or invalid request"}})
+@limiter.limit("20/minute")
 async def create_tag(
     tag_in: TagCreate,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -436,8 +349,10 @@ async def create_tag(
 
 
 @router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("20/minute")
 async def delete_tag(
     tag_id: int,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -455,9 +370,11 @@ async def delete_tag(
 
 
 @router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("30/minute")
 async def create_and_attach_tag(
     task_id: int,
     tag_in: TagCreate,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -474,15 +391,6 @@ async def create_and_attach_tag(
 
     # Attach to task
     await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Attached tag '{db_tag.name}' to task: {db_task.title}",
-    )
 
     await db.commit()
     await db.refresh(db_tag)
@@ -507,9 +415,11 @@ async def get_tags_on_task(
 
 
 @router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("30/minute")
 async def attach_tag_to_task(
     task_id: int,
     tag_id: int,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -527,23 +437,16 @@ async def attach_tag_to_task(
     if not attached:
         return {"message": "Tag already attached"}
 
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Attached existing tag to task: {db_task.title}",
-    )
-
     await db.commit()
     return {"message": "Tag attached successfully"}
 
 
 @router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("30/minute")
 async def detach_tag_from_task(
     task_id: int,
     tag_id: int,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -553,15 +456,6 @@ async def detach_tag_from_task(
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
     await tag_crud.detach_tag_from_task(db, task_id=task_id, tag_id=tag_id)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="TASK",
-        target_id=task_id,
-        details=f"Detached tag from task: {db_task.title}",
-    )
 
     await db.commit()
     return {"message": "Tag detached successfully"}

@@ -250,7 +250,7 @@ def seed_data(override_url=None):
             "Seed script blocked in production. "
             "Set SEED_ALLOWED=true to override (destructive — wipes demo user data)."
         )
-        return False
+        raise SystemExit(1)
 
     db_url = override_url or CONN_STR
     engine = create_engine(db_url)

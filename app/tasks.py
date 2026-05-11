@@ -7,6 +7,7 @@ from email.message import EmailMessage
 import httpx
 from sqlalchemy import update
 
+from app.celery_app import celery_app
 from app.config import config
 from app.database import AsyncSessionLocal
 from app.models.user import User
@@ -23,7 +24,7 @@ def _is_valid_url(url: str | None) -> bool:
     return bool(url and url.startswith("https://"))
 
 
-async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Response:
+async def send_brevo_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> httpx.Response:
     mail_url = config.MAIL_URL
     if not _is_valid_url(mail_url):
         raise APIResponseError(
@@ -37,6 +38,15 @@ async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Resp
     if not config.MAIL_FROM_EMAIL:
         raise APIResponseError("Missing MAIL_FROM_EMAIL for Brevo transactional email")
 
+    payload = {
+        "sender": {"email": config.MAIL_FROM_EMAIL, "name": config.MAIL_FROM_NAME},
+        "to": [{"email": to_email}],
+        "subject": subject,
+        "textContent": text_body,
+    }
+    if html_body:
+        payload["htmlContent"] = html_body
+
     async with httpx.AsyncClient(timeout=30.0) as client:
         response = await client.post(
             mail_url,
@@ -45,18 +55,13 @@ async def send_brevo_email(to_email: str, subject: str, body: str) -> httpx.Resp
                 "accept": "application/json",
                 "content-type": "application/json",
             },
-            json={
-                "sender": {"email": config.MAIL_FROM_EMAIL, "name": config.MAIL_FROM_NAME},
-                "to": [{"email": to_email}],
-                "subject": subject,
-                "textContent": body,
-            },
+            json=payload,
         )
         response.raise_for_status()
         return response
 
 
-def send_smtp_email(to_email: str, subject: str, body: str) -> None:
+def send_smtp_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> None:
     if not config.MAIL_SMTP_HOST:
         raise APIResponseError("Missing MAIL_SMTP_HOST for Brevo SMTP transactional email")
     if not config.MAIL_SMTP_USERNAME:
@@ -70,7 +75,10 @@ def send_smtp_email(to_email: str, subject: str, body: str) -> None:
     message["From"] = f"{config.MAIL_FROM_NAME} <{config.MAIL_FROM_EMAIL}>"
     message["To"] = to_email
     message["Subject"] = subject
-    message.set_content(body)
+    message.set_content(text_body)
+
+    if html_body:
+        message.add_alternative(html_body, subtype="html")
 
     context = ssl.create_default_context()
     # Explicitly enforce TLS 1.2 or higher for security compliance
@@ -114,7 +122,7 @@ async def _record_confirmation_failure(to_email: str) -> None:
         logger.exception("Failed to record confirmation failure for %s", to_email)
 
 
-async def send_confirmation_email(
+async def _send_confirmation_email_async(
     to_email: str,
     subject: str | None = None,
     body: str | None = None,
@@ -122,10 +130,7 @@ async def send_confirmation_email(
     *,
     suppress_exceptions: bool = False,
 ) -> None:
-    """Send a confirmation email with SMTP and Brevo API fallback.
-
-    The logic is broken down to reduce cognitive complexity.
-    """
+    """Internal async implementation of confirmation email sending."""
     try:
         final_subject, final_body = _get_confirmation_content(
             to_email, subject, body, confirmation_url
@@ -158,19 +163,54 @@ async def send_confirmation_email(
             raise APIResponseError(
                 "Failed to send confirmation email via SMTP and Brevo API"
             ) from api_error
-async def send_password_reset_email(
+
+
+def run_async_coroutine(coro):
+    """
+    Helper to run an async coroutine from a synchronous context.
+    If an event loop is already running (e.g., in tests), it runs the coroutine
+    in a separate thread to avoid RuntimeError: asyncio.run() cannot be called from a running event loop.
+    """
+    try:
+        asyncio.get_running_loop()
+        # If we reach here, a loop is running. Run in a thread to block synchronously.
+        import concurrent.futures
+        with concurrent.futures.ThreadPoolExecutor() as pool:
+            return pool.submit(asyncio.run, coro).result()
+    except RuntimeError:
+        # No loop running, safe to use asyncio.run
+        return asyncio.run(coro)
+
+
+@celery_app.task(name="app.tasks.send_confirmation_email")
+def send_confirmation_email(
+    to_email: str,
+    subject: str | None = None,
+    body: str | None = None,
+    confirmation_url: str | None = None,
+) -> None:
+    """Celery task to send confirmation email."""
+    run_async_coroutine(
+        _send_confirmation_email_async(
+            to_email, subject, body, confirmation_url, suppress_exceptions=True
+        )
+    )
+async def _send_password_reset_email_async(
     to_email: str,
     reset_url: str,
     *,
     suppress_exceptions: bool = False,
 ) -> None:
-    """Send a password reset email with SMTP and Brevo API fallback."""
+    """Internal async implementation of password reset email sending."""
+    from app.libs.email_templates import get_password_reset_html
+
     subject = "Password Reset Request - Task Buddy"
-    body = f"Hi, you requested a password reset. Please click the following link to reset your password: {reset_url}\nIf you did not request this, please ignore this email."
+    text_body = f"Hi, you requested a password reset. Please use the following link to reset your password: {reset_url}"
+    html_body = get_password_reset_html(reset_url)
 
     # 1. Try SMTP
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, subject, body)
+        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
         return
     except Exception:
         logger.warning(
@@ -179,10 +219,55 @@ async def send_password_reset_email(
 
     # 2. Try Brevo API Fallback
     try:
-        await send_brevo_email(to_email, subject, body)
+        await send_brevo_email(to_email, subject, text_body, html_body)
     except Exception as api_error:
         logger.exception("Brevo API fallback failed for %s", to_email)
         if not suppress_exceptions:
             raise APIResponseError(
                 "Failed to send password reset email via SMTP and Brevo API"
             ) from api_error
+
+
+@celery_app.task(name="app.tasks.send_password_reset_email")
+def send_password_reset_email(to_email: str, reset_url: str) -> None:
+    """Celery task to send password reset email."""
+    run_async_coroutine(_send_password_reset_email_async(to_email, reset_url, suppress_exceptions=True))
+
+async def _send_password_changed_confirmation_async(
+    to_email: str,
+    *,
+    suppress_exceptions: bool = False,
+) -> None:
+    """Internal async implementation of password changed confirmation email sending."""
+    from app.libs.email_templates import get_password_changed_html
+
+    subject = "Security Update: Password Changed - Task Buddy"
+    text_body = f"Hi {to_email}, your Task Buddy password was successfully updated."
+    html_body = get_password_changed_html(to_email)
+
+    # 1. Try SMTP
+    try:
+        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
+        return
+    except Exception:
+        logger.warning(
+            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+        )
+
+    # 2. Try Brevo API Fallback
+    try:
+        await send_brevo_email(to_email, subject, text_body, html_body)
+    except Exception as api_error:
+        logger.exception("Brevo API fallback failed for %s", to_email)
+        if not suppress_exceptions:
+            raise APIResponseError(
+                "Failed to send password changed confirmation email via SMTP and Brevo API"
+            ) from api_error
+
+
+@celery_app.task(name="app.tasks.send_password_changed_confirmation")
+def send_password_changed_confirmation(to_email: str) -> None:
+    """Celery task to send password changed confirmation email."""
+    run_async_coroutine(
+        _send_password_changed_confirmation_async(to_email, suppress_exceptions=True)
+    )

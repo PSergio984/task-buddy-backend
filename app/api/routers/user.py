@@ -22,11 +22,12 @@ from app.config import (
     ALGORITHM,
     COOKIE_SAMESITE,
     COOKIE_SECURE,
+    FRONTEND_URL,
     SECRET_KEY,
 )
 from app.crud import user as user_crud
 from app.dependencies import get_db
-from app.internal.audit import log_action
+from app.libs.audit import audit_log
 from app.limiter import limiter
 from app.models.user import User as UserORM
 from app.schemas.enums import AuditAction
@@ -97,11 +98,9 @@ async def register_user(
 
     confirmation_token = create_confirm_token(db_user.id)
 
-    background_tasks.add_task(
-        tasks.send_confirmation_email,
+    tasks.send_confirmation_email.delay(
         user.email,
         confirmation_url=str(request.url_for("confirm_email", token=confirmation_token)),
-        suppress_exceptions=True,
     )
 
     access_token = create_access_token(db_user.id)
@@ -141,17 +140,16 @@ async def resend_confirmation(
 
     confirmation_token = create_confirm_token(user.id)
     confirmation_url = f"/api/v1/users/confirm/{confirmation_token}"
-    background_tasks.add_task(
-        tasks.send_confirmation_email,
+    tasks.send_confirmation_email.delay(
         email,
         confirmation_url=confirmation_url,
-        suppress_exceptions=True,
     )
     return {"detail": "Confirmation email requeued"}
 
 
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
 @limiter.limit("5/minute")
+@audit_log(action=AuditAction.LOGIN, target_type="USER", commit=True)
 async def login(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
@@ -173,16 +171,6 @@ async def login(
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
-
-    await log_action(
-        db=db,
-        user_id=auth_user.id,
-        action=AuditAction.LOGIN,
-        target_type="USER",
-        target_id=auth_user.id,
-        details=f"User logged in: {auth_user.username}",
-    )
-    await db.commit()
 
     return {
         "access_token": access_token,
@@ -228,8 +216,10 @@ async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_us
 
 
 @router.patch("/me/username", responses={400: {"description": "Invalid username or already taken"}})
+@limiter.limit("5/minute")
 async def update_username(
     username_data: UsernameUpdate,
+    request: Request,
     current_user: Annotated[UserORM, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -256,25 +246,17 @@ async def update_username(
             status_code=status.HTTP_400_BAD_REQUEST, detail="Username already taken"
         )
 
-    old_username = current_user.username
     await user_crud.update_user(db, db_user=current_user, update_data={"username": new_username})
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="USER",
-        target_id=current_user.id,
-        details=f"Updated username from {old_username} to {new_username}",
-    )
     await db.commit()
 
     return {"message": "Username updated successfully"}
 
 
 @router.patch("/me/password", responses={400: {"description": "Incorrect current password or weak new password"}})
+@limiter.limit("5/minute")
 async def update_password(
     password_data: PasswordUpdate,
+    request: Request,
     current_user: Annotated[UserORM, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -295,21 +277,13 @@ async def update_password(
 
     hashed_password = get_password_hash(password_data.new_password)
     await user_crud.update_user(db, db_user=current_user, update_data={"password": hashed_password})
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="USER",
-        target_id=current_user.id,
-        details="User updated password",
-    )
     await db.commit()
 
     return {"message": "Password updated successfully"}
 
 
 @router.post("/logout")
+@audit_log(action=AuditAction.LOGOUT, target_type="USER", commit=True)
 async def logout(
     response: Response,
     request: Request,
@@ -326,7 +300,7 @@ async def logout(
             token = request.cookies.get("access_token")
 
         if token:
-            current_user = await get_current_user(token, db)
+            await get_current_user(token, db)
 
             # Blacklist the token
             try:
@@ -343,14 +317,7 @@ async def logout(
             except Exception as e:
                 logger.debug("Could not blacklist token during logout: %s", str(e))
 
-            await log_action(
-                db=db,
-                user_id=current_user.id,
-                action=AuditAction.LOGOUT,
-                target_type="USER",
-                target_id=current_user.id,
-                details=f"User logged out: {current_user.username}",
-            )
+            # No manual logging needed, handled by @audit_log
             await db.commit()
     except Exception as e:
         # If authentication fails, we still want to clear the cookie
@@ -384,13 +351,11 @@ async def forgot_password(
         return {"detail": "If an account exists with this email, a reset link has been sent."}
 
     reset_token = create_reset_token(user.id)
-    reset_url = str(fastapi_request.url_for("reset_password_page", token=reset_token))
+    reset_url = f"{FRONTEND_URL}/reset-password/{reset_token}"
 
-    background_tasks.add_task(
-        tasks.send_password_reset_email,
+    tasks.send_password_reset_email.delay(
         request.email,
         reset_url=reset_url,
-        suppress_exceptions=True,
     )
 
     return {"detail": "If an account exists with this email, a reset link has been sent."}
@@ -409,6 +374,7 @@ async def reset_password_page(token: str):
 @limiter.limit("5/minute")
 async def reset_password(
     request: ResetPasswordRequest,
+    background_tasks: BackgroundTasks,
     fastapi_request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
@@ -439,15 +405,10 @@ async def reset_password(
 
     hashed_password = get_password_hash(request.new_password)
     await user_crud.update_user(db, db_user=user, update_data={"password": hashed_password})
-
-    await log_action(
-        db=db,
-        user_id=user.id,
-        action=AuditAction.UPDATE,
-        target_type="USER",
-        target_id=user.id,
-        details="User reset password via token",
-    )
     await db.commit()
+
+    tasks.send_password_changed_confirmation.delay(
+        to_email=user.email,
+    )
 
     return {"detail": "Password reset successfully"}

@@ -46,6 +46,7 @@ class GlobalConfig(BaseConfig):
     B2_KEY_ID: Optional[str] = None
     B2_APPLICATION_KEY: Optional[str] = None
     B2_BUCKET_NAME: Optional[str] = None
+    FRONTEND_URL: str = "http://localhost:5173"
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -114,11 +115,12 @@ try:
 except Exception:
     _unprefixed_secret = None
 
-SECRET_KEY = (
+SECRET_KEY: str = (
     os.environ.get("SECRET_KEY")
     or getattr(config, "SECRET_KEY", None)
     or _unprefixed_secret
     or os.environ.get("PROD_SECRET_KEY")
+    or "dev-secret-key-replace-in-production"
 )
 ALGORITHM = getattr(config, "ALGORITHM", "HS256")
 REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
@@ -127,3 +129,4 @@ CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1
 RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
 COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)
 COOKIE_SAMESITE = config.COOKIE_SAMESITE
+FRONTEND_URL = config.FRONTEND_URL

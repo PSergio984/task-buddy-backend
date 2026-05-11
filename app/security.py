@@ -28,15 +28,29 @@ pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto
 
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=False)
 
-# Initialize Redis client
-redis_client = None
-if REDIS_URL:
-    try:
-        from redis import asyncio as aioredis
+# Lazy Redis client initialization to handle event loop changes (especially in tests)
+_redis_client = None
 
-        redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
-    except ImportError as e:
-        logger.warning("Redis could not be initialized: %s", str(e))
+
+def get_redis_client():
+    global _redis_client
+    if REDIS_URL:
+        try:
+            if _redis_client is None:
+                from redis import asyncio as aioredis
+
+                _redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+            return _redis_client
+        except Exception as e:
+            logger.warning("Redis could not be initialized: %s", str(e))
+    return None
+
+
+async def close_redis_client():
+    global _redis_client
+    if _redis_client is not None:
+        await _redis_client.close()
+        _redis_client = None
 
 
 async def get_token(
@@ -77,14 +91,26 @@ def reset_token_expire_time() -> int:
 
 async def blacklist_token(token: str, expires_in: int) -> None:
     """Blacklist a JWT token in Redis with a TTL."""
-    if redis_client is None:
+    client = get_redis_client()
+    if client is None:
         logger.error("Redis client is not initialized; cannot blacklist token.")
         return
     try:
         # Store a hash of the token to keep Redis keys short and secure
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        await redis_client.setex(f"blacklist:{token_hash}", expires_in, "true")
+        await client.setex(f"blacklist:{token_hash}", expires_in, "true")
         logger.debug("Token blacklisted successfully.")
+    except RuntimeError as e:
+        if "Event loop is closed" in str(e):
+            # Re-initialize client for the new loop
+            global _redis_client
+            _redis_client = None
+            client = get_redis_client()
+            if client:
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
+                await client.setex(f"blacklist:{token_hash}", expires_in, "true")
+                return
+        raise
     except Exception as e:
         logger.error("Failed to blacklist token in Redis: %s", str(e))
         # Failsafe: if we can't blacklist, we should probably know
@@ -93,12 +119,25 @@ async def blacklist_token(token: str, expires_in: int) -> None:
 
 async def is_token_blacklisted(token: str) -> bool:
     """Check if a JWT token is present in the Redis blacklist."""
-    if redis_client is None:
-        logger.warning("Redis client is not initialized; assuming token is not blacklisted.")
+    client = get_redis_client()
+    if client is None:
+        logger.warning(
+            "Redis client is not initialized; assuming token is not blacklisted."
+        )
         return False
     try:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        return await redis_client.exists(f"blacklist:{token_hash}") > 0
+        return await client.exists(f"blacklist:{token_hash}") > 0
+    except RuntimeError as e:
+        if "Event loop is closed" in str(e):
+            # Re-initialize client for the new loop
+            global _redis_client
+            _redis_client = None
+            client = get_redis_client()
+            if client:
+                token_hash = hashlib.sha256(token.encode()).hexdigest()
+                return await client.exists(f"blacklist:{token_hash}") > 0
+        raise
     except Exception as e:
         logger.error("Failed to check token blacklist in Redis: %s", str(e))
         # Fail-closed: reject token if security check fails

@@ -7,7 +7,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - DATABASE_URL=postgresql://postgres:postgres@db:5432/task_buddy
+      - DEV_DATABASE_URL=postgresql://postgres:postgres@db:5432/task_buddy
+      - DEV_REDIS_URL=redis://redis:6379/0
+      - ENV_STATE=DEV
       - DEBUG=False
       - LOG_LEVEL=INFO
     depends_on:

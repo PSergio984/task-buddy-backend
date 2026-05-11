@@ -195,3 +195,23 @@ async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: st
     assert len(data) == 2
     for task in data:
         assert task["project_id"] == project["id"]
+
+async def test_create_duplicate_project_error(async_client: AsyncClient, logged_in_token: str):
+    # Create first project
+    project_data = {"name": "Duplicate Project", "color": "blue"}
+    response = await async_client.post(
+        "/api/v1/projects/",
+        json=project_data,
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 201
+
+    # Try to create duplicate project
+    response = await async_client.post(
+        "/api/v1/projects/",
+        json=project_data,
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Project with this name already exists"

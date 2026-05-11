@@ -5,55 +5,68 @@
 The journey starts with refining the architectural core (transaction management and constants) to ensure a stable foundation. We then move into security hardening and automated auditing to protect user data and ensure accountability. Finally, we scale the reliability by implementing background task queues and advanced integration tests.
 
 ## Phases
+- [x] **Phase 1: Architecture Refinement** - Decouple CRUD from transaction commits and standardize API constants.
+- [x] **Phase 2: Security Hardening** - Implement industry-standard security practices for data and networking.
+- [x] **Phase 3: Auditing & Task Management** - Ensure state change accountability and enhance task organization.
+- [x] **Phase 3.5: Premium UI & Projects** - Backend terminology alignment and data seeding.
+- [ ] **Phase 4: Reliability & Scale** - Modernize integration handling and verify system resilience.
 
-- [x] **Phase 1: Architecture Refinement** - Standardize CRUD transactions and API literals.
-- [x] **Phase 2: Security Hardening** - Upgrade hashing and enforce strict security headers/CORS.
-- [/] **Phase 3: Auditing & Task Management** - Automate mutation logging and enhance task grouping/scheduling.
-- [ ] **Phase 4: Reliability & Scale** - Implement background task workers and stress-test transactions.
 
 ## Phase Details
 
 ### Phase 1: Architecture Refinement
 **Goal**: Decouple CRUD from transaction commits and standardize API constants.
+**Status**: COMPLETED
 **Depends on**: Nothing
 **Requirements**: REFI-01, REFI-02, REFI-03
 **Success Criteria**:
-  1. CRUD functions can be composed into a single transaction.
-  2. No hardcoded status strings in routers.
-  3. All SQLAlchemy models use 2.0 type hints.
+  1. [x] CRUD functions can be composed into a single transaction.
+  2. [x] No hardcoded status strings in routers.
+  3. [x] All SQLAlchemy models use 2.0 type hints.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 01-01: Refactor CRUD methods to remove `db.commit()` and `db.refresh()`.
-- [ ] 01-02: Standardize Enums and Constants across all routers.
+- [x] 01-01: Refactor CRUD methods to remove `db.commit()` and `db.refresh()`.
+- [x] 01-02: Standardize Enums and Constants across all routers.
 
 ### Phase 2: Security Hardening
 **Goal**: Implement industry-standard security practices for data and networking.
+**Status**: COMPLETED
 **Depends on**: Phase 1
 **Requirements**: SECU-01, SECU-02, SECU-03
 **Success Criteria**:
-  1. Argon2 hashing used for all new passwords.
-  2. CORS limited to configured trusted origins.
-  3. API responses include standard security headers.
+  1. [x] Argon2 hashing used for all new passwords.
+  2. [x] CORS limited to configured trusted origins.
+  3. [x] API responses include standard security headers.
 **Plans**: 1 plan
 
 Plans:
-- [ ] 02-01: Security middleware and password hashing upgrade.
+- [x] 02-01: Security middleware and password hashing upgrade.
 
 ### Phase 3: Auditing & Task Management
 **Goal**: Ensure state change accountability and enhance task organization.
+**Status**: COMPLETED
 **Depends on**: Phase 2
 **Requirements**: AUDI-01, AUDI-02, TASK-01, TASK-02
 **Success Criteria**:
-  1. Mutation logging happens automatically on CRUD calls.
-  2. Audit logs capture field-level diffs.
-  3. Dynamic relational task grouping is implemented.
-  4. Precise due time selection and display is supported end-to-end.
+  1. [x] Mutation logging happens automatically on CRUD calls.
+  2. [x] Audit logs capture field-level diffs.
+  3. [x] Dynamic relational task grouping is implemented (Projects).
+  4. [x] Precise due time selection and display is supported end-to-end.
 **Plans**: 2 plans
 
 Plans:
-- [ ] 03-01: Implement automated audit logging decorator/middleware.
-- [ ] 03-02: Relational task grouping and enhanced due time support.
+- [x] 03-01: Implement automated audit logging decorator/middleware.
+- [x] 03-02: Relational task grouping (Projects) and enhanced due time support.
+
+### Phase 3.5: Premium UI & Projects
+**Goal**: Align terminology and seed database for premium frontend.
+**Status**: COMPLETED
+**Plans**: 2 plans
+
+Plans:
+- [x] 03.5-01: Backend terminology refactor (Group -> Project).
+- [x] 03.5-02: Seed script hardening and UI criteria.
 
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.

@@ -174,3 +174,11 @@ def mock_httpx_client(mocker):
     mocked_async_client.smtp = mocked_smtp
     mocked_async_client.smtp_client = smtp_client
     return mocked_async_client
+
+@pytest.fixture()
+async def authenticated_async_client(async_client: AsyncClient, logged_in_token: str) -> AsyncGenerator:
+    async_client.headers.update({"Authorization": f"Bearer {logged_in_token}"})
+    yield async_client
+    if "Authorization" in async_client.headers:
+        del async_client.headers["Authorization"]
+

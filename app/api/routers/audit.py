@@ -1,10 +1,11 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Query
+from fastapi import APIRouter, Depends, Query, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import audit as audit_crud
 from app.dependencies import get_db
+from app.limiter import limiter
 from app.models.user import User
 from app.schemas.audit import AuditLog as AuditLogSchema
 from app.security import get_current_user
@@ -19,7 +20,9 @@ router = APIRouter(
 )
 
 @router.get("/logs", response_model=list[AuditLogSchema])
+@limiter.limit("20/minute")
 async def get_audit_logs(
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,

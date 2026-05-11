@@ -1,11 +1,10 @@
-from fastapi import BackgroundTasks
 from httpx import AsyncClient
 
 from app.security import create_reset_token
 
 
 async def test_forgot_password_success(async_client: AsyncClient, confirmed_user: dict, mocker):
-    spy = mocker.spy(BackgroundTasks, "add_task")
+    mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
 
     response = await async_client.post(
         "/api/v1/users/forgot-password",
@@ -14,14 +13,14 @@ async def test_forgot_password_success(async_client: AsyncClient, confirmed_user
 
     assert response.status_code == 200
     assert "reset link has been sent" in response.json()["detail"]
-    assert spy.called
+    assert mock_delay.called
 
     # Check reset URL in background task call
-    reset_url = spy.call_args[1]["reset_url"]
-    assert "/api/v1/users/reset-password/" in reset_url
+    reset_url = mock_delay.call_args[1]["reset_url"]
+    assert "/reset-password/" in reset_url
 
 async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker):
-    spy = mocker.spy(BackgroundTasks, "add_task")
+    mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
 
     response = await async_client.post(
         "/api/v1/users/forgot-password",
@@ -30,9 +29,12 @@ async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker)
 
     assert response.status_code == 200
     assert "reset link has been sent" in response.json()["detail"]
-    assert not spy.called
+    assert not mock_delay.called
 
-async def test_reset_password_success(async_client: AsyncClient, confirmed_user: dict, db):
+async def test_reset_password_success(async_client: AsyncClient, confirmed_user: dict, db, mocker):
+    # Mock the confirmation email task
+    mock_delay = mocker.patch("app.tasks.send_password_changed_confirmation.delay")
+
     # Create a valid reset token
     reset_token = create_reset_token(confirmed_user["id"])
 
@@ -47,6 +49,7 @@ async def test_reset_password_success(async_client: AsyncClient, confirmed_user:
 
     assert response.status_code == 200
     assert "Password reset successfully" in response.json()["detail"]
+    assert mock_delay.called
 
     # Verify login with new password
     login_response = await async_client.post(

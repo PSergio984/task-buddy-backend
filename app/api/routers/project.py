@@ -1,15 +1,14 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import project as project_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.internal.audit import log_action
+from app.limiter import limiter
 from app.models.user import User
-from app.schemas.enums import AuditAction
 from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
 from app.schemas.task import TaskCreateResponse
 from app.security import get_current_user
@@ -37,29 +36,20 @@ async def list_projects(
     return await project_crud.get_projects(db, user_id=current_user.id)
 
 @router.post("/", response_model=ProjectResponse, status_code=201)
+@limiter.limit("10/minute")
 async def create_project(
     project_in: ProjectCreateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST / - creating project name=%s", project_in.name)
 
-    db_project = await project_crud.create_project(db, user_id=current_user.id, project_in=project_in)
-
-    await db.flush()
-    await db.refresh(db_project)
-
     from sqlalchemy.exc import IntegrityError
     try:
-        await log_action(
-            db=db,
-            user_id=current_user.id,
-            action=AuditAction.CREATE,
-            target_type="PROJECT",
-            target_id=db_project.id,
-            details=f"Created project: {db_project.name}",
-        )
+        db_project = await project_crud.create_project(db, user_id=current_user.id, project_in=project_in)
         await db.commit()
+        await db.refresh(db_project)
     except IntegrityError as e:
         await db.rollback()
         logger.warning("Integrity error creating project: %s", str(e))
@@ -100,9 +90,11 @@ async def list_project_tasks(
     return tasks
 
 @router.put("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}, 400: {"description": NO_FIELDS_TO_UPDATE}})
+@limiter.limit("20/minute")
 async def update_project(
     project_id: int,
     project_update: ProjectUpdateRequest,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -118,23 +110,6 @@ async def update_project(
         raise HTTPException(status_code=400, detail=NO_FIELDS_TO_UPDATE)
 
     await project_crud.update_project(db, db_project=db_project, project_in=project_update)
-
-    # Include values for important fields
-    details_list = []
-    for k, v in update_data.items():
-        if k in ["name", "description"]:
-            details_list.append(f"{k}: {v}")
-        else:
-            details_list.append(k)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.UPDATE,
-        target_type="PROJECT",
-        target_id=project_id,
-        details=f"Updated project '{db_project.name}': {', '.join(details_list)}",
-    )
     await db.commit()
     await db.refresh(db_project)
 
@@ -142,8 +117,10 @@ async def update_project(
     return db_project
 
 @router.delete("/{project_id}", responses={404: {"description": PROJECT_NOT_FOUND}})
+@limiter.limit("10/minute")
 async def delete_project(
     project_id: int,
+    request: Request,
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -154,15 +131,6 @@ async def delete_project(
         raise HTTPException(status_code=404, detail=PROJECT_NOT_FOUND)
 
     await project_crud.delete_project(db, db_project=db_project)
-
-    await log_action(
-        db=db,
-        user_id=current_user.id,
-        action=AuditAction.DELETE,
-        target_type="PROJECT",
-        target_id=project_id,
-        details=f"Deleted project: {db_project.name}",
-    )
     await db.commit()
 
     logger.info("DELETE /%s - project deleted", project_id)
