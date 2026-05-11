@@ -49,14 +49,199 @@ def get_database_url():
 
 DATABASE_URL = get_database_url()
 if not DATABASE_URL:
-    logger.error("Missing DATABASE_URL. Please set DATABASE_URL, DEV_DATABASE_URL, or PROD_DATABASE_URL.")
+    logger.error(
+        "Missing DATABASE_URL. Please set DATABASE_URL, DEV_DATABASE_URL, or PROD_DATABASE_URL."
+    )
     sys.exit(1)
 
 # Handle postgres:// vs postgresql:// for SQLAlchemy
 CONN_STR = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
-def seed_data(override_url=None):  # noqa: C901
+def _get_or_create_demo_user(conn):
+    """Returns user_id of the demo user, creating it if missing."""
+    res = conn.execute(
+        text("SELECT id FROM tbl_users WHERE email = :email"), {"email": "demo@example.com"}
+    )
+    row = res.mappings().fetchone()
+
+    if not row:
+        logger.info("Creating demo user...")
+        hashed = pwd_context.hash("password123")
+        res = conn.execute(
+            text("""
+            INSERT INTO tbl_users (username, email, password, confirmed)
+            VALUES (:username, :email, :password, :confirmed)
+            RETURNING id
+            """),
+            {
+                "username": "demouser",
+                "email": "demo@example.com",
+                "password": hashed,
+                "confirmed": True,
+            },
+        )
+        row2 = res.mappings().fetchone()
+        if row2 is None:
+            raise RuntimeError("INSERT tbl_users RETURNING id returned nothing")
+        return row2["id"]
+
+    user_id = row["id"]
+    logger.info(f"Demo user found (ID: {user_id}). Purging existing seed data...")
+    _clear_user_data(conn, user_id)
+    return user_id
+
+
+def _clear_user_data(conn, user_id):
+    """Deletes existing tasks, subtasks, projects, and tags for the user."""
+    conn.execute(
+        text(
+            "DELETE FROM tbl_task_tags WHERE task_id IN (SELECT id FROM tbl_tasks WHERE user_id = :uid)"
+        ),
+        {"uid": user_id},
+    )
+    conn.execute(text("DELETE FROM tbl_subtasks WHERE user_id = :uid"), {"uid": user_id})
+    conn.execute(text("DELETE FROM tbl_tasks WHERE user_id = :uid"), {"uid": user_id})
+    conn.execute(text("DELETE FROM tbl_tags WHERE user_id = :uid"), {"uid": user_id})
+    conn.execute(text("DELETE FROM tbl_projects WHERE user_id = :uid"), {"uid": user_id})
+
+
+def _create_projects(conn, user_id):
+    """Creates a set of demo projects and returns their IDs."""
+    logger.info("Creating projects...")
+    project_data = [
+        ("Strategic Ops", "#2563eb"),
+        ("Product Design", "#8b5cf6"),
+        ("Growth & Marketing", "#10b981"),
+        ("Personal Mastery", "#f59e0b"),
+    ]
+    project_ids = []
+    for name, color in project_data:
+        res = conn.execute(
+            text(
+                "INSERT INTO tbl_projects (name, color, user_id) VALUES (:name, :color, :user_id) RETURNING id"
+            ),
+            {"name": name, "color": color, "user_id": user_id},
+        )
+        p_row = res.mappings().fetchone()
+        if p_row:
+            project_ids.append(p_row["id"])
+    return project_ids
+
+
+def _create_tags(conn, user_id):
+    """Creates a set of demo tags and returns their IDs."""
+    logger.info("Creating tags...")
+    tag_names = ["Critical", "Research", "Review", "Development", "Outreach", "Wellness"]
+    tag_ids = []
+    for name in tag_names:
+        res = conn.execute(
+            text("INSERT INTO tbl_tags (name, user_id) VALUES (:name, :user_id) RETURNING id"),
+            {"name": name, "user_id": user_id},
+        )
+        t_row = res.mappings().fetchone()
+        if t_row:
+            tag_ids.append(t_row["id"])
+    return tag_ids
+
+
+def _create_tasks(conn, user_id, project_ids, tag_ids, priority_sql):
+    """Creates a set of demo tasks and assigns random tags."""
+    logger.info("Creating 24 tasks...")
+    now = datetime.now(timezone.utc)
+    task_templates = [
+        ("Finalize Q3 Infrastructure Audit", "Deep dive into cloud costs and performance bottlenecks.", 0, "HIGH", 2),
+        ("Review Q4 Roadmap with Stakeholders", "Alignment session for upcoming features.", 0, "MEDIUM", 5),
+        ("Compliance Certification Renewal", "Annual SOC2 compliance documentation review.", 0, "HIGH", 10),
+        ("Quarterly Financial Recap", "Prepare charts for the board meeting.", 0, "MEDIUM", 3),
+        ("Legacy API Deprecation Plan", "Phase out v1 endpoints safely.", 0, "LOW", 15),
+        ("Update Onboarding Documentation", "Refresh the engineering wiki.", 0, "LOW", 7),
+        ("UI Brand System Refresh", "Consolidate design tokens for v2.0.", 1, "HIGH", 1),
+        ("User Interview Synthesis", "Extract key pain points from the last 10 sessions.", 1, "MEDIUM", 4),
+        ("Accessibility Audit - Main Flow", "Ensure WCAG 2.1 compliance on Dashboard.", 1, "HIGH", 6),
+        ("High-Fidelity Mobile Mockups", "Finalize layouts for iOS/Android apps.", 1, "MEDIUM", 8),
+        ("Prototyping Interaction Hooks", "Implement micro-interactions for sidebar.", 1, "LOW", 2),
+        ("Design Critique: Dark Mode", "Gather feedback on new palette.", 1, "LOW", 3),
+        ("Launch Early Access Campaign", "Email sequence for top 500 users.", 2, "HIGH", 0),
+        ("SEO Content Strategy Audit", "Keyword research for upcoming blog series.", 2, "MEDIUM", 12),
+        ("A/B Test Landing Page Hero", "Compare 'Effortless' vs 'Strategic' messaging.", 2, "HIGH", 2),
+        ("Affiliate Program Outreach", "Identify 20 key influencers in productivity space.", 2, "MEDIUM", 9),
+        ("Social Media Visual Assets", "Graphics for Twitter/LinkedIn launch.", 2, "LOW", 5),
+        ("Analyze Conversion Funnel", "Identify drop-off points in registration.", 2, "MEDIUM", 1),
+        ("Advanced React Patterns Study", "Deep dive into Server Components and Actions.", 3, "HIGH", 4),
+        ("Weekly Retrospective", "Reflect on wins and alignment with core goals.", 3, "MEDIUM", 0),
+        ("Curate Professional Portfolio", "Update project case studies.", 3, "MEDIUM", 20),
+        ("Daily Deep Work Session", "2 hours of focused output without distractions.", 3, "HIGH", 0),
+        ("Read: 'Building a Second Brain'", "Apply PARA method to current notes.", 3, "LOW", 30),
+        ("Setup Automated Backup Logic", "Secure local environment data.", 3, "LOW", 10),
+    ]
+
+    task_ids = []
+    for title, desc, p_idx, priority, due_days in task_templates:
+        due = now + timedelta(days=due_days) if due_days >= 0 else None
+        completed = random.random() < 0.2
+
+        insert_sql = f"""
+        INSERT INTO tbl_tasks
+            (title, description, user_id, project_id, priority, due_date, completed)
+        VALUES (:title, :desc, :user_id, :project_id, {priority_sql}, :due_date, :completed)
+        RETURNING id
+        """
+        res = conn.execute(
+            text(insert_sql),
+            {
+                "title": title,
+                "desc": desc,
+                "user_id": user_id,
+                "project_id": project_ids[p_idx],
+                "priority": priority,
+                "due_date": due,
+                "completed": completed,
+            },
+        )
+        task_row = res.mappings().fetchone()
+        if task_row:
+            t_id = task_row["id"]
+            task_ids.append(t_id)
+            # Assign random tags
+            n = random.randint(0, 2)
+            for tag_id in random.sample(tag_ids, n):
+                try:
+                    conn.execute(
+                        text("INSERT INTO tbl_task_tags (task_id, tag_id) VALUES (:t_id, :tg_id)"),
+                        {"t_id": t_id, "tg_id": tag_id},
+                    )
+                except IntegrityError:
+                    pass
+    return task_ids
+
+
+def _create_subtasks(conn, user_id, task_ids):
+    """Creates subtasks for selected tasks."""
+    logger.info("Creating subtasks...")
+    subtask_data = [
+        (task_ids[0], ["Review AWS billing", "Identify idle EC2 instances", "Draft cost-saving proposal"]),
+        (task_ids[6], ["Audit color palette", "Update typography scale", "Export SVG assets"]),
+        (task_ids[12], ["Draft email templates", "Segment user list", "Configure tracking links"]),
+        (task_ids[18], ["Watch conference talks", "Implement demo project", "Write summary notes"]),
+    ]
+    for t_id, titles in subtask_data:
+        for st_title in titles:
+            conn.execute(
+                text("""
+                INSERT INTO tbl_subtasks (title, task_id, user_id, completed)
+                VALUES (:title, :t_id, :u_id, :completed)
+                """),
+                {
+                    "title": st_title,
+                    "t_id": t_id,
+                    "u_id": user_id,
+                    "completed": random.random() < 0.4,
+                },
+            )
+
+
+def seed_data(override_url=None):
     env = os.environ.get("APP_ENV", os.environ.get("ENV_STATE", "development")).lower()
     seed_allowed = os.environ.get("SEED_ALLOWED", "").lower()
 
@@ -78,158 +263,14 @@ def seed_data(override_url=None):  # noqa: C901
 
     with engine.begin() as conn:
         try:
-            # ── Demo user ──────────────────────────────────────────────
-            res = conn.execute(text("SELECT id FROM tbl_users WHERE email = :email"), {"email": "demo@example.com"})
-            row = res.mappings().fetchone()
-
-            if not row:
-                logger.info("Creating demo user...")
-                hashed = pwd_context.hash("password123")
-                res = conn.execute(
-                    text("""
-                    INSERT INTO tbl_users (username, email, password, confirmed)
-                    VALUES (:username, :email, :password, :confirmed)
-                    RETURNING id
-                    """),
-                    {"username": "demouser", "email": "demo@example.com", "password": hashed, "confirmed": True}
-                )
-                row2 = res.mappings().fetchone()
-                if row2 is None:
-                    raise RuntimeError("INSERT tbl_users RETURNING id returned nothing")
-                user_id = row2["id"]
-            else:
-                user_id = row["id"]
-                logger.info(f"Demo user found (ID: {user_id}). Purging existing seed data...")
-
-                # SQLite doesn't support complex subqueries in DELETE as easily, but this is standard SQL
-                conn.execute(
-                    text("DELETE FROM tbl_task_tags WHERE task_id IN (SELECT id FROM tbl_tasks WHERE user_id = :uid)"),
-                    {"uid": user_id}
-                )
-                conn.execute(text("DELETE FROM tbl_subtasks WHERE user_id = :uid"), {"uid": user_id})
-                conn.execute(text("DELETE FROM tbl_tasks WHERE user_id = :uid"), {"uid": user_id})
-                conn.execute(text("DELETE FROM tbl_tags WHERE user_id = :uid"), {"uid": user_id})
-                conn.execute(text("DELETE FROM tbl_projects WHERE user_id = :uid"), {"uid": user_id})
-
-            # ── Projects ───────────────────────────────────────────────
-            logger.info("Creating projects...")
-            project_data = [
-                ("Strategic Ops",     "#2563eb"),
-                ("Product Design",    "#8b5cf6"),
-                ("Growth & Marketing","#10b981"),
-                ("Personal Mastery",  "#f59e0b"),
-            ]
-            project_ids = []
-            for name, color in project_data:
-                res = conn.execute(
-                    text("INSERT INTO tbl_projects (name, color, user_id) VALUES (:name, :color, :user_id) RETURNING id"),
-                    {"name": name, "color": color, "user_id": user_id}
-                )
-                p_row = res.mappings().fetchone()
-                if p_row:
-                    project_ids.append(p_row["id"])
-
-            # ── Tags ───────────────────────────────────────────────────
-            logger.info("Creating tags...")
-            tag_names = ["Critical", "Research", "Review", "Development", "Outreach", "Wellness"]
-            tag_ids = []
-            for name in tag_names:
-                res = conn.execute(
-                    text("INSERT INTO tbl_tags (name, user_id) VALUES (:name, :user_id) RETURNING id"),
-                    {"name": name, "user_id": user_id}
-                )
-                t_row = res.mappings().fetchone()
-                if t_row:
-                    tag_ids.append(t_row["id"])
-
-            # ── Tasks ──────────────────────────────────────────────────
-            logger.info("Creating 24 tasks...")
-            now = datetime.now(timezone.utc)
-
-            task_templates = [
-                ("Finalize Q3 Infrastructure Audit",  "Deep dive into cloud costs and performance bottlenecks.", 0, "HIGH",   2),
-                ("Review Q4 Roadmap with Stakeholders","Alignment session for upcoming features.",                0, "MEDIUM", 5),
-                ("Compliance Certification Renewal",   "Annual SOC2 compliance documentation review.",            0, "HIGH",   10),
-                ("Quarterly Financial Recap",          "Prepare charts for the board meeting.",                   0, "MEDIUM", 3),
-                ("Legacy API Deprecation Plan",        "Phase out v1 endpoints safely.",                          0, "LOW",    15),
-                ("Update Onboarding Documentation",    "Refresh the engineering wiki.",                           0, "LOW",    7),
-                ("UI Brand System Refresh",            "Consolidate design tokens for v2.0.",                     1, "HIGH",   1),
-                ("User Interview Synthesis",           "Extract key pain points from the last 10 sessions.",      1, "MEDIUM", 4),
-                ("Accessibility Audit - Main Flow",    "Ensure WCAG 2.1 compliance on Dashboard.",                1, "HIGH",   6),
-                ("High-Fidelity Mobile Mockups",       "Finalize layouts for iOS/Android apps.",                  1, "MEDIUM", 8),
-                ("Prototyping Interaction Hooks",      "Implement micro-interactions for sidebar.",               1, "LOW",    2),
-                ("Design Critique: Dark Mode",         "Gather feedback on new palette.",                         1, "LOW",    3),
-                ("Launch Early Access Campaign",       "Email sequence for top 500 users.",                       2, "HIGH",   0),
-                ("SEO Content Strategy Audit",         "Keyword research for upcoming blog series.",              2, "MEDIUM", 12),
-                ("A/B Test Landing Page Hero",         "Compare 'Effortless' vs 'Strategic' messaging.",          2, "HIGH",   2),
-                ("Affiliate Program Outreach",         "Identify 20 key influencers in productivity space.",      2, "MEDIUM", 9),
-                ("Social Media Visual Assets",         "Graphics for Twitter/LinkedIn launch.",                   2, "LOW",    5),
-                ("Analyze Conversion Funnel",          "Identify drop-off points in registration.",               2, "MEDIUM", 1),
-                ("Advanced React Patterns Study",      "Deep dive into Server Components and Actions.",           3, "HIGH",   4),
-                ("Weekly Retrospective",               "Reflect on wins and alignment with core goals.",          3, "MEDIUM", 0),
-                ("Curate Professional Portfolio",      "Update project case studies.",                            3, "MEDIUM", 20),
-                ("Daily Deep Work Session",            "2 hours of focused output without distractions.",         3, "HIGH",   0),
-                ("Read: 'Building a Second Brain'",    "Apply PARA method to current notes.",                     3, "LOW",    30),
-                ("Setup Automated Backup Logic",       "Secure local environment data.",                          3, "LOW",    10),
-            ]
-
-            task_ids = []
-            for title, desc, p_idx, priority, due_days in task_templates:
-                due = now + timedelta(days=due_days) if due_days >= 0 else None
-                completed = random.random() < 0.2
-
-                insert_sql = f"""
-                INSERT INTO tbl_tasks
-                    (title, description, user_id, project_id, priority, due_date, completed)
-                VALUES (:title, :desc, :user_id, :project_id, {priority_sql}, :due_date, :completed)
-                RETURNING id
-                """
-
-                res = conn.execute(
-                    text(insert_sql),
-                    {
-                        "title": title, "desc": desc, "user_id": user_id,
-                        "project_id": project_ids[p_idx], "priority": priority,
-                        "due_date": due, "completed": completed
-                    }
-                )
-                task_row = res.mappings().fetchone()
-                if task_row:
-                    task_ids.append(task_row["id"])
-
-            # Assign random tags
-            for task_id in task_ids:
-                n = random.randint(0, 2)
-                for tag_id in random.sample(tag_ids, n):
-                    try:
-                        conn.execute(
-                            text("INSERT INTO tbl_task_tags (task_id, tag_id) VALUES (:t_id, :tg_id)"),
-                            {"t_id": task_id, "tg_id": tag_id}
-                        )
-                    except IntegrityError:
-                        pass # Duplicate tag
-
-            # ── Subtasks ───────────────────────────────────────────────
-            logger.info("Creating subtasks...")
-            subtask_data = [
-                (task_ids[0],  ["Review AWS billing", "Identify idle EC2 instances", "Draft cost-saving proposal"]),
-                (task_ids[6],  ["Audit color palette", "Update typography scale", "Export SVG assets"]),
-                (task_ids[12], ["Draft email templates", "Segment user list", "Configure tracking links"]),
-                (task_ids[18], ["Watch conference talks", "Implement demo project", "Write summary notes"]),
-            ]
-            for t_id, titles in subtask_data:
-                for st_title in titles:
-                    conn.execute(
-                        text("""
-                        INSERT INTO tbl_subtasks (title, task_id, user_id, completed)
-                        VALUES (:title, :t_id, :u_id, :completed)
-                        """),
-                        {"title": st_title, "t_id": t_id, "u_id": user_id, "completed": random.random() < 0.4}
-                    )
+            user_id = _get_or_create_demo_user(conn)
+            project_ids = _create_projects(conn, user_id)
+            tag_ids = _create_tags(conn, user_id)
+            task_ids = _create_tasks(conn, user_id, project_ids, tag_ids, priority_sql)
+            _create_subtasks(conn, user_id, task_ids)
 
             logger.info(f"Seeding complete. {len(task_ids)} tasks, {len(project_ids)} projects.")
             return True
-
         except Exception:
             logger.exception("Seeding failed")
             raise
@@ -237,4 +278,3 @@ def seed_data(override_url=None):  # noqa: C901
 
 if __name__ == "__main__":
     seed_data()
-

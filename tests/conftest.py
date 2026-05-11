@@ -1,6 +1,7 @@
 import os
 import tempfile
 from collections.abc import AsyncGenerator, Generator
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -109,7 +110,7 @@ async def async_client() -> AsyncGenerator:
 
 @pytest.fixture()
 async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
-    user_data = {
+    user_data: dict[str, Any] = {
         "username": "testuser",
         "email": "testuser@example.com",
         "password": "testpassword",
