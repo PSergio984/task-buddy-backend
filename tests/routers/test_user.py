@@ -1,10 +1,10 @@
 from fastapi import BackgroundTasks
-from httpx import AsyncClient
+from httpx import AsyncClient, Response
 
 
 async def register_user(
     async_client: AsyncClient, username: str, email: str, password: str
-) -> dict:
+) -> Response:
     return await async_client.post(
         "/api/v1/users/register",
         json={

@@ -205,6 +205,7 @@ DATABASE_URL=postgresql://user:password@localhost/task_buddy
 SECRET_KEY=your-secret-key-here
 ALGORITHM=HS256
 ACCESS_TOKEN_EXPIRE_MINUTES=30
+COOKIE_SAMESITE=lax # Use "none" for production with cross-origin
 
 # Application
 DEBUG=True

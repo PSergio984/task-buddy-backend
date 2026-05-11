@@ -17,7 +17,13 @@ from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import tasks
-from app.config import ACCESS_TOKEN_EXPIRE_MINUTES, ALGORITHM, COOKIE_SECURE, SECRET_KEY
+from app.config import (
+    ACCESS_TOKEN_EXPIRE_MINUTES,
+    ALGORITHM,
+    COOKIE_SAMESITE,
+    COOKIE_SECURE,
+    SECRET_KEY,
+)
 from app.crud import user as user_crud
 from app.dependencies import get_db
 from app.internal.audit import log_action
@@ -104,7 +110,7 @@ async def register_user(
         value=access_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -163,7 +169,7 @@ async def login(
         value=access_token,
         httponly=True,
         secure=COOKIE_SECURE,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         max_age=ACCESS_TOKEN_EXPIRE_MINUTES * 60,
         path="/",
     )
@@ -354,7 +360,7 @@ async def logout(
         key="access_token",
         path="/",
         httponly=True,
-        samesite="lax",
+        samesite=COOKIE_SAMESITE,
         secure=COOKIE_SECURE,
     )
     return {"detail": "Successfully logged out."}

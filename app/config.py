@@ -1,7 +1,7 @@
 import json
 import os
 from functools import lru_cache
-from typing import Any, Optional, Union
+from typing import Any, Literal, Optional, Union
 
 from pydantic import field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -32,6 +32,7 @@ class GlobalConfig(BaseConfig):
         "http://127.0.0.1:5173",
     ]
     COOKIE_SECURE: bool = False
+    COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "lax"
     RATE_LIMIT_ENABLED: bool = True
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
@@ -74,6 +75,7 @@ class DevConfig(GlobalConfig):
 class ProdConfig(GlobalConfig):
     DEBUG: bool = False
     COOKIE_SECURE: bool = True
+    COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "none"
     model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
     @model_validator(mode="after")
@@ -124,3 +126,4 @@ ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
 CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
 RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
 COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)
+COOKIE_SAMESITE = config.COOKIE_SAMESITE
