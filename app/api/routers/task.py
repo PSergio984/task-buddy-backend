@@ -3,6 +3,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import project as project_crud
@@ -62,6 +63,24 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
             raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
+def _generate_update_details(db_obj, update_data: dict) -> list[str]:
+    """Generate a list of strings describing field-level changes for audit logging."""
+    details_list = []
+    for k, v in update_data.items():
+        old_v = getattr(db_obj, k, None)
+        if old_v == v:
+            continue
+
+        if k == "completed":
+            details_list.append(f"marked {'completed' if v else 'pending'}")
+            continue
+
+        old_str = f"'{old_v}'" if old_v is not None else "None"
+        new_str = f"'{v}'" if v is not None else "None"
+        details_list.append(f"{k} from {old_str} to {new_str}")
+    return details_list
+
+
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tasks(
     current_user: Annotated[User, Depends(get_current_user)],
@@ -104,7 +123,6 @@ async def create_task(
 
     await verify_project_ownership(db, task_in.project_id, current_user.id)
 
-    from sqlalchemy.exc import IntegrityError
     try:
         db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task_in)
 
@@ -158,17 +176,9 @@ async def update_task(
     if "project_id" in update_data:
         await verify_project_ownership(db, task_update.project_id, current_user.id)
 
-    from sqlalchemy.exc import IntegrityError
     try:
         # Capture field-level changes for more granular audit logging
-        details_list = []
-        for k, v in update_data.items():
-            old_v = getattr(db_task, k, None)
-            if old_v != v:
-                # Format value for readability
-                old_str = f"'{old_v}'" if old_v is not None else "None"
-                new_str = f"'{v}'" if v is not None else "None"
-                details_list.append(f"{k} from {old_str} to {new_str}")
+        details_list = _generate_update_details(db_task, update_data)
 
         await task_crud.update_task(db, db_task=db_task, task_in=task_update)
 
@@ -340,16 +350,7 @@ async def update_subtask(
 
     # Capture field-level changes for detailed audit logging
     old_title = db_subtask.title
-    details_list = []
-    for k, v in update_data.items():
-        old_v = getattr(db_subtask, k, None)
-        if old_v != v:
-            old_str = f"'{old_v}'" if old_v is not None else "None"
-            new_str = f"'{v}'" if v is not None else "None"
-            if k == "completed":
-                details_list.append(f"marked {'completed' if v else 'pending'}")
-            else:
-                details_list.append(f"{k} from {old_str} to {new_str}")
+    details_list = _generate_update_details(db_subtask, update_data)
 
     await task_crud.update_subtask(db, db_subtask=db_subtask, subtask_in=subtask_update)
 
