@@ -9,6 +9,7 @@ The journey starts with refining the architectural core (transaction management 
 - [x] **Phase 2: Security Hardening** - Implement industry-standard security practices for data and networking.
 - [x] **Phase 3: Auditing & Task Management** - Ensure state change accountability and enhance task organization.
 - [x] **Phase 3.5: Premium UI & Projects** - Backend terminology alignment and data seeding.
+- [ ] **Phase 3.75: Notification & Reminder System** - Multi-channel notifications (Email, In-App, Push).
 - [ ] **Phase 4: Reliability & Scale** - Modernize integration handling and verify system resilience.
 
 
@@ -68,9 +69,27 @@ Plans:
 - [x] 03.5-01: Backend terminology refactor (Group -> Project).
 - [x] 03.5-02: Seed script hardening and UI criteria.
 
+### Phase 3.75: Notification & Reminder System
+**Goal**: Implement multi-channel reminders and in-app notifications.
+**Status**: PLANNING
+**Depends on**: Phase 3.5
+**Requirements**: NOTI-01, NOTI-02, NOTI-03
+**Success Criteria**:
+  1. Users receive email reminders for upcoming tasks.
+  2. In-app notifications are visible and markable as read.
+  3. Push notifications work on supported browsers.
+**Plans**: 4 plans
+
+Plans:
+- [ ] 03.75-01: Setup Notification and PushSubscription models and CRUD layer.
+- [ ] 03.75-02: Implement API endpoints for notification management and push registration.
+- [ ] 03.75-03: Configure Celery Beat and implement reminder scanning logic.
+- [ ] 03.75-04: End-to-end testing and verification of the notification system.
+
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.
-**Depends on**: Phase 3
+**Status**: PLANNED
+**Depends on**: Phase 3.75
 **Requirements**: RELI-01, RELI-02, RELI-03
 **Success Criteria**:
   1. Emails are sent via background worker without blocking request.
@@ -88,9 +107,11 @@ Plans:
 |-------|----------------|--------|-----------|
 | 1. Architecture Refinement | 2/2 | Completed | 2026-05-08 |
 | 2. Security Hardening | 1/1 | Completed | 2026-05-08 |
-| 3. Auditing & Task Management | 0/2 | In-progress | - |
+| 3. Auditing & Task Management | 2/2 | Completed | 2026-05-09 |
+| 3.5. Premium UI & Projects | 2/2 | Completed | 2026-05-10 |
+| 3.75. Notifications | 0/4 | Planning | - |
 | 4. Reliability & Scale | 0/2 | Not started | - |
 
 ---
 *Roadmap defined: 2026-05-08*
-*Last updated: 2026-05-08 after initial definition*
+*Last updated: 2026-05-12*
