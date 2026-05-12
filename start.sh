@@ -8,8 +8,8 @@ echo "Starting migration process..."
 # and the orphaned enum so alembic upgrade head runs a clean migration.
 python -c "
 import os, sqlalchemy as sa
-url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL')
-if not url: raise SystemExit('DATABASE_URL not set')
+url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or os.environ.get('DEV_DATABASE_URL')
+if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
 engine = sa.create_engine(url)
 REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs']
@@ -49,8 +49,8 @@ if ! alembic upgrade head; then
     # Recovery: only stamp head if tables ALREADY exist but version is missing/stale
     python -c "
 import os, sqlalchemy as sa
-url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL')
-if not url: raise SystemExit('DATABASE_URL not set')
+url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or os.environ.get('DEV_DATABASE_URL')
+if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
 engine = sa.create_engine(url)
 REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks']
@@ -86,4 +86,4 @@ python scripts/seed.py || true
 
 # Start app
 echo "Starting web server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*"
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*" "$@"

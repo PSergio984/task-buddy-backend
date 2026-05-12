@@ -17,7 +17,7 @@ services:
         condition: service_healthy
     volumes:
       - .:/app
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000 --reload
+    command: ./start.sh --reload
     networks:
       - task-buddy-network
     healthcheck:
@@ -26,6 +26,27 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-buddy-worker
+    environment:
+      - DEV_DATABASE_URL=postgresql://postgres:postgres@db:5432/task_buddy
+      - DEV_REDIS_URL=redis://redis:6379/0
+      - ENV_STATE=DEV
+      - LOG_LEVEL=INFO
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    volumes:
+      - .:/app
+    command: celery -A app.celery_app worker --loglevel=info
+    networks:
+      - task-buddy-network
 
   db:
     image: postgres:15-alpine

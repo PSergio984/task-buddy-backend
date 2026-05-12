@@ -9,247 +9,84 @@ A modern FastAPI backend application for the Task Buddy task management system.
 - 🔐 Security with JWT tokens and OAuth2
 - 🗄️ SQLAlchemy ORM for database operations
 - 🧪 Comprehensive test suite with pytest
-- 📝 Type hints and validation with Pydantic
-- 🔄 CORS support for cross-origin requests
+- 📧 Background tasks with Celery & Redis (Email delivery)
+- 🐋 Dockerized environment with automated migrations
 - ✅ Health check endpoints
-- 🏗️ Modular, scalable project structure
 
 ## 🛠️ Tech Stack
 
 - **Framework**: [FastAPI](https://fastapi.tiangolo.com/)
 - **Server**: [Uvicorn](https://www.uvicorn.org/)
 - **ORM**: [SQLAlchemy](https://www.sqlalchemy.org/)
+- **Task Queue**: [Celery](https://docs.celeryq.dev/) + [Redis](https://redis.io/)
+- **Migrations**: [Alembic](https://alembic.sqlalchemy.org/)
 - **Validation**: [Pydantic](https://docs.pydantic.dev/)
-- **Testing**: [pytest](https://pytest.org/)
-- **Database**: PostgreSQL (configurable)
-
-## 📁 Project Structure
-
-```
-task-buddy-backend/
-├── app/
-│   ├── __init__.py
-│   ├── main.py                 # Main FastAPI application
-│   ├── dependencies.py         # Shared dependencies
-│   ├── api/
-│   │   ├── __init__.py
-│   │   ├── dependencies.py    # API-specific dependencies
-│   │   └── routers/
-│   │       ├── __init__.py
-│   │       ├── health.py      # Health check endpoints
-│   │       ├── tasks.py       # Task management endpoints
-│   │       └── users.py       # User management endpoints
-│   ├── crud/                  # Database operations (CRUD)
-│   ├── models/                # SQLAlchemy models
-│   ├── schemas/               # Pydantic schemas
-│   └── internal/              # Internal modules (admin, etc.)
-├── tests/
-│   ├── __init__.py
-│   ├── test_main.py          # Main app tests
-│   ├── test_health.py        # Health endpoint tests
-│   └── test_*.py             # Other test files
-├── pyproject.toml            # Project configuration
-├── requirements.txt          # Python dependencies
-├── .gitignore               # Git ignore file
-└── README.md                # This file
-```
+- **Database**: PostgreSQL
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 🐳 Docker Compose (Recommended)
 
-- Python 3.9+
-- pip or poetry
-- PostgreSQL (optional, for database)
-
-### Installation
-
-1. **Clone the repository**
+The easiest way to run the entire stack (App, DB, Redis, Worker) is using Docker Compose:
 
 ```bash
-git clone https://github.com/yourusername/task-buddy-backend.git
-cd task-buddy-backend
+docker-compose up --build
 ```
 
-2. **Create a virtual environment**
+This will:
+1. Start PostgreSQL and Redis.
+2. Run database migrations automatically via `start.sh`.
+3. Start the FastAPI application.
+4. Start a dedicated Celery worker for background tasks.
 
-```bash
-# On Windows
-python -m venv venv
-venv\Scripts\activate
+### 🐍 Local Development
 
-# On macOS/Linux
-python3 -m venv venv
-source venv/bin/activate
-```
+1. **Prerequisites**: Python 3.10+, PostgreSQL, Redis.
 
-3. **Install dependencies**
+2. **Install dependencies**:
+   ```bash
+   pip install -r requirements.txt
+   ```
 
-```bash
-pip install -e ".[dev]"
-# or
-pip install -r requirements.txt
-```
+3. **Run Migrations**:
+   ```bash
+   alembic upgrade head
+   ```
 
-### Running the Application
+4. **Run the Application**:
+   ```bash
+   uvicorn app.main:app --reload
+   ```
 
-#### Development Mode
-
-Using FastAPI CLI:
-
-```bash
-fastapi dev
-```
-
-Or with Uvicorn directly:
-
-```bash
-uvicorn app.main:app --reload
-```
-
-The API will be available at `http://localhost:8000`
-
-#### Production Mode
-
-```bash
-fastapi run
-```
-
-Or with Uvicorn:
-
-```bash
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-```
+5. **Run Celery Worker**:
+   ```bash
+   celery -A app.celery_app worker --loglevel=info
+   ```
 
 ## 📚 API Documentation
 
 Once the application is running, visit:
-
 - **Swagger UI**: http://localhost:8000/docs
 - **ReDoc**: http://localhost:8000/redoc
-- **OpenAPI JSON**: http://localhost:8000/openapi.json
 
-## 🔍 Available Endpoints
+## 🔍 Key Endpoints
 
-### Health Check
-
-- `GET /health/` - Health status
-- `GET /health/ready` - Readiness check
-- `GET /health/live` - Liveness check
+### Authentication & Users
+- `POST /api/v1/users/register` - Register a new user
+- `POST /api/v1/users/login` - Login and get access token
+- `POST /api/v1/users/forgot-password/` - Trigger password reset email
+- `POST /api/v1/users/reset-password/` - Reset password with token
 
 ### Tasks
-
-- `GET /api/v1/tasks/` - List all tasks
-- `GET /api/v1/tasks/{task_id}` - Get task by ID
-- `POST /api/v1/tasks/` - Create new task
-- `PUT /api/v1/tasks/{task_id}` - Update task
-- `DELETE /api/v1/tasks/{task_id}` - Delete task
-
-### Users
-
-- `GET /api/v1/users/` - List all users
-- `GET /api/v1/users/{user_id}` - Get user by ID
-- `POST /api/v1/users/` - Create new user
-- `PUT /api/v1/users/{user_id}` - Update user
-- `DELETE /api/v1/users/{user_id}` - Delete user
+- `GET /api/v1/tasks/` - List user tasks
+- `POST /api/v1/tasks/` - Create a task
+- `PUT /api/v1/tasks/{task_id}` - Update a task
 
 ## 🧪 Testing
-
-Run the test suite:
 
 ```bash
 pytest
 ```
 
-With coverage:
-
-```bash
-pytest --cov=app --cov-report=html
-```
-
-## 📝 Code Quality
-
-### Format code with Black
-
-```bash
-black app tests
-```
-
-### Lint with ruff
-
-```bash
-ruff check app tests
-```
-
-### Type checking with mypy
-
-```bash
-mypy app
-```
-
-### Sort imports with isort
-
-```bash
-isort app tests
-```
-
-## 🔑 Environment Variables
-
-Create a `.env` file in the project root:
-
-```env
-# Database
-DATABASE_URL=postgresql://user:password@localhost/task_buddy
-
-# Security
-SECRET_KEY=your-secret-key-here
-ALGORITHM=HS256
-ACCESS_TOKEN_EXPIRE_MINUTES=30
-COOKIE_SAMESITE=lax # Use "none" for production with cross-origin
-
-# Application
-DEBUG=True
-LOG_LEVEL=INFO
-```
-
-## 📦 Docker
-
-### Build Docker image
-
-```bash
-docker build -t task-buddy-backend:latest .
-```
-
-### Run container
-
-```bash
-docker run -p 8000:8000 task-buddy-backend:latest
-```
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feature/amazing-feature`)
-3. Commit your changes (`git commit -m 'Add amazing feature'`)
-4. Push to the branch (`git push origin feature/amazing-feature`)
-5. Open a Pull Request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 💬 Support
-
-For support, open an issue on GitHub or contact the development team.
-
-## 🔗 Useful Resources
-
-- [FastAPI Documentation](https://fastapi.tiangolo.com/)
-- [Uvicorn Documentation](https://www.uvicorn.org/)
-- [SQLAlchemy Documentation](https://docs.sqlalchemy.org/)
-- [Pydantic Documentation](https://docs.pydantic.dev/)
-- [pytest Documentation](https://docs.pytest.org/)
-
 ---
-
-**Made with ❤️ for Task Buddy**
+**Note on Email Sending**: If registration or password reset emails are not being sent, ensure the Celery worker is running and configured with valid SMTP or Brevo API keys in `.env`.
