@@ -8,13 +8,8 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BaseConfig(BaseSettings):
-    ENV_STATE: Optional[str] = None
+    ENV_STATE: Optional[str] = os.environ.get("ENV_STATE")
     SENTRY_DSN: Optional[str] = None
-    SECRET_KEY: Optional[str] = None
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
-    ALGORITHM: str = "HS256"
-    CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
-    RESET_TOKEN_EXPIRE_MINUTES: int = 60
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
@@ -22,8 +17,9 @@ class GlobalConfig(BaseConfig):
     APP_NAME: str = "Task Buddy Backend"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
-    DATABASE_URL: Optional[str] = None
-    REDIS_URL: str = "redis://localhost:6379/0"
+    DATABASE_URL: Optional[str] = os.environ.get("DATABASE_URL")
+    REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+    SECRET_KEY: Optional[str] = os.environ.get("SECRET_KEY")
     DB_FORCE_ROLL_BACK: bool = False
     ALLOWED_ORIGINS: Union[list[str], str] = [
         "http://localhost:3000",
@@ -53,6 +49,10 @@ class GlobalConfig(BaseConfig):
     B2_BUCKET_NAME: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:5173"
     RATE_LIMIT_STATS_OVERVIEW: str = "20/minute"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ALGORITHM: str = "HS256"
+    CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
+    RESET_TOKEN_EXPIRE_MINUTES: int = 60
 
     @field_validator("ALLOWED_ORIGINS", mode="before")
     @classmethod
@@ -65,7 +65,6 @@ class GlobalConfig(BaseConfig):
             except json.JSONDecodeError:
                 return [v]
         return v
-
 
     @model_validator(mode="after")
     def fix_database_url(self):
@@ -86,12 +85,19 @@ class ProdConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
 
     @model_validator(mode="after")
-    def ensure_secret_key(self):
-        """Fail-fast in production when SECRET_KEY is not set."""
+    def ensure_required_vars(self):
+        """Fail-fast in production when critical vars are not set."""
         if not self.SECRET_KEY:
-            raise ValueError(
-                "PROD_SECRET_KEY (SECRET_KEY) must be set in production; refusing to start without a secure secret."
-            )
+            # Check if we have it unprefixed as a final fallback
+            self.SECRET_KEY = os.environ.get("SECRET_KEY")
+            if not self.SECRET_KEY:
+                raise ValueError(
+                    "SECRET_KEY (or PROD_SECRET_KEY) must be set in production; refusing to start without a secure secret."
+                )
+        if not self.DATABASE_URL:
+             self.DATABASE_URL = os.environ.get("DATABASE_URL")
+             if not self.DATABASE_URL:
+                 raise ValueError("DATABASE_URL (or PROD_DATABASE_URL) must be set in production.")
         return self
 
 
@@ -112,32 +118,18 @@ def get_config(env_state: str) -> GlobalConfig:
 
 config = get_config(BaseConfig().ENV_STATE)
 
-
 # Convenience top-level exports so other modules can import settings directly
-# Preference order for SECRET_KEY: env `SECRET_KEY` -> configured value -> unprefixed .env -> env `PROD_SECRET_KEY`
-_unprefixed_secret = None
-try:
-    _unprefixed_secret = BaseConfig().SECRET_KEY
-except Exception:
-    _unprefixed_secret = None
+DATABASE_URL = config.DATABASE_URL
+SECRET_KEY: str = config.SECRET_KEY or ""
+if not SECRET_KEY and config.DEBUG is False:
+    raise RuntimeError("SECRET_KEY must be set in production")
 
-_raw_secret: Any = (
-    os.environ.get("SECRET_KEY")
-    or getattr(config, "SECRET_KEY", None)
-    or _unprefixed_secret
-    or os.environ.get("PROD_SECRET_KEY")
-)
-
-if not _raw_secret:
-    raise RuntimeError("SECRET_KEY must be set via environment or config")
-
-SECRET_KEY: str = str(_raw_secret)
-ALGORITHM = getattr(config, "ALGORITHM", "HS256")
-REDIS_URL = getattr(config, "REDIS_URL", "redis://localhost:6379/0")
-ACCESS_TOKEN_EXPIRE_MINUTES = getattr(config, "ACCESS_TOKEN_EXPIRE_MINUTES", 30)
-CONFIRM_TOKEN_EXPIRE_MINUTES = getattr(config, "CONFIRM_TOKEN_EXPIRE_MINUTES", 1440)
-RESET_TOKEN_EXPIRE_MINUTES = getattr(config, "RESET_TOKEN_EXPIRE_MINUTES", 60)
-COOKIE_SECURE = getattr(config, "COOKIE_SECURE", False)
+ALGORITHM = config.ALGORITHM
+REDIS_URL = config.REDIS_URL
+ACCESS_TOKEN_EXPIRE_MINUTES = config.ACCESS_TOKEN_EXPIRE_MINUTES
+CONFIRM_TOKEN_EXPIRE_MINUTES = config.CONFIRM_TOKEN_EXPIRE_MINUTES
+RESET_TOKEN_EXPIRE_MINUTES = config.RESET_TOKEN_EXPIRE_MINUTES
+COOKIE_SECURE = config.COOKIE_SECURE
 COOKIE_SAMESITE = config.COOKIE_SAMESITE
 FRONTEND_URL = config.FRONTEND_URL
 RATE_LIMIT_STATS_OVERVIEW = config.RATE_LIMIT_STATS_OVERVIEW

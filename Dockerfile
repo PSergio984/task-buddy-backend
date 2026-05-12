@@ -25,5 +25,5 @@ COPY scripts/ scripts/
 RUN chmod +x start.sh
 
 # Run
-CMD ["start.sh"]
+CMD ["./start.sh"]
 
