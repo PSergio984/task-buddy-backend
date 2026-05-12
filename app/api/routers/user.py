@@ -336,15 +336,15 @@ async def logout(
 @router.post("/forgot-password/")
 @limiter.limit("5/minute")
 async def forgot_password(
-    request: ForgotPasswordRequest,
+    forgot_password_data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
-    fastapi_request: Request,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """
     Initiate password reset flow by sending an email with a reset token.
     """
-    user = await user_crud.get_user_by_email(db, request.email)
+    user = await user_crud.get_user_by_email(db, forgot_password_data.email)
 
     if not user:
         # To avoid email enumeration, we return success even if user not found
@@ -354,7 +354,7 @@ async def forgot_password(
     reset_url = f"{FRONTEND_URL}/reset-password/{reset_token}"
 
     tasks.send_password_reset_email.delay(
-        request.email,
+        forgot_password_data.email,
         reset_url=reset_url,
     )
 
@@ -373,15 +373,15 @@ async def reset_password_page(token: str):
 @router.post("/reset-password/", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
 @limiter.limit("5/minute")
 async def reset_password(
-    request: ResetPasswordRequest,
+    reset_password_data: ResetPasswordRequest,
     background_tasks: BackgroundTasks,
-    fastapi_request: Request,
+    request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """
     Reset user password using a valid reset token.
     """
-    subject = get_subject_for_token_type(request.token, expected_type="reset")
+    subject = get_subject_for_token_type(reset_password_data.token, expected_type="reset")
     try:
         user_id = int(subject)
     except ValueError as err:
@@ -390,7 +390,7 @@ async def reset_password(
             detail="Invalid reset token",
         ) from err
 
-    if len(request.new_password) < 8:
+    if len(reset_password_data.new_password) < 8:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="New password must be at least 8 characters long",
@@ -403,7 +403,7 @@ async def reset_password(
             detail=USER_NOT_FOUND,
         )
 
-    hashed_password = get_password_hash(request.new_password)
+    hashed_password = get_password_hash(reset_password_data.new_password)
     await user_crud.update_user(db, db_user=user, update_data={"password": hashed_password})
     await db.commit()
 

@@ -182,6 +182,14 @@ def mock_httpx_client(mocker):
     mocked_async_client.smtp_client = smtp_client
     return mocked_async_client
 
+@pytest.fixture(autouse=True)
+def mock_celery_tasks(mocker):
+    """Mock all celery tasks' delay method to prevent hanging in tests."""
+    mocker.patch("app.tasks.send_confirmation_email.delay")
+    mocker.patch("app.tasks.send_password_reset_email.delay")
+    mocker.patch("app.tasks.send_password_changed_confirmation.delay")
+    return True
+
 @pytest.fixture()
 async def authenticated_async_client(async_client: AsyncClient, logged_in_token: str) -> AsyncGenerator:
     async_client.headers.update({"Authorization": f"Bearer {logged_in_token}"})

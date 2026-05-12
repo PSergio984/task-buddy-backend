@@ -7,7 +7,7 @@ async def test_forgot_password_success(async_client: AsyncClient, confirmed_user
     mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
 
     response = await async_client.post(
-        "/api/v1/users/forgot-password",
+        "/api/v1/users/forgot-password/",
         json={"email": confirmed_user["email"]}
     )
 
@@ -23,7 +23,7 @@ async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker)
     mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
 
     response = await async_client.post(
-        "/api/v1/users/forgot-password",
+        "/api/v1/users/forgot-password/",
         json={"email": "nonexistent@example.com"}
     )
 
@@ -40,7 +40,7 @@ async def test_reset_password_success(async_client: AsyncClient, confirmed_user:
 
     new_password = "newsecurepassword123"
     response = await async_client.post(
-        "/api/v1/users/reset-password",
+        "/api/v1/users/reset-password/",
         json={
             "token": reset_token,
             "new_password": new_password
@@ -63,7 +63,7 @@ async def test_reset_password_success(async_client: AsyncClient, confirmed_user:
 
 async def test_reset_password_invalid_token(async_client: AsyncClient):
     response = await async_client.post(
-        "/api/v1/users/reset-password",
+        "/api/v1/users/reset-password/",
         json={
             "token": "invalidtoken",
             "new_password": "newpassword123"
@@ -76,7 +76,7 @@ async def test_reset_password_expired_token(async_client: AsyncClient, confirmed
     reset_token = create_reset_token(confirmed_user["id"])
 
     response = await async_client.post(
-        "/api/v1/users/reset-password",
+        "/api/v1/users/reset-password/",
         json={
             "token": reset_token,
             "new_password": "newpassword123"
@@ -89,7 +89,7 @@ async def test_reset_password_too_short(async_client: AsyncClient, confirmed_use
     reset_token = create_reset_token(confirmed_user["id"])
 
     response = await async_client.post(
-        "/api/v1/users/reset-password",
+        "/api/v1/users/reset-password/",
         json={
             "token": reset_token,
             "new_password": "short"
