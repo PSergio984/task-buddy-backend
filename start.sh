@@ -85,9 +85,16 @@ echo "Running seeding script..."
 python scripts/seed.py || true
 
 # Start Celery worker in the background
-echo "Starting Celery worker..."
-celery -A app.celery_app worker --loglevel=info &
+# We limit concurrency to 1 and use a single worker process to save memory on constrained environments like Render (512MB).
+# CELERY_CONCURRENCY and CELERY_POOL can be overridden via environment variables.
+CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-1}
+CELERY_POOL=${CELERY_POOL:-prefork}
+
+echo "Starting Celery worker (pool: $CELERY_POOL, concurrency: $CELERY_CONCURRENCY)..."
+celery -A app.celery_app worker --loglevel=info --concurrency="$CELERY_CONCURRENCY" --pool="$CELERY_POOL" &
 
 # Start app
-echo "Starting web server..."
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*" "$@"
+# We explicitly set workers to 1 (or WEB_CONCURRENCY if set) to ensure memory stability.
+WORKERS=${WEB_CONCURRENCY:-1}
+echo "Starting web server with $WORKERS worker(s)..."
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers "$WORKERS" --proxy-headers --forwarded-allow-ips="*" "$@"

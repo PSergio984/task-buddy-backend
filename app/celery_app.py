@@ -33,6 +33,7 @@ celery_app.conf.update(
     # Reliability and Scale settings
     task_acks_late=True,
     worker_prefetch_multiplier=1,
+    worker_max_tasks_per_child=100,  # Recycle workers to prevent memory leaks
     task_time_limit=300,  # 5 minutes
     task_soft_time_limit=240,  # 4 minutes
     broker_connection_retry_on_startup=True,
