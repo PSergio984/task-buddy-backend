@@ -63,6 +63,9 @@ class GlobalConfig(BaseConfig):
     B2_APPLICATION_KEY: Optional[str] = None
     B2_BUCKET_NAME: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:5173"
+    VAPID_PUBLIC_KEY: Optional[str] = os.environ.get("VAPID_PUBLIC_KEY")
+    VAPID_PRIVATE_KEY: Optional[str] = os.environ.get("VAPID_PRIVATE_KEY")
+    VAPID_ADMIN_EMAIL: str = os.environ.get("VAPID_ADMIN_EMAIL", "admin@taskbuddy.com")
     RATE_LIMIT_STATS_OVERVIEW: str = "20/minute"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     ALGORITHM: str = "HS256"

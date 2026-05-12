@@ -39,5 +39,12 @@ celery_app.conf.update(
     broker_connection_retry_on_startup=True,
 )
 
+celery_app.conf.beat_schedule = {
+    "process-reminders-every-10-mins": {
+        "task": "app.tasks.process_reminders",
+        "schedule": 600.0,  # 10 minutes
+    },
+}
+
 # Optional: auto-discover tasks in 'app.tasks'
 celery_app.autodiscover_tasks(["app"])
