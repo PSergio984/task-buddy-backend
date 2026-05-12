@@ -84,6 +84,10 @@ fi
 echo "Running seeding script..."
 python scripts/seed.py || true
 
+# Start Celery worker in the background
+echo "Starting Celery worker..."
+celery -A app.celery_app worker --loglevel=info &
+
 # Start app
 echo "Starting web server..."
 exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --proxy-headers --forwarded-allow-ips="*" "$@"
