@@ -8,13 +8,28 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class BaseConfig(BaseSettings):
-    ENV_STATE: Optional[str] = os.environ.get("ENV_STATE")
+    ENV_STATE: Optional[str] = None
     SENTRY_DSN: Optional[str] = None
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
+def _get_env_state():
+    """Helper to get ENV_STATE even if not in os.environ yet."""
+    state = os.environ.get("ENV_STATE")
+    if state:
+        return state
+    # Try to read from .env manually if Pydantic hasn't loaded it into os.environ
+    if os.path.exists(".env"):
+        with open(".env") as f:
+            for line in f:
+                if line.startswith("ENV_STATE="):
+                    return line.split("=")[1].strip()
+    return "dev"
+
+
 class GlobalConfig(BaseConfig):
     APP_NAME: str = "Task Buddy Backend"
+    ENV_STATE: str = "dev"
     DEBUG: bool = True
     LOG_LEVEL: str = "INFO"
     DATABASE_URL: Optional[str] = os.environ.get("DATABASE_URL")
@@ -34,7 +49,7 @@ class GlobalConfig(BaseConfig):
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
     MAIL_FROM_NAME: str = "Task Buddy"
-    MAIL_FROM_EMAIL: Optional[str] = None
+    MAIL_FROM_EMAIL: Optional[str] = os.environ.get("MAIL_FROM_EMAIL")
     MAIL_SMTP_HOST: Optional[str] = None
     MAIL_SMTP_PORT: int = 587
     MAIL_SMTP_USERNAME: Optional[str] = None
@@ -75,14 +90,26 @@ class GlobalConfig(BaseConfig):
 
 
 class DevConfig(GlobalConfig):
-    model_config = SettingsConfigDict(env_prefix="DEV_", extra="ignore")
+    ENV_STATE: str = "dev"
+    model_config = SettingsConfigDict(env_prefix="DEV_", env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def fallback_settings(self):
+        if not self.SECRET_KEY:
+            self.SECRET_KEY = os.environ.get("SECRET_KEY")
+        if not self.MAIL_FROM_EMAIL:
+            self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
+        if not self.MAIL_FROM_NAME:
+            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME") or "Task Buddy"
+        return self
 
 
 class ProdConfig(GlobalConfig):
+    ENV_STATE: str = "prod"
     DEBUG: bool = False
     COOKIE_SECURE: bool = True
     COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "none"
-    model_config = SettingsConfigDict(env_prefix="PROD_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="PROD_", env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
     def ensure_required_vars(self):
@@ -102,12 +129,23 @@ class ProdConfig(GlobalConfig):
 
 
 class TestConfig(GlobalConfig):
+    ENV_STATE: str = "test"
     DATABASE_URL: str = "sqlite:///./test.db"
     DB_FORCE_ROLL_BACK: bool = False
     RATE_LIMIT_ENABLED: bool = False
     DEBUG: bool = False
 
-    model_config = SettingsConfigDict(env_prefix="TEST_", extra="ignore")
+    model_config = SettingsConfigDict(env_prefix="TEST_", env_file=".env", extra="ignore")
+
+    @model_validator(mode="after")
+    def fallback_settings(self):
+        if not self.SECRET_KEY:
+            self.SECRET_KEY = os.environ.get("SECRET_KEY")
+        if not self.MAIL_FROM_EMAIL:
+            self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
+        if not self.MAIL_FROM_NAME:
+            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME") or "Task Buddy"
+        return self
 
 
 @lru_cache
@@ -116,13 +154,18 @@ def get_config(env_state: str) -> GlobalConfig:
     return configs[env_state.lower() if env_state else "dev"]()
 
 
-config = get_config(BaseConfig().ENV_STATE)
+config = get_config(_get_env_state())
 
 # Convenience top-level exports so other modules can import settings directly
 DATABASE_URL = config.DATABASE_URL
 SECRET_KEY: str = config.SECRET_KEY or ""
-if not SECRET_KEY and config.DEBUG is False:
-    raise RuntimeError("SECRET_KEY must be set in production")
+
+# Only enforce strict SECRET_KEY in production mode
+if not SECRET_KEY and config.ENV_STATE == "prod":
+    raise RuntimeError("SECRET_KEY (or PROD_SECRET_KEY) must be set in production environment")
+elif not SECRET_KEY:
+    # Use a dummy key for dev/test if everything else failed
+    SECRET_KEY = "dev-secret-key-do-not-use-in-production"
 
 ALGORITHM = config.ALGORITHM
 REDIS_URL = config.REDIS_URL
