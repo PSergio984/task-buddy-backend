@@ -333,7 +333,7 @@ async def logout(
     return {"detail": "Successfully logged out."}
 
 
-@router.post("/forgot-password")
+@router.post("/forgot-password/")
 @limiter.limit("5/minute")
 async def forgot_password(
     request: ForgotPasswordRequest,
@@ -370,7 +370,7 @@ async def reset_password_page(token: str):
     return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
 
 
-@router.post("/reset-password", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
+@router.post("/reset-password/", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
 @limiter.limit("5/minute")
 async def reset_password(
     request: ResetPasswordRequest,
