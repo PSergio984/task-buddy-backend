@@ -114,6 +114,12 @@ class ProdConfig(GlobalConfig):
     @model_validator(mode="after")
     def ensure_required_vars(self):
         """Fail-fast in production when critical vars are not set."""
+        self._validate_critical_vars()
+        self._apply_mail_fallbacks()
+        self._apply_infrastructure_fallbacks()
+        return self
+
+    def _validate_critical_vars(self):
         if not self.SECRET_KEY:
             self.SECRET_KEY = os.environ.get("SECRET_KEY")
             if not self.SECRET_KEY:
@@ -124,6 +130,7 @@ class ProdConfig(GlobalConfig):
             if not self.DATABASE_URL:
                 raise ValueError("DATABASE_URL (or PROD_DATABASE_URL) must be set in production")
 
+    def _apply_mail_fallbacks(self):
         # Fallback for MAIL settings if PROD_ prefix is missing
         if not self.MAIL_SMTP_HOST:
             self.MAIL_SMTP_HOST = os.environ.get("MAIL_SMTP_HOST")
@@ -136,6 +143,7 @@ class ProdConfig(GlobalConfig):
         if not self.MAIL_FROM_NAME:
             self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
 
+    def _apply_infrastructure_fallbacks(self):
         # Fallback for Redis
         if not self.REDIS_URL:
             self.REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -143,7 +151,7 @@ class ProdConfig(GlobalConfig):
         # Fallback for URLs
         if not self.FRONTEND_URL or self.FRONTEND_URL == "http://localhost:5173":
             self.FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
-        
+
         if not self.MAIL_URL:
             self.MAIL_URL = os.environ.get("MAIL_URL")
 

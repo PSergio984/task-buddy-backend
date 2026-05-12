@@ -6,7 +6,7 @@ import sys
 sys.path.append(os.getcwd())
 
 from app.config import config
-from app.tasks import APIResponseError, send_brevo_email, send_smtp_email
+from app.tasks import send_smtp_email
 
 
 async def test_email(target_email: str, test_type: str = "simple"):
