@@ -140,6 +140,13 @@ class ProdConfig(GlobalConfig):
         if not self.REDIS_URL:
             self.REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
 
+        # Fallback for URLs
+        if not self.FRONTEND_URL or self.FRONTEND_URL == "http://localhost:5173":
+            self.FRONTEND_URL = os.environ.get("FRONTEND_URL", "http://localhost:5173")
+        
+        if not self.MAIL_URL:
+            self.MAIL_URL = os.environ.get("MAIL_URL")
+
         return self
 
 
