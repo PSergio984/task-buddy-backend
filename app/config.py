@@ -100,7 +100,7 @@ class DevConfig(GlobalConfig):
         if not self.MAIL_FROM_EMAIL:
             self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
         if not self.MAIL_FROM_NAME:
-            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME") or "Task Buddy"
+            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
         return self
 
 
@@ -115,16 +115,31 @@ class ProdConfig(GlobalConfig):
     def ensure_required_vars(self):
         """Fail-fast in production when critical vars are not set."""
         if not self.SECRET_KEY:
-            # Check if we have it unprefixed as a final fallback
             self.SECRET_KEY = os.environ.get("SECRET_KEY")
             if not self.SECRET_KEY:
-                raise ValueError(
-                    "SECRET_KEY (or PROD_SECRET_KEY) must be set in production; refusing to start without a secure secret."
-                )
+                raise ValueError("SECRET_KEY (or PROD_SECRET_KEY) must be set in production")
+
         if not self.DATABASE_URL:
-             self.DATABASE_URL = os.environ.get("DATABASE_URL")
-             if not self.DATABASE_URL:
-                 raise ValueError("DATABASE_URL (or PROD_DATABASE_URL) must be set in production.")
+            self.DATABASE_URL = os.environ.get("DATABASE_URL")
+            if not self.DATABASE_URL:
+                raise ValueError("DATABASE_URL (or PROD_DATABASE_URL) must be set in production")
+
+        # Fallback for MAIL settings if PROD_ prefix is missing
+        if not self.MAIL_SMTP_HOST:
+            self.MAIL_SMTP_HOST = os.environ.get("MAIL_SMTP_HOST")
+        if not self.MAIL_SMTP_USERNAME:
+            self.MAIL_SMTP_USERNAME = os.environ.get("MAIL_SMTP_USERNAME")
+        if not self.MAIL_SMTP_PASSWORD:
+            self.MAIL_SMTP_PASSWORD = os.environ.get("MAIL_SMTP_PASSWORD")
+        if not self.MAIL_FROM_EMAIL:
+            self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL")
+        if not self.MAIL_FROM_NAME:
+            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
+
+        # Fallback for Redis
+        if not self.REDIS_URL:
+            self.REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
+
         return self
 
 
@@ -144,7 +159,7 @@ class TestConfig(GlobalConfig):
         if not self.MAIL_FROM_EMAIL:
             self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
         if not self.MAIL_FROM_NAME:
-            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME") or "Task Buddy"
+            self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
         return self
 
 

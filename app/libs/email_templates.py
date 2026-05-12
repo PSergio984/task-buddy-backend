@@ -98,3 +98,14 @@ def get_password_changed_html(user_email: str) -> str:
     <p>If you did not authorize this change, please contact our security team immediately.</p>
     """
     return get_base_template(content)
+
+def get_confirmation_html(confirmation_url: str) -> str:
+    content = f"""
+    <h1 style="margin-top: 0; font-size: 24px; font-weight: 800;">Welcome to Task Buddy!</h1>
+    <p>We're thrilled to have you here. To get started and unlock the full potential of premium task management, please verify your email address.</p>
+    <a href="{confirmation_url}" class="button">Verify Email</a>
+    <p style="margin-top: 32px; font-size: 14px; color: #64748b;">
+        If you didn't create an account, you can safely ignore this email.
+    </p>
+    """
+    return get_base_template(content)

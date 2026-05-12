@@ -131,10 +131,13 @@ async def _send_confirmation_email_async(
     suppress_exceptions: bool = False,
 ) -> None:
     """Internal async implementation of confirmation email sending."""
+    from app.libs.email_templates import get_confirmation_html
+
     try:
-        final_subject, final_body = _get_confirmation_content(
+        final_subject, text_body = _get_confirmation_content(
             to_email, subject, body, confirmation_url
         )
+        html_body = get_confirmation_html(confirmation_url) if confirmation_url else None
     except ValueError:
         if suppress_exceptions:
             logger.error("Invalid call to send_confirmation_email: missing content")
@@ -143,7 +146,7 @@ async def _send_confirmation_email_async(
 
     # 1. Try SMTP
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, final_subject, final_body)
+        await asyncio.to_thread(send_smtp_email, to_email, final_subject, text_body, html_body)
         return
     except Exception:
         logger.warning(
@@ -152,7 +155,7 @@ async def _send_confirmation_email_async(
 
     # 2. Try Brevo API Fallback
     try:
-        await send_brevo_email(to_email, final_subject, final_body)
+        await send_brevo_email(to_email, final_subject, text_body, html_body)
     except Exception as api_error:
         logger.exception("Brevo API fallback failed for %s", to_email)
 
