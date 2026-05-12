@@ -7,15 +7,15 @@ from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 import httpx
-from pywebpush import webpush, WebPushException
-from sqlalchemy import select, update, and_, exists
+from pywebpush import WebPushException, webpush
+from sqlalchemy import exists, select, update
 
 from app.celery_app import celery_app
 from app.config import config
 from app.database import AsyncSessionLocal
-from app.models.user import User
-from app.models.task import Task
 from app.models.notification import Notification, NotificationType, PushSubscription
+from app.models.task import Task
+from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
@@ -336,7 +336,7 @@ async def _process_reminders_async() -> None:
         max_end = now + timedelta(minutes=70)
 
         stmt = select(Task).where(
-            Task.completed == False,
+            not Task.completed,
             Task.due_date >= min_start,
             Task.due_date <= max_end
         )
@@ -345,7 +345,12 @@ async def _process_reminders_async() -> None:
 
         for task in tasks:
             for window in windows:
-                if window["start"] <= task.due_date <= window["end"]:
+                # Ensure task.due_date is timezone aware for comparison
+                task_due_date = task.due_date
+                if task_due_date and task_due_date.tzinfo is None:
+                    task_due_date = task_due_date.replace(tzinfo=timezone.utc)
+
+                if task_due_date and window["start"] <= task_due_date <= window["end"]:
                     # Deduplication: Check if notification already exists for this task and type
                     exists_stmt = select(exists().where(
                         Notification.task_id == task.id,

@@ -1,6 +1,6 @@
-from typing import Annotated, List, Optional
+from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import notification as notification_crud
@@ -21,7 +21,7 @@ router = APIRouter(
     },
 )
 
-@router.get("/", response_model=List[NotificationRead])
+@router.get("/", response_model=list[NotificationRead])
 async def list_notifications(
     current_user: Annotated[User, Depends(get_current_user)],
     db: Annotated[AsyncSession, Depends(get_db)],

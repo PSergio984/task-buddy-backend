@@ -109,7 +109,7 @@ async def db() -> AsyncGenerator:
 def client() -> Generator:
     yield TestClient(app)
 
-@pytest.fixture(scope="session")
+@pytest.fixture()
 async def async_client() -> AsyncGenerator:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver/") as ac:

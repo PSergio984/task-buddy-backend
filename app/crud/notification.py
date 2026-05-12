@@ -1,4 +1,4 @@
-from typing import List, Optional
+from typing import Optional
 
 from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -9,7 +9,7 @@ from app.schemas.notification import NotificationCreate, PushSubscriptionCreate
 
 async def get_notifications(
     db: AsyncSession, user_id: int, skip: int = 0, limit: int = 100, is_read: Optional[bool] = None
-) -> List[Notification]:
+) -> list[Notification]:
     """
     List user notifications with pagination and filtering.
     """

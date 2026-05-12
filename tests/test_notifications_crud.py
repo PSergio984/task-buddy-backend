@@ -23,7 +23,7 @@ async def test_create_and_get_notification(db: AsyncSession, confirmed_user: dic
         type=NotificationType.SYSTEM,
     )
 
-    noti = await create_notification(db, noti_in)
+    await create_notification(db, noti_in)
     await db.commit()
 
     notifications = await get_notifications(db, user_id=user_id)

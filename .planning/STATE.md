@@ -1,10 +1,10 @@
 # Project State: Task Buddy Backend
 
 ## Current Status
-- **Phase:** 4 - Reliability & Scale
+- **Phase:** 3.75 - Notification & Reminder System
 - **Status:** PLANNING
 - **Completed:** Phase 1, 2, 3, 3.5
-- **Next Step:** Define Phase 4 details and implement Plan 04-01
+- **Next Step:** Create Phase 3.75 Plan and implement Notification models.
 
 ## Active Tasks
 - [ ] Define requirements for background task processing (e.g., email notifications)
