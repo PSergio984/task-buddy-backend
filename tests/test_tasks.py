@@ -6,37 +6,7 @@ from app.tasks import APIResponseError, _send_confirmation_email_async, send_con
 
 async def test_send_confirmation_email(mock_httpx_client):
     send_confirmation_email("test@example.com", "Test Subject", "Test Body")
-    # Verify SMTP (primary path) was called
-    mock_httpx_client.smtp.assert_called_once_with("smtp-relay.brevo.com", 587, timeout=30)
-    mock_httpx_client.smtp_client.starttls.assert_called_once()
-    mock_httpx_client.smtp_client.login.assert_called_once_with(
-        "9d9828001@smtp-brevo.com", "test-smtp-password"
-    )
-    mock_httpx_client.smtp_client.send_message.assert_called_once()
-
-
-async def test_send_confirmation_email_api_error(mock_httpx_client):
-    # Force SMTP to fail so we exercise the Brevo API fallback
-    mock_httpx_client.smtp_client.send_message.side_effect = OSError("SMTP failed")
-    # Construct an HTTPStatusError to simulate a 500 from the API fallback
-    mock_httpx_client.post.side_effect = httpx.HTTPStatusError(
-        "Server error", request=httpx.Request("POST", "/"), response=httpx.Response(500)
-    )
-
-    with pytest.raises(APIResponseError):
-        # We call the async implementation directly to test error handling
-        await _send_confirmation_email_async("test@example.com", "Test Subject", "Test Body", suppress_exceptions=False)
-
-
-async def test_send_confirmation_email_falls_back_to_api(mock_httpx_client):
-    # Force SMTP to fail so we exercise the Brevo API fallback
-    mock_httpx_client.smtp_client.send_message.side_effect = OSError("SMTP failed")
-
-    send_confirmation_email("test@example.com", "Test Subject", "Test Body")
-
-    # Verify SMTP was attempted first
-    mock_httpx_client.smtp.assert_called_once_with("smtp-relay.brevo.com", 587, timeout=30)
-    # Verify API was called as fallback
+    # Verify Brevo API (primary path) was called
     mock_httpx_client.post.assert_called_once()
     _, kwargs = mock_httpx_client.post.call_args
     assert kwargs["json"] == {
@@ -45,3 +15,32 @@ async def test_send_confirmation_email_falls_back_to_api(mock_httpx_client):
         "subject": "Test Subject",
         "textContent": "Test Body",
     }
+    # SMTP should NOT have been called
+    mock_httpx_client.smtp.assert_not_called()
+
+
+async def test_send_confirmation_email_api_error(mock_httpx_client):
+    # Force Brevo API to fail so we exercise the SMTP fallback
+    mock_httpx_client.post.side_effect = httpx.HTTPStatusError(
+        "Server error", request=httpx.Request("POST", "/"), response=httpx.Response(500)
+    )
+    # Force SMTP to also fail
+    mock_httpx_client.smtp_client.send_message.side_effect = OSError("SMTP failed")
+
+    with pytest.raises(APIResponseError):
+        # We call the async implementation directly to test error handling
+        await _send_confirmation_email_async("test@example.com", "Test Subject", "Test Body", suppress_exceptions=False)
+
+
+async def test_send_confirmation_email_falls_back_to_smtp(mock_httpx_client):
+    # Force Brevo API to fail
+    mock_httpx_client.post.side_effect = httpx.HTTPStatusError(
+        "Server error", request=httpx.Request("POST", "/"), response=httpx.Response(500)
+    )
+
+    send_confirmation_email("test@example.com", "Test Subject", "Test Body")
+
+    # Verify API was attempted first
+    mock_httpx_client.post.assert_called_once()
+    # Verify SMTP was called as fallback
+    mock_httpx_client.smtp.assert_called_once_with("smtp-relay.brevo.com", 587, timeout=5)

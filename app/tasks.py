@@ -1,16 +1,21 @@
 import asyncio
+import json
 import logging
 import smtplib
 import ssl
+from datetime import datetime, timedelta, timezone
 from email.message import EmailMessage
 
 import httpx
-from sqlalchemy import update
+from pywebpush import webpush, WebPushException
+from sqlalchemy import select, update, and_, exists
 
 from app.celery_app import celery_app
 from app.config import config
 from app.database import AsyncSessionLocal
 from app.models.user import User
+from app.models.task import Task
+from app.models.notification import Notification, NotificationType, PushSubscription
 
 logger = logging.getLogger(__name__)
 
@@ -289,3 +294,148 @@ def send_password_changed_confirmation(to_email: str) -> None:
     run_async_coroutine(
         _send_password_changed_confirmation_async(to_email, suppress_exceptions=True)
     )
+
+
+@celery_app.task(name="app.tasks.process_reminders")
+def process_reminders() -> None:
+    """Celery task to scan for upcoming/overdue tasks and send notifications."""
+    run_async_coroutine(_process_reminders_async())
+
+
+async def _process_reminders_async() -> None:
+    now = datetime.now(timezone.utc)
+
+    # Define windows for scanning
+    windows = [
+        {
+            "type": NotificationType.REMINDER_BEFORE,
+            "start": now + timedelta(minutes=50),
+            "end": now + timedelta(minutes=70),
+            "title": "Upcoming Task: {title}",
+            "message": "Your task '{title}' is due in 1 hour."
+        },
+        {
+            "type": NotificationType.REMINDER_DUE,
+            "start": now - timedelta(minutes=10),
+            "end": now + timedelta(minutes=10),
+            "title": "Task Due Now: {title}",
+            "message": "Your task '{title}' is due now."
+        },
+        {
+            "type": NotificationType.REMINDER_OVERDUE,
+            "start": now - timedelta(hours=24, minutes=10),
+            "end": now - timedelta(hours=23, minutes=50),
+            "title": "Task Overdue: {title}",
+            "message": "Your task '{title}' is 24 hours overdue."
+        }
+    ]
+
+    async with AsyncSessionLocal() as db:
+        # Optimization: only query tasks with due dates in the broadest possible range
+        min_start = now - timedelta(hours=24, minutes=10)
+        max_end = now + timedelta(minutes=70)
+
+        stmt = select(Task).where(
+            Task.completed == False,
+            Task.due_date >= min_start,
+            Task.due_date <= max_end
+        )
+        result = await db.execute(stmt)
+        tasks = result.scalars().all()
+
+        for task in tasks:
+            for window in windows:
+                if window["start"] <= task.due_date <= window["end"]:
+                    # Deduplication: Check if notification already exists for this task and type
+                    exists_stmt = select(exists().where(
+                        Notification.task_id == task.id,
+                        Notification.type == window["type"]
+                    ))
+                    already_notified = (await db.execute(exists_stmt)).scalar()
+
+                    if not already_notified:
+                        title = window["title"].format(title=task.title)
+                        message = window["message"].format(title=task.title)
+                        action_url = f"/tasks/{task.id}"
+
+                        # 1. Create In-App Notification
+                        notification = Notification(
+                            user_id=task.user_id,
+                            task_id=task.id,
+                            type=window["type"],
+                            title=title,
+                            message=message,
+                            action_url=action_url
+                        )
+                        db.add(notification)
+
+                        # 2. Enqueue Push Notification
+                        send_push_notification.delay(task.user_id, title, message, action_url)
+
+                        # 3. Enqueue Email Notification
+                        user_stmt = select(User.email).where(User.id == task.user_id)
+                        user_email = (await db.execute(user_stmt)).scalar()
+                        if user_email:
+                            send_confirmation_email.delay(user_email, title, message)
+
+        await db.commit()
+
+
+@celery_app.task(
+    name="app.tasks.send_push_notification",
+    autoretry_for=(Exception,),
+    retry_backoff=True,
+    max_retries=3
+)
+def send_push_notification(user_id: int, title: str, message: str, action_url: str | None = None) -> None:
+    """Celery task to send web push notifications to all user subscriptions."""
+    run_async_coroutine(_send_push_notification_async(user_id, title, message, action_url))
+
+
+async def _send_push_notification_async(user_id: int, title: str, message: str, action_url: str | None = None) -> None:
+    if not config.VAPID_PRIVATE_KEY:
+        logger.error("VAPID_PRIVATE_KEY not configured, cannot send push notifications")
+        return
+
+    async with AsyncSessionLocal() as db:
+        stmt = select(PushSubscription).where(PushSubscription.user_id == user_id)
+        result = await db.execute(stmt)
+        subscriptions = result.scalars().all()
+
+        if not subscriptions:
+            return
+
+        payload = json.dumps({
+            "title": title,
+            "body": message,
+            "data": {
+                "url": action_url
+            }
+        })
+
+        for sub in subscriptions:
+            try:
+                webpush(
+                    subscription_info={
+                        "endpoint": sub.endpoint,
+                        "keys": {
+                            "p256dh": sub.p256dh,
+                            "auth": sub.auth
+                        }
+                    },
+                    data=payload,
+                    vapid_private_key=config.VAPID_PRIVATE_KEY,
+                    vapid_claims={
+                        "sub": f"mailto:{config.VAPID_ADMIN_EMAIL}"
+                    }
+                )
+            except WebPushException as ex:
+                if ex.response is not None and ex.response.status_code == 410:
+                    logger.info("Push subscription expired for endpoint %s; deleting", sub.endpoint)
+                    await db.delete(sub)
+                else:
+                    logger.error("Failed to send push notification to %s: %s", sub.endpoint, str(ex))
+            except Exception:
+                logger.exception("Unexpected error sending push notification to %s", sub.endpoint)
+
+        await db.commit()
