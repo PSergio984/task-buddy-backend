@@ -9,7 +9,6 @@ from fastapi.testclient import TestClient
 from httpx import ASGITransport, AsyncClient, Request, Response
 from sqlalchemy import event, select, update
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
-from sqlalchemy.pool import NullPool
 
 import app.database as app_db
 import app.dependencies as app_deps

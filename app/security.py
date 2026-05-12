@@ -7,6 +7,7 @@ from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
 from jose import ExpiredSignatureError, JWTError, jwt
 from passlib.context import CryptContext
+from passlib.exc import UnknownHashError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import (
@@ -179,7 +180,17 @@ def get_password_hash(password: str) -> str:
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
-    return pwd_context.verify(plain_password, hashed_password)
+    logger.debug("Verifying password. Hash type: %s, Hash length: %s", type(hashed_password), len(hashed_password))
+    # Log the first 10 characters of the hash for debugging (safe enough for logs)
+    logger.debug("Hash prefix: %s...", hashed_password[:10] if hashed_password else "EMPTY")
+    try:
+        return pwd_context.verify(plain_password, hashed_password)
+    except UnknownHashError:
+        logger.warning("Unknown hash format encountered. Rejecting authentication.")
+        return False
+    except Exception as e:
+        logger.error("Password verification failed with error: %s", str(e))
+        raise
 
 
 def get_subject_for_token_type(
@@ -205,6 +216,7 @@ def get_subject_for_token_type(
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
+    logger.info("Authenticating user: %s", email)
     user = await get_user_by_email(db, email)
     if not user:
         raise create_credentials_exception("Invalid credentials")

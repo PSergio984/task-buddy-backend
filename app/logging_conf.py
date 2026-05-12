@@ -1,7 +1,7 @@
 import logging
 from logging.config import dictConfig
 
-from app.config import DevConfig, config
+from app.config import DevConfig, ProdConfig, config
 
 
 def obfuscated(email: str, obfuscated_length: int = 2) -> str:
@@ -24,8 +24,9 @@ class EmailObfuscationFilter(logging.Filter):
         self.obfuscated_length = obfuscated_length
 
     def filter(self, record: logging.LogRecord) -> bool:
-        if "email" in record.__dict__ and isinstance(record.email, str):
-            record.email = obfuscated(record.email, self.obfuscated_length)
+        email = getattr(record, "email", None)
+        if isinstance(email, str):
+            record.email = obfuscated(email, self.obfuscated_length)
         return True
 
 
@@ -94,7 +95,7 @@ def configure_logging():
                 },
                 "app": {
                     "handlers": handlers,
-                    "level": "DEBUG" if isinstance(config, DevConfig) else "INFO",
+                    "level": "DEBUG" if not isinstance(config, ProdConfig) else "INFO",
                     "propagate": False,
                 },
                 "databases": {

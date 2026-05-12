@@ -349,7 +349,7 @@ async def create_tag(
         return db_tag
     except IntegrityError:
         await db.rollback()
-        raise HTTPException(status_code=400, detail="Tag already exists")
+        raise HTTPException(status_code=400, detail="Tag already exists") from None
 
 
 @router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
@@ -405,8 +405,8 @@ async def create_and_attach_tag(
         # Retry logic: tag might have been created by another request
         db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
         if not db_tag:
-            raise HTTPException(status_code=400, detail="Failed to create or attach tag")
-        
+            raise HTTPException(status_code=400, detail="Failed to create or attach tag") from None
+
         # Try attaching again if it was just the creation that failed
         try:
             await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id)
