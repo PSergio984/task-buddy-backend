@@ -12,6 +12,7 @@ from fastapi import (
     Response,
     status,
 )
+from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -204,7 +205,81 @@ async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]
     await user_crud.update_user_confirmation(db, db_user=user, confirmed=True)
     await db.commit()
 
-    return {"detail": "Email confirmed"}
+    return HTMLResponse(content=f"""
+        <!DOCTYPE html>
+        <html>
+            <head>
+                <title>Email Confirmed - Task Buddy</title>
+                <meta name="viewport" content="width=device-width, initial-scale=1.0">
+                <style>
+                    body {{
+                        font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        min-height: 100vh;
+                        margin: 0;
+                        background-color: #f8fafc;
+                        color: #1e293b;
+                    }}
+                    .card {{
+                        background: white;
+                        padding: 3rem 2rem;
+                        border-radius: 1.5rem;
+                        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+                        text-align: center;
+                        max-width: 400px;
+                        width: 90%;
+                    }}
+                    .icon {{
+                        background-color: #dcfce7;
+                        color: #15803d;
+                        width: 64px;
+                        height: 64px;
+                        border-radius: 50%;
+                        display: flex;
+                        justify-content: center;
+                        align-items: center;
+                        margin: 0 auto 1.5rem;
+                        font-size: 32px;
+                    }}
+                    h1 {{
+                        font-size: 1.5rem;
+                        font-weight: 700;
+                        margin: 0 0 1rem;
+                        color: #0f172a;
+                    }}
+                    p {{
+                        font-size: 1rem;
+                        line-height: 1.5;
+                        color: #64748b;
+                        margin: 0 0 2rem;
+                    }}
+                    .btn {{
+                        display: inline-block;
+                        background-color: #2563eb;
+                        color: white;
+                        padding: 0.75rem 1.5rem;
+                        border-radius: 0.5rem;
+                        text-decoration: none;
+                        font-weight: 600;
+                        transition: background-color 0.2s;
+                    }}
+                    .btn:hover {{
+                        background-color: #1d4ed8;
+                    }}
+                </style>
+            </head>
+            <body>
+                <div class="card">
+                    <div class="icon">✓</div>
+                    <h1>Email Confirmed!</h1>
+                    <p>Your email has been successfully verified. You can now close this window and return to the application.</p>
+                    <a href="{FRONTEND_URL}/login" class="btn">Go to Login</a>
+                </div>
+            </body>
+        </html>
+    """)
 
 
 @router.get("/me", response_model=User)

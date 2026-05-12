@@ -101,6 +101,10 @@ class DevConfig(GlobalConfig):
             self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
         if not self.MAIL_FROM_NAME:
             self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
+        if not self.MAIL_URL:
+            self.MAIL_URL = os.environ.get("MAIL_URL")
+        if not self.MAIL_API_KEY:
+            self.MAIL_API_KEY = os.environ.get("MAIL_API_KEY")
         return self
 
 
@@ -175,6 +179,10 @@ class TestConfig(GlobalConfig):
             self.MAIL_FROM_EMAIL = os.environ.get("MAIL_FROM_EMAIL") or "hello@example.com"
         if not self.MAIL_FROM_NAME:
             self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
+        if not self.MAIL_URL:
+            self.MAIL_URL = os.environ.get("MAIL_URL")
+        if not self.MAIL_API_KEY:
+            self.MAIL_API_KEY = os.environ.get("MAIL_API_KEY")
         return self
 
 

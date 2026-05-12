@@ -84,7 +84,7 @@ def send_smtp_email(to_email: str, subject: str, text_body: str, html_body: str 
     # Explicitly enforce TLS 1.2 or higher for security compliance
     context.minimum_version = ssl.TLSVersion.TLSv1_2
 
-    with smtplib.SMTP(config.MAIL_SMTP_HOST, config.MAIL_SMTP_PORT, timeout=30) as smtp:
+    with smtplib.SMTP(config.MAIL_SMTP_HOST, config.MAIL_SMTP_PORT, timeout=5) as smtp:
         if config.MAIL_SMTP_USE_TLS:
             smtp.starttls(context=context)
         smtp.login(config.MAIL_SMTP_USERNAME, config.MAIL_SMTP_PASSWORD)
@@ -144,28 +144,28 @@ async def _send_confirmation_email_async(
             return
         raise
 
-    # 1. Try SMTP
+    # 1. Try Brevo API (Faster and more reliable on cloud platforms like Render)
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, final_subject, text_body, html_body)
+        await send_brevo_email(to_email, final_subject, text_body, html_body)
         return
     except Exception:
         logger.warning(
-            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
         )
 
-    # 2. Try Brevo API Fallback
+    # 2. Try SMTP Fallback
     try:
-        await send_brevo_email(to_email, final_subject, text_body, html_body)
-    except Exception as api_error:
-        logger.exception("Brevo API fallback failed for %s", to_email)
+        await asyncio.to_thread(send_smtp_email, to_email, final_subject, text_body, html_body)
+    except Exception as smtp_error:
+        logger.exception("SMTP fallback failed for %s", to_email)
 
         # Record failure in DB as a last resort
         await _record_confirmation_failure(to_email)
 
         if not suppress_exceptions:
             raise APIResponseError(
-                "Failed to send confirmation email via SMTP and Brevo API"
-            ) from api_error
+                "Failed to send confirmation email via Brevo API and SMTP"
+            ) from smtp_error
 
 
 def run_async_coroutine(coro):
@@ -216,24 +216,24 @@ async def _send_password_reset_email_async(
     text_body = f"Hi, you requested a password reset. Please use the following link to reset your password: {reset_url}"
     html_body = get_password_reset_html(reset_url)
 
-    # 1. Try SMTP
+    # 1. Try Brevo API (Faster and more reliable on cloud platforms like Render)
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
+        await send_brevo_email(to_email, subject, text_body, html_body)
         return
     except Exception:
         logger.warning(
-            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
         )
 
-    # 2. Try Brevo API Fallback
+    # 2. Try SMTP Fallback
     try:
-        await send_brevo_email(to_email, subject, text_body, html_body)
-    except Exception as api_error:
-        logger.exception("Brevo API fallback failed for %s", to_email)
+        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
+    except Exception as smtp_error:
+        logger.exception("SMTP fallback failed for %s", to_email)
         if not suppress_exceptions:
             raise APIResponseError(
-                "Failed to send password reset email via SMTP and Brevo API"
-            ) from api_error
+                "Failed to send email via Brevo API and SMTP"
+            ) from smtp_error
 
 
 @celery_app.task(
@@ -258,24 +258,24 @@ async def _send_password_changed_confirmation_async(
     text_body = f"Hi {to_email}, your Task Buddy password was successfully updated."
     html_body = get_password_changed_html(to_email)
 
-    # 1. Try SMTP
+    # 1. Try Brevo API (Faster and more reliable on cloud platforms like Render)
     try:
-        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
+        await send_brevo_email(to_email, subject, text_body, html_body)
         return
     except Exception:
         logger.warning(
-            "SMTP email failed for %s; falling back to Brevo API", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
         )
 
-    # 2. Try Brevo API Fallback
+    # 2. Try SMTP Fallback
     try:
-        await send_brevo_email(to_email, subject, text_body, html_body)
-    except Exception as api_error:
-        logger.exception("Brevo API fallback failed for %s", to_email)
+        await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
+    except Exception as smtp_error:
+        logger.exception("SMTP fallback failed for %s", to_email)
         if not suppress_exceptions:
             raise APIResponseError(
-                "Failed to send password changed confirmation email via SMTP and Brevo API"
-            ) from api_error
+                "Failed to send email via Brevo API and SMTP"
+            ) from smtp_error
 
 
 @celery_app.task(
