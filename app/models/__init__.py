@@ -2,9 +2,21 @@
 
 from app.models.audit import AuditLog
 from app.models.base import Base
+from app.models.notification import Notification, NotificationType, PushSubscription
 from app.models.project import Project
 from app.models.tag import Tag
 from app.models.task import SubTask, Task
 from app.models.user import User
 
-__all__ = ["Base", "User", "Task", "SubTask", "Tag", "AuditLog", "Project"]
+__all__ = [
+    "Base",
+    "User",
+    "Task",
+    "SubTask",
+    "Tag",
+    "AuditLog",
+    "Project",
+    "Notification",
+    "NotificationType",
+    "PushSubscription",
+]

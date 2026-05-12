@@ -10,6 +10,7 @@ from app.models.base import Base
 
 if TYPE_CHECKING:
     from app.models.audit import AuditLog
+    from app.models.notification import Notification, PushSubscription
     from app.models.project import Project
     from app.models.tag import Tag
     from app.models.task import Task
@@ -31,6 +32,12 @@ class User(Base):
     tags: Mapped[list[Tag]] = relationship(back_populates="user", cascade="all, delete-orphan")
     projects: Mapped[list[Project]] = relationship(back_populates="user", cascade="all, delete-orphan")
     audit_logs: Mapped[list[AuditLog]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    notifications: Mapped[list[Notification]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    push_subscriptions: Mapped[list[PushSubscription]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
     def __repr__(self) -> str:
         return f"<User(id={self.id}, username={self.username}, email={self.email})>"
