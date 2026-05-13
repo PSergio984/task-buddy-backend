@@ -12,6 +12,7 @@ class SubTaskCreateNestedRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
+    position: int = 0
 
 
 class TaskCreateRequest(BaseModel):
@@ -31,6 +32,7 @@ class SubTaskCreateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
+    position: int = 0
 
 
 class SubTaskCreateResponse(SubTaskCreateRequest):
@@ -38,6 +40,7 @@ class SubTaskCreateResponse(SubTaskCreateRequest):
 
     user_id: int
     id: int
+    position: int
     created_at: datetime
 
 
@@ -80,3 +83,4 @@ class SubTaskUpdateRequest(BaseModel):
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
+    position: Optional[int] = None

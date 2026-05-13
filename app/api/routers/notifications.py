@@ -3,6 +3,7 @@ from typing import Annotated, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import config
 from app.crud import notification as notification_crud
 from app.dependencies import get_db
 from app.models.user import User
@@ -20,6 +21,13 @@ router = APIRouter(
         401: {"description": "Not authenticated"},
     },
 )
+
+@router.get("/vapid-key")
+async def get_vapid_key():
+    """
+    Get the VAPID public key for push notification subscription.
+    """
+    return {"public_key": config.VAPID_PUBLIC_KEY}
 
 @router.get("/", response_model=list[NotificationRead])
 async def list_notifications(
@@ -53,7 +61,20 @@ async def mark_as_read(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Notification not found",
         )
+    await db.commit()
+    await db.refresh(notification)
     return notification
+
+@router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
+async def mark_all_as_read(
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Mark all notifications as read for the current user.
+    """
+    await notification_crud.mark_all_notifications_as_read(db, user_id=current_user.id)
+    await db.commit()
 
 @router.post("/push-subscription", response_model=PushSubscriptionRead)
 async def register_push_subscription(
@@ -64,6 +85,9 @@ async def register_push_subscription(
     """
     Register or update a push subscription for the current user.
     """
-    return await notification_crud.create_or_update_push_subscription(
+    db_subscription = await notification_crud.create_or_update_push_subscription(
         db, user_id=current_user.id, subscription_in=subscription
     )
+    await db.commit()
+    await db.refresh(db_subscription)
+    return db_subscription

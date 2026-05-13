@@ -336,7 +336,7 @@ async def _process_reminders_async() -> None:
         max_end = now + timedelta(minutes=70)
 
         stmt = select(Task).where(
-            not Task.completed,
+            Task.completed.is_(False),
             Task.due_date >= min_start,
             Task.due_date <= max_end
         )
@@ -350,7 +350,14 @@ async def _process_reminders_async() -> None:
                 if task_due_date and task_due_date.tzinfo is None:
                     task_due_date = task_due_date.replace(tzinfo=timezone.utc)
 
-                if task_due_date and window["start"] <= task_due_date <= window["end"]:
+                # Defensive check to ensure types match for comparison
+                win_start = window.get("start")
+                win_end = window.get("end")
+
+                if (task_due_date and
+                    isinstance(win_start, datetime) and
+                    isinstance(win_end, datetime) and
+                    win_start <= task_due_date <= win_end):
                     # Deduplication: Check if notification already exists for this task and type
                     exists_stmt = select(exists().where(
                         Notification.task_id == task.id,
@@ -359,8 +366,13 @@ async def _process_reminders_async() -> None:
                     already_notified = (await db.execute(exists_stmt)).scalar()
 
                     if not already_notified:
-                        title = window["title"].format(title=task.title)
-                        message = window["message"].format(title=task.title)
+                        try:
+                            title = str(window["title"]).format(title=task.title)
+                            message = str(window["message"]).format(title=task.title)
+                        except Exception as e:
+                            logger.error(f"Failed to format notification: {e}. Window: {window}, Task: {task.id}")
+                            continue
+
                         action_url = f"/tasks/{task.id}"
 
                         # 1. Create In-App Notification
@@ -413,9 +425,7 @@ async def _send_push_notification_async(user_id: int, title: str, message: str, 
         payload = json.dumps({
             "title": title,
             "body": message,
-            "data": {
-                "url": action_url
-            }
+            "action_url": action_url
         })
 
         for sub in subscriptions:

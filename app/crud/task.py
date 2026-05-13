@@ -176,6 +176,20 @@ async def delete_subtask(db: AsyncSession, db_subtask: SubTask, user_id: int | N
 
 
 async def get_subtasks_on_task(db: AsyncSession, task_id: int) -> list[SubTask]:
-    query = select(SubTask).where(SubTask.task_id == task_id)
+    query = select(SubTask).where(SubTask.task_id == task_id).order_by(SubTask.position)
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def reorder_subtasks(db: AsyncSession, task_id: int, user_id: int, ordered_ids: list[int]) -> None:
+    """
+    Updates the position of subtasks for a given task.
+    """
+    for index, st_id in enumerate(ordered_ids):
+        query = select(SubTask).where(SubTask.id == st_id, SubTask.task_id == task_id, SubTask.user_id == user_id)
+        result = await db.execute(query)
+        db_subtask = result.scalar_one_or_none()
+        if db_subtask:
+            db_subtask.position = index
+            db.add(db_subtask)
+    await db.flush()

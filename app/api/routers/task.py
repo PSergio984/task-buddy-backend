@@ -13,7 +13,7 @@ from app.dependencies import get_db
 from app.limiter import limiter
 from app.models.tag import Tag
 from app.models.user import User
-from app.schemas.tag import TagCreate, TagResponse
+from app.schemas.tag import TagCreate, TagResponse, TagUpdate
 from app.schemas.task import (
     SubTaskCreateRequest,
     SubTaskCreateResponse,
@@ -320,6 +320,25 @@ async def delete_subtask(
     return {"message": "Subtask deleted successfully"}
 
 
+@router.post("/{task_id}/subtask/reorder")
+async def reorder_subtasks(
+    task_id: int,
+    ordered_ids: list[int],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    logger.info("POST /%s/subtask/reorder - reordering subtasks", task_id)
+    # Verify task ownership
+    db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+
+    await task_crud.reorder_subtasks(db, task_id=task_id, user_id=current_user.id, ordered_ids=ordered_ids)
+    await db.commit()
+    logger.info("POST /%s/subtask/reorder - subtasks reordered", task_id)
+    return {"message": "Subtasks reordered successfully"}
+
+
 # --- Tag Endpoints ---
 
 @router.get("/tags/", response_model=list[TagResponse], responses={400: {"description": BAD_REQUEST}})
@@ -352,6 +371,33 @@ async def create_tag(
         raise HTTPException(status_code=400, detail="Tag already exists") from None
 
 
+@router.put("/tags/{tag_id}", response_model=TagResponse, responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@limiter.limit("20/minute")
+async def update_tag(
+    tag_id: int,
+    tag_in: TagUpdate,
+    request: Request,
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    # Verify ownership
+    query = select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id)
+    result = await db.execute(query)
+    db_tag = result.scalar_one_or_none()
+
+    if not db_tag:
+        raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
+
+    try:
+        updated_tag = await tag_crud.update_tag(db, db_tag=db_tag, tag_in=tag_in, user_id=current_user.id)
+        await db.commit()
+        await db.refresh(updated_tag)
+        return updated_tag
+    except IntegrityError:
+        await db.rollback()
+        raise HTTPException(status_code=400, detail="Tag name already exists") from None
+
+
 @router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
 @limiter.limit("20/minute")
 async def delete_tag(
@@ -371,6 +417,17 @@ async def delete_tag(
     await tag_crud.delete_tag(db, db_tag=db_tag, user_id=current_user.id)
     await db.commit()
     return {"message": "Tag deleted successfully"}
+
+
+@router.post("/tags/reorder")
+async def reorder_tags(
+    ordered_ids: list[int],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    await tag_crud.reorder_tags(db, user_id=current_user.id, ordered_ids=ordered_ids)
+    await db.commit()
+    return {"message": "Tags reordered successfully"}
 
 
 @router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})

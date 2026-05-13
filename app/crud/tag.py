@@ -7,14 +7,14 @@ from app.libs.audit import audit_log
 from app.models.tag import Tag
 from app.models.task import task_tags
 from app.schemas.enums import AuditAction
-from app.schemas.tag import TagCreate
+from app.schemas.tag import TagCreate, TagUpdate
 
 TARGET_TYPE_TAG = "TAG"
 TARGET_TYPE_TASK = "TASK"
 
 
 async def get_user_tags(db: AsyncSession, user_id: int) -> list[Tag]:
-    query = select(Tag).where(Tag.user_id == user_id)
+    query = select(Tag).where(Tag.user_id == user_id).order_by(Tag.position)
     result = await db.execute(query)
     return list(result.scalars().all())
 
@@ -28,10 +28,19 @@ async def get_tag_by_name(db: AsyncSession, user_id: int, name: str) -> Optional
 @audit_log(action=AuditAction.CREATE, target_type=TARGET_TYPE_TAG)
 async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
     db_tag = Tag(
+        **tag_in.model_dump(),
         user_id=user_id,
-        name=tag_in.name
     )
     db.add(db_tag)
+    await db.flush()
+    return db_tag
+
+
+@audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_TAG)
+async def update_tag(db: AsyncSession, db_tag: Tag, tag_in: TagUpdate, user_id: int | None = None) -> Tag:
+    update_data = tag_in.model_dump(exclude_unset=True)
+    for field, value in update_data.items():
+        setattr(db_tag, field, value)
     await db.flush()
     return db_tag
 
@@ -83,3 +92,14 @@ async def get_tags_on_task(db: AsyncSession, task_id: int) -> list[Tag]:
     query = select(Tag).join(task_tags, Tag.id == task_tags.c.tag_id).where(task_tags.c.task_id == task_id)
     result = await db.execute(query)
     return list(result.scalars().all())
+
+
+async def reorder_tags(db: AsyncSession, user_id: int, ordered_ids: list[int]) -> None:
+    for index, tag_id in enumerate(ordered_ids):
+        query = select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)
+        result = await db.execute(query)
+        db_tag = result.scalar_one_or_none()
+        if db_tag:
+            db_tag.position = index
+            db.add(db_tag)
+    await db.flush()

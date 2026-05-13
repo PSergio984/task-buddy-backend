@@ -8,6 +8,7 @@ class ProjectBase(BaseModel):
     name: str
     color: Optional[str] = None
     icon: Optional[str] = None
+    position: int = 0
 
 
 class ProjectCreateRequest(ProjectBase):
@@ -18,6 +19,7 @@ class ProjectUpdateRequest(BaseModel):
     name: Optional[str] = None
     color: Optional[str] = None
     icon: Optional[str] = None
+    position: Optional[int] = None
 
 
 class ProjectResponse(ProjectBase):

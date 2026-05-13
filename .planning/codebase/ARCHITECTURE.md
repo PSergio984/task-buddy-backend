@@ -1,86 +1,86 @@
+<!-- generated-by: gsd-doc-writer -->
 # Architecture
 
-**Analysis Date:** 2026-05-08
+**Analysis Date:** 2026-05-13
 
 ## Pattern Overview
 
 **Overall:** Layered Monolith (FastAPI)
 
 **Key Characteristics:**
-- **Separation of Concerns:** Distinct layers for routing (API), business logic (CRUD), and data modeling (Models/Schemas).
-- **Asynchronous IO:** Full use of Python `async`/`await` for database and external integration calls.
-- **Dependency Injection:** Leverages FastAPI's `Depends` for shared logic like authentication and database sessions.
-- **Statelessness:** Request handling is stateless, relying on JWT for identity.
+- **Separation of Concerns:** Distinct layers for routing (API), business logic (CRUD), models (SQLAlchemy), and schemas (Pydantic).
+- **Asynchronous IO:** Native `async`/`await` usage throughout the stack, from the database (asyncpg/aiosqlite) to external service calls.
+- **Dependency Injection:** Extensive use of FastAPI's `Depends` with `Annotated` types for managing database sessions, authentication, and configuration.
+- **Statelessness:** JWT-based authentication ensures the API remains stateless and scalable. The backend now sets JWTs in HttpOnly cookies for enhanced security.
 
 ## Layers
 
 **API Layer (`app/api/`):**
-- **Purpose:** Handles HTTP requests and responses.
-- **Contains:** Router modules (`app/api/routers/`), dependency providers (`app/api/dependencies.py`).
-- **Used by:** External clients.
+- **Purpose:** Handles HTTP request/response lifecycle, input validation, and route orchestration.
+- **Contains:** Router modules (`app/api/routers/`), dependency providers (`app/dependencies.py`).
+- **Used by:** Frontend application, mobile apps, or external integrations.
 
 **CRUD Layer (`app/crud/`):**
-- **Purpose:** Encapsulates database operations.
-- **Contains:** Functions to create, read, update, and delete records for each model.
-- **Depends on:** Models layer, Database session.
+- **Purpose:** Encapsulates data persistence logic and business rules.
+- **Contains:** Logic for `User`, `Task`, `Project`, `Notification`, `Tag`, and `AuditLog`.
+- **Key Feature:** Integrated audit logging via decorators.
 
 **Models Layer (`app/models/`):**
-- **Purpose:** Defines database schema via SQLAlchemy.
-- **Contains:** Class definitions for `User`, `Task`, `Tag`, `Audit`, `Stats`.
-- **Used by:** CRUD and API layers.
+- **Purpose:** Defines the relational database schema.
+- **Contains:** SQLAlchemy ORM models including `User`, `Task`, `SubTask`, `Project`, `Tag`, `Notification`, and `AuditLog`.
+- **Infrastructure:** Managed via Alembic migrations.
 
 **Schemas Layer (`app/schemas/`):**
-- **Purpose:** Defines data validation and serialization via Pydantic.
-- **Contains:** Request/Response models for API endpoints.
-- **Used by:** API layer for input validation and output formatting.
+- **Purpose:** Data validation, serialization, and API contract definition.
+- **Contains:** Pydantic V2 models for request bodies and response structures.
 
 ## Data Flow
 
 **HTTP Request Lifecycle:**
 
 1. **Entry Point:** `app/main.py` receives request via Uvicorn.
-2. **Routing:** FastAPI routes request to specific router in `app/api/routers/`.
-3. **Dependencies:** `app/api/dependencies.py` verifies JWT or gets DB session.
-4. **Validation:** Pydantic schemas in `app/schemas/` validate request body.
-5. **Logic:** Router calls function in `app/crud/` to interact with database.
-6. **Persistence:** `app/crud/` uses SQLAlchemy models in `app/models/` to query/update DB.
-7. **Response:** Router returns data, serialized via Pydantic schema back to JSON.
+2. **Routing:** FastAPI dispatches to specific routers (e.g., `app/api/routers/task.py`).
+3. **Dependencies:** `app/dependencies.py` resolves the database session and authenticates the user.
+4. **Validation:** Pydantic schemas in `app/schemas/` validate and parse incoming JSON.
+5. **Business Logic:** Routers call CRUD functions in `app/crud/`.
+6. **Persistence:** CRUD layer interacts with the database using SQLAlchemy models.
+7. **Response:** Data is serialized through response schemas and returned to the client.
 
-**Background Tasks:**
-- **Celery:** Used for distributed task processing (email dispatch, heavy data processing) via Redis broker.
-- **Worker:** Separate process runs `celery -A app.celery_app worker`.
-- **Location:** `app/celery_app.py` and `app/tasks.py`.
+**Background Processing:**
+- **Celery:** Primary engine for asynchronous work (e.g., sending emails, push notifications).
+- **Broker/Backend:** Redis.
+- **Task Definitions:** Located in `app/tasks.py`.
 
 ## Key Abstractions
 
 **Database Session:**
-- Provided via `get_db` dependency in `app/database.py`.
-- Ensures proper connection pooling and cleanup.
+- Managed via `get_db` dependency in `app/dependencies.py`.
+- Supports asynchronous transactions with `AsyncSession`.
 
-**Authentication:**
-- Encapsulated in `app/security.py`.
-- Handles password hashing (Argon2) and JWT generation/verification.
-
-**Rate Limiting:**
-- Implemented via `slowapi` in `app/limiter.py`.
-- Applied per-route to prevent abuse.
+**Security & Auth:**
+- Centralized in `app/security.py`.
+- Uses Argon2 for hashing and JWT for session management via HttpOnly cookies.
 
 **Audit Logging:**
-- Standardized system for tracking user actions (CREATE, UPDATE, DELETE).
-- Implemented via `@audit_log` decorator in the CRUD layer.
-- Logs are stored in the `Audit` model and accessible via `/api/v1/audit/`.
+- Implemented via `@audit_log` decorator in `app/libs/audit.py`.
+- Automatically captures CREATE/UPDATE/DELETE actions with field-level diffs for updates.
+- Stored in `AuditLog` model and exposed via `/api/v1/audit/`.
+
+**Integrations Library (`app/libs/`):**
+- Contains specialized helpers for `audit`, `email_templates`, and Backblaze `B2` storage.
 
 ## Entry Points
 
 **Uvicorn Server:**
-- **Location:** `app/main:app`
-- **Responsibilities:** Initialize FastAPI app, register routers, add middleware (CORS, Sentry), set up lifespan events.
+- `app.main:app` — Starts the FastAPI application with configured middleware (CORS, Sentry, Rate Limiting).
+
+**Celery Worker:**
+- `celery -A app.celery_app worker` — Processes background tasks from the Redis queue.
 
 **Alembic:**
-- **Location:** `alembic/env.py`
-- **Responsibilities:** Handle database schema migrations.
+- Database migration CLI used for schema evolution.
 
 ---
 
-*Architecture analysis: 2026-05-08*
-*Update when major patterns change*
+*Architecture analysis: 2026-05-13*
+*Update when major patterns or components are added*

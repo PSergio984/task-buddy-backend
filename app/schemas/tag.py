@@ -8,6 +8,7 @@ class TagCreate(BaseModel):
     name: str
     color: Optional[str] = None
     icon: Optional[str] = None
+    position: int = 0
 
 
 class TagResponse(TagCreate):
@@ -16,3 +17,11 @@ class TagResponse(TagCreate):
     id: int
     user_id: int
     created_at: datetime
+
+
+class TagUpdate(BaseModel):
+    name: Optional[str] = None
+    color: Optional[str] = None
+    icon: Optional[str] = None
+    position: Optional[int] = None
+

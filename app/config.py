@@ -63,11 +63,11 @@ class GlobalConfig(BaseConfig):
     B2_APPLICATION_KEY: Optional[str] = None
     B2_BUCKET_NAME: Optional[str] = None
     FRONTEND_URL: str = "http://localhost:5173"
-    VAPID_PUBLIC_KEY: Optional[str] = os.environ.get("VAPID_PUBLIC_KEY")
-    VAPID_PRIVATE_KEY: Optional[str] = os.environ.get("VAPID_PRIVATE_KEY")
-    VAPID_ADMIN_EMAIL: str = os.environ.get("VAPID_ADMIN_EMAIL", "admin@taskbuddy.com")
+    VAPID_PUBLIC_KEY: Optional[str] = None
+    VAPID_PRIVATE_KEY: Optional[str] = None
+    VAPID_ADMIN_EMAIL: str = "admin@taskbuddy.com"
     RATE_LIMIT_STATS_OVERVIEW: str = "20/minute"
-    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
     RESET_TOKEN_EXPIRE_MINUTES: int = 60
@@ -108,6 +108,15 @@ class DevConfig(GlobalConfig):
             self.MAIL_URL = os.environ.get("MAIL_URL")
         if not self.MAIL_API_KEY:
             self.MAIL_API_KEY = os.environ.get("MAIL_API_KEY")
+
+        # VAPID fallbacks
+        if not self.VAPID_PUBLIC_KEY:
+            self.VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+        if not self.VAPID_PRIVATE_KEY:
+            self.VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+        if not self.VAPID_ADMIN_EMAIL or self.VAPID_ADMIN_EMAIL == "admin@taskbuddy.com":
+            self.VAPID_ADMIN_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL", "admin@taskbuddy.com")
+
         return self
 
 
@@ -162,6 +171,14 @@ class ProdConfig(GlobalConfig):
         if not self.MAIL_URL:
             self.MAIL_URL = os.environ.get("MAIL_URL")
 
+        # VAPID fallbacks
+        if not self.VAPID_PUBLIC_KEY:
+            self.VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+        if not self.VAPID_PRIVATE_KEY:
+            self.VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+        if not self.VAPID_ADMIN_EMAIL or self.VAPID_ADMIN_EMAIL == "admin@taskbuddy.com":
+            self.VAPID_ADMIN_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL", "admin@taskbuddy.com")
+
         return self
 
 
@@ -186,6 +203,15 @@ class TestConfig(GlobalConfig):
             self.MAIL_URL = os.environ.get("MAIL_URL")
         if not self.MAIL_API_KEY:
             self.MAIL_API_KEY = os.environ.get("MAIL_API_KEY")
+
+        # VAPID fallbacks
+        if not self.VAPID_PUBLIC_KEY:
+            self.VAPID_PUBLIC_KEY = os.environ.get("VAPID_PUBLIC_KEY")
+        if not self.VAPID_PRIVATE_KEY:
+            self.VAPID_PRIVATE_KEY = os.environ.get("VAPID_PRIVATE_KEY")
+        if not self.VAPID_ADMIN_EMAIL or self.VAPID_ADMIN_EMAIL == "admin@taskbuddy.com":
+            self.VAPID_ADMIN_EMAIL = os.environ.get("VAPID_ADMIN_EMAIL", "admin@taskbuddy.com")
+
         return self
 
 

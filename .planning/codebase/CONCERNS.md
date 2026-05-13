@@ -1,6 +1,6 @@
 # Concerns
 
-**Analysis Date:** 2026-05-08
+**Analysis Date:** 2026-05-13
 
 ## Technical Debt
 
@@ -14,8 +14,8 @@
 
 ## Fragile Areas
 
-- **Email Dispatch:** Currently synchronous in some paths or relies on FastAPI `BackgroundTasks` which can lose data if the server restarts. Consider a dedicated task queue (Celery/RabbitMQ) if volume increases.
-- **Audit Logging:** Implemented manually in routers. Could be centralized via middleware or decorators to ensure consistency and prevent missing logs.
+- **Email Dispatch:** Integrated with Celery/Redis for reliable background processing.
+- **Audit Logging:** Centralized via the `@audit_log` decorator. Ensure all new mutating CRUD operations are decorated.
 
 ## Testing Gaps
 
@@ -24,5 +24,5 @@
 
 ---
 
-*Concerns analysis: 2026-05-08*
+*Concerns analysis: 2026-05-13*
 *Update as issues are identified or resolved*

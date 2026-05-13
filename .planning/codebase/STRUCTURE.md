@@ -1,59 +1,59 @@
+<!-- generated-by: gsd-doc-writer -->
 # Structure
 
-**Analysis Date:** 2026-05-08
+**Analysis Date:** 2026-05-12
 
 ## Directory Layout
 
 ```text
 task-buddy-backend/
-├── alembic/              # Database migration scripts
-├── app/                  # Application source code
-│   ├── api/              # API layer
-│   │   ├── routers/      # Endpoint route handlers
-│   │   └── dependencies.py # Shared API dependencies (Auth, DB)
-│   ├── celery_app.py     # Celery configuration
-│   ├── crud/             # Database CRUD logic
-│   ├── internal/         # Internal modules (admin, audit logic)
-│   ├── models/           # SQLAlchemy database models
-│   ├── schemas/          # Pydantic validation schemas
-│   ├── config.py         # Application configuration/settings
-│   ├── database.py       # Database connection and session management
-│   ├── limiter.py        # Rate limiting configuration
-│   ├── logging_conf.py   # Logging setup
-│   ├── main.py           # Application entry point
-│   ├── security.py       # Auth and security utilities
-│   └── tasks.py          # Background tasks (email, etc.)
-├── docs/                 # Documentation files
+├── alembic/              # Database migration history and env
+├── app/                  # Application root
+│   ├── api/              # API Layer
+│   │   └── routers/      # Route handlers (task, user, project, notifications, etc.)
+│   ├── crud/             # Persistence logic (CREATE/READ/UPDATE/DELETE)
+│   ├── libs/             # Reusable internal libraries (B2, Audit, Templates)
+│   ├── models/           # SQLAlchemy ORM models
+│   ├── schemas/          # Pydantic validation & serialization models
+│   ├── internal/         # Admin and internal-only utilities
+│   ├── celery_app.py     # Celery worker configuration
+│   ├── config.py         # Type-safe configuration (Pydantic Settings)
+│   ├── database.py       # DB engine and session factory
+│   ├── dependencies.py   # FastAPI dependency providers
+│   ├── main.py           # Application entry point & middleware
+│   ├── tasks.py          # Background task definitions
+│   └── security.py       # Auth, hashing, and JWT logic
+├── docs/                 # General documentation & diagrams
 ├── tests/                # Automated test suite
-│   ├── routers/          # Integration tests for API routes
-│   └── conftest.py       # Pytest fixtures and global setup
-├── .planning/            # GSD planning and state tracking
-├── pyproject.toml        # Project metadata and tool config
-├── requirements.txt      # Production dependencies
-└── uv.lock               # Dependency lockfile
+│   ├── routers/          # API integration tests
+│   └── conftest.py       # Pytest fixtures and mocks
+├── scripts/              # Utility scripts (seed, vapid gen)
+├── .planning/            # GSD documentation and project state
+├── pyproject.toml        # Project metadata & tool settings
+└── uv.lock               # Deterministic dependency lockfile
 ```
 
 ## Key Locations
 
 | Location | Purpose |
 |----------|---------|
-| `app/main.py` | App initialization and middleware setup |
-| `app/api/routers/` | Business endpoints (tasks, users, etc.) |
-| `app/models/` | Source of truth for database schema |
-| `app/schemas/` | Source of truth for API request/response shapes |
-| `app/crud/` | Data persistence logic |
-| `tests/conftest.py` | Shared test setup (test DB, client) |
-| `alembic/versions/` | Historical database migration files |
+| `app/main.py` | FastAPI app initialization and global middleware |
+| `app/api/routers/` | Business domain endpoints |
+| `app/models/` | Definitive database schema definitions |
+| `app/schemas/` | Definitive API contract definitions |
+| `app/crud/` | Core data manipulation logic |
+| `app/libs/` | External service integrations (B2, Email) |
+| `tests/` | Comprehensive test coverage (Unit, Integration, E2E) |
 
 ## Naming Conventions
 
 - **Directories:** Snake case (`app/api/routers`).
-- **Files:** Snake case (`user_router.py`, `task_model.py`).
-- **Classes:** Pascal case (`UserCreate`, `TaskBase`).
-- **Functions:** Snake case (`get_user_by_email`, `create_task`).
-- **Variables:** Snake case (`access_token`, `db_session`).
+- **Files:** Snake case (`project_router.py`).
+- **Classes:** Pascal case (`NotificationRead`, `ProjectCreate`).
+- **Functions/Variables:** Snake case (`get_db`, `current_user`).
+- **Schemas:** Suffix with `Request` or `Response` where appropriate for clarity.
 
 ---
 
-*Structure analysis: 2026-05-08*
-*Update when directories are reorganized*
+*Structure analysis: 2026-05-12*
+*Update when directories are reorganized or new top-level folders are added*

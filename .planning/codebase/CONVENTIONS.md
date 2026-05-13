@@ -1,53 +1,56 @@
+<!-- generated-by: gsd-doc-writer -->
 # Conventions
 
-**Analysis Date:** 2026-05-08
+**Analysis Date:** 2026-05-13
 
 ## Coding Style
 
 **Tooling:**
-- **Formatting:** Black (configured in `pyproject.toml`, 100 char line limit).
-- **Linting:** Ruff (used for fast linting and import sorting).
-- **Typing:** Mypy (strict type checking enabled for `app/`).
+- **Formatting:** Black (100 char line limit).
+- **Linting & Imports:** Ruff.
+- **Typing:** Mypy (mandatory for all new code).
 
 **Patterns:**
-- **Docstrings:** Required for complex functions and classes.
-- **Type Hints:** Mandatory for all function signatures and class attributes.
-- **Imports:** Standard library first, then third-party, then local modules.
-- **Audit Logging:** Use the `@audit_log` decorator on CRUD functions that mutate data (CREATE, UPDATE, DELETE). Ensure the `User` object is available in the context or passed as an argument.
+- **Dependency Injection:** Use `Annotated` for all FastAPI dependencies (e.g., `db: Annotated[AsyncSession, Depends(get_db)]`).
+- **Docstrings:** Use Google-style docstrings for complex logic.
+- **Async First:** All database and I/O operations must be `async`. Avoid `blocking` calls in the main thread.
+- **Audit Logging:** CRUD operations that mutate state (CREATE, UPDATE, DELETE) must use the `@audit_log` decorator from `app.libs.audit`.
 
 ## API Patterns
 
 **Request/Response:**
-- Always use Pydantic schemas in `app/schemas/`.
-- Prefer explicit status codes (e.g., `status_code=status.HTTP_201_CREATED`).
-- Document all potential `HTTPException` status codes (especially 404, 400, 401, 403) in the `responses` parameter of the endpoint decorator. This ensures they are properly reflected in the OpenAPI (Swagger) documentation.
-- Standard error response format (handled via FastAPI defaults or custom exception handlers).
+- Use Pydantic schemas for all data entry and exit points.
+- Define `responses` in the APIRouter for 404, 400, and 401 cases to ensure Swagger accuracy.
+- Use explicit status codes (e.g., `status.HTTP_201_CREATED`, `status.HTTP_204_NO_CONTENT`).
 
-**Authentication:**
-- Protected routes must use `get_current_user` dependency from `app/api/dependencies.py`.
-- Tokens are passed via `Authorization: Bearer <token>` header.
+- Protect routes using the `get_current_user` dependency.
+- **Authentication:** JWTs are primarily extracted from HttpOnly cookies; fallback to `HTTPBearer` (Authorization header) is supported for specialized API integrations.
 
 ## Database Patterns
 
 **Migrations:**
-- Never modify database schema directly in models without an Alembic migration.
-- Use descriptive migration names: `alembic revision -m "add_category_to_task"`.
+- Every schema change must have a corresponding Alembic migration.
+- Use descriptive names: `add_notifications_table`.
 
 **Transactions:**
-- Use `db: Session` dependency.
-- CRUD functions should not commit/rollback if they are meant to be part of a larger transaction (though current implementation often commits inside CRUD).
+- Leverage `AsyncSession` context managers or the `db` dependency.
+- Ensure `db.commit()` is called after successful mutations, typically in the router or service layer.
+
+**Models:**
+- Use `Mapped` and `mapped_column` for SQLAlchemy 2.0 type-safe models.
+- Prefer `selectinload` for relationship loading to avoid N+1 problems in async contexts.
 
 ## Error Handling
 
-**Global Handler:**
-- Exceptions should bubble up to FastAPI's top-level or be caught and converted to `HTTPException`.
-- Internal server errors (500) are caught and logged by Sentry.
+**Standardized Exceptions:**
+- Raise `fastapi.HTTPException` for client-side errors (400-499).
+- Let unexpected errors bubble up to the global 500 handler, which logs to Sentry.
 
-**Validation Errors:**
-- 422 Unprocessable Entity for Pydantic validation failures.
-- 400 Bad Request for business logic failures (e.g., "User already exists").
+**Validation:**
+- Allow Pydantic to handle 422 Unprocessable Entity automatically.
+- Manually check for business logic conflicts (e.g., duplicate names) and raise 400 Bad Request.
 
 ---
 
-*Conventions analysis: 2026-05-08*
-*Update when team standards evolve*
+*Conventions analysis: 2026-05-13*
+*Update when team standards evolve or new patterns are adopted*

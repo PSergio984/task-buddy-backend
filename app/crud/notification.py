@@ -52,6 +52,20 @@ async def mark_notification_as_read(
     return db_notification
 
 
+async def mark_all_notifications_as_read(db: AsyncSession, user_id: int) -> None:
+    """
+    Mark all notifications for a user as read.
+    """
+    from sqlalchemy import update
+    stmt = (
+        update(Notification)
+        .where(Notification.user_id == user_id, Notification.is_read.is_(False))
+        .values(is_read=True)
+    )
+    await db.execute(stmt)
+    await db.flush()
+
+
 async def create_or_update_push_subscription(
     db: AsyncSession, user_id: int, subscription_in: PushSubscriptionCreate
 ) -> PushSubscription:

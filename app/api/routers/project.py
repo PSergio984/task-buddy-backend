@@ -135,3 +135,14 @@ async def delete_project(
 
     logger.info("DELETE /%s - project deleted", project_id)
     return {"message": "Project deleted successfully"}
+
+@router.post("/reorder")
+async def reorder_projects(
+    ordered_ids: list[int],
+    current_user: Annotated[User, Depends(get_current_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    logger.info("POST /reorder - reordering projects for user_id=%s", current_user.id)
+    await project_crud.reorder_projects(db, user_id=current_user.id, ordered_ids=ordered_ids)
+    await db.commit()
+    return {"message": "Projects reordered successfully"}

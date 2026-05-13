@@ -54,7 +54,7 @@ class Task(AsyncAttrs, Base):
     user: Mapped[User] = relationship(back_populates="tasks")
     project: Mapped[Project | None] = relationship(back_populates="tasks")
     subtasks: Mapped[list[SubTask]] = relationship(
-        back_populates="task", cascade="all, delete-orphan"
+        back_populates="task", cascade="all, delete-orphan", order_by="SubTask.position"
     )
     tags: Mapped[list[Tag]] = relationship(secondary=task_tags, back_populates="tasks")
 
@@ -73,6 +73,7 @@ class SubTask(Base):
     description: Mapped[str | None] = mapped_column(String, nullable=True)
     completed: Mapped[bool] = mapped_column(Boolean, default=False)
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    position: Mapped[int] = mapped_column(default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
     # Relationships

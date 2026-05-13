@@ -9,7 +9,7 @@ The journey starts with refining the architectural core (transaction management 
 - [x] **Phase 2: Security Hardening** - Implement industry-standard security practices for data and networking.
 - [x] **Phase 3: Auditing & Task Management** - Ensure state change accountability and enhance task organization.
 - [x] **Phase 3.5: Premium UI & Projects** - Backend terminology alignment and data seeding.
-- [ ] **Phase 3.75: Notification & Reminder System** - Multi-channel notifications (Email, In-App, Push).
+- [ ] **Phase 3.8: Notification & Reminder System** - Multi-channel notifications (Email, In-App, Push).
 - [ ] **Phase 4: Reliability & Scale** - Modernize integration handling and verify system resilience.
 
 
@@ -63,13 +63,18 @@ Plans:
 ### Phase 3.5: Premium UI & Projects
 **Goal**: Align terminology and seed database for premium frontend.
 **Status**: COMPLETED
+**Depends on**: Phase 3
+**Requirements**: PRJT-01, SEED-01
+**Success Criteria**:
+  1. [x] All 'Group' references in models, schemas, and routes migrated to 'Project'.
+  2. [x] Seed script updated to generate reliable data for the new 'Project' structure.
 **Plans**: 2 plans
 
 Plans:
 - [x] 03.5-01: Backend terminology refactor (Group -> Project).
 - [x] 03.5-02: Seed script hardening and UI criteria.
 
-### Phase 3.75: Notification & Reminder System
+### Phase 3.8: Notification & Reminder System
 **Goal**: Implement multi-channel reminders and in-app notifications.
 **Status**: PLANNING
 **Depends on**: Phase 3.5
@@ -81,15 +86,15 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03.75-01: Setup Notification and PushSubscription models and CRUD layer.
-- [ ] 03.75-02: Implement API endpoints for notification management and push registration.
-- [ ] 03.75-03: Configure Celery Beat and implement reminder scanning logic.
-- [ ] 03.75-04: End-to-end testing and verification of the notification system.
+- [ ] 03.8-01: Setup Notification and PushSubscription models and CRUD layer.
+- [ ] 03.8-02: Implement API endpoints for notification management and push registration.
+- [ ] 03.8-03: Configure Celery Beat and implement reminder scanning logic.
+- [ ] 03.8-04: End-to-end testing and verification of the notification system.
 
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.
 **Status**: PLANNED
-**Depends on**: Phase 3.75
+**Depends on**: Phase 3.8
 **Requirements**: RELI-01, RELI-02, RELI-03
 **Success Criteria**:
   1. Emails are sent via background worker without blocking request.
@@ -109,7 +114,7 @@ Plans:
 | 2. Security Hardening | 1/1 | Completed | 2026-05-08 |
 | 3. Auditing & Task Management | 2/2 | Completed | 2026-05-09 |
 | 3.5. Premium UI & Projects | 2/2 | Completed | 2026-05-10 |
-| 3.75. Notifications | 0/4 | Planning | - |
+| 3.8. Notifications | 0/4 | Planning | - |
 | 4. Reliability & Scale | 0/2 | Not started | - |
 
 ---
