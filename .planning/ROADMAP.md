@@ -10,6 +10,7 @@ The journey starts with refining the architectural core (transaction management 
 - [x] **Phase 3: Auditing & Task Management** - Ensure state change accountability and enhance task organization.
 - [x] **Phase 3.5: Premium UI & Projects** - Backend terminology alignment and data seeding.
 - [ ] **Phase 3.8: Notification & Reminder System** - Multi-channel notifications (Email, In-App, Push).
+- [ ] **Phase 3.9: Idempotency & Reliability** - Middleware for request de-duplication and server-side stability.
 - [ ] **Phase 4: Reliability & Scale** - Modernize integration handling and verify system resilience.
 
 
@@ -90,6 +91,15 @@ Plans:
 - [ ] 03.8-02: Implement API endpoints for notification management and push registration.
 - [ ] 03.8-03: Configure Celery Beat and implement reminder scanning logic.
 - [ ] 03.8-04: End-to-end testing and verification of the notification system.
+
+### Phase 3.9: Idempotency & Reliability
+**Goal**: Implement a robust idempotency mechanism to prevent duplicate side effects.
+**Status**: PLANNING
+**Depends on**: Phase 3.5
+**Success Criteria**:
+  1. `POST`, `PUT`, `PATCH`, `DELETE` requests with `X-Idempotency-Key` are de-duplicated.
+  2. Responses are cached in Redis for 1 hour.
+  3. Re-sent requests return the same response without re-executing logic.
 
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.

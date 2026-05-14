@@ -12,6 +12,7 @@ from app.api.routers import audit, notifications, project, stats, task, user
 from app.config import DevConfig, config
 from app.limiter import limiter
 from app.logging_conf import configure_logging
+from app.middleware.idempotency import IdempotencyMiddleware
 
 logger = logging.getLogger(__name__)
 
@@ -39,6 +40,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     )
 
 app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(IdempotencyMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(user.router, prefix="/api/v1/users")
