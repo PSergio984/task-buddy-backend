@@ -7,6 +7,7 @@ class User(BaseModel):
     id: int | None = None
     username: str
     email: str
+    confirmed: bool = False
 
 
 class UserCreateRequest(User):

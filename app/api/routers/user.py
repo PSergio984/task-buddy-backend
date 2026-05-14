@@ -46,6 +46,7 @@ from app.security import (
     create_access_token,
     create_confirm_token,
     create_reset_token,
+    get_confirmed_user,
     get_current_user,
     get_password_hash,
     get_subject_for_token_type,
@@ -295,7 +296,7 @@ async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_us
 async def update_username(
     username_data: UsernameUpdate,
     request: Request,
-    current_user: Annotated[UserORM, Depends(get_current_user)],
+    current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
@@ -332,7 +333,7 @@ async def update_username(
 async def update_password(
     password_data: PasswordUpdate,
     request: Request,
-    current_user: Annotated[UserORM, Depends(get_current_user)],
+    current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """

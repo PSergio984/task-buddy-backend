@@ -8,7 +8,7 @@ from app.dependencies import get_db
 from app.limiter import limiter
 from app.models.user import User
 from app.schemas.audit import AuditLog as AuditLogSchema
-from app.security import get_current_user
+from app.security import get_confirmed_user
 
 router = APIRouter(
     prefix="/audit",
@@ -23,7 +23,7 @@ router = APIRouter(
 @limiter.limit("20/minute")
 async def get_audit_logs(
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=100)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,

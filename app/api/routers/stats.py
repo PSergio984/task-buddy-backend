@@ -9,7 +9,7 @@ from app.dependencies import get_db
 from app.limiter import limiter
 from app.models.user import User
 from app.schemas.stats import SystemOverview
-from app.security import get_current_user
+from app.security import get_confirmed_user
 
 router = APIRouter(
     prefix="/stats",
@@ -24,7 +24,7 @@ router = APIRouter(
 @limiter.limit(RATE_LIMIT_STATS_OVERVIEW)
 async def get_system_overview(
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """

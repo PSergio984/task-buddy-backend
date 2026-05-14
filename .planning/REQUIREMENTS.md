@@ -24,16 +24,25 @@ Requirements focused on quality hardening, security, and scalability of the exis
 - [ ] **AUDI-01**: Mutation logging is centralized (e.g., via a base model, decorator, or middleware).
 - [ ] **AUDI-02**: Audit trail includes old/new values for critical fields.
 
-### Reliability (RELI)
+### Reliability & Stability (RELI/IDEO)
 
 - [ ] **RELI-01**: Email dispatch is asynchronous and resilient to server restarts (e.g., via background workers).
 - [ ] **RELI-02**: Automated tests cover database migration rollbacks.
 - [ ] **RELI-03**: Automated tests simulate concurrent mutation requests to verify transaction isolation.
+- [ ] **IDEO-01**: Requests with `X-Idempotency-Key` return cached responses for the same key within 1 hour.
+- [ ] **IDEO-02**: Concurrent requests with the same idempotency key are handled atomically to prevent race conditions.
 
 ## v2 Requirements (Deferred)
 
-- **NOTI-01**: Real-time push notifications via WebSockets.
-- **INTE-01**: Integration with third-party task providers (e.g., Jira, Trello).
+- [ ] **NOTI-01**: Real-time push notifications via WebSockets.
+- [ ] **INTE-01**: Integration with third-party task providers (e.g., Jira, Trello).
+
+### Real-time Sync & Offline Mode (SYNC)
+
+- [ ] **SYNC-01**: Support for real-time synchronization using WebSockets or SSE with connection heartbeats.
+- [ ] **SYNC-02**: Conflict resolution strategy using "Last Write Wins" or server-authoritative merge rules for offline reconciliation.
+- [ ] **SYNC-03**: Exponential backoff and jitter for reconnection and data re-sync procedures on network restore.
+- [ ] **SYNC-04**: UI-level status indicators for syncing, offline, and pending conflict states.
 
 ## Out of Scope
 
@@ -57,6 +66,12 @@ Requirements focused on quality hardening, security, and scalability of the exis
 | RELI-01 | Phase 4 | Pending |
 | RELI-02 | Phase 4 | Pending |
 | RELI-03 | Phase 4 | Pending |
+| IDEO-01 | Phase 3.9 | In Progress |
+| IDEO-02 | Phase 3.9 | In Progress |
+| SYNC-01 | Phase 5 | Not Started |
+| SYNC-02 | Phase 5 | Not Started |
+| SYNC-03 | Phase 5 | Not Started |
+| SYNC-04 | Phase 5 | Not Started |
 
 **Coverage:**
 - v1 requirements: 11 total

@@ -23,7 +23,7 @@ from app.schemas.task import (
     TaskUpdateRequest,
     TaskWithSubTasks,
 )
-from app.security import get_current_user
+from app.security import get_confirmed_user
 
 # Constants to avoid duplicated string literals
 ROUTER_TAG = "tasks"
@@ -66,7 +66,7 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
 
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tasks(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     completed: Annotated[bool | None, Query()] = None,
     project_id: Annotated[int | None, Query()] = None,
@@ -84,7 +84,7 @@ async def get_all_tasks(
 )
 async def get_task(
     task_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET /%s - fetching task", task_id)
@@ -101,7 +101,7 @@ async def get_task(
 async def create_task(
     task_in: TaskCreateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST / - creating task title=%s", task_in.title)
@@ -134,7 +134,7 @@ async def update_task(
     task_id: int,
     task_update: TaskUpdateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("PUT /%s - updating task", task_id)
@@ -172,7 +172,7 @@ async def update_task(
 async def delete_task(
     task_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("DELETE /%s - deleting task", task_id)
@@ -194,7 +194,7 @@ async def delete_task(
 )
 async def get_subtasks_on_task_list(
     task_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
@@ -208,7 +208,7 @@ async def get_subtasks_on_task_list(
 )
 async def get_task_with_subtasks(
     task_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET /%s/subtasks - fetching task and subtasks", task_id)
@@ -232,7 +232,7 @@ async def get_task_with_subtasks(
 async def create_subtask(
     subtask_in: SubTaskCreateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST /subtask - creating subtask for task_id=%s", subtask_in.task_id)
@@ -256,7 +256,7 @@ async def create_subtask(
 )
 async def get_subtask(
     subtask_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET /subtask/%s - fetching subtask", subtask_id)
@@ -279,7 +279,7 @@ async def update_subtask(
     subtask_id: int,
     subtask_update: SubTaskUpdateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("PUT /subtask/%s - updating subtask", subtask_id)
@@ -305,7 +305,7 @@ async def update_subtask(
 async def delete_subtask(
     subtask_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("DELETE /subtask/%s - deleting subtask", subtask_id)
@@ -320,11 +320,11 @@ async def delete_subtask(
     return {"message": "Subtask deleted successfully"}
 
 
-@router.post("/{task_id}/subtask/reorder")
+@router.post("/{task_id}/subtask/reorder", responses={404: {"description": TASK_NOT_FOUND}})
 async def reorder_subtasks(
     task_id: int,
     ordered_ids: list[int],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST /%s/subtask/reorder - reordering subtasks", task_id)
@@ -343,7 +343,7 @@ async def reorder_subtasks(
 
 @router.get("/tags/", response_model=list[TagResponse], responses={400: {"description": BAD_REQUEST}})
 async def get_all_tags(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     return await tag_crud.get_user_tags(db, user_id=current_user.id)
@@ -354,7 +354,7 @@ async def get_all_tags(
 async def create_tag(
     tag_in: TagCreate,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     existing_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
@@ -377,7 +377,7 @@ async def update_tag(
     tag_id: int,
     tag_in: TagUpdate,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verify ownership
@@ -403,7 +403,7 @@ async def update_tag(
 async def delete_tag(
     tag_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verify ownership
@@ -422,7 +422,7 @@ async def delete_tag(
 @router.post("/tags/reorder")
 async def reorder_tags(
     ordered_ids: list[int],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     await tag_crud.reorder_tags(db, user_id=current_user.id, ordered_ids=ordered_ids)
@@ -436,7 +436,7 @@ async def create_and_attach_tag(
     task_id: int,
     tag_in: TagCreate,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verify task ownership
@@ -483,7 +483,7 @@ async def create_and_attach_tag(
 )
 async def get_tags_on_task(
     task_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
@@ -499,7 +499,7 @@ async def attach_tag_to_task(
     task_id: int,
     tag_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verify ownership of both task and tag
@@ -530,7 +530,7 @@ async def detach_tag_from_task(
     task_id: int,
     tag_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     # Verify ownership

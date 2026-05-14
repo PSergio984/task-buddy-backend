@@ -1,7 +1,7 @@
 import datetime
 import hashlib
 import logging
-from typing import Annotated, Literal
+from typing import Annotated, Any, Literal, Optional
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -33,7 +33,12 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=
 _redis_client = None
 
 
-def get_redis_client():
+def get_redis_client() -> Optional[Any]:
+    """
+    Returns a lazy-loaded Redis client instance.
+    Uses the configured REDIS_URL for connection.
+    Returns None if REDIS_URL is not configured or connection fails.
+    """
     global _redis_client
     if REDIS_URL:
         try:
@@ -47,17 +52,24 @@ def get_redis_client():
     return None
 
 
-async def close_redis_client():
+async def close_redis_client() -> None:
+    """
+    Closes the active Redis client connection if it exists.
+    """
     global _redis_client
     if _redis_client is not None:
         await _redis_client.close()
         _redis_client = None
 
 
-async def get_token(
+def get_token(
     request: Request,
     token: Annotated[str | None, Depends(oauth2_scheme)] = None,
 ) -> str:
+    """
+    Extract the access token from either the Authorization header or an HttpOnly cookie.
+    Raises a 401 Unauthorized exception if no token is found.
+    """
     # First check the Authorization header (standard OAuth2)
     if token:
         return token
@@ -91,7 +103,10 @@ def reset_token_expire_time() -> int:
 
 
 async def blacklist_token(token: str, expires_in: int) -> None:
-    """Blacklist a JWT token in Redis with a TTL."""
+    """
+    Blacklist a JWT token in Redis with a TTL.
+    Uses a SHA256 hash of the token as the key.
+    """
     client = get_redis_client()
     if client is None:
         logger.error("Redis client is not initialized; cannot blacklist token.")
@@ -112,14 +127,16 @@ async def blacklist_token(token: str, expires_in: int) -> None:
                 await client.setex(f"blacklist:{token_hash}", expires_in, "true")
                 return
         raise
-    except Exception as e:
-        logger.error("Failed to blacklist token in Redis: %s", str(e))
+    except Exception:
+        logger.exception("Failed to blacklist token in Redis")
         # Failsafe: if we can't blacklist, we should probably know
         raise
 
 
 async def is_token_blacklisted(token: str) -> bool:
-    """Check if a JWT token is present in the Redis blacklist."""
+    """
+    Check if a JWT token exists in the Redis blacklist.
+    """
     client = get_redis_client()
     if client is None:
         logger.warning(
@@ -140,12 +157,15 @@ async def is_token_blacklisted(token: str) -> bool:
                 return await client.exists(f"blacklist:{token_hash}") > 0
         raise
     except Exception as e:
-        logger.error("Failed to check token blacklist in Redis: %s", str(e))
+        logger.exception("Failed to check token blacklist in Redis")
         # Fail-closed: reject token if security check fails
         raise create_credentials_exception("Token validation unavailable") from e
 
 
 def create_access_token(user_id: int) -> str:
+    """
+    Generate a new JWT access token for a user.
+    """
     logger.debug("Creating access token for user_id=%s", user_id)
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=access_token_expire_time()
@@ -156,6 +176,9 @@ def create_access_token(user_id: int) -> str:
 
 
 def create_confirm_token(user_id: int) -> str:
+    """
+    Generate a new JWT token for email confirmation.
+    """
     logger.debug("Creating confirmation token for user_id=%s", user_id)
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=confirm_token_expire_time()
@@ -166,6 +189,9 @@ def create_confirm_token(user_id: int) -> str:
 
 
 def create_reset_token(user_id: int) -> str:
+    """
+    Generate a new JWT token for password reset.
+    """
     logger.debug("Creating reset token for user_id=%s", user_id)
     expire = datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(
         minutes=reset_token_expire_time()
@@ -176,10 +202,16 @@ def create_reset_token(user_id: int) -> str:
 
 
 def get_password_hash(password: str) -> str:
+    """
+    Hash a plain text password using the configured CryptContext.
+    """
     return pwd_context.hash(password)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """
+    Verify a plain text password against a hashed password.
+    """
     logger.debug("Verifying password. Hash type: %s, Hash length: %s", type(hashed_password), len(hashed_password))
     # Log the first 10 characters of the hash for debugging (safe enough for logs)
     logger.debug("Hash prefix: %s...", hashed_password[:10] if hashed_password else "EMPTY")
@@ -188,8 +220,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     except UnknownHashError:
         logger.warning("Unknown hash format encountered. Rejecting authentication.")
         return False
-    except Exception as e:
-        logger.error("Password verification failed with error: %s", str(e))
+    except Exception:
+        logger.exception("Password verification failed")
         raise
 
 
@@ -216,6 +248,10 @@ def get_subject_for_token_type(
 
 
 async def authenticate_user(db: AsyncSession, email: str, password: str) -> User:
+    """
+    Verify user credentials and return the user object if successful.
+    Performs automatic password re-hashing to the latest scheme (Argon2) if needed.
+    """
     logger.info("Authenticating user: %s", email)
     user = await get_user_by_email(db, email)
     if not user:
@@ -238,6 +274,10 @@ async def get_current_user(
     token: Annotated[str, Depends(get_token)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> User:
+    """
+    FastAPI dependency to retrieve the currently authenticated user.
+    Checks blacklist status and validates token claims.
+    """
     if await is_token_blacklisted(token):
         raise create_credentials_exception("Token is blacklisted")
 
@@ -251,7 +291,19 @@ async def get_current_user(
     if user is None:
         raise create_credentials_exception("Could not find user for this token")
 
-    if not user.confirmed:
-        raise create_credentials_exception("Email not confirmed")
-
     return user
+
+
+def get_confirmed_user(
+    current_user: Annotated[User, Depends(get_current_user)],
+) -> User:
+    """
+    FastAPI dependency that requires the current user to have a confirmed email address.
+    """
+    if not current_user.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not confirmed",
+        )
+
+    return current_user

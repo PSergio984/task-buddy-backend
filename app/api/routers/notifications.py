@@ -12,7 +12,7 @@ from app.schemas.notification import (
     PushSubscriptionCreate,
     PushSubscriptionRead,
 )
-from app.security import get_current_user
+from app.security import get_confirmed_user
 
 router = APIRouter(
     prefix="/notifications",
@@ -31,7 +31,7 @@ async def get_vapid_key():
 
 @router.get("/", response_model=list[NotificationRead])
 async def list_notifications(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     skip: int = Query(0, ge=0),
     limit: int = Query(20, ge=1, le=100),
@@ -47,7 +47,7 @@ async def list_notifications(
 @router.patch("/{notification_id}/read", response_model=NotificationRead)
 async def mark_as_read(
     notification_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
@@ -67,7 +67,7 @@ async def mark_as_read(
 
 @router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
 async def mark_all_as_read(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
@@ -79,7 +79,7 @@ async def mark_all_as_read(
 @router.post("/push-subscription", response_model=PushSubscriptionRead)
 async def register_push_subscription(
     subscription: PushSubscriptionCreate,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """

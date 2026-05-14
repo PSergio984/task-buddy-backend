@@ -12,7 +12,7 @@ from app.limiter import limiter
 from app.models.user import User
 from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
 from app.schemas.task import TaskCreateResponse
-from app.security import get_current_user
+from app.security import get_confirmed_user
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +30,7 @@ router = APIRouter(
 
 @router.get("/", response_model=list[ProjectResponse])
 async def list_projects(
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET / - listing projects for user_id=%s", current_user.id)
@@ -41,7 +41,7 @@ async def list_projects(
 async def create_project(
     project_in: ProjectCreateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST / - creating project name=%s", project_in.name)
@@ -61,7 +61,7 @@ async def create_project(
 @router.get("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}})
 async def get_project(
     project_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET /%s - getting project", project_id)
@@ -76,7 +76,7 @@ async def get_project(
 @router.get("/{project_id}/tasks", response_model=list[TaskCreateResponse], responses={404: {"description": PROJECT_NOT_FOUND}})
 async def list_project_tasks(
     project_id: int,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("GET /%s/tasks - listing tasks in project", project_id)
@@ -95,7 +95,7 @@ async def update_project(
     project_id: int,
     project_update: ProjectUpdateRequest,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("PUT /%s - updating project", project_id)
@@ -121,7 +121,7 @@ async def update_project(
 async def delete_project(
     project_id: int,
     request: Request,
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("DELETE /%s - deleting project", project_id)
@@ -139,7 +139,7 @@ async def delete_project(
 @router.post("/reorder")
 async def reorder_projects(
     ordered_ids: list[int],
-    current_user: Annotated[User, Depends(get_current_user)],
+    current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     logger.info("POST /reorder - reordering projects for user_id=%s", current_user.id)

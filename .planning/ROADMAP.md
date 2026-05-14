@@ -12,6 +12,7 @@ The journey starts with refining the architectural core (transaction management 
 - [ ] **Phase 3.8: Notification & Reminder System** - Multi-channel notifications (Email, In-App, Push).
 - [ ] **Phase 3.9: Idempotency & Reliability** - Middleware for request de-duplication and server-side stability.
 - [ ] **Phase 4: Reliability & Scale** - Modernize integration handling and verify system resilience.
+- [ ] **Phase 5: Real-time Sync & Offline Mode** - WebSockets, conflict resolution, and offline reconciliation.
 
 
 ## Phase Details
@@ -93,13 +94,24 @@ Plans:
 - [ ] 03.8-04: End-to-end testing and verification of the notification system.
 
 ### Phase 3.9: Idempotency & Reliability
-**Goal**: Implement a robust idempotency mechanism to prevent duplicate side effects.
-**Status**: PLANNING
+**Goal**: Implement a robust idempotency mechanism to prevent duplicate side effects using Redis-backed caching and atomic locking.
+**Status**: IN_PROGRESS
 **Depends on**: Phase 3.5
+**Requirements**: IDEO-01, IDEO-02
 **Success Criteria**:
   1. `POST`, `PUT`, `PATCH`, `DELETE` requests with `X-Idempotency-Key` are de-duplicated.
-  2. Responses are cached in Redis for 1 hour.
+  2. Responses are cached in Redis for 1 hour (default TTL).
   3. Re-sent requests return the same response without re-executing logic.
+  4. Concurrent requests with same key are handled via atomic locking (SET NX).
+**Plans**: 3 plans
+
+Plans:
+- [x] 03.9-01: Implement `IdempotencyMiddleware` using Redis for distributed locking and response caching (Replaces any basic in-memory or placeholder logic).
+- [x] 03.9-02: Implement Redis response cache with `X-Idempotency-Key` mapping to full response payloads (status, headers, body).
+- [ ] 03.9-03: Add comprehensive retry logic and de-duplication verification tests, including rate-limit interaction.
+
+> [!NOTE]
+> Phase 3.9 enhances the existing `IdempotencyMiddleware` by adding atomic locking, docstrings, and resolving interaction edge cases with rate limiting.
 
 ### Phase 4: Reliability & Scale
 **Goal**: Modernize integration handling and verify system resilience.
@@ -116,6 +128,22 @@ Plans:
 - [ ] 04-01: Set up background worker (e.g., Celery/Redis) for emails.
 - [ ] 04-02: Stress and concurrency integration test suite.
 
+### Phase 5: Real-time Sync & Offline Mode
+**Goal**: Enable real-time updates and robust offline data reconciliation.
+**Status**: PLANNED
+**Depends on**: Phase 3.8
+**Requirements**: SYNC-01, SYNC-02, SYNC-03, SYNC-04
+**Success Criteria**:
+  1. WebSockets/SSE transport established with heartbeats.
+  2. Offline changes are merged successfully on reconnection.
+  3. UI accurately reflects sync status and conflict states.
+**Plans**: 3 plans
+
+Plans:
+- [ ] 05-01: Implement WebSocket/SSE transport and connection management.
+- [ ] 05-02: Develop conflict resolution and reconciliation logic.
+- [ ] 05-03: Integrate UI-level sync status indicators and error reporting.
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -125,7 +153,9 @@ Plans:
 | 3. Auditing & Task Management | 2/2 | Completed | 2026-05-09 |
 | 3.5. Premium UI & Projects | 2/2 | Completed | 2026-05-10 |
 | 3.8. Notifications | 0/4 | Planning | - |
+| 3.9. Idempotency | 0/3 | In Progress | - |
 | 4. Reliability & Scale | 0/2 | Not started | - |
+| 5. Real-time Sync | 0/3 | Not started | - |
 
 ---
 *Roadmap defined: 2026-05-08*
