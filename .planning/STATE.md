@@ -1,10 +1,10 @@
 # Project State: Task Buddy Backend
 
 ## Current Status
-- **Phase:** 4.0 - Performance & Scaling (Next Phase)
-- **Status:** READY
-- **Completed:** Phase 1, 2, 3, 3.5, 3.75
-- **Next Step:** Start implementation of caching and query optimization.
+- **Phase:** 5.0 - Real-time Sync & Offline Mode (Planning)
+- **Status:** PLANNING
+- **Completed:** Phase 1, 2, 3, 3.5, 3.75, 4.0 (Deferred/In-Progress)
+- **Next Step:** Finalize sync architecture and start schema updates.
 
 ## History
 - 2026-05-12: Phase 3.75 (Notification & Reminder System) COMPLETED.

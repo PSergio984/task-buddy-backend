@@ -25,6 +25,14 @@ async def get_tag_by_name(db: AsyncSession, user_id: int, name: str) -> Optional
     return result.scalar_one_or_none()
 
 
+async def get_tags_by_names(db: AsyncSession, user_id: int, names: list[str]) -> list[Tag]:
+    if not names:
+        return []
+    query = select(Tag).where(Tag.user_id == user_id, Tag.name.in_(names))
+    result = await db.execute(query)
+    return list(result.scalars().all())
+
+
 @audit_log(action=AuditAction.CREATE, target_type=TARGET_TYPE_TAG)
 async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
     db_tag = Tag(
@@ -95,10 +103,15 @@ async def get_tags_on_task(db: AsyncSession, task_id: int) -> list[Tag]:
 
 
 async def reorder_tags(db: AsyncSession, user_id: int, ordered_ids: list[int]) -> None:
+    if not ordered_ids:
+        return
+
+    query = select(Tag).where(Tag.id.in_(ordered_ids), Tag.user_id == user_id)
+    result = await db.execute(query)
+    tags_map = {t.id: t for t in result.scalars().all()}
+
     for index, tag_id in enumerate(ordered_ids):
-        query = select(Tag).where(Tag.id == tag_id, Tag.user_id == user_id)
-        result = await db.execute(query)
-        db_tag = result.scalar_one_or_none()
+        db_tag = tags_map.get(tag_id)
         if db_tag:
             db_tag.position = index
             db.add(db_tag)

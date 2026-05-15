@@ -128,7 +128,7 @@ Plans:
 - [ ] 04-01: Set up background worker (e.g., Celery/Redis) for emails.
 - [ ] 04-02: Stress and concurrency integration test suite.
 
-### Phase 5: Real-time Sync & Offline Mode
+### Phase 5: Real-time Sync & Offline Mode [PLANNING]
 **Goal**: Enable real-time updates and robust offline data reconciliation.
 **Status**: PLANNED
 **Depends on**: Phase 3.8

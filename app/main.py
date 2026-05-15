@@ -9,7 +9,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.routers import audit, notifications, project, stats, task, user
+from app.api.routers import audit, notifications, project, realtime, stats, task, user
 from app.config import DevConfig, config
 from app.limiter import limiter
 from app.logging_conf import configure_logging
@@ -50,6 +50,7 @@ app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
+app.include_router(realtime.router, prefix="/api/v1")
 
 
 @app.exception_handler(HTTPException)

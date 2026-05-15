@@ -75,11 +75,16 @@ async def create_task(db: AsyncSession, user_id: int, task_in: TaskCreateRequest
 
     # Process tags (normalized and deduped)
     if tag_names:
-        unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
-        for name in unique_tags:
-            db_tag = await tag_crud.get_tag_by_name(db, user_id=user_id, name=name)
-            if not db_tag:
+        unique_names = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
+        existing_tags = await tag_crud.get_tags_by_names(db, user_id=user_id, names=unique_names)
+        existing_names = {t.name for t in existing_tags}
+
+        for name in unique_names:
+            if name in existing_names:
+                db_tag = next(t for t in existing_tags if t.name == name)
+            else:
                 db_tag = await tag_crud.create_tag(db, user_id=user_id, tag_in=TagCreate(name=name))
+                await db.flush()
 
             await tag_crud.attach_tag_to_task(
                 db, task_id=db_task.id, tag_id=db_tag.id, user_id=user_id
@@ -113,11 +118,16 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
         stmt = task_tags.delete().where(task_tags.c.task_id == db_task.id)
         await db.execute(stmt)
 
-        unique_tags = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
-        for name in unique_tags:
-            db_tag = await tag_crud.get_tag_by_name(db, user_id=db_task.user_id, name=name)
-            if not db_tag:
+        unique_names = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
+        existing_tags = await tag_crud.get_tags_by_names(db, user_id=db_task.user_id, names=unique_names)
+        existing_names = {t.name for t in existing_tags}
+
+        for name in unique_names:
+            if name in existing_names:
+                db_tag = next(t for t in existing_tags if t.name == name)
+            else:
                 db_tag = await tag_crud.create_tag(db, user_id=db_task.user_id, tag_in=TagCreate(name=name))
+                await db.flush()
 
             await tag_crud.attach_tag_to_task(
                 db, task_id=db_task.id, tag_id=db_tag.id, user_id=db_task.user_id
@@ -183,13 +193,25 @@ async def get_subtasks_on_task(db: AsyncSession, task_id: int) -> list[SubTask]:
 
 async def reorder_subtasks(db: AsyncSession, task_id: int, user_id: int, ordered_ids: list[int]) -> None:
     """
-    Updates the position of subtasks for a given task.
+    Updates the position of subtasks for a given task in bulk.
     """
+    if not ordered_ids:
+        return
+
+    # Fetch all relevant subtasks in one query
+    query = select(SubTask).where(
+        SubTask.id.in_(ordered_ids),
+        SubTask.task_id == task_id,
+        SubTask.user_id == user_id
+    )
+    result = await db.execute(query)
+    subtasks_map = {st.id: st for st in result.scalars().all()}
+
+    # Update positions based on the ordered_ids list
     for index, st_id in enumerate(ordered_ids):
-        query = select(SubTask).where(SubTask.id == st_id, SubTask.task_id == task_id, SubTask.user_id == user_id)
-        result = await db.execute(query)
-        db_subtask = result.scalar_one_or_none()
+        db_subtask = subtasks_map.get(st_id)
         if db_subtask:
             db_subtask.position = index
             db.add(db_subtask)
+
     await db.flush()
