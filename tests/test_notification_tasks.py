@@ -34,7 +34,7 @@ async def test_send_push_notification_success(db, confirmed_user, mocker):
     await _send_push_notification_async(user_id, "Title", "Message", "/url")
 
     mock_webpush.assert_called_once()
-    args, kwargs = mock_webpush.call_args
+    _, kwargs = mock_webpush.call_args
     assert kwargs["subscription_info"]["endpoint"] == "https://example.com/push"
     assert "Title" in kwargs["data"]
     assert "Message" in kwargs["data"]

@@ -23,6 +23,8 @@ async def get_tasks(
     completed: Optional[bool] = None,
     project_id: Optional[int] = None,
     tag_id: Optional[int] = None,
+    limit: int = 100,
+    offset: int = 0,
 ) -> list[Task]:
     query = select(Task).where(Task.user_id == user_id).options(
         selectinload(Task.tags),
@@ -34,6 +36,8 @@ async def get_tasks(
         query = query.where(Task.project_id == project_id)
     if tag_id is not None:
         query = query.where(Task.tags.any(id=tag_id))
+
+    query = query.order_by(Task.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)
     return list(result.scalars().all())
 

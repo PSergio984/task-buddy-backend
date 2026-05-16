@@ -62,18 +62,26 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
             raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
 
 
-
-
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
-async def get_all_tasks(
+@limiter.limit("20/minute")
+async def get_tasks(
+    request: Request,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     completed: Annotated[bool | None, Query()] = None,
     project_id: Annotated[int | None, Query()] = None,
     tag_id: Annotated[int | None, Query()] = None,
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     tasks = await task_crud.get_tasks(
-        db, user_id=current_user.id, completed=completed, project_id=project_id, tag_id=tag_id
+        db,
+        user_id=current_user.id,
+        completed=completed,
+        project_id=project_id,
+        tag_id=tag_id,
+        limit=limit,
+        offset=offset
     )
     return tasks
 

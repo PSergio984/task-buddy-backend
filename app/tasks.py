@@ -302,11 +302,9 @@ def process_reminders() -> None:
     run_async_coroutine(_process_reminders_async())
 
 
-async def _process_reminders_async() -> None:
-    now = datetime.now(timezone.utc)
-
-    # Define windows for scanning
-    windows = [
+def _get_notification_windows(now: datetime) -> list[dict]:
+    """Define windows for scanning upcoming, due, and overdue tasks."""
+    return [
         {
             "type": NotificationType.REMINDER_BEFORE,
             "start": now + timedelta(minutes=50),
@@ -330,71 +328,87 @@ async def _process_reminders_async() -> None:
         }
     ]
 
+
+async def _fetch_tasks_to_process(db, now: datetime) -> list[Task]:
+    """Query tasks with due dates in the broadest possible range."""
+    min_start = now - timedelta(hours=24, minutes=10)
+    max_end = now + timedelta(minutes=70)
+
+    stmt = select(Task).where(
+        Task.completed.is_(False),
+        Task.due_date >= min_start,
+        Task.due_date <= max_end
+    )
+    result = await db.execute(stmt)
+    return list(result.scalars().all())
+
+
+async def _handle_notification_delivery(db, task: Task, window: dict) -> None:
+    """Creates in-app notification and enqueues push/email tasks."""
+    try:
+        title = str(window["title"]).format(title=task.title)
+        message = str(window["message"]).format(title=task.title)
+    except Exception:
+        logger.exception(f"Failed to format notification. Window: {window}, Task: {task.id}")
+        return
+
+    action_url = f"/tasks/{task.id}"
+
+    # 1. Create In-App Notification
+    notification = Notification(
+        user_id=task.user_id,
+        task_id=task.id,
+        type=window["type"],
+        title=title,
+        message=message,
+        action_url=action_url
+    )
+    db.add(notification)
+
+    # 2. Enqueue Push Notification
+    send_push_notification.delay(task.user_id, title, message, action_url)
+
+    # 3. Enqueue Email Notification
+    user_stmt = select(User.email).where(User.id == task.user_id)
+    user_email = (await db.execute(user_stmt)).scalar()
+    if user_email:
+        send_confirmation_email.delay(user_email, title, message)
+
+
+async def _process_task_notifications(db, task: Task, windows: list[dict]) -> None:
+    """Processes a single task against all notification windows."""
+    task_due_date = task.due_date
+    if not task_due_date:
+        return
+
+    # Ensure task.due_date is timezone aware for comparison
+    if task_due_date.tzinfo is None:
+        task_due_date = task_due_date.replace(tzinfo=timezone.utc)
+
+    for window in windows:
+        win_start = window["start"]
+        win_end = window["end"]
+
+        if win_start <= task_due_date <= win_end:
+            # Deduplication: Check if notification already exists for this task and type
+            exists_stmt = select(exists().where(
+                Notification.task_id == task.id,
+                Notification.type == window["type"]
+            ))
+            already_notified = (await db.execute(exists_stmt)).scalar()
+
+            if not already_notified:
+                await _handle_notification_delivery(db, task, window)
+
+
+async def _process_reminders_async() -> None:
+    now = datetime.now(timezone.utc)
+    windows = _get_notification_windows(now)
+
     async with AsyncSessionLocal() as db:
-        # Optimization: only query tasks with due dates in the broadest possible range
-        min_start = now - timedelta(hours=24, minutes=10)
-        max_end = now + timedelta(minutes=70)
-
-        stmt = select(Task).where(
-            Task.completed.is_(False),
-            Task.due_date >= min_start,
-            Task.due_date <= max_end
-        )
-        result = await db.execute(stmt)
-        tasks = result.scalars().all()
-
+        tasks = await _fetch_tasks_to_process(db, now)
         for task in tasks:
-            for window in windows:
-                # Ensure task.due_date is timezone aware for comparison
-                task_due_date = task.due_date
-                if task_due_date and task_due_date.tzinfo is None:
-                    task_due_date = task_due_date.replace(tzinfo=timezone.utc)
-
-                # Defensive check to ensure types match for comparison
-                win_start = window.get("start")
-                win_end = window.get("end")
-
-                if (task_due_date and
-                    isinstance(win_start, datetime) and
-                    isinstance(win_end, datetime) and
-                    win_start <= task_due_date <= win_end):
-                    # Deduplication: Check if notification already exists for this task and type
-                    exists_stmt = select(exists().where(
-                        Notification.task_id == task.id,
-                        Notification.type == window["type"]
-                    ))
-                    already_notified = (await db.execute(exists_stmt)).scalar()
-
-                    if not already_notified:
-                        try:
-                            title = str(window["title"]).format(title=task.title)
-                            message = str(window["message"]).format(title=task.title)
-                        except Exception as e:
-                            logger.error(f"Failed to format notification: {e}. Window: {window}, Task: {task.id}")
-                            continue
-
-                        action_url = f"/tasks/{task.id}"
-
-                        # 1. Create In-App Notification
-                        notification = Notification(
-                            user_id=task.user_id,
-                            task_id=task.id,
-                            type=window["type"],
-                            title=title,
-                            message=message,
-                            action_url=action_url
-                        )
-                        db.add(notification)
-
-                        # 2. Enqueue Push Notification
-                        send_push_notification.delay(task.user_id, title, message, action_url)
-
-                        # 3. Enqueue Email Notification
-                        user_stmt = select(User.email).where(User.id == task.user_id)
-                        user_email = (await db.execute(user_stmt)).scalar()
-                        if user_email:
-                            send_confirmation_email.delay(user_email, title, message)
-
+            await _process_task_notifications(db, task, windows)
         await db.commit()
 
 
@@ -449,7 +463,7 @@ async def _send_push_notification_async(user_id: int, title: str, message: str, 
                     logger.info("Push subscription expired for endpoint %s; deleting", sub.endpoint)
                     await db.delete(sub)
                 else:
-                    logger.error("Failed to send push notification to %s: %s", sub.endpoint, str(ex))
+                    logger.exception("Failed to send push notification to %s", sub.endpoint)
             except Exception:
                 logger.exception("Unexpected error sending push notification to %s", sub.endpoint)
 

@@ -33,9 +33,9 @@ async def get_vapid_key():
 async def list_notifications(
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    skip: int = Query(0, ge=0),
-    limit: int = Query(20, ge=1, le=100),
-    is_read: Optional[bool] = Query(None),
+    skip: Annotated[int, Query(ge=0)] = 0,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    is_read: Annotated[Optional[bool], Query()] = None,
 ):
     """
     Retrieve notifications for the current user.

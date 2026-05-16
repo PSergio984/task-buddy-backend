@@ -1,7 +1,7 @@
 import logging
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,9 +32,11 @@ router = APIRouter(
 async def list_projects(
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
+    limit: Annotated[int, Query(ge=1, le=500)] = 100,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ):
     logger.info("GET / - listing projects for user_id=%s", current_user.id)
-    return await project_crud.get_projects(db, user_id=current_user.id)
+    return await project_crud.get_projects(db, user_id=current_user.id, limit=limit, offset=offset)
 
 @router.post("/", response_model=ProjectResponse, status_code=201)
 @limiter.limit("10/minute")

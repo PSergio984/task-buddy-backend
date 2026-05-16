@@ -25,7 +25,7 @@ async def get_audit_logs(
     request: Request,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-    limit: Annotated[int, Query(ge=1, le=100)] = 50,
+    limit: Annotated[int, Query(ge=1, le=500)] = 50,
     offset: Annotated[int, Query(ge=0)] = 0,
     action: Annotated[str | None, Query()] = None,
     target_type: Annotated[str | None, Query()] = None,

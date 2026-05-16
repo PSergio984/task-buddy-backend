@@ -181,8 +181,8 @@ def audit_log(
                     )
                     if commit:
                         await db.commit()
-                except Exception as e:
-                    logger.error(f"Failed to create audit log for {func.__name__}: {e}")
+                except Exception:
+                    logger.exception(f"Failed to create audit log for {func.__name__}")
 
             return result
         return wrapper

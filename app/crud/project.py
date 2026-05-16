@@ -11,8 +11,14 @@ from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 PROJECT_TARGET_TYPE = "PROJECT"
 
 
-async def get_projects(db: AsyncSession, user_id: int) -> list[Project]:
-    query = select(Project).where(Project.user_id == user_id).order_by(Project.position)
+async def get_projects(db: AsyncSession, user_id: int, limit: int = 100, offset: int = 0) -> list[Project]:
+    query = (
+        select(Project)
+        .where(Project.user_id == user_id)
+        .order_by(Project.position)
+        .limit(limit)
+        .offset(offset)
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 
