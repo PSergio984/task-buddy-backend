@@ -76,9 +76,9 @@ Plans:
 - [x] 03.5-01: Backend terminology refactor (Group -> Project).
 - [x] 03.5-02: Seed script hardening and UI criteria.
 
-### Phase 3.8: Notification & Reminder System
+### Phase 3.75: Notification & Reminder System
 **Goal**: Implement multi-channel reminders and in-app notifications.
-**Status**: PLANNING
+**Status**: COMPLETED
 **Depends on**: Phase 3.5
 **Requirements**: NOTI-01, NOTI-02, NOTI-03
 **Success Criteria**:
@@ -88,10 +88,10 @@ Plans:
 **Plans**: 4 plans
 
 Plans:
-- [ ] 03.8-01: Setup Notification and PushSubscription models and CRUD layer.
-- [ ] 03.8-02: Implement API endpoints for notification management and push registration.
-- [ ] 03.8-03: Configure Celery Beat and implement reminder scanning logic.
-- [ ] 03.8-04: End-to-end testing and verification of the notification system.
+- [x] 03.75-01: Setup Notification and PushSubscription models and CRUD layer.
+- [x] 03.75-02: Implement API endpoints for notification management and push registration.
+- [x] 03.75-03: Configure Celery Beat and implement reminder scanning logic.
+- [x] 03.75-04: End-to-end testing and verification of the notification system.
 
 ### Phase 3.9: Idempotency & Reliability
 **Goal**: Implement a robust idempotency mechanism to prevent duplicate side effects using Redis-backed caching and atomic locking.
@@ -152,7 +152,7 @@ Plans:
 | 2. Security Hardening | 1/1 | Completed | 2026-05-08 |
 | 3. Auditing & Task Management | 2/2 | Completed | 2026-05-09 |
 | 3.5. Premium UI & Projects | 2/2 | Completed | 2026-05-10 |
-| 3.8. Notifications | 0/4 | Planning | - |
+| 3.75. Notifications | 4/4 | Completed | 2026-05-16 |
 | 3.9. Idempotency | 0/3 | In Progress | - |
 | 4. Reliability & Scale | 0/2 | Not started | - |
 | 5. Real-time Sync | 0/3 | Not started | - |

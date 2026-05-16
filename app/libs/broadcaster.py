@@ -6,12 +6,12 @@ class Broadcaster:
     def __init__(self):
         self.subscribers = defaultdict(set)
 
-    async def subscribe(self, user_id: int):
+    def subscribe(self, user_id: int):
         queue = asyncio.Queue()
         self.subscribers[user_id].add(queue)
         return queue
 
-    async def unsubscribe(self, user_id: int, queue: asyncio.Queue):
+    def unsubscribe(self, user_id: int, queue: asyncio.Queue):
         if queue in self.subscribers[user_id]:
             self.subscribers[user_id].remove(queue)
         if not self.subscribers[user_id]:

@@ -23,7 +23,7 @@ async def stream(
     SSE endpoint for real-time updates.
     """
     async def event_generator():
-        queue = await broadcaster.subscribe(current_user.id)
+        queue = broadcaster.subscribe(current_user.id)
         try:
             # Send an initial heart beat or connection confirmation
             yield f"data: {json.dumps({'type': 'connected'})}\n\n"
@@ -42,7 +42,7 @@ async def stream(
         except Exception:
             pass
         finally:
-            await broadcaster.unsubscribe(current_user.id, queue)
+            broadcaster.unsubscribe(current_user.id, queue)
 
     return StreamingResponse(
         event_generator(),
