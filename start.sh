@@ -12,12 +12,16 @@ url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or o
 if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
 engine = sa.create_engine(url)
-REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs']
+REQUIRED_TABLES = [
+    'tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 
+    'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs',
+    'tbl_notifications', 'tbl_push_subscriptions'
+]
 with engine.begin() as conn:
     try:
         # Check for tables in public schema
         res = conn.execute(sa.text(
-            \"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\"
+            "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
         )).fetchall()
         existing = {r[0] for r in res}
         print(f'Pre-flight: Found tables: {existing}')
@@ -35,8 +39,10 @@ with engine.begin() as conn:
             )
         '''))
         conn.execute(sa.text('DELETE FROM alembic_version'))
-        # Also drop the enum if it exists to avoid DuplicateObject error on fresh migration
-        conn.execute(sa.text('DROP TYPE IF EXISTS taskpriority'))
+        # Also drop the enums if they exist to avoid DuplicateObject error on fresh migration.
+        # Use CASCADE to ensure they are dropped even if some tables still exist.
+        conn.execute(sa.text('DROP TYPE IF EXISTS taskpriority CASCADE'))
+        conn.execute(sa.text('DROP TYPE IF EXISTS notificationtype CASCADE'))
     else:
         print('Pre-flight: All required tables present.')
 engine.dispose()
@@ -53,10 +59,14 @@ url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or o
 if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
 engine = sa.create_engine(url)
-REQUIRED_TABLES = ['tbl_users', 'tbl_projects', 'tbl_tasks']
+REQUIRED_TABLES = [
+    'tbl_users', 'tbl_projects', 'tbl_tasks', 'tbl_tags', 
+    'tbl_subtasks', 'tbl_task_tags', 'tbl_audit_logs',
+    'tbl_notifications', 'tbl_push_subscriptions'
+]
 with engine.begin() as conn:
     res = conn.execute(sa.text(
-        \"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\"
+        "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
     )).fetchall()
     existing = {r[0] for r in res}
     missing = [t for t in REQUIRED_TABLES if t not in existing]
@@ -74,6 +84,7 @@ with engine.begin() as conn:
     else:
         print(f'Tables {missing} are missing. Cannot stamp head. Migration must fix this.')
         exit(1)
+
 " && {
     alembic stamp head
     alembic upgrade head

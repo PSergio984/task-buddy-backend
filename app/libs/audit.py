@@ -73,6 +73,22 @@ def _extract_target_id_from_context(bound_args: inspect.BoundArguments, result: 
                     bound_args.arguments.get("project_id") or bound_args.arguments.get("tag_id")
     return target_id
 
+def _find_db_obj(bound_args: inspect.BoundArguments) -> Any:
+    """Find the database object in the arguments."""
+    for arg in bound_args.arguments.values():
+        if hasattr(arg, "id") and not isinstance(arg, AsyncSession) and not hasattr(arg, "model_dump"):
+            return arg
+    return None
+
+def _find_update_data(bound_args: inspect.BoundArguments) -> Any:
+    """Find the update data (dict or model) in the arguments."""
+    for arg in bound_args.arguments.values():
+        if hasattr(arg, "model_dump"):
+            return arg.model_dump(exclude_unset=True)
+        if isinstance(arg, dict) and arg is not bound_args.arguments.get("kwargs"):
+            return arg
+    return None
+
 def _extract_pre_execution_data(
     bound_args: inspect.BoundArguments,
     action_str: str,
@@ -80,32 +96,20 @@ def _extract_pre_execution_data(
     field_blacklist: list[str]
 ):
     """Capture initial state and identifiers before the operation executes."""
-    db_obj = None
-    target_id = None
-    pre_name = None
+    db_obj = _find_db_obj(bound_args)
+    target_id = getattr(db_obj, "id", None)
+    pre_name = _extract_display_name(db_obj)
     old_values = {}
     update_data = None
 
-    for arg in bound_args.arguments.values():
-        if hasattr(arg, "id") and not isinstance(arg, AsyncSession) and not hasattr(arg, "model_dump"):
-            db_obj = arg
-            target_id = arg.id
-            pre_name = _extract_display_name(arg)
-            break
-
     if include_diff and action_str == AuditAction.UPDATE:
-        for arg in bound_args.arguments.values():
-            if hasattr(arg, "model_dump"):
-                update_data = arg.model_dump(exclude_unset=True)
-                break
-            elif isinstance(arg, dict) and arg is not bound_args.arguments.get("kwargs"):
-                update_data = arg
-                break
-
+        update_data = _find_update_data(bound_args)
         if db_obj and update_data:
-            for field in update_data.keys():
-                if field not in field_blacklist:
-                    old_values[field] = getattr(db_obj, field, None)
+            old_values = {
+                field: getattr(db_obj, field, None)
+                for field in update_data.keys()
+                if field not in field_blacklist
+            }
 
     return db_obj, target_id, pre_name, old_values, update_data
 
@@ -124,6 +128,45 @@ def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: 
             changes.append(f"{field}: {v_old} -> {v_new}")
 
     return f" | Changes: {', '.join(changes)}" if changes else ""
+
+def _format_audit_details(
+    action_str: str,
+    target_type: str,
+    display_name: str | None,
+    include_diff: bool,
+    old_values: dict,
+    update_data: dict | None,
+    field_blacklist: list[str]
+) -> str:
+    """Generate the details string for the audit log."""
+    details = f"{action_str.capitalize()} {target_type.lower()}"
+    if display_name:
+        details += f": {display_name}"
+
+    if include_diff and action_str == AuditAction.UPDATE and update_data:
+        details += _generate_diff_string(old_values, update_data, field_blacklist)
+    return details
+
+async def _persist_audit_log(
+    db: AsyncSession,
+    user_id: Any,
+    action: AuditAction | str,
+    target_type: str,
+    target_id: Any,
+    details: str,
+    commit: bool,
+    func_name: str
+):
+    """Persist the audit log entry to the database."""
+    try:
+        await create_audit_log(
+            db=db, user_id=user_id, action=action,
+            target_type=target_type, target_id=target_id, details=details
+        )
+        if commit:
+            await db.commit()
+    except Exception:
+        logger.exception(f"Failed to create audit log for {func_name}")
 
 def audit_log(
     action: AuditAction | str,
@@ -148,7 +191,7 @@ def audit_log(
             bound_args = sig.bind(*args, **kwargs)
             bound_args.apply_defaults()
 
-            # 1. PRE-EXECUTION: Identify target and capture name/title/old_values
+            # 1. PRE-EXECUTION: Capture context before the call
             _, target_id, pre_name, old_values, update_data = _extract_pre_execution_data(
                 bound_args, action_str, include_diff, field_blacklist
             )
@@ -156,33 +199,23 @@ def audit_log(
             # 2. EXECUTE the operation
             result = await func(*args, **kwargs)
 
-            # 3. POST-EXECUTION: Extract context
+            # 3. POST-EXECUTION: Extract remaining context
             db = _extract_db_from_args(bound_args)
             if target_id is None:
                 target_id = _extract_target_id_from_context(bound_args, result)
 
             user_id = _extract_user_id_from_context(bound_args, result, target_type, target_id)
 
-            # 4. GENERATE DETAILS
-            display_name = _extract_display_name(result) or pre_name
-            details = f"{action_str.capitalize()} {target_type.lower()}"
-            if display_name:
-                details += f": {display_name}"
-
-            if include_diff and action_str == AuditAction.UPDATE and update_data:
-                details += _generate_diff_string(old_values, update_data, field_blacklist)
-
-            # 5. PERSIST the log
+            # 4. GENERATE DETAILS & PERSIST
             if db and user_id:
-                try:
-                    await create_audit_log(
-                        db=db, user_id=user_id, action=action,
-                        target_type=target_type, target_id=target_id, details=details
-                    )
-                    if commit:
-                        await db.commit()
-                except Exception:
-                    logger.exception(f"Failed to create audit log for {func.__name__}")
+                display_name = _extract_display_name(result) or pre_name
+                details = _format_audit_details(
+                    action_str, target_type, display_name,
+                    include_diff, old_values, update_data, field_blacklist
+                )
+                await _persist_audit_log(
+                    db, user_id, action, target_type, target_id, details, commit, func.__name__
+                )
 
             return result
         return wrapper
