@@ -8,6 +8,11 @@ echo "Starting migration process..."
 # and the orphaned enum so alembic upgrade head runs a clean migration.
 python -c "
 import os, sqlalchemy as sa
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or os.environ.get('DEV_DATABASE_URL')
 if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
@@ -20,9 +25,7 @@ REQUIRED_TABLES = [
 with engine.begin() as conn:
     try:
         # Check for tables in public schema
-        res = conn.execute(sa.text(
-            "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-        )).fetchall()
+        res = conn.execute(sa.text(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\")).fetchall()
         existing = {r[0] for r in res}
         print(f'Pre-flight: Found tables: {existing}')
     except Exception as e:
@@ -55,6 +58,11 @@ if ! alembic upgrade head; then
     # Recovery: only stamp head if tables ALREADY exist but version is missing/stale
     python -c "
 import os, sqlalchemy as sa
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+except ImportError:
+    pass
 url = os.environ.get('DATABASE_URL') or os.environ.get('PROD_DATABASE_URL') or os.environ.get('DEV_DATABASE_URL')
 if not url: raise SystemExit('DATABASE_URL, PROD_DATABASE_URL, or DEV_DATABASE_URL not set')
 url = url.replace('postgres://', 'postgresql://', 1)
@@ -65,9 +73,7 @@ REQUIRED_TABLES = [
     'tbl_notifications', 'tbl_push_subscriptions'
 ]
 with engine.begin() as conn:
-    res = conn.execute(sa.text(
-        "SELECT table_name FROM information_schema.tables WHERE table_schema='public'"
-    )).fetchall()
+    res = conn.execute(sa.text(\"SELECT table_name FROM information_schema.tables WHERE table_schema='public'\")).fetchall()
     existing = {r[0] for r in res}
     missing = [t for t in REQUIRED_TABLES if t not in existing]
     if not missing:
