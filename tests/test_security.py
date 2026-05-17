@@ -65,7 +65,7 @@ def test_password_hash():
 
 
 def test_access_token_expire_minutes():
-    assert security.access_token_expire_time() == 30
+    assert security.access_token_expire_time() == 120
 
 
 def test_confirm_token_expire_minutes():

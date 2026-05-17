@@ -32,8 +32,8 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker):
     # Enable limiter specifically for this test
     app.state.limiter.enabled = True
     try:
-        # Mock get_remote_address to ensure we have a consistent key
-        mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
+        # Mock get_real_ip to ensure we have a consistent key
+        mocker.patch("app.limiter.get_real_ip", return_value="127.0.0.1")
 
         user_data = {
             "username": "ratelimituser",
@@ -61,8 +61,8 @@ async def test_rate_limiting_create_project(async_client: AsyncClient, mocker, a
     # Enable limiter specifically for this test
     app.state.limiter.enabled = True
     try:
-        # Mock get_remote_address to ensure we have a consistent key
-        mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
+        # Mock get_real_ip to ensure we have a consistent key
+        mocker.patch("app.limiter.get_real_ip", return_value="127.0.0.1")
 
         project_data = {
             "name": "Rate Limit Project",
@@ -89,8 +89,8 @@ async def test_rate_limiting_login(async_client: AsyncClient, mocker):
     # Enable limiter specifically for this test
     app.state.limiter.enabled = True
     try:
-        # Mock get_remote_address to ensure we have a consistent key
-        mocker.patch("app.limiter.get_remote_address", return_value="127.0.0.1")
+        # Mock get_real_ip to ensure we have a consistent key
+        mocker.patch("app.limiter.get_real_ip", return_value="127.0.0.1")
 
         login_data = {
             "username": "nonexistentuser@example.com",

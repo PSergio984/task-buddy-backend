@@ -5,18 +5,25 @@ from app.security import is_token_blacklisted
 
 
 @pytest.fixture(autouse=True)
-def disable_redis_mock(mocker):
-    """Disable the global mock from conftest.py to test real Redis integration."""
-    # We don't call mocker.patch here, so the real functions are used.
-    # But since conftest.py's mock_redis_security is autouse=True,
-    # we must override it specifically for this module.
-    pass
+def mock_redis_security(mocker):
+    """Override the global autouse fixture with a stateful mock Redis client."""
+    blacklist = set()
 
-@pytest.fixture(autouse=True)
-def mock_redis_security():
-    """Override the global autouse fixture from conftest.py."""
-    # By doing nothing, we allow the real implementation to be used.
-    pass
+    async def mock_setex(key, expires, value):
+        blacklist.add(key)
+        return True
+
+    async def mock_exists(key):
+        return 1 if key in blacklist else 0
+
+    mock_redis = mocker.MagicMock()
+    mock_redis.setex = mocker.AsyncMock(side_effect=mock_setex)
+    mock_redis.exists = mocker.AsyncMock(side_effect=mock_exists)
+
+    # Patch get_redis_client in app.security so the real blacklist_token/is_token_blacklisted use it
+    mocker.patch("app.security.get_redis_client", return_value=mock_redis)
+
+
 
 @pytest.mark.asyncio
 async def test_logout_blacklists_token(async_client: AsyncClient, confirmed_user: dict):

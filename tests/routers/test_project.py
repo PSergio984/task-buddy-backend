@@ -215,3 +215,26 @@ async def test_create_duplicate_project_error(async_client: AsyncClient, logged_
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Project with this name already exists"
+
+
+async def test_create_project_quota_limit(async_client: AsyncClient, logged_in_token: str):
+    # Create 20 projects
+    for i in range(20):
+        response = await async_client.post(
+            "/api/v1/projects/",
+            json={"name": f"Quota Project {i}", "color": "blue"},
+            headers={"Authorization": f"Bearer {logged_in_token}"}
+        )
+        # Some projects might fail to create if the user already has projects from other tests,
+        # but fixtures in pytest run clean unless there's an existing DB state.
+        # Let's assert 201 or 400 if duplicate, but name is unique so it should succeed.
+        assert response.status_code == 201, f"Failed at project {i}: {response.text}"
+
+    # Try to create the 21st project (or one more beyond the 20 limit)
+    response = await async_client.post(
+        "/api/v1/projects/",
+        json={"name": "Beyond Quota Project", "color": "blue"},
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot exceed 20 projects per user"

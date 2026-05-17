@@ -1,5 +1,7 @@
 import json
 import logging
+import re
+import uuid
 from typing import Any, Callable, Optional
 
 from fastapi import Request, Response
@@ -16,6 +18,15 @@ IDEMPOTENCY_HEADER = "X-Idempotency-Key"
 CACHE_PREFIX = "idempotency:"
 TTL = 3600  # 1 hour
 
+# Auth endpoints should NEVER be cached or subject to idempotency to avoid security risks
+EXCLUDED_PATHS = {
+    "/api/v1/users/token",
+    "/api/v1/users/register",
+    "/api/v1/users/forgot-password",
+    "/api/v1/users/reset-password",
+    "/api/v1/users/resend-confirmation",
+}
+
 class IdempotencyMiddleware(BaseHTTPMiddleware):
     """
     Middleware to handle request idempotency using an X-Idempotency-Key header.
@@ -26,9 +37,8 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next: Callable) -> Response:
         """
         Intercepts requests to check for idempotency keys and manage response caching.
-        Only POST, PUT, PATCH, and DELETE requests are subject to idempotency checks.
         """
-        if request.method not in ["POST", "PUT", "PATCH", "DELETE"]:
+        if not self._should_apply_idempotency(request):
             return await call_next(request)
 
         idempotency_key = request.headers.get(IDEMPOTENCY_HEADER)
@@ -42,7 +52,39 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 content={"detail": "Invalid X-Idempotency-Key format. Must be at least 8 characters."}
             )
 
+        # Validate UUID or SHA-256 hash format
+        is_valid = False
+        try:
+            uuid.UUID(idempotency_key)
+            is_valid = True
+        except ValueError:
+            pass
+
+        if not is_valid and re.match(r"^[a-fA-F0-9]{64}$", idempotency_key):
+            is_valid = True
+
+        if not is_valid:
+            return JSONResponse(
+                status_code=400,
+                content={"detail": "Invalid X-Idempotency-Key format. Must be a valid UUID or SHA-256 hash."}
+            )
+
         user_id = self._get_user_id(request)
+        if not user_id:
+            return await call_next(request)
+
+        return await self._execute_idempotent_request(request, call_next, user_id, idempotency_key)
+
+    def _should_apply_idempotency(self, request: Request) -> bool:
+        """Determines if the request should be subject to idempotency checks."""
+        if request.method not in ["POST", "PUT", "PATCH", "DELETE"]:
+            return False
+
+        path = request.url.path.rstrip("/")
+        return path not in EXCLUDED_PATHS
+
+    async def _execute_idempotent_request(self, request: Request, call_next: Callable, user_id: str, idempotency_key: str) -> Response:
+        """Orchestrates the idempotency logic with Redis caching and locking."""
         redis_client = get_redis_client()
         if not redis_client:
             # Fail open if Redis is unavailable to avoid blocking all mutations
@@ -77,10 +119,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             await redis_client.delete(cache_key)
             raise e
 
-    def _get_user_id(self, request: Request) -> str:
+    def _get_user_id(self, request: Request) -> Optional[str]:
         """
         Extract user ID from JWT token in Authorization header or cookies.
-        Defaults to 'anonymous' if no token is found.
+        Defaults to 'anonymous:<ip>' if no token is found to scope idempotency.
         """
         auth_header = request.headers.get("Authorization")
         token = None
@@ -92,10 +134,13 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if token:
             try:
                 payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-                return payload.get("sub", "anonymous")
+                user_id = payload.get("sub")
+                if user_id:
+                    return str(user_id)
             except JWTError:
                 pass
-        return "anonymous"
+
+        return None
 
     async def _get_cached_response(self, redis_client: Any, cache_key: str, idempotency_key: str, user_id: str) -> Optional[Response]:
         """

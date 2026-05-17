@@ -1,14 +1,14 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.models.task import TaskPriority
 from app.schemas.tag import TagResponse
 
 
 class SubTaskCreateNestedRequest(BaseModel):
-    title: str
+    title: str = Field(..., min_length=1, max_length=80)
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
@@ -16,8 +16,8 @@ class SubTaskCreateNestedRequest(BaseModel):
 
 
 class TaskCreateRequest(BaseModel):
-    title: str
-    description: Optional[str] = None
+    title: str = Field(..., min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=2000)
     due_date: Optional[datetime] = None
     completed: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
@@ -25,10 +25,18 @@ class TaskCreateRequest(BaseModel):
     tags: list[str] = Field(default_factory=list)
     subtasks: list[SubTaskCreateNestedRequest] = Field(default_factory=list)
 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v):
+        for tag in v:
+            if len(tag) > 20:
+                raise ValueError("Tag length cannot exceed 20 characters")
+        return v
+
 
 class SubTaskCreateRequest(BaseModel):
     task_id: int
-    title: str
+    title: str = Field(..., min_length=1, max_length=80)
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: bool = False
@@ -69,17 +77,26 @@ class TaskWithSubTasks(BaseModel):
 
 
 class TaskUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=100)
+    description: Optional[str] = Field(None, max_length=2000)
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None
     priority: Optional[TaskPriority] = None
     project_id: Optional[int] = None
     tags: Optional[list[str]] = None
 
+    @field_validator("tags")
+    @classmethod
+    def validate_tags(cls, v):
+        if v is not None:
+            for tag in v:
+                if len(tag) > 20:
+                    raise ValueError("Tag length cannot exceed 20 characters")
+        return v
+
 
 class SubTaskUpdateRequest(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(None, min_length=1, max_length=80)
     description: Optional[str] = None
     due_date: Optional[datetime] = None
     completed: Optional[bool] = None

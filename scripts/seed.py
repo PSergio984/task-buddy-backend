@@ -119,7 +119,7 @@ def _create_projects(conn, user_id):
     for name, color in project_data:
         res = conn.execute(
             text(
-                "INSERT INTO tbl_projects (name, color, user_id) VALUES (:name, :color, :user_id) RETURNING id"
+                "INSERT INTO tbl_projects (name, color, user_id, position) VALUES (:name, :color, :user_id, 0) RETURNING id"
             ),
             {"name": name, "color": color, "user_id": user_id},
         )
@@ -136,7 +136,7 @@ def _create_tags(conn, user_id):
     tag_ids = []
     for name in tag_names:
         res = conn.execute(
-            text("INSERT INTO tbl_tags (name, user_id) VALUES (:name, :user_id) RETURNING id"),
+            text("INSERT INTO tbl_tags (name, user_id, position) VALUES (:name, :user_id, 0) RETURNING id"),
             {"name": name, "user_id": user_id},
         )
         t_row = res.mappings().fetchone()
@@ -229,8 +229,8 @@ def _create_subtasks(conn, user_id, task_ids):
         for st_title in titles:
             conn.execute(
                 text("""
-                INSERT INTO tbl_subtasks (title, task_id, user_id, completed)
-                VALUES (:title, :t_id, :u_id, :completed)
+                INSERT INTO tbl_subtasks (title, task_id, user_id, completed, position)
+                VALUES (:title, :t_id, :u_id, :completed, 0)
                 """),
                 {
                     "title": st_title,

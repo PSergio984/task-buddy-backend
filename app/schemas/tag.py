@@ -1,11 +1,11 @@
 from datetime import datetime
 from typing import Optional
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class TagCreate(BaseModel):
-    name: str
+    name: str = Field(..., min_length=1, max_length=50)
     color: Optional[str] = None
     icon: Optional[str] = None
     position: int = 0
@@ -20,7 +20,7 @@ class TagResponse(TagCreate):
 
 
 class TagUpdate(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(None, min_length=1, max_length=50)
     color: Optional[str] = None
     icon: Optional[str] = None
     position: Optional[int] = None

@@ -76,7 +76,7 @@ router = APIRouter(
 @router.post(
     REGISTER_PATH, status_code=201, responses={400: {"description": EMAIL_ALREADY_REGISTERED}}
 )
-@limiter.limit("5/minute")
+@limiter.limit("3/minute")
 async def register_user(
     user: UserCreateRequest,
     background_tasks: BackgroundTasks,
@@ -124,11 +124,12 @@ async def register_user(
 
 
 @router.post("/resend-confirmation", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Email already confirmed or invalid request"}})
-@limiter.limit("5/minute")
+@limiter.limit("3/minute")
 async def resend_confirmation(
     background_tasks: BackgroundTasks,
     email: Annotated[str, Body(embed=True)],
     request: Request,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """Resend a confirmation email for an existing, unconfirmed user."""
@@ -296,6 +297,7 @@ async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_us
 async def update_username(
     username_data: UsernameUpdate,
     request: Request,
+    response: Response,
     current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -333,6 +335,7 @@ async def update_username(
 async def update_password(
     password_data: PasswordUpdate,
     request: Request,
+    response: Response,
     current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -409,12 +412,13 @@ async def logout(
     return {"detail": "Successfully logged out."}
 
 
-@router.post("/forgot-password/")
-@limiter.limit("5/minute")
+@router.post("/forgot-password")
+@limiter.limit("3/minute")
 async def forgot_password(
     forgot_password_data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
     request: Request,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """
@@ -446,12 +450,13 @@ async def reset_password_page(token: str):
     return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
 
 
-@router.post("/reset-password/", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
-@limiter.limit("5/minute")
+@router.post("/reset-password", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
+@limiter.limit("3/minute")
 async def reset_password(
     reset_password_data: ResetPasswordRequest,
     background_tasks: BackgroundTasks,
     request: Request,
+    response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
     """

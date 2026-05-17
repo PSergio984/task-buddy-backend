@@ -1,10 +1,11 @@
 from typing import Optional
 
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.libs.audit import audit_log
 from app.models.project import Project
+from app.models.task import Task
 from app.schemas.enums import AuditAction
 from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 
@@ -31,6 +32,18 @@ async def get_project(db: AsyncSession, project_id: int, user_id: int) -> Option
 
 @audit_log(action=AuditAction.CREATE, target_type=PROJECT_TARGET_TYPE)
 async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCreateRequest) -> Project:
+    # Lock existing projects of this user to prevent concurrent insertions
+    lock_query = (
+        select(Project.id)
+        .where(Project.user_id == user_id)
+        .with_for_update()
+    )
+    result = await db.execute(lock_query)
+    count = len(result.all())
+
+    if count >= 20:
+        raise ValueError("Cannot exceed 20 projects per user")
+
     db_project = Project(
         **project_in.model_dump(),
         user_id=user_id,
@@ -55,7 +68,10 @@ async def update_project(db: AsyncSession, db_project: Project, project_in: Proj
 
 
 @audit_log(action=AuditAction.DELETE, target_type=PROJECT_TARGET_TYPE)
-async def delete_project(db: AsyncSession, db_project: Project, user_id: int | None = None) -> None:
+async def delete_project(db: AsyncSession, db_project: Project, user_id: int | None = None, delete_tasks: bool = False) -> None:
+    if delete_tasks and user_id:
+        stmt = delete(Task).where(Task.project_id == db_project.id, Task.user_id == user_id)
+        await db.execute(stmt)
     await db.delete(db_project)
 
 

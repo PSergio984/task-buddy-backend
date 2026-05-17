@@ -82,6 +82,21 @@ def mock_redis_security(mocker):
     mocker.patch("app.security.is_token_blacklisted", return_value=False)
     mocker.patch("app.security.blacklist_token", return_value=None)
 
+    # Global mock for get_redis_client to prevent connection attempts in tests
+    mock_redis = mocker.MagicMock()
+    mock_redis.keys = mocker.AsyncMock(return_value=[])
+    mock_redis.delete = mocker.AsyncMock(return_value=0)
+    mock_redis.setex = mocker.AsyncMock(return_value=True)
+    mock_redis.exists = mocker.AsyncMock(return_value=False)
+    mock_redis.get = mocker.AsyncMock(return_value=None)
+    mock_redis.set = mocker.AsyncMock(return_value=True)
+
+    mocker.patch("app.security.get_redis_client", return_value=mock_redis)
+    mocker.patch("app.api.routers.project.get_redis_client", return_value=mock_redis)
+    mocker.patch("app.api.routers.task.get_redis_client", return_value=mock_redis)
+    mocker.patch("app.libs.cache.get_redis_client", return_value=mock_redis)
+    mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"

@@ -139,6 +139,12 @@ def _format_audit_details(
     field_blacklist: list[str]
 ) -> str:
     """Generate the details string for the audit log."""
+    # Special case: password updates for users should be concise
+    is_update = action_str == "UPDATE" or action_str == AuditAction.UPDATE.value
+    if target_type == "USER" and is_update and update_data:
+        if list(update_data.keys()) == ["password"]:
+            return "Updated password"
+
     details = f"{action_str.capitalize()} {target_type.lower()}"
     if display_name:
         details += f": {display_name}"

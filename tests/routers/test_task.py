@@ -369,3 +369,145 @@ async def test_delete_tag(async_client: AsyncClient, created_tag: dict, logged_i
     # but let's try to fetch it if we had an endpoint.
     # We don't have a direct GET /tags/{tag_id}.
     # But we can try detaching it again, which should 404.
+
+
+async def test_create_task_limit_tags(async_client: AsyncClient, logged_in_token: str):
+    # 11 tags - should fail
+    body = {
+        "title": "Task with too many tags",
+        "tags": [f"tag_{i}" for i in range(11)]
+    }
+    response = await async_client.post(
+        "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot exceed 10 tags per task"
+
+    # 10 tags - should pass
+    body_ok = {
+        "title": "Task with exactly 10 tags",
+        "tags": [f"tag_{i}" for i in range(10)]
+    }
+    response_ok = await async_client.post(
+        "/api/v1/tasks/", json=body_ok, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response_ok.status_code == 201
+
+
+async def test_create_task_limit_subtasks(async_client: AsyncClient, logged_in_token: str):
+    # 51 subtasks - should fail
+    body = {
+        "title": "Task with too many subtasks",
+        "subtasks": [{"title": f"subtask_{i}"} for i in range(51)]
+    }
+    response = await async_client.post(
+        "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot exceed 50 subtasks per task"
+
+    # 50 subtasks - should pass
+    body_ok = {
+        "title": "Task with exactly 50 subtasks",
+        "subtasks": [{"title": f"subtask_{i}"} for i in range(50)]
+    }
+    response_ok = await async_client.post(
+        "/api/v1/tasks/", json=body_ok, headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response_ok.status_code == 201
+
+
+async def test_update_task_limit_tags(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+    # 11 tags - should fail
+    response = await async_client.put(
+        f"/api/v1/tasks/{created_task['id']}",
+        json={"tags": [f"tag_{i}" for i in range(11)]},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Cannot exceed 10 tags per task"
+
+    # 10 tags - should pass
+    response_ok = await async_client.put(
+        f"/api/v1/tasks/{created_task['id']}",
+        json={"tags": [f"tag_{i}" for i in range(10)]},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response_ok.status_code == 200
+
+
+async def test_create_subtask_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+    # Add 50 subtasks
+    for i in range(50):
+        resp = await async_client.post(
+            "/api/v1/tasks/subtask",
+            json={"title": f"Sub_{i}", "task_id": created_task["id"]},
+            headers={"Authorization": f"Bearer {logged_in_token}"},
+        )
+        assert resp.status_code == 201
+
+    # Try to add 51st subtask - should fail
+    resp_fail = await async_client.post(
+        "/api/v1/tasks/subtask",
+        json={"title": "Sub_51", "task_id": created_task["id"]},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert resp_fail.status_code == 400
+    assert resp_fail.json()["detail"] == "Cannot exceed 50 subtasks per task"
+
+
+async def test_create_tag_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+    # Add 10 tags
+    for i in range(10):
+        resp = await async_client.post(
+            f"/api/v1/tasks/{created_task['id']}/tags",
+            json={"name": f"tag_{i}"},
+            headers={"Authorization": f"Bearer {logged_in_token}"},
+        )
+        assert resp.status_code == 201
+
+    # Try to add 11th tag - should fail
+    resp_fail = await async_client.post(
+        f"/api/v1/tasks/{created_task['id']}/tags",
+        json={"name": "tag_11"},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert resp_fail.status_code == 400
+    assert resp_fail.json()["detail"] == "Cannot exceed 10 tags per task"
+
+    # Re-adding a tag that is already on the task is allowed (idempotent / already attached check)
+    resp_dup = await async_client.post(
+        f"/api/v1/tasks/{created_task['id']}/tags",
+        json={"name": "tag_0"},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert resp_dup.status_code == 201
+
+
+async def test_attach_tag_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+    # Create 11 tags in the system
+    tag_ids = []
+    for i in range(11):
+        resp = await async_client.post(
+            "/api/v1/tasks/tags/",
+            json={"name": f"unique_tag_{i}"},
+            headers={"Authorization": f"Bearer {logged_in_token}"},
+        )
+        assert resp.status_code == 201
+        tag_ids.append(resp.json()["id"])
+
+    # Attach 10 tags to created_task
+    for tag_id in tag_ids[:10]:
+        resp = await async_client.post(
+            f"/api/v1/tasks/{created_task['id']}/tags/{tag_id}",
+            headers={"Authorization": f"Bearer {logged_in_token}"},
+        )
+        assert resp.status_code == 200
+
+    # Try to attach 11th tag - should fail
+    resp_fail = await async_client.post(
+        f"/api/v1/tasks/{created_task['id']}/tags/{tag_ids[10]}",
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert resp_fail.status_code == 400
+    assert resp_fail.json()["detail"] == "Cannot exceed 10 tags per task"

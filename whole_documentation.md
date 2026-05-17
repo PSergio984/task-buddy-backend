@@ -169,13 +169,15 @@ To keep this document concise, granular technical details have been moved to ded
 1. **[Database Schema](database_schema.md)**: Full table definitions, data types, and relational constraints.
 2. **[API Endpoints](api_endpoints.md)**: Method-by-method breakdown with sample JSON payloads.
 3. **[System Flowchart](docs/system_flowchart.md)**: Descriptive Mermaid diagrams and feature-specific logic flows.
-4. **[Backend Codebase Documentation](.planning/codebase/STRUCTURE.md)**: Internal file structure and backend architecture.
-5. **[Frontend Codebase Documentation](c:/Users/admin/OneDrive/Documents/GitHub/task-buddy-frontend/.planning/codebase/STRUCTURE.md)**: React components and frontend standards.
+4. **[System Test Cases](docs/system_test_cases.md)**: Master QA specification with 45 detailed system and boundary value analysis (BVA) test scenarios.
+5. **[Backend Codebase Documentation](.planning/codebase/STRUCTURE.md)**: Internal file structure and backend architecture.
+6. **[Frontend Codebase Documentation](c:/Users/admin/OneDrive/Documents/GitHub/task-buddy-frontend/.planning/codebase/STRUCTURE.md)**: React components and frontend standards.
 
 ---
 
 ## 🧪 Quality Assurance
 
+- **Manual/System Testing**: Fully specified in the [System Test Cases Suite](docs/system_test_cases.md), mapping complete happy-path and boundary condition validation.
 - **Unit Testing**: Pytest for backend logic and Vitest for frontend components.
 - **E2E Testing**: Playwright for critical user flows (Login, Task Creation).
 - **Linting**: Ruff for Python and ESLint for TypeScript.

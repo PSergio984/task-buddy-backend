@@ -3,7 +3,8 @@ from contextlib import asynccontextmanager
 
 import sentry_sdk
 from asgi_correlation_id import CorrelationIdMiddleware
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Request, Response
+from fastapi.exceptions import RequestValidationError
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
@@ -32,17 +33,37 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
-app.add_middleware(SlowAPIMiddleware)
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
-    return JSONResponse(
+    response = JSONResponse(
         status_code=429,
         content={"detail": "Too many attempts. Please try again in a few minutes."},
     )
+    # Inject rate limit headers into the error response
+    if hasattr(request.state, "view_rate_limit"):
+        response = limiter._inject_headers(response, request.state.view_rate_limit)
+    return response
 
-app.add_middleware(CorrelationIdMiddleware)
+
+@app.exception_handler(RequestValidationError)
+async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    errors = []
+    for error in exc.errors():
+        loc = " -> ".join(str(item) for item in error.get("loc", []))
+        msg = error.get("msg", "Validation error")
+        errors.append(f"{loc}: {msg}")
+    detail = "; ".join(errors)
+    logger.warning("%s %s - Validation Error: %s", request.method, request.url.path, detail)
+    status_code = 400 if request.url.path.startswith("/api/v1/users") else 422
+    return JSONResponse(
+        status_code=status_code,
+        content={"detail": detail},
+    )
+
 app.add_middleware(IdempotencyMiddleware)
+app.add_middleware(CorrelationIdMiddleware)
+app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(user.router, prefix="/api/v1/users")
@@ -51,6 +72,16 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
+
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+@app.get("/test-limit")
+@limiter.limit("5/minute")
+async def test_limit(request: Request, response: Response):
+    return {"message": "limit test"}
+
 
 
 @app.exception_handler(HTTPException)
@@ -93,8 +124,8 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains"
     response.headers["Content-Security-Policy"] = (
         "default-src 'self'; "
-        "script-src 'self'; "
-        "style-src 'self' 'unsafe-inline'; "
+        "script-src 'self' https://cdn.jsdelivr.net; "
+        "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; "
         "img-src 'self' data:; "
         "frame-ancestors 'none';"
     )

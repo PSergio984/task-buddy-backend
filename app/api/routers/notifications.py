@@ -1,11 +1,12 @@
 from typing import Annotated, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import config
 from app.crud import notification as notification_crud
 from app.dependencies import get_db
+from app.limiter import limiter
 from app.models.user import User
 from app.schemas.notification import (
     NotificationRead,
@@ -30,7 +31,10 @@ async def get_vapid_key():
     return {"public_key": config.VAPID_PUBLIC_KEY}
 
 @router.get("/", response_model=list[NotificationRead])
+@limiter.limit("20/minute")
 async def list_notifications(
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     skip: Annotated[int, Query(ge=0)] = 0,
@@ -45,8 +49,11 @@ async def list_notifications(
     )
 
 @router.patch("/{notification_id}/read", response_model=NotificationRead)
+@limiter.limit("30/minute")
 async def mark_as_read(
     notification_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -66,7 +73,10 @@ async def mark_as_read(
     return notification
 
 @router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit("10/minute")
 async def mark_all_as_read(
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -77,8 +87,11 @@ async def mark_all_as_read(
     await db.commit()
 
 @router.post("/push-subscription", response_model=PushSubscriptionRead)
+@limiter.limit("10/minute")
 async def register_push_subscription(
     subscription: PushSubscriptionCreate,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):

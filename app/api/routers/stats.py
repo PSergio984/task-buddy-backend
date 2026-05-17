@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_STATS_OVERVIEW
@@ -24,6 +24,7 @@ router = APIRouter(
 @limiter.limit(RATE_LIMIT_STATS_OVERVIEW)
 async def get_system_overview(
     request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
 ):
