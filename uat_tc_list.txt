@@ -1,0 +1,115 @@
+TC001_Sys_Pos_RegisterNewUser | Positive | Verify a new user can register with valid credentials. | Step: Send POST request to `/api/v1/user/register` with valid email, username, and password. -> Expected: HTTP 201 Created. User object returned without password.
+TC002_Sys_Neg_RegisterDuplicateEmail | Negative | Verify registration fails if the email is already in use. | Step: Send POST request to `/api/v1/user/register` using `test@example.com`. -> Expected: HTTP 400 Bad Request. Error message: "Email already registered".
+TC003_Sys_Neg_RegisterShortPassword | Negative | Verify registration fails with a password shorter than 8 characters. | Step: Send POST request to `/api/v1/user/register` with password "123". -> Expected: HTTP 422 Unprocessable Entity. Validation error for password length.
+TC004_Sys_Pos_LoginSuccess | Positive | Verify user can login with valid email and password. | Step: Send POST request to `/api/v1/user/login` with valid credentials. -> Expected: HTTP 200 OK. Response includes user details and sets auth cookie.
+TC005_Sys_Neg_LoginInvalidCredentials | Negative | Verify login fails with incorrect password. | Step: Send POST request to `/api/v1/user/login` with wrong password. -> Expected: HTTP 401 Unauthorized. Error message: "Incorrect email or password".
+TC006_Sys_Pos_Logout | Positive | Verify user can logout and invalidate session. | Step: Send POST request to `/api/v1/user/logout`. -> Expected: HTTP 200 OK. Auth cookie cleared/invalidated.
+TC007_Sys_Pos_VerifySession | Positive | Verify current session is valid. | Step: Send GET request to `/api/v1/user/me`. -> Expected: HTTP 200 OK. Current user profile returned.
+TC008_Sys_Pos_UpdateUsername | Positive | Verify user can update their display username. | Step: Send PUT request to `/api/v1/user/username` with new username "NewUser123". -> Expected: HTTP 200 OK. Username updated in database.
+TC009_Sys_Pos_UpdatePassword | Positive | Verify user can change their password. | Step: Send PUT request to `/api/v1/user/password` with current and new password. -> Expected: HTTP 200 OK. Password updated successfully.
+TC010_Sys_Neg_UpdatePasswordWrongCurrent | Negative | Verify password update fails if current password is wrong. | Step: Send PUT request to `/api/v1/user/password` with invalid current password. -> Expected: HTTP 400 Bad Request. Error message: "Incorrect current password".
+TC011_Sys_Pos_RequestPasswordReset | Positive | Verify user can request a password reset link. | Step: Send POST request to `/api/v1/user/forgot-password` with user email. -> Expected: HTTP 200 OK. Reset email sent (mock/background task).
+TC012_Sys_Pos_ResetPasswordWithToken | Positive | Verify user can reset password using a valid token. | Step: Send POST request to `/api/v1/user/reset-password` with token and new password. -> Expected: HTTP 200 OK. Password reset successfully.
+TC013_Sys_Neg_RegisterShortUsername | Negative | Verify registration fails with username < 3 chars. | Step: Send POST request to `/api/v1/user/register` with username "ab". -> Expected: HTTP 422 Unprocessable Entity. Validation error for username.
+TC014_Sys_Neg_RegisterLongUsername | Negative | Verify registration fails with username > 50 chars. | Step: Send POST request to `/api/v1/user/register` with 51-char username. -> Expected: HTTP 422 Unprocessable Entity. Validation error for username.
+TC015_Sys_Neg_RegisterInvalidEmail | Negative | Verify registration fails with malformed email. | Step: Send POST request to `/api/v1/user/register` with email "not-an-email". -> Expected: HTTP 422 Unprocessable Entity. Validation error for email.
+TC016_Sys_Neg_RegisterLongEmail | Negative | Verify registration fails with email > 254 chars. | Step: Send POST request to `/api/v1/user/register` with 255-char email. -> Expected: HTTP 422 Unprocessable Entity. Validation error for email.
+TC017_Sys_Neg_LoginMissingEmail | Negative | Verify login fails if email is missing. | Step: Send POST request to `/api/v1/user/login` with only password. -> Expected: HTTP 422 Unprocessable Entity.
+TC018_Sys_Neg_LoginMissingPassword | Negative | Verify login fails if password is missing. | Step: Send POST request to `/api/v1/user/login` with only email. -> Expected: HTTP 422 Unprocessable Entity.
+TC019_Sys_Pos_GetCurrentUser | Positive | Verify retrieval of current authenticated user info. | Step: Send GET request to `/api/v1/user/me`. -> Expected: HTTP 200 OK. Correct user ID and email returned.
+TC020_Sys_Neg_AccessWithoutToken | Negative | Verify protected routes reject unauthenticated requests. | Step: Send GET request to `/api/v1/user/me` without auth cookies/headers. -> Expected: HTTP 401 Unauthorized.
+TC021_Sys_Pos_CreateProject | Positive | Verify user can create a new project. | Step: Send POST request to `/api/v1/projects` with name "Work". -> Expected: HTTP 201 Created. Project ID returned.
+TC022_Sys_Neg_CreateProjectEmptyName | Negative | Verify project creation fails with empty name. | Step: Send POST request to `/api/v1/projects` with empty name. -> Expected: HTTP 422 Unprocessable Entity.
+TC023_Sys_Neg_CreateProjectLongName | Negative | Verify project creation fails with name > 50 chars. | Step: Send POST request to `/api/v1/projects` with 51-char name. -> Expected: HTTP 422 Unprocessable Entity.
+TC024_Sys_Pos_UpdateProjectName | Positive | Verify user can rename a project. | Step: Send PATCH request to `/api/v1/projects/{id}` with name "Office". -> Expected: HTTP 200 OK. Name updated to "Office".
+TC025_Sys_Pos_UpdateProjectColorIcon | Positive | Verify user can update project aesthetics. | Step: Send PATCH request to `/api/v1/projects/{id}` with color "#ff0000" and icon "briefcase". -> Expected: HTTP 200 OK. Metadata updated.
+TC026_Sys_Pos_DeleteProject | Positive | Verify user can delete a project. | Step: Send DELETE request to `/api/v1/projects/{id}`. -> Expected: HTTP 204 No Content. Project removed from database.
+TC027_Sys_Pos_ListProjects | Positive | Verify user can list all their projects. | Step: Send GET request to `/api/v1/projects`. -> Expected: HTTP 200 OK. List of projects returned.
+TC028_Sys_Pos_GetProjectDetails | Positive | Verify retrieval of a single project by ID. | Step: Send GET request to `/api/v1/projects/{id}`. -> Expected: HTTP 200 OK. Project details returned.
+TC029_Sys_Neg_GetNonExistentProject | Negative | Verify error when requesting invalid project ID. | Step: Send GET request to `/api/v1/projects/99999`. -> Expected: HTTP 404 Not Found.
+TC030_Sys_Neg_UpdateOtherUserProject | Negative | Verify user cannot update projects owned by others. | Step: User A sends PATCH to User B's project ID. -> Expected: HTTP 404 or 403 Forbidden.
+TC031_Sys_Neg_DeleteOtherUserProject | Negative | Verify user cannot delete projects owned by others. | Step: User A sends DELETE to User B's project ID. -> Expected: HTTP 404 or 403 Forbidden.
+TC032_Sys_Pos_CreateProjectWithPosition | Positive | Verify project can be created with a specific position. | Step: Send POST to `/api/v1/projects` with `position: 5`. -> Expected: HTTP 201 Created. Project created at index 5.
+TC033_Sys_Pos_UpdateProjectPosition | Positive | Verify project position can be updated for reordering. | Step: Send PATCH to `/api/v1/projects/{id}` with `position: 1`. -> Expected: HTTP 200 OK. Order updated.
+TC034_Sys_Pos_CreateMultipleProjects | Positive | Verify user can create many projects. | Step: Create 5 projects sequentially. -> Expected: All requests HTTP 201 Created.
+TC035_Sys_Neg_CreateProjectUnauthorized | Negative | Verify project creation requires auth. | Step: Send POST to `/api/v1/projects` without token. -> Expected: HTTP 401 Unauthorized.
+TC036_Sys_Pos_CreateTaskMinimal | Positive | Verify task creation with only a title. | Step: Send POST to `/api/v1/tasks` with title "Simple Task". -> Expected: HTTP 201 Created.
+TC037_Sys_Pos_CreateTaskFull | Positive | Verify task creation with all optional fields. | Step: Send POST to `/api/v1/tasks` with title, desc, due_date, priority, project_id. -> Expected: HTTP 201 Created. All fields persisted correctly.
+TC038_Sys_Neg_CreateTaskEmptyTitle | Negative | Verify task creation fails with empty title. | Step: Send POST to `/api/v1/tasks` with empty title. -> Expected: HTTP 422 Unprocessable Entity.
+TC039_Sys_Neg_CreateTaskLongTitle | Negative | Verify task creation fails with title > 100 chars. | Step: Send POST to `/api/v1/tasks` with 101-char title. -> Expected: HTTP 422 Unprocessable Entity.
+TC040_Sys_Neg_CreateTaskLongDescription | Negative | Verify task creation fails with desc > 2000 chars. | Step: Send POST to `/api/v1/tasks` with 2001-char description. -> Expected: HTTP 422 Unprocessable Entity.
+TC041_Sys_Pos_UpdateTaskTitle | Positive | Verify task title can be renamed. | Step: Send PATCH to `/api/v1/tasks/{id}` with new title. -> Expected: HTTP 200 OK.
+TC042_Sys_Pos_UpdateTaskDescription | Positive | Verify task description can be updated. | Step: Send PATCH to `/api/v1/tasks/{id}` with new description. -> Expected: HTTP 200 OK.
+TC043_Sys_Pos_UpdateTaskPriorityHigh | Positive | Verify task priority can be set to HIGH. | Step: Send PATCH to `/api/v1/tasks/{id}` with `priority: HIGH`. -> Expected: HTTP 200 OK. Priority updated.
+TC044_Sys_Pos_UpdateTaskPriorityLow | Positive | Verify task priority can be set to LOW. | Step: Send PATCH to `/api/v1/tasks/{id}` with `priority: LOW`. -> Expected: HTTP 200 OK. Priority updated.
+TC045_Sys_Pos_ToggleTaskCompletion | Positive | Verify task can be marked as completed. | Step: Send PATCH to `/api/v1/tasks/{id}` with `completed: true`. -> Expected: HTTP 200 OK. Task status is completed.
+TC046_Sys_Pos_SetTaskDueDate | Positive | Verify task due date can be set. | Step: Send PATCH to `/api/v1/tasks/{id}` with `due_date`. -> Expected: HTTP 200 OK.
+TC047_Sys_Pos_RemoveTaskDueDate | Positive | Verify task due date can be cleared. | Step: Send PATCH to `/api/v1/tasks/{id}` with `due_date: null`. -> Expected: HTTP 200 OK. Due date removed.
+TC048_Sys_Pos_AssignTaskToProject | Positive | Verify task can be assigned to a project. | Step: Send PATCH to `/api/v1/tasks/{id}` with `project_id`. -> Expected: HTTP 200 OK. Task linked to project.
+TC049_Sys_Pos_MoveTaskToDifferentProject | Positive | Verify task can be moved between projects. | Step: Send PATCH to `/api/v1/tasks/{id}` with `project_id` of B. -> Expected: HTTP 200 OK. Task moved to Project B.
+TC050_Sys_Pos_RemoveTaskFromProject | Positive | Verify task can be unassigned from any project. | Step: Send PATCH to `/api/v1/tasks/{id}` with `project_id: null`. -> Expected: HTTP 200 OK. Task is now "Inbox" / no project.
+TC051_Sys_Pos_DeleteTask | Positive | Verify user can delete a task. | Step: Send DELETE to `/api/v1/tasks/{id}`. -> Expected: HTTP 204 No Content.
+TC052_Sys_Pos_ListAllTasks | Positive | Verify user can retrieve all tasks across projects. | Step: Send GET to `/api/v1/tasks`. -> Expected: HTTP 200 OK. List of all user's tasks returned.
+TC053_Sys_Pos_ListTasksInProject | Positive | Verify filtering tasks by project. | Step: Send GET to `/api/v1/tasks?project_id={id}`. -> Expected: HTTP 200 OK. Only tasks in that project returned.
+TC054_Sys_Pos_FilterTasksByPriority | Positive | Verify filtering tasks by priority level. | Step: Send GET to `/api/v1/tasks?priority=HIGH`. -> Expected: HTTP 200 OK. Only high priority tasks returned.
+TC055_Sys_Pos_FilterTasksByCompletion | Positive | Verify filtering tasks by completion status. | Step: Send GET to `/api/v1/tasks?completed=true`. -> Expected: HTTP 200 OK. Only completed tasks returned.
+TC056_Sys_Pos_SearchTasksByTitle | Positive | Verify searching tasks by keyword. | Step: Send GET to `/api/v1/tasks?q=Buy`. -> Expected: HTTP 200 OK. Tasks matching query returned.
+TC057_Sys_Neg_GetNonExistentTask | Negative | Verify error when requesting invalid task ID. | Step: Send GET to `/api/v1/tasks/99999`. -> Expected: HTTP 404 Not Found.
+TC058_Sys_Neg_UpdateOtherUserTask | Negative | Verify task ownership security for updates. | Step: User A sends PATCH to User B's task. -> Expected: HTTP 404 or 403 Forbidden.
+TC059_Sys_Neg_DeleteOtherUserTask | Negative | Verify task ownership security for deletions. | Step: User A sends DELETE to User B's task. -> Expected: HTTP 404 or 403 Forbidden.
+TC060_Sys_Pos_CreateTaskWithTags | Positive | Verify task can be created with associated tags. | Step: Send POST to `/api/v1/tasks` with `tags: ["Urgent", "Work"]`. -> Expected: HTTP 201 Created. Tags linked to task.
+TC061_Sys_Pos_CreateTaskWithSubtasks | Positive | Verify task can be created with nested subtasks. | Step: Send POST to `/api/v1/tasks` with `subtasks` list. -> Expected: HTTP 201 Created. Task and subtasks created.
+TC062_Sys_Neg_CreateTaskExceedLimit | Negative | Verify enforcement of 1000 tasks per user limit. | Step: Attempt to create 1001st task. -> Expected: HTTP 400 Bad Request. Limit error.
+TC063_Sys_Pos_UpdateTaskTags | Positive | Verify task tags can be updated (add/remove). | Step: Send PATCH to `/api/v1/tasks/{id}` with new tags list. -> Expected: HTTP 200 OK. Tag association updated.
+TC064_Sys_Pos_BulkDeleteTasks | Positive | Verify multiple tasks can be deleted at once. | Step: Send POST to `/api/v1/tasks/bulk-delete` with list of IDs. -> Expected: HTTP 204 No Content.
+TC065_Sys_Pos_ListTasksSortedByDueDate | Positive | Verify tasks can be sorted by due date. | Step: Send GET to `/api/v1/tasks?sort=due_date`. -> Expected: HTTP 200 OK. Tasks in date order.
+TC066_Sys_Pos_AddSubtaskToTask | Positive | Verify adding a subtask to an existing task. | Step: Send POST to `/api/v1/tasks/{id}/subtasks` with title. -> Expected: HTTP 201 Created.
+TC067_Sys_Neg_AddSubtaskEmptyTitle | Negative | Verify subtask creation fails with empty title. | Step: Send POST to `/api/v1/tasks/{id}/subtasks` with empty title. -> Expected: HTTP 422 Unprocessable Entity.
+TC068_Sys_Neg_AddSubtaskLongTitle | Negative | Verify subtask creation fails with title > 80 chars. | Step: Send POST to `/api/v1/tasks/{id}/subtasks` with 81-char title. -> Expected: HTTP 422 Unprocessable Entity.
+TC069_Sys_Pos_UpdateSubtaskTitle | Positive | Verify subtask title can be updated. | Step: Send PATCH to `/api/v1/subtasks/{id}` with new title. -> Expected: HTTP 200 OK.
+TC070_Sys_Pos_ToggleSubtaskCompletion | Positive | Verify subtask completion status. | Step: Send PATCH to `/api/v1/subtasks/{id}` with `completed: true`. -> Expected: HTTP 200 OK.
+TC071_Sys_Pos_DeleteSubtask | Positive | Verify user can delete a subtask. | Step: Send DELETE to `/api/v1/subtasks/{id}`. -> Expected: HTTP 204 No Content.
+TC072_Sys_Pos_ReorderSubtasks | Positive | Verify subtask reordering within a task. | Step: Send PATCH to `/api/v1/subtasks/{id}` with new `position`. -> Expected: HTTP 200 OK. Order changed.
+TC073_Sys_Neg_AddSubtaskToNonExistentTask | Negative | Verify error when adding subtask to invalid task ID. | Step: Send POST to `/api/v1/tasks/99999/subtasks`. -> Expected: HTTP 404 Not Found.
+TC074_Sys_Neg_AddSubtaskToOtherUserTask | Negative | Verify ownership security for subtasks. | Step: User A attempts to add subtask to User B's task. -> Expected: HTTP 404 or 403 Forbidden.
+TC075_Sys_Neg_ExceedSubtaskLimit | Negative | Verify enforcement of 50 subtasks per task limit. | Step: Attempt to add 51st subtask. -> Expected: HTTP 400 Bad Request. Limit error.
+TC076_Sys_Pos_GetSubtasksForTask | Positive | Verify retrieval of subtasks for a task. | Step: Send GET to `/api/v1/tasks/{id}/subtasks`. -> Expected: HTTP 200 OK. Subtask list returned.
+TC077_Sys_Pos_SetSubtaskDueDate | Positive | Verify subtask due date support. | Step: Send PATCH to `/api/v1/subtasks/{id}` with `due_date`. -> Expected: HTTP 200 OK.
+TC078_Sys_Pos_AddSubtaskWithDescription | Positive | Verify subtask can have a description. | Step: Send POST to `/api/v1/tasks/{id}/subtasks` with desc. -> Expected: HTTP 201 Created.
+TC079_Sys_Pos_UpdateSubtaskPosition | Positive | Verify updating subtask sequence. | Step: Send PATCH to `/api/v1/subtasks/{id}` with `position`. -> Expected: HTTP 200 OK.
+TC080_Sys_Pos_DeleteTaskWithSubtasks | Positive | Verify task deletion cascades to subtasks. | Step: Send DELETE to task. -> Expected: HTTP 204 No Content.
+TC081_Sys_Pos_CreateTag | Positive | Verify user can create a standalone tag. | Step: Send POST to `/api/v1/tags` with name "Research". -> Expected: HTTP 201 Created.
+TC082_Sys_Neg_CreateTagEmptyName | Negative | Verify tag creation fails with empty name. | Step: Send POST to `/api/v1/tags` with empty name. -> Expected: HTTP 422 Unprocessable Entity.
+TC083_Sys_Neg_CreateTagLongName | Negative | Verify tag creation fails with name > 20 chars. | Step: Send POST to `/api/v1/tags` with 21-char name. -> Expected: HTTP 422 Unprocessable Entity.
+TC084_Sys_Pos_UpdateTagName | Positive | Verify tag name can be renamed. | Step: Send PATCH to `/api/v1/tags/{id}` with name "Study". -> Expected: HTTP 200 OK.
+TC085_Sys_Pos_UpdateTagColor | Positive | Verify tag color can be changed. | Step: Send PATCH to `/api/v1/tags/{id}` with new color. -> Expected: HTTP 200 OK.
+TC086_Sys_Pos_DeleteTag | Positive | Verify user can delete a tag. | Step: Send DELETE to `/api/v1/tags/{id}`. -> Expected: HTTP 204 No Content. Removed from all tasks.
+TC087_Sys_Pos_ListAllTags | Positive | Verify user can list all their tags. | Step: Send GET to `/api/v1/tags`. -> Expected: HTTP 200 OK. Tag list returned.
+TC088_Sys_Pos_FilterTasksByTag | Positive | Verify task filtering by tag name. | Step: Send GET to `/api/v1/tasks?tag=Work`. -> Expected: HTTP 200 OK. Only "Work" tasks returned.
+TC089_Sys_Neg_ExceedTagLimitPerUser | Negative | Verify enforcement of 50 tags per user. | Step: Attempt to create 51st tag. -> Expected: HTTP 400 Bad Request. Limit error.
+TC090_Sys_Neg_ExceedTagLimitPerTask | Negative | Verify enforcement of 10 tags per task. | Step: Attempt to add 11th tag to task. -> Expected: HTTP 400 Bad Request. Limit error.
+TC091_Sys_Pos_RemoveTagFromTask | Positive | Verify removing a specific tag association. | Step: Send PATCH to task removing one tag from list. -> Expected: HTTP 200 OK. Tag dissociated.
+TC092_Sys_Neg_DeleteOtherUserTag | Negative | Verify tag ownership security. | Step: User A attempts to delete User B's tag. -> Expected: HTTP 404 or 403 Forbidden.
+TC093_Sys_Neg_UpdateOtherUserTag | Negative | Verify tag ownership security for updates. | Step: User A attempts to update User B's tag. -> Expected: HTTP 404 or 403 Forbidden.
+TC094_Sys_Pos_CreateTagViaTaskCreation | Positive | Verify automatic tag creation when adding to task. | Step: Send POST to tasks with new tag name "Late". -> Expected: HTTP 201 Created. Tag "Late" exists now.
+TC095_Sys_Pos_ReuseExistingTagAcrossTasks | Positive | Verify multiple tasks can share the same tag. | Step: Assign "Home" to Task A and Task B. -> Expected: Both updated successfully.
+TC096_Sys_Pos_GetOverviewStats | Positive | Verify retrieval of general user stats. | Step: Send GET to `/api/v1/stats/overview`. -> Expected: HTTP 200 OK. Counts for tasks, projects returned.
+TC097_Sys_Pos_GetTaskStatsByProject | Positive | Verify breakdown of stats per project. | Step: Send GET to `/api/v1/stats/projects`. -> Expected: HTTP 200 OK. Stats per project returned.
+TC098_Sys_Pos_GetCompletionRateStats | Positive | Verify completion percentage calculation. | Step: Send GET to `/api/v1/stats/completion`. -> Expected: HTTP 200 OK. Accurate percentage returned.
+TC099_Sys_Pos_GetAuditLogs | Positive | Verify user can see their activity history. | Step: Send GET to `/api/v1/audit/logs`. -> Expected: HTTP 200 OK. Log entries returned.
+TC100_Sys_Pos_VerifyAuditLogEntryForTaskCreate | Positive | Verify task creation is logged. | Step: Send GET to audit logs. -> Expected: Latest entry should be "CREATE_TASK" with task details.
+TC101_Sys_Pos_VerifyAuditLogEntryForProjectDelete | Positive | Verify project deletion is logged. | Step: Send GET to audit logs. -> Expected: Entry for "DELETE_PROJECT" present.
+TC102_Sys_Pos_FilterAuditLogsByAction | Positive | Verify filtering audit logs by specific action. | Step: Send GET to `/api/v1/audit/logs?action=UPDATE_TASK`. -> Expected: HTTP 200 OK. Only update logs returned.
+TC103_Sys_Pos_FilterAuditLogsByDate | Positive | Verify filtering audit logs by date range. | Step: Send GET to `/api/v1/audit/logs?start_date=...`. -> Expected: HTTP 200 OK. Logs in range returned.
+TC104_Sys_Neg_GetAuditLogsUnauthorized | Negative | Verify audit logs require authentication. | Step: Send GET to `/api/v1/audit/logs` without token. -> Expected: HTTP 401 Unauthorized.
+TC105_Sys_Pos_GetRecentActivity | Positive | Verify "Recent Activity" summary. | Step: Send GET to `/api/v1/audit/recent`. -> Expected: HTTP 200 OK. Last 5-10 actions returned.
+TC106_Sys_Pos_IdempotentTaskCreation | Positive | Verify duplicate task creation is prevented with same key. | Step: Send POST to tasks with `X-Idempotency-Key: key1`. -> Expected: HTTP 201 Created.
+TC107_Sys_Pos_IdempotentProjectCreation | Positive | Verify idempotency for projects. | Step: Send POST to projects with `X-Idempotency-Key: proj-key`. -> Expected: HTTP 201 Created.
+TC108_Sys_Neg_RateLimitTriggered | Negative | Verify API rate limiting protection. | Step: Send 100 requests to `/api/v1/tasks` within 1 second. -> Expected: HTTP 429 Too Many Requests.
+TC109_Sys_Pos_CorsPreflight | Positive | Verify CORS configuration for frontend access. | Step: Send OPTIONS request to any endpoint from allowed origin. -> Expected: HTTP 200 OK with CORS headers.
+TC110_Sys_Neg_InvalidJsonPayload | Negative | Verify error handling for malformed JSON. | Step: Send POST with invalid JSON syntax (missing brace). -> Expected: HTTP 400 Bad Request or 422.
+TC111_Sys_Neg_UnsupportedHttpMethod | Negative | Verify error for using wrong HTTP verb. | Step: Send POST request to `/api/v1/stats/overview`. -> Expected: HTTP 405 Method Not Allowed.
+TC112_Sys_Neg_ExpiredTokenAccess | Negative | Verify expired JWTs are rejected. | Step: Send request with expired auth cookie. -> Expected: HTTP 401 Unauthorized.
+TC113_Sys_Pos_HealthCheck | Positive | Verify system health endpoint. | Step: Send GET to `/health`. -> Expected: HTTP 200 OK. "status": "ok".
+TC114_Sys_Pos_RefreshAuthToken | Positive | Verify token refresh mechanism. | Step: Send POST to `/api/v1/user/refresh`. -> Expected: HTTP 200 OK. New token issued.
+TC115_Sys_Neg_SqlInjectionAttempt | Negative | Verify protection against basic SQL injection. | Step: Send GET request with `q='; DROP TABLE tasks;--`. -> Expected: HTTP 200 OK with empty result or 400. Table remains.

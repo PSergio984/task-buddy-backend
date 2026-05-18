@@ -28,7 +28,7 @@ def create_limiter() -> Limiter:
         key_func=get_real_ip,
         enabled=config.RATE_LIMIT_ENABLED,
         storage_uri=storage_uri,
-        headers_enabled=True
+        headers_enabled=True,
     )
     print(f"Limiter created: enabled={limiter_instance.enabled}, storage={storage_uri}")
     return limiter_instance

@@ -1,0 +1,2234 @@
+{
+  "backendUAT": [
+    {
+      "name": "TC001_Sys_Pos_RegisterNewUser",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify a new user can register with valid credentials.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with valid email, username, and password.",
+          "expected": "HTTP 201 Created. User object returned without password."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Attempt to login with the new credentials.",
+          "expected": "HTTP 200 OK. Auth token/cookie received."
+        }
+      ]
+    },
+    {
+      "name": "TC002_Sys_Neg_RegisterDuplicateEmail",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails if the email is already in use.",
+      "precondition": "User `test@example.com` exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` using `test@example.com`.",
+          "expected": "HTTP 400 Bad Request. Error message: \"Email already registered\"."
+        }
+      ]
+    },
+    {
+      "name": "TC003_Sys_Neg_RegisterShortPassword",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails with a password shorter than 8 characters.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with password \"123\".",
+          "expected": "HTTP 422 Unprocessable Entity. Validation error for password length."
+        }
+      ]
+    },
+    {
+      "name": "TC004_Sys_Pos_LoginSuccess",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can login with valid email and password.",
+      "precondition": "User registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/login` with valid credentials.",
+          "expected": "HTTP 200 OK. Response includes user details and sets auth cookie."
+        }
+      ]
+    },
+    {
+      "name": "TC005_Sys_Neg_LoginInvalidCredentials",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify login fails with incorrect password.",
+      "precondition": "User registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/login` with wrong password.",
+          "expected": "HTTP 401 Unauthorized. Error message: \"Incorrect email or password\"."
+        }
+      ]
+    },
+    {
+      "name": "TC006_Sys_Pos_Logout",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can logout and invalidate session.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/logout`.",
+          "expected": "HTTP 200 OK. Auth cookie cleared/invalidated."
+        }
+      ]
+    },
+    {
+      "name": "TC007_Sys_Pos_VerifySession",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify current session is valid.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/user/me`.",
+          "expected": "HTTP 200 OK. Current user profile returned."
+        }
+      ]
+    },
+    {
+      "name": "TC008_Sys_Pos_UpdateUsername",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can update their display username.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PUT request to `/api/v1/user/username` with new username \"NewUser123\".",
+          "expected": "HTTP 200 OK. Username updated in database."
+        }
+      ]
+    },
+    {
+      "name": "TC009_Sys_Pos_UpdatePassword",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can change their password.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PUT request to `/api/v1/user/password` with current and new password.",
+          "expected": "HTTP 200 OK. Password updated successfully."
+        }
+      ]
+    },
+    {
+      "name": "TC010_Sys_Neg_UpdatePasswordWrongCurrent",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify password update fails if current password is wrong.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PUT request to `/api/v1/user/password` with invalid current password.",
+          "expected": "HTTP 400 Bad Request. Error message: \"Incorrect current password\"."
+        }
+      ]
+    },
+    {
+      "name": "TC011_Sys_Pos_RequestPasswordReset",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can request a password reset link.",
+      "precondition": "User registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/forgot-password` with user email.",
+          "expected": "HTTP 200 OK. Reset email sent (mock/background task)."
+        }
+      ]
+    },
+    {
+      "name": "TC012_Sys_Pos_ResetPasswordWithToken",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can reset password using a valid token.",
+      "precondition": "Reset token generated.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/reset-password` with token and new password.",
+          "expected": "HTTP 200 OK. Password reset successfully."
+        }
+      ]
+    },
+    {
+      "name": "TC013_Sys_Neg_RegisterShortUsername",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails with username < 3 chars.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with username \"ab\".",
+          "expected": "HTTP 422 Unprocessable Entity. Validation error for username."
+        }
+      ]
+    },
+    {
+      "name": "TC014_Sys_Neg_RegisterLongUsername",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails with username > 50 chars.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with 51-char username.",
+          "expected": "HTTP 422 Unprocessable Entity. Validation error for username."
+        }
+      ]
+    },
+    {
+      "name": "TC015_Sys_Neg_RegisterInvalidEmail",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails with malformed email.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with email \"not-an-email\".",
+          "expected": "HTTP 422 Unprocessable Entity. Validation error for email."
+        }
+      ]
+    },
+    {
+      "name": "TC016_Sys_Neg_RegisterLongEmail",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify registration fails with email > 254 chars.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/register` with 255-char email.",
+          "expected": "HTTP 422 Unprocessable Entity. Validation error for email."
+        }
+      ]
+    },
+    {
+      "name": "TC017_Sys_Neg_LoginMissingEmail",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify login fails if email is missing.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/login` with only password.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC018_Sys_Neg_LoginMissingPassword",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify login fails if password is missing.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/user/login` with only email.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC019_Sys_Pos_GetCurrentUser",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify retrieval of current authenticated user info.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/user/me`.",
+          "expected": "HTTP 200 OK. Correct user ID and email returned."
+        }
+      ]
+    },
+    {
+      "name": "TC020_Sys_Neg_AccessWithoutToken",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify protected routes reject unauthenticated requests.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/user/me` without auth cookies/headers.",
+          "expected": "HTTP 401 Unauthorized."
+        }
+      ]
+    },
+    {
+      "name": "TC021_Sys_Pos_CreateProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can create a new project.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/projects` with name \"Work\".",
+          "expected": "HTTP 201 Created. Project ID returned."
+        }
+      ]
+    },
+    {
+      "name": "TC022_Sys_Neg_CreateProjectEmptyName",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify project creation fails with empty name.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/projects` with empty name.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC023_Sys_Neg_CreateProjectLongName",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify project creation fails with name > 50 chars.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/projects` with 51-char name.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC024_Sys_Pos_UpdateProjectName",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can rename a project.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH request to `/api/v1/projects/{id}` with name \"Office\".",
+          "expected": "HTTP 200 OK. Name updated to \"Office\"."
+        }
+      ]
+    },
+    {
+      "name": "TC025_Sys_Pos_UpdateProjectColorIcon",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can update project aesthetics.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH request to `/api/v1/projects/{id}` with color \"#ff0000\" and icon \"briefcase\".",
+          "expected": "HTTP 200 OK. Metadata updated."
+        }
+      ]
+    },
+    {
+      "name": "TC026_Sys_Pos_DeleteProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can delete a project.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send DELETE request to `/api/v1/projects/{id}`.",
+          "expected": "HTTP 204 No Content. Project removed from database."
+        }
+      ]
+    },
+    {
+      "name": "TC027_Sys_Pos_ListProjects",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can list all their projects.",
+      "precondition": "Multiple projects exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/projects`.",
+          "expected": "HTTP 200 OK. List of projects returned."
+        }
+      ]
+    },
+    {
+      "name": "TC028_Sys_Pos_GetProjectDetails",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify retrieval of a single project by ID.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/projects/{id}`.",
+          "expected": "HTTP 200 OK. Project details returned."
+        }
+      ]
+    },
+    {
+      "name": "TC029_Sys_Neg_GetNonExistentProject",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify error when requesting invalid project ID.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request to `/api/v1/projects/99999`.",
+          "expected": "HTTP 404 Not Found."
+        }
+      ]
+    },
+    {
+      "name": "TC030_Sys_Neg_UpdateOtherUserProject",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify user cannot update projects owned by others.",
+      "precondition": "Project owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A sends PATCH to User B's project ID.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC031_Sys_Neg_DeleteOtherUserProject",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify user cannot delete projects owned by others.",
+      "precondition": "Project owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A sends DELETE to User B's project ID.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC032_Sys_Pos_CreateProjectWithPosition",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify project can be created with a specific position.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/projects` with `position: 5`.",
+          "expected": "HTTP 201 Created. Project created at index 5."
+        }
+      ]
+    },
+    {
+      "name": "TC033_Sys_Pos_UpdateProjectPosition",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify project position can be updated for reordering.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/projects/{id}` with `position: 1`.",
+          "expected": "HTTP 200 OK. Order updated."
+        }
+      ]
+    },
+    {
+      "name": "TC034_Sys_Pos_CreateMultipleProjects",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can create many projects.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Create 5 projects sequentially.",
+          "expected": "All requests HTTP 201 Created."
+        }
+      ]
+    },
+    {
+      "name": "TC035_Sys_Neg_CreateProjectUnauthorized",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify project creation requires auth.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/projects` without token.",
+          "expected": "HTTP 401 Unauthorized."
+        }
+      ]
+    },
+    {
+      "name": "TC036_Sys_Pos_CreateTaskMinimal",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task creation with only a title.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with title \"Simple Task\".",
+          "expected": "HTTP 201 Created."
+        }
+      ]
+    },
+    {
+      "name": "TC037_Sys_Pos_CreateTaskFull",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task creation with all optional fields.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with title, desc, due_date, priority, project_id.",
+          "expected": "HTTP 201 Created. All fields persisted correctly."
+        }
+      ]
+    },
+    {
+      "name": "TC038_Sys_Neg_CreateTaskEmptyTitle",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify task creation fails with empty title.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with empty title.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC039_Sys_Neg_CreateTaskLongTitle",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify task creation fails with title > 100 chars.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with 101-char title.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC040_Sys_Neg_CreateTaskLongDescription",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify task creation fails with desc > 2000 chars.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with 2001-char description.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC041_Sys_Pos_UpdateTaskTitle",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task title can be renamed.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with new title.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC042_Sys_Pos_UpdateTaskDescription",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task description can be updated.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with new description.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC043_Sys_Pos_UpdateTaskPriorityHigh",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task priority can be set to HIGH.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `priority: HIGH`.",
+          "expected": "HTTP 200 OK. Priority updated."
+        }
+      ]
+    },
+    {
+      "name": "TC044_Sys_Pos_UpdateTaskPriorityLow",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task priority can be set to LOW.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `priority: LOW`.",
+          "expected": "HTTP 200 OK. Priority updated."
+        }
+      ]
+    },
+    {
+      "name": "TC045_Sys_Pos_ToggleTaskCompletion",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be marked as completed.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `completed: true`.",
+          "expected": "HTTP 200 OK. Task status is completed."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Send PATCH with `completed: false`.",
+          "expected": "HTTP 200 OK. Task status is incomplete."
+        }
+      ]
+    },
+    {
+      "name": "TC046_Sys_Pos_SetTaskDueDate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task due date can be set.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `due_date`.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC047_Sys_Pos_RemoveTaskDueDate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task due date can be cleared.",
+      "precondition": "Task with due date.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `due_date: null`.",
+          "expected": "HTTP 200 OK. Due date removed."
+        }
+      ]
+    },
+    {
+      "name": "TC048_Sys_Pos_AssignTaskToProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be assigned to a project.",
+      "precondition": "Task and Project exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `project_id`.",
+          "expected": "HTTP 200 OK. Task linked to project."
+        }
+      ]
+    },
+    {
+      "name": "TC049_Sys_Pos_MoveTaskToDifferentProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be moved between projects.",
+      "precondition": "Task in Project A, Project B exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `project_id` of B.",
+          "expected": "HTTP 200 OK. Task moved to Project B."
+        }
+      ]
+    },
+    {
+      "name": "TC050_Sys_Pos_RemoveTaskFromProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be unassigned from any project.",
+      "precondition": "Task in project.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with `project_id: null`.",
+          "expected": "HTTP 200 OK. Task is now \"Inbox\" / no project."
+        }
+      ]
+    },
+    {
+      "name": "TC051_Sys_Pos_DeleteTask",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can delete a task.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send DELETE to `/api/v1/tasks/{id}`.",
+          "expected": "HTTP 204 No Content."
+        }
+      ]
+    },
+    {
+      "name": "TC052_Sys_Pos_ListAllTasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can retrieve all tasks across projects.",
+      "precondition": "Multiple tasks exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks`.",
+          "expected": "HTTP 200 OK. List of all user's tasks returned."
+        }
+      ]
+    },
+    {
+      "name": "TC053_Sys_Pos_ListTasksInProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify filtering tasks by project.",
+      "precondition": "Tasks in multiple projects.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?project_id={id}`.",
+          "expected": "HTTP 200 OK. Only tasks in that project returned."
+        }
+      ]
+    },
+    {
+      "name": "TC054_Sys_Pos_FilterTasksByPriority",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify filtering tasks by priority level.",
+      "precondition": "Tasks with various priorities.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?priority=HIGH`.",
+          "expected": "HTTP 200 OK. Only high priority tasks returned."
+        }
+      ]
+    },
+    {
+      "name": "TC055_Sys_Pos_FilterTasksByCompletion",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify filtering tasks by completion status.",
+      "precondition": "Tasks completed and pending.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?completed=true`.",
+          "expected": "HTTP 200 OK. Only completed tasks returned."
+        }
+      ]
+    },
+    {
+      "name": "TC056_Sys_Pos_SearchTasksByTitle",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify searching tasks by keyword.",
+      "precondition": "Tasks with \"Buy\" in title exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?q=Buy`.",
+          "expected": "HTTP 200 OK. Tasks matching query returned."
+        }
+      ]
+    },
+    {
+      "name": "TC057_Sys_Neg_GetNonExistentTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify error when requesting invalid task ID.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks/99999`.",
+          "expected": "HTTP 404 Not Found."
+        }
+      ]
+    },
+    {
+      "name": "TC058_Sys_Neg_UpdateOtherUserTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify task ownership security for updates.",
+      "precondition": "Task owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A sends PATCH to User B's task.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC059_Sys_Neg_DeleteOtherUserTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify task ownership security for deletions.",
+      "precondition": "Task owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A sends DELETE to User B's task.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC060_Sys_Pos_CreateTaskWithTags",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be created with associated tags.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with `tags: [\"Urgent\", \"Work\"]`.",
+          "expected": "HTTP 201 Created. Tags linked to task."
+        }
+      ]
+    },
+    {
+      "name": "TC061_Sys_Pos_CreateTaskWithSubtasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task can be created with nested subtasks.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks` with `subtasks` list.",
+          "expected": "HTTP 201 Created. Task and subtasks created."
+        }
+      ]
+    },
+    {
+      "name": "TC062_Sys_Neg_CreateTaskExceedLimit",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify enforcement of 1000 tasks per user limit.",
+      "precondition": "User has 1000 tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to create 1001st task.",
+          "expected": "HTTP 400 Bad Request. Limit error."
+        }
+      ]
+    },
+    {
+      "name": "TC063_Sys_Pos_UpdateTaskTags",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task tags can be updated (add/remove).",
+      "precondition": "Task with tags.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tasks/{id}` with new tags list.",
+          "expected": "HTTP 200 OK. Tag association updated."
+        }
+      ]
+    },
+    {
+      "name": "TC064_Sys_Pos_BulkDeleteTasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify multiple tasks can be deleted at once.",
+      "precondition": "Tasks exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/bulk-delete` with list of IDs.",
+          "expected": "HTTP 204 No Content."
+        }
+      ]
+    },
+    {
+      "name": "TC065_Sys_Pos_ListTasksSortedByDueDate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify tasks can be sorted by due date.",
+      "precondition": "Tasks with various due dates.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?sort=due_date`.",
+          "expected": "HTTP 200 OK. Tasks in date order."
+        }
+      ]
+    },
+    {
+      "name": "TC066_Sys_Pos_AddSubtaskToTask",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify adding a subtask to an existing task.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/{id}/subtasks` with title.",
+          "expected": "HTTP 201 Created."
+        }
+      ]
+    },
+    {
+      "name": "TC067_Sys_Neg_AddSubtaskEmptyTitle",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify subtask creation fails with empty title.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/{id}/subtasks` with empty title.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC068_Sys_Neg_AddSubtaskLongTitle",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify subtask creation fails with title > 80 chars.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/{id}/subtasks` with 81-char title.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC069_Sys_Pos_UpdateSubtaskTitle",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify subtask title can be updated.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/subtasks/{id}` with new title.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC070_Sys_Pos_ToggleSubtaskCompletion",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify subtask completion status.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/subtasks/{id}` with `completed: true`.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC071_Sys_Pos_DeleteSubtask",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can delete a subtask.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send DELETE to `/api/v1/subtasks/{id}`.",
+          "expected": "HTTP 204 No Content."
+        }
+      ]
+    },
+    {
+      "name": "TC072_Sys_Pos_ReorderSubtasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify subtask reordering within a task.",
+      "precondition": "Multiple subtasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/subtasks/{id}` with new `position`.",
+          "expected": "HTTP 200 OK. Order changed."
+        }
+      ]
+    },
+    {
+      "name": "TC073_Sys_Neg_AddSubtaskToNonExistentTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify error when adding subtask to invalid task ID.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/99999/subtasks`.",
+          "expected": "HTTP 404 Not Found."
+        }
+      ]
+    },
+    {
+      "name": "TC074_Sys_Neg_AddSubtaskToOtherUserTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify ownership security for subtasks.",
+      "precondition": "Task owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A attempts to add subtask to User B's task.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC075_Sys_Neg_ExceedSubtaskLimit",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify enforcement of 50 subtasks per task limit.",
+      "precondition": "Task has 50 subtasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to add 51st subtask.",
+          "expected": "HTTP 400 Bad Request. Limit error."
+        }
+      ]
+    },
+    {
+      "name": "TC076_Sys_Pos_GetSubtasksForTask",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify retrieval of subtasks for a task.",
+      "precondition": "Task with subtasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks/{id}/subtasks`.",
+          "expected": "HTTP 200 OK. Subtask list returned."
+        }
+      ]
+    },
+    {
+      "name": "TC077_Sys_Pos_SetSubtaskDueDate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify subtask due date support.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/subtasks/{id}` with `due_date`.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC078_Sys_Pos_AddSubtaskWithDescription",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify subtask can have a description.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tasks/{id}/subtasks` with desc.",
+          "expected": "HTTP 201 Created."
+        }
+      ]
+    },
+    {
+      "name": "TC079_Sys_Pos_UpdateSubtaskPosition",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify updating subtask sequence.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/subtasks/{id}` with `position`.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC080_Sys_Pos_DeleteTaskWithSubtasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task deletion cascades to subtasks.",
+      "precondition": "Task with subtasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send DELETE to task.",
+          "expected": "HTTP 204 No Content."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Attempt to fetch subtasks by ID.",
+          "expected": "HTTP 404 Not Found."
+        }
+      ]
+    },
+    {
+      "name": "TC081_Sys_Pos_CreateTag",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can create a standalone tag.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tags` with name \"Research\".",
+          "expected": "HTTP 201 Created."
+        }
+      ]
+    },
+    {
+      "name": "TC082_Sys_Neg_CreateTagEmptyName",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify tag creation fails with empty name.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tags` with empty name.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC083_Sys_Neg_CreateTagLongName",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify tag creation fails with name > 20 chars.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/tags` with 21-char name.",
+          "expected": "HTTP 422 Unprocessable Entity."
+        }
+      ]
+    },
+    {
+      "name": "TC084_Sys_Pos_UpdateTagName",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify tag name can be renamed.",
+      "precondition": "Tag exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tags/{id}` with name \"Study\".",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC085_Sys_Pos_UpdateTagColor",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify tag color can be changed.",
+      "precondition": "Tag exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to `/api/v1/tags/{id}` with new color.",
+          "expected": "HTTP 200 OK."
+        }
+      ]
+    },
+    {
+      "name": "TC086_Sys_Pos_DeleteTag",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can delete a tag.",
+      "precondition": "Tag exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send DELETE to `/api/v1/tags/{id}`.",
+          "expected": "HTTP 204 No Content. Removed from all tasks."
+        }
+      ]
+    },
+    {
+      "name": "TC087_Sys_Pos_ListAllTags",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can list all their tags.",
+      "precondition": "Multiple tags exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tags`.",
+          "expected": "HTTP 200 OK. Tag list returned."
+        }
+      ]
+    },
+    {
+      "name": "TC088_Sys_Pos_FilterTasksByTag",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task filtering by tag name.",
+      "precondition": "Task with tag \"Work\".",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/tasks?tag=Work`.",
+          "expected": "HTTP 200 OK. Only \"Work\" tasks returned."
+        }
+      ]
+    },
+    {
+      "name": "TC089_Sys_Neg_ExceedTagLimitPerUser",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify enforcement of 50 tags per user.",
+      "precondition": "User has 50 tags.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to create 51st tag.",
+          "expected": "HTTP 400 Bad Request. Limit error."
+        }
+      ]
+    },
+    {
+      "name": "TC090_Sys_Neg_ExceedTagLimitPerTask",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify enforcement of 10 tags per task.",
+      "precondition": "Task has 10 tags.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to add 11th tag to task.",
+          "expected": "HTTP 400 Bad Request. Limit error."
+        }
+      ]
+    },
+    {
+      "name": "TC091_Sys_Pos_RemoveTagFromTask",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify removing a specific tag association.",
+      "precondition": "Task with tag.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send PATCH to task removing one tag from list.",
+          "expected": "HTTP 200 OK. Tag dissociated."
+        }
+      ]
+    },
+    {
+      "name": "TC092_Sys_Neg_DeleteOtherUserTag",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify tag ownership security.",
+      "precondition": "Tag owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A attempts to delete User B's tag.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC093_Sys_Neg_UpdateOtherUserTag",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify tag ownership security for updates.",
+      "precondition": "Tag owned by User B.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "User A attempts to update User B's tag.",
+          "expected": "HTTP 404 or 403 Forbidden."
+        }
+      ]
+    },
+    {
+      "name": "TC094_Sys_Pos_CreateTagViaTaskCreation",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify automatic tag creation when adding to task.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to tasks with new tag name \"Late\".",
+          "expected": "HTTP 201 Created. Tag \"Late\" exists now."
+        }
+      ]
+    },
+    {
+      "name": "TC095_Sys_Pos_ReuseExistingTagAcrossTasks",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify multiple tasks can share the same tag.",
+      "precondition": "Tag \"Home\" exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Assign \"Home\" to Task A and Task B.",
+          "expected": "Both updated successfully."
+        }
+      ]
+    },
+    {
+      "name": "TC096_Sys_Pos_GetOverviewStats",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify retrieval of general user stats.",
+      "precondition": "Tasks exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/stats/overview`.",
+          "expected": "HTTP 200 OK. Counts for tasks, projects returned."
+        }
+      ]
+    },
+    {
+      "name": "TC097_Sys_Pos_GetTaskStatsByProject",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify breakdown of stats per project.",
+      "precondition": "Projects with tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/stats/projects`.",
+          "expected": "HTTP 200 OK. Stats per project returned."
+        }
+      ]
+    },
+    {
+      "name": "TC098_Sys_Pos_GetCompletionRateStats",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify completion percentage calculation.",
+      "precondition": "Mix of done/todo tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/stats/completion`.",
+          "expected": "HTTP 200 OK. Accurate percentage returned."
+        }
+      ]
+    },
+    {
+      "name": "TC099_Sys_Pos_GetAuditLogs",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify user can see their activity history.",
+      "precondition": "User performed actions.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/audit/logs`.",
+          "expected": "HTTP 200 OK. Log entries returned."
+        }
+      ]
+    },
+    {
+      "name": "TC100_Sys_Pos_VerifyAuditLogEntryForTaskCreate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify task creation is logged.",
+      "precondition": "Task created.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to audit logs.",
+          "expected": "Latest entry should be \"CREATE_TASK\" with task details."
+        }
+      ]
+    },
+    {
+      "name": "TC101_Sys_Pos_VerifyAuditLogEntryForProjectDelete",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify project deletion is logged.",
+      "precondition": "Project deleted.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to audit logs.",
+          "expected": "Entry for \"DELETE_PROJECT\" present."
+        }
+      ]
+    },
+    {
+      "name": "TC102_Sys_Pos_FilterAuditLogsByAction",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify filtering audit logs by specific action.",
+      "precondition": "Multiple types of logs.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/audit/logs?action=UPDATE_TASK`.",
+          "expected": "HTTP 200 OK. Only update logs returned."
+        }
+      ]
+    },
+    {
+      "name": "TC103_Sys_Pos_FilterAuditLogsByDate",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify filtering audit logs by date range.",
+      "precondition": "Logs across multiple days.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/audit/logs?start_date=...`.",
+          "expected": "HTTP 200 OK. Logs in range returned."
+        }
+      ]
+    },
+    {
+      "name": "TC104_Sys_Neg_GetAuditLogsUnauthorized",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify audit logs require authentication.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/audit/logs` without token.",
+          "expected": "HTTP 401 Unauthorized."
+        }
+      ]
+    },
+    {
+      "name": "TC105_Sys_Pos_GetRecentActivity",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify \"Recent Activity\" summary.",
+      "precondition": "Recent actions done.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/api/v1/audit/recent`.",
+          "expected": "HTTP 200 OK. Last 5-10 actions returned."
+        }
+      ]
+    },
+    {
+      "name": "TC106_Sys_Pos_IdempotentTaskCreation",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify duplicate task creation is prevented with same key.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to tasks with `X-Idempotency-Key: key1`.",
+          "expected": "HTTP 201 Created."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Send same POST again with `X-Idempotency-Key: key1`.",
+          "expected": "HTTP 200 OK or 201 (Cached response). No duplicate created."
+        }
+      ]
+    },
+    {
+      "name": "TC107_Sys_Pos_IdempotentProjectCreation",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify idempotency for projects.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to projects with `X-Idempotency-Key: proj-key`.",
+          "expected": "HTTP 201 Created."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Send same POST again with `X-Idempotency-Key: proj-key`.",
+          "expected": "HTTP 200 OK. No duplicate project."
+        }
+      ]
+    },
+    {
+      "name": "TC108_Sys_Neg_RateLimitTriggered",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify API rate limiting protection.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send 100 requests to `/api/v1/tasks` within 1 second.",
+          "expected": "HTTP 429 Too Many Requests."
+        }
+      ]
+    },
+    {
+      "name": "TC109_Sys_Pos_CorsPreflight",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify CORS configuration for frontend access.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send OPTIONS request to any endpoint from allowed origin.",
+          "expected": "HTTP 200 OK with CORS headers."
+        }
+      ]
+    },
+    {
+      "name": "TC110_Sys_Neg_InvalidJsonPayload",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify error handling for malformed JSON.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST with invalid JSON syntax (missing brace).",
+          "expected": "HTTP 400 Bad Request or 422."
+        }
+      ]
+    },
+    {
+      "name": "TC111_Sys_Neg_UnsupportedHttpMethod",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify error for using wrong HTTP verb.",
+      "precondition": "Route exists for GET.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST request to `/api/v1/stats/overview`.",
+          "expected": "HTTP 405 Method Not Allowed."
+        }
+      ]
+    },
+    {
+      "name": "TC112_Sys_Neg_ExpiredTokenAccess",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify expired JWTs are rejected.",
+      "precondition": "Expired token.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send request with expired auth cookie.",
+          "expected": "HTTP 401 Unauthorized."
+        }
+      ]
+    },
+    {
+      "name": "TC113_Sys_Pos_HealthCheck",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify system health endpoint.",
+      "precondition": "None",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET to `/health`.",
+          "expected": "HTTP 200 OK. \"status\": \"ok\"."
+        }
+      ]
+    },
+    {
+      "name": "TC114_Sys_Pos_RefreshAuthToken",
+      "positiveNegative": "Positive",
+      "type": "System",
+      "description": "Verify token refresh mechanism.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send POST to `/api/v1/user/refresh`.",
+          "expected": "HTTP 200 OK. New token issued."
+        }
+      ]
+    },
+    {
+      "name": "TC115_Sys_Neg_SqlInjectionAttempt",
+      "positiveNegative": "Negative",
+      "type": "System",
+      "description": "Verify protection against basic SQL injection.",
+      "precondition": "User logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Send GET request with `q='; DROP TABLE tasks;--`.",
+          "expected": "HTTP 200 OK with empty result or 400. Table remains."
+        }
+      ]
+    }
+  ],
+  "frontendUAT": [
+    {
+      "name": "TC001_Sys_Pos_RegisterNewUser",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Register a new account with valid credentials.",
+      "precondition": "No account exists with target email.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Navigate to Register page and fill in email, username, and password.",
+          "expected": "Fields are valid."
+        },
+        {
+          "stepNo": "Step 2",
+          "stepDesc": "Click \"Sign Up\".",
+          "expected": "Redirected to Dashboard with welcome toast."
+        }
+      ]
+    },
+    {
+      "name": "TC002_Sys_Neg_RegisterDuplicateEmail",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Fail to register with an existing email.",
+      "precondition": "Account with email@example.com exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt registration with email@example.com.",
+          "expected": "Error: \"Email already registered\" appears."
+        }
+      ]
+    },
+    {
+      "name": "TC003_Sys_Neg_RegisterPasswordComplexity",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Enforce minimum 8-character password.",
+      "precondition": "On Register page.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter 7-character password.",
+          "expected": "Validation error: \"Password must be at least 8 characters\"."
+        }
+      ]
+    },
+    {
+      "name": "TC004_Sys_Pos_UserLoginSuccess",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Login with valid credentials.",
+      "precondition": "User is registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter credentials and click \"Sign In\".",
+          "expected": "Redirected to /tasks."
+        }
+      ]
+    },
+    {
+      "name": "TC005_Sys_Neg_UserLoginInvalidPassword",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Fail to login with wrong password.",
+      "precondition": "User is registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter correct email but wrong password.",
+          "expected": "Error: \"Invalid email or password\"."
+        }
+      ]
+    },
+    {
+      "name": "TC006_Sys_Pos_UserLogout",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Securely logout from the system.",
+      "precondition": "User is logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click \"Log Out\" in sidebar/menu.",
+          "expected": "Redirected to Login; access_token cookie cleared."
+        }
+      ]
+    },
+    {
+      "name": "TC007_Sys_Neg_AccessTasksWithoutAuth",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Prevent direct URL access to dashboard.",
+      "precondition": "User is logged out.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Navigate to /tasks.",
+          "expected": "Redirected to /login."
+        }
+      ]
+    },
+    {
+      "name": "TC008_Sys_Pos_ForgotPasswordValidEmail",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Request reset link.",
+      "precondition": "User registered.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter email in Forgot Password page.",
+          "expected": "Confirmation message shown."
+        }
+      ]
+    },
+    {
+      "name": "TC021_Sys_Pos_CreateNewProject",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Create a new project container.",
+      "precondition": "Logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click \"+\" next to Projects, enter \"Work\", pick blue.",
+          "expected": "Project \"Work\" appears in sidebar."
+        }
+      ]
+    },
+    {
+      "name": "TC022_Sys_Neg_CreateDuplicateProject",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Reject duplicate project names.",
+      "precondition": "Project \"Work\" exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to create another project named \"Work\".",
+          "expected": "Error: \"Project with this name already exists\"."
+        }
+      ]
+    },
+    {
+      "name": "TC023_Sys_Pos_RenameProject",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Update project title.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Select Edit on Project A, change to Project B.",
+          "expected": "Title updates in sidebar."
+        }
+      ]
+    },
+    {
+      "name": "TC024_Sys_Pos_DeleteProjectCascade",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Delete project and its tasks.",
+      "precondition": "Project has 5 tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Delete Project, confirm \"Delete Tasks\".",
+          "expected": "Project and 5 tasks removed."
+        }
+      ]
+    },
+    {
+      "name": "TC025_Sys_Pos_ProjectNameBoundaryMax",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Project name with exactly 50 chars.",
+      "precondition": "Create project modal open.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter 50-character name and save.",
+          "expected": "Project created."
+        }
+      ]
+    },
+    {
+      "name": "TC026_Sys_Neg_ProjectNameExceedsMax",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Project name over 50 chars blocked.",
+      "precondition": "Create project modal open.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Type 51st character.",
+          "expected": "Input blocks or shows validation error."
+        }
+      ]
+    },
+    {
+      "name": "TC027_Sys_Neg_DeleteActiveProjectFilter",
+      "positiveNegative": "Edge",
+      "type": "Sys",
+      "description": "View resets when deleting current project.",
+      "precondition": "Viewing \"Work\" project list.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Delete \"Work\" project.",
+          "expected": "View automatically switches to \"All Tasks\"."
+        }
+      ]
+    },
+    {
+      "name": "TC041_Sys_Pos_CreateTaskBasic",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Create task with only a title.",
+      "precondition": "Logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter \"My Task\" in quick-add or modal and save.",
+          "expected": "Task appears in list."
+        }
+      ]
+    },
+    {
+      "name": "TC042_Sys_Pos_CreateTaskFullMetadata",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Create task with desc, priority, date, and tags.",
+      "precondition": "Project exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Fill all fields in Add Task modal.",
+          "expected": "Task created with correct icons/badges."
+        }
+      ]
+    },
+    {
+      "name": "TC043_Sys_Neg_TaskTitleTooLong",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Limit task title to 100 chars.",
+      "precondition": "Add Task modal.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Enter 101 character title.",
+          "expected": "Error: \"Title must be 100 characters or less\"."
+        }
+      ]
+    },
+    {
+      "name": "TC044_Sys_Neg_TaskDescriptionTooLong",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Limit task description to 2000 chars.",
+      "precondition": "Add Task modal.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Paste 2001 chars in description.",
+          "expected": "Error: \"Description cannot exceed 2000 characters\"."
+        }
+      ]
+    },
+    {
+      "name": "TC045_Sys_Pos_ToggleTaskCompletion",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Mark task as done.",
+      "precondition": "Incomplete task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click checkbox on task card.",
+          "expected": "Task strikes through; moved to \"Completed\" if filtered."
+        }
+      ]
+    },
+    {
+      "name": "TC046_Sys_Pos_AssignTaskToProject",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Move task between projects.",
+      "precondition": "Two projects exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Change project in Task Drawer.",
+          "expected": "Task now appears in the target project list."
+        }
+      ]
+    },
+    {
+      "name": "TC047_Sys_Neg_TaskLimitEnforcement",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Cannot exceed 1000 tasks.",
+      "precondition": "User has 1000 tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to create 1001st task.",
+          "expected": "Error: \"Cannot exceed 1000 tasks per user\"."
+        }
+      ]
+    },
+    {
+      "name": "TC048_Sys_Pos_DeleteTaskWithConfirm",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Delete task with safety prompt.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click Delete, then click \"Confirm\" in modal.",
+          "expected": "Task removed."
+        }
+      ]
+    },
+    {
+      "name": "TC049_Sys_Pos_SetHighPriority",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Change priority to High.",
+      "precondition": "Task exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Change priority to High in Drawer.",
+          "expected": "Red \"High\" badge appears on card."
+        }
+      ]
+    },
+    {
+      "name": "TC050_Sys_Neg_SetPastDueDate",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Block past due dates in UI.",
+      "precondition": "Add Task modal.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Select yesterday's date.",
+          "expected": "Validation error: \"Due date cannot be in the past\"."
+        }
+      ]
+    },
+    {
+      "name": "TC081_Sys_Pos_AddSubtaskToTask",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Add smaller steps to a task.",
+      "precondition": "Task Drawer open.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Type subtask name and press Enter.",
+          "expected": "Subtask added to list."
+        }
+      ]
+    },
+    {
+      "name": "TC082_Sys_Pos_ToggleSubtask",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Complete subtask.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Check subtask checkbox.",
+          "expected": "Subtask text is struck through; progress bar updates."
+        }
+      ]
+    },
+    {
+      "name": "TC083_Sys_Neg_MaxSubtasksLimit",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Block more than 50 subtasks.",
+      "precondition": "Task has 50 subtasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Add 51st subtask.",
+          "expected": "Error: \"Cannot exceed 50 subtasks per task\"."
+        }
+      ]
+    },
+    {
+      "name": "TC084_Sys_Pos_DeleteSubtask",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Remove subtask.",
+      "precondition": "Subtask exists.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click delete icon on subtask line.",
+          "expected": "Subtask removed immediately."
+        }
+      ]
+    },
+    {
+      "name": "TC096_Sys_Pos_CreateNewTag",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Create category tag.",
+      "precondition": "Logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click \"+\" next to Tags, enter \"Work\".",
+          "expected": "Tag \"Work\" appears in sidebar."
+        }
+      ]
+    },
+    {
+      "name": "TC097_Sys_Neg_TagLimitPerTask",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Block more than 10 tags on one task.",
+      "precondition": "Task has 10 tags.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to add 11th tag.",
+          "expected": "Error: \"Cannot exceed 10 tags per task\"."
+        }
+      ]
+    },
+    {
+      "name": "TC098_Sys_Neg_TagLimitPerUser",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Block more than 50 total tags.",
+      "precondition": "User has 50 tags.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Attempt to create 51st tag.",
+          "expected": "Error: \"Cannot exceed 50 tags per user\"."
+        }
+      ]
+    },
+    {
+      "name": "TC099_Sys_Pos_FilterByTag",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "View only specific tagged tasks.",
+      "precondition": "Tags assigned to tasks.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click tag \"Urgent\" in sidebar.",
+          "expected": "List only shows \"Urgent\" tasks."
+        }
+      ]
+    },
+    {
+      "name": "TC111_Sys_Pos_SearchTaskTitle",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Real-time title search.",
+      "precondition": "Tasks exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Type part of a task title in search bar.",
+          "expected": "Results filter as you type."
+        }
+      ]
+    },
+    {
+      "name": "TC112_Sys_Pos_SortByPriority",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Organize list by urgency.",
+      "precondition": "Tasks with mixed priorities exist.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Select \"Priority\" in sort dropdown.",
+          "expected": "High tasks move to top."
+        }
+      ]
+    },
+    {
+      "name": "TC113_Sys_Pos_ClearSearch",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Return to full list.",
+      "precondition": "Search is active.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click \"X\" in search bar.",
+          "expected": "Full task list restored."
+        }
+      ]
+    },
+    {
+      "name": "TC126_Sys_Pos_ViewAuditLogs",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "See history of actions.",
+      "precondition": "Actions performed recently.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Navigate to Activity/Audit page.",
+          "expected": "Recent actions (Create, Delete, etc.) listed with timestamps."
+        }
+      ]
+    },
+    {
+      "name": "TC127_Sys_Pos_VerifyDashboardStats",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Check completion percentage accuracy.",
+      "precondition": "Multiple tasks (some completed).",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Compare Dashboard chart to task counts.",
+          "expected": "Stats reflect real-time data."
+        }
+      ]
+    },
+    {
+      "name": "TC136_Sys_Neg_RateLimitWarning",
+      "positiveNegative": "Negative",
+      "type": "Sys",
+      "description": "Handle rapid spamming of actions.",
+      "precondition": "Logged in.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Click \"Create Project\" button 30 times rapidly.",
+          "expected": "Warning toast \"Slow down\" appears; actions blocked."
+        }
+      ]
+    },
+    {
+      "name": "TC137_Sys_Pos_IdempotentCreation",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "Prevent duplicate tasks on double-click.",
+      "precondition": "Slow connection simulated.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Double-click \"Create\" button.",
+          "expected": "Only one task is created."
+        }
+      ]
+    },
+    {
+      "name": "TC138_Sys_Neg_InvalidDateFormatAPI",
+      "positiveNegative": "Negative",
+      "type": "API",
+      "description": "API rejects malformed dates.",
+      "precondition": "Auth active.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "POST task with due_date: \"invalid\".",
+          "expected": "Error 422: \"not a valid datetime\"."
+        }
+      ]
+    },
+    {
+      "name": "TC139_Sys_Pos_ScenarioVariant_139",
+      "positiveNegative": "Positive",
+      "type": "Sys",
+      "description": "UAT variation of core functionality 139.",
+      "precondition": "User is active.",
+      "steps": [
+        {
+          "stepNo": "Step 1",
+          "stepDesc": "Perform specific user action.",
+          "expected": "System responds as expected."
+        }
+      ]
+    }
+  ]
+}

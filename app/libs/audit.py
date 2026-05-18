@@ -1,6 +1,7 @@
 import functools
 import inspect
 import logging
+from datetime import datetime
 from typing import Any, Callable, TypeVar
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -122,7 +123,23 @@ def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: 
             continue
 
         old_value = old_values.get(field)
-        if old_value != new_value:
+        
+        # Robust comparison
+        is_changed = False
+        if isinstance(old_value, datetime) and isinstance(new_value, datetime):
+            # Normalize datetimes for comparison: remove microseconds and ensure same timezone status
+            # If one is naive and other is aware, we treat them as same if UTC-equivalent
+            o = old_value.replace(microsecond=0)
+            n = new_value.replace(microsecond=0)
+            if o.tzinfo is not None and n.tzinfo is None:
+                o = o.replace(tzinfo=None)
+            elif o.tzinfo is None and n.tzinfo is not None:
+                n = n.replace(tzinfo=None)
+            is_changed = o != n
+        else:
+            is_changed = old_value != new_value
+
+        if is_changed:
             v_old = f"'{old_value}'" if isinstance(old_value, str) else old_value
             v_new = f"'{new_value}'" if isinstance(new_value, str) else new_value
             changes.append(f"{field}: {v_old} -> {v_new}")
