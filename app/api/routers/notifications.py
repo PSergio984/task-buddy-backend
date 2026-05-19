@@ -7,7 +7,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import (
     RATE_LIMIT_NOTIFICATION_LIST,
     RATE_LIMIT_NOTIFICATION_READ,
-    RATE_LIMIT_NOTIFICATION_READ_ALL,
     RATE_LIMIT_PUSH_SUBSCRIBE,
     config,
 )
@@ -82,19 +81,29 @@ async def mark_as_read(
     await db.refresh(notification)
     return notification
 
-@router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit(RATE_LIMIT_NOTIFICATION_READ_ALL)
-async def mark_all_as_read(
+@router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(RATE_LIMIT_NOTIFICATION_READ)
+async def delete_notification(
+    notification_id: int,
     request: Request,
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
     """
-    Mark all notifications as read for the current user.
+    Delete a notification.
     """
-    await notification_crud.mark_all_notifications_as_read(db, user_id=current_user.id)
+    deleted = await notification_crud.delete_notification(
+        db, notification_id=notification_id, user_id=current_user.id
+    )
+    if not deleted:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Notification not found",
+        )
     await db.commit()
+    return None
+
 
 @router.post("/push-subscription", response_model=PushSubscriptionRead)
 @limiter.limit(RATE_LIMIT_PUSH_SUBSCRIBE)

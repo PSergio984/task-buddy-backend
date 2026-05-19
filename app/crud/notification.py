@@ -27,7 +27,9 @@ async def get_notifications(
     return list(result.scalars().all())
 
 
-async def create_notification(db: AsyncSession, notification_in: NotificationCreate) -> Notification:
+async def create_notification(
+    db: AsyncSession, notification_in: NotificationCreate
+) -> Notification:
     """
     Create a new notification.
     """
@@ -43,7 +45,9 @@ async def mark_notification_as_read(
     """
     Mark a specific notification as read.
     """
-    query = select(Notification).where(Notification.id == notification_id, Notification.user_id == user_id)
+    query = select(Notification).where(
+        Notification.id == notification_id, Notification.user_id == user_id
+    )
     result = await db.execute(query)
     db_notification = result.scalar_one_or_none()
     if db_notification:
@@ -53,18 +57,15 @@ async def mark_notification_as_read(
     return db_notification
 
 
-async def mark_all_notifications_as_read(db: AsyncSession, user_id: int) -> None:
+async def delete_notification(db: AsyncSession, notification_id: int, user_id: int) -> bool:
     """
-    Mark all notifications for a user as read.
+    Delete a specific notification.
     """
-    from sqlalchemy import update
-    stmt = (
-        update(Notification)
-        .where(Notification.user_id == user_id, Notification.is_read.is_(False))
-        .values(is_read=True)
+    stmt = delete(Notification).where(
+        Notification.id == notification_id, Notification.user_id == user_id
     )
-    await db.execute(stmt)
-    await db.flush()
+    result: CursorResult = await db.execute(stmt)  # type: ignore[assignment]
+    return result.rowcount > 0
 
 
 async def create_or_update_push_subscription(
@@ -96,8 +97,7 @@ async def delete_push_subscription(db: AsyncSession, user_id: int, endpoint: str
     Remove an invalid subscription (needed for 410 Gone handling later).
     """
     stmt = delete(PushSubscription).where(
-        PushSubscription.endpoint == endpoint,
-        PushSubscription.user_id == user_id
+        PushSubscription.endpoint == endpoint, PushSubscription.user_id == user_id
     )
     result: CursorResult = await db.execute(stmt)  # type: ignore[assignment]
     await db.flush()

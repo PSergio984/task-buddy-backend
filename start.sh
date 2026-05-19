@@ -105,10 +105,16 @@ python scripts/seed.py || true
 # We limit concurrency to 1 and use a single worker process to save memory on constrained environments like Render (512MB).
 # CELERY_CONCURRENCY and CELERY_POOL can be overridden via environment variables.
 CELERY_CONCURRENCY=${CELERY_CONCURRENCY:-1}
-CELERY_POOL=${CELERY_POOL:-prefork}
+
+# On Windows, default to threads pool to avoid WinError 6 and stay responsive to signals
+if [[ "$OSTYPE" == "msys" || "$OSTYPE" == "win32" ]]; then
+    CELERY_POOL=${CELERY_POOL:-threads}
+else
+    CELERY_POOL=${CELERY_POOL:-prefork}
+fi
 
 echo "Starting Celery worker (pool: $CELERY_POOL, concurrency: $CELERY_CONCURRENCY)..."
-celery -A app.celery_app worker --loglevel=info --concurrency="$CELERY_CONCURRENCY" --pool="$CELERY_POOL" &
+IS_CELERY_WORKER=true celery -A app.celery_app worker --loglevel=info --concurrency="$CELERY_CONCURRENCY" --pool="$CELERY_POOL" &
 
 # Start app
 # We explicitly set workers to 1 (or WEB_CONCURRENCY if set) to ensure memory stability.

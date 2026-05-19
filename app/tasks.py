@@ -307,22 +307,22 @@ def _get_notification_windows(now: datetime) -> list[dict]:
     return [
         {
             "type": NotificationType.REMINDER_BEFORE,
-            "start": now + timedelta(minutes=50),
-            "end": now + timedelta(minutes=70),
+            "start": now + timedelta(minutes=59),
+            "end": now + timedelta(minutes=61),
             "title": "Upcoming Task: {title}",
             "message": "Your task '{title}' is due in 1 hour."
         },
         {
             "type": NotificationType.REMINDER_DUE,
-            "start": now - timedelta(minutes=10),
-            "end": now + timedelta(minutes=10),
+            "start": now - timedelta(minutes=1),
+            "end": now + timedelta(minutes=1),
             "title": "Task Due Now: {title}",
             "message": "Your task '{title}' is due now."
         },
         {
             "type": NotificationType.REMINDER_OVERDUE,
-            "start": now - timedelta(hours=24, minutes=10),
-            "end": now - timedelta(hours=23, minutes=50),
+            "start": now - timedelta(hours=24, minutes=1),
+            "end": now - timedelta(hours=23, minutes=59),
             "title": "Task Overdue: {title}",
             "message": "Your task '{title}' is 24 hours overdue."
         }
@@ -444,7 +444,10 @@ async def _send_push_notification_async(user_id: int, title: str, message: str, 
 
         for sub in subscriptions:
             try:
-                webpush(
+                # webpush is synchronous and performs network I/O, so we run it in a thread
+                # to avoid blocking the event loop.
+                await asyncio.to_thread(
+                    webpush,
                     subscription_info={
                         "endpoint": sub.endpoint,
                         "keys": {
