@@ -72,7 +72,7 @@ async def test_login_user_not_confirmed(async_client: AsyncClient, registered_us
         data={"username": registered_user["email"], "password": registered_user["password"]},
     )
     assert response.status_code == 401
-    assert "Invalid credentials" in response.json()["detail"]
+    assert "Email not confirmed" in response.json()["detail"]
 
 
 async def test_login_user(async_client: AsyncClient, confirmed_user: dict):

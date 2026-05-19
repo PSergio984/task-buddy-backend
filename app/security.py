@@ -266,7 +266,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
         # Note: Transaction commit is handled by the caller (router)
 
     if not user.confirmed:
-        raise create_credentials_exception("Invalid credentials")
+        raise create_credentials_exception("Email not confirmed")
     return user
 
 
