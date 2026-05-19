@@ -1,12 +1,12 @@
-import os
 import ast
 import logging
+import os
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format='%(message)s')
 logger = logging.getLogger(__name__)
 
-def list_routes() -> None:
+def list_routes() -> None:  # noqa: C901
     """
     Parses files in app/api/routers to extract and log FastAPI route information.
     """
@@ -16,7 +16,7 @@ def list_routes() -> None:
                 continue
             logger.info("\n--- File: %s ---", file)
             path = os.path.join(routers_dir, file)
-            with open(path, 'r', encoding='utf-8') as f:
+            with open(path, encoding='utf-8') as f:
                 node = ast.parse(f.read())
 
             for body_node in node.body:

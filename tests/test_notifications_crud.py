@@ -82,7 +82,8 @@ async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict):
     await create_or_update_push_subscription(db, user_id, sub_in)
     await db.commit()
 
-    await delete_push_subscription(db, endpoint)
+    success = await delete_push_subscription(db, user_id, endpoint)
+    assert success is True
     await db.commit()
 
     # Try to find it

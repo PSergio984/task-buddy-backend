@@ -1,4 +1,6 @@
 import os
+
+os.environ["ENV_STATE"] = "test"
 import tempfile
 from collections.abc import AsyncGenerator, Generator
 from typing import Any

@@ -78,7 +78,7 @@ async def health_check():
     return {"status": "ok"}
 
 @app.get("/test-limit")
-@limiter.limit("5/minute")
+@limiter.limit("100/minute")
 async def test_limit(request: Request, response: Response):
     return {"message": "limit test"}
 

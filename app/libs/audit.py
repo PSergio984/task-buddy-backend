@@ -123,7 +123,7 @@ def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: 
             continue
 
         old_value = old_values.get(field)
-        
+
         # Robust comparison
         is_changed = False
         if isinstance(old_value, datetime) and isinstance(new_value, datetime):

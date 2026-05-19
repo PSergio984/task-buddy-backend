@@ -6,6 +6,21 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import (
+    RATE_LIMIT_SUBTASK_CREATE,
+    RATE_LIMIT_SUBTASK_DELETE,
+    RATE_LIMIT_SUBTASK_UPDATE,
+    RATE_LIMIT_TAG_ATTACH,
+    RATE_LIMIT_TAG_CREATE,
+    RATE_LIMIT_TAG_CREATE_ATTACH,
+    RATE_LIMIT_TAG_DELETE,
+    RATE_LIMIT_TAG_DETACH,
+    RATE_LIMIT_TAG_UPDATE,
+    RATE_LIMIT_TASK_CREATE,
+    RATE_LIMIT_TASK_DELETE,
+    RATE_LIMIT_TASK_GET,
+    RATE_LIMIT_TASK_UPDATE,
+)
 from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
@@ -96,7 +111,7 @@ async def _validate_tags_limit(db: AsyncSession, tags: list[str] | None, user_id
 
 
 @router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_tasks(
     request: Request,
     response: Response,
@@ -138,8 +153,11 @@ async def get_tasks(
     response_model=TaskCreateResponse,
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_task(
     task_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -153,7 +171,7 @@ async def get_task(
     return task
 
 @router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TASK_CREATE)
 async def create_task(
     task: TaskCreateRequest,
     request: Request,
@@ -202,7 +220,7 @@ async def create_task(
     "/{task_id}",
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_TASK_UPDATE)
 async def update_task(
     task_id: int,
     task_update: TaskUpdateRequest,
@@ -248,7 +266,7 @@ async def update_task(
 
 
 @router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TASK_DELETE)
 async def delete_task(
     task_id: int,
     request: Request,
@@ -274,8 +292,11 @@ async def delete_task(
     response_model=list[SubTaskCreateResponse],
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_subtasks_on_task_list(
     task_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -288,8 +309,11 @@ async def get_subtasks_on_task_list(
 @router.get(
     "/{task_id}/subtasks", response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}}
 )
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_task_with_subtasks(
     task_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -318,7 +342,7 @@ async def get_task_with_subtasks(
     status_code=201,
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_SUBTASK_CREATE)
 async def create_subtask(
     subtask: SubTaskCreateRequest,
     request: Request,
@@ -350,8 +374,11 @@ async def create_subtask(
     response_model=SubTaskCreateResponse,
     responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_subtask(
     subtask_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -371,7 +398,7 @@ async def get_subtask(
     response_model=SubTaskCreateResponse,
     responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": NO_FIELDS_TO_UPDATE}},
 )
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_SUBTASK_UPDATE)
 async def update_subtask(
     subtask_id: int,
     subtask_update: SubTaskUpdateRequest,
@@ -400,7 +427,7 @@ async def update_subtask(
 
 
 @router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_SUBTASK_DELETE)
 async def delete_subtask(
     subtask_id: int,
     request: Request,
@@ -422,9 +449,12 @@ async def delete_subtask(
 
 
 @router.post("/{task_id}/subtask/reorder", responses={404: {"description": TASK_NOT_FOUND}})
+@limiter.limit(RATE_LIMIT_SUBTASK_UPDATE)
 async def reorder_subtasks(
     task_id: int,
     ordered_ids: list[int],
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -444,7 +474,10 @@ async def reorder_subtasks(
 # --- Tag Endpoints ---
 
 @router.get("/tags/", response_model=list[TagResponse], responses={400: {"description": BAD_REQUEST}})
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_all_tags(
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -452,7 +485,7 @@ async def get_all_tags(
 
 
 @router.post("/tags/", response_model=TagResponse, status_code=201, responses={400: {"description": "Tag already exists or invalid request"}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TAG_CREATE)
 async def create_tag(
     tag: TagCreate,
     request: Request,
@@ -482,7 +515,7 @@ async def create_tag(
 
 
 @router.put("/tags/{tag_id}", response_model=TagResponse, responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TAG_UPDATE)
 async def update_tag(
     tag_id: int,
     tag_update: TagUpdate,
@@ -511,7 +544,7 @@ async def update_tag(
 
 
 @router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_TAG_DELETE)
 async def delete_tag(
     tag_id: int,
     request: Request,
@@ -534,8 +567,11 @@ async def delete_tag(
 
 
 @router.post("/tags/reorder")
+@limiter.limit(RATE_LIMIT_TAG_UPDATE)
 async def reorder_tags(
     ordered_ids: list[int],
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -546,7 +582,7 @@ async def reorder_tags(
 
 
 @router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_TAG_CREATE_ATTACH)
 async def create_and_attach_tag(
     task_id: int,
     tag_in: TagCreate,
@@ -612,8 +648,11 @@ async def create_and_attach_tag(
     response_model=list[TagResponse],
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_tags_on_task(
     task_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -625,7 +664,7 @@ async def get_tags_on_task(
 
 
 @router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_TAG_ATTACH)
 async def attach_tag_to_task(
     task_id: int,
     tag_id: int,
@@ -663,7 +702,7 @@ async def attach_tag_to_task(
 
 
 @router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_TAG_DETACH)
 async def detach_tag_from_task(
     task_id: int,
     tag_id: int,
@@ -682,4 +721,3 @@ async def detach_tag_from_task(
     await db.commit()
     await invalidate_task_cache(current_user.id, task_id)
     return {"message": "Tag detached successfully"}
-

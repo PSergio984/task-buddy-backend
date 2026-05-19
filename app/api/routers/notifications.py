@@ -1,9 +1,16 @@
+import logging
 from typing import Annotated, Optional
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import config
+from app.config import (
+    RATE_LIMIT_NOTIFICATION_LIST,
+    RATE_LIMIT_NOTIFICATION_READ,
+    RATE_LIMIT_NOTIFICATION_READ_ALL,
+    RATE_LIMIT_PUSH_SUBSCRIBE,
+    config,
+)
 from app.crud import notification as notification_crud
 from app.dependencies import get_db
 from app.limiter import limiter
@@ -19,9 +26,12 @@ router = APIRouter(
     prefix="/notifications",
     tags=["notifications"],
     responses={
+        400: {"description": "Bad request"},
         401: {"description": "Not authenticated"},
     },
 )
+
+logger = logging.getLogger(__name__)
 
 @router.get("/vapid-key")
 async def get_vapid_key():
@@ -31,7 +41,7 @@ async def get_vapid_key():
     return {"public_key": config.VAPID_PUBLIC_KEY}
 
 @router.get("/", response_model=list[NotificationRead])
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_NOTIFICATION_LIST)
 async def list_notifications(
     request: Request,
     response: Response,
@@ -49,7 +59,7 @@ async def list_notifications(
     )
 
 @router.patch("/{notification_id}/read", response_model=NotificationRead)
-@limiter.limit("30/minute")
+@limiter.limit(RATE_LIMIT_NOTIFICATION_READ)
 async def mark_as_read(
     notification_id: int,
     request: Request,
@@ -73,7 +83,7 @@ async def mark_as_read(
     return notification
 
 @router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT_NOTIFICATION_READ_ALL)
 async def mark_all_as_read(
     request: Request,
     response: Response,
@@ -87,7 +97,7 @@ async def mark_all_as_read(
     await db.commit()
 
 @router.post("/push-subscription", response_model=PushSubscriptionRead)
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT_PUSH_SUBSCRIBE)
 async def register_push_subscription(
     subscription: PushSubscriptionCreate,
     request: Request,
@@ -104,3 +114,25 @@ async def register_push_subscription(
     await db.commit()
     await db.refresh(db_subscription)
     return db_subscription
+
+@router.delete("/push-subscription", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(RATE_LIMIT_PUSH_SUBSCRIBE)
+async def delete_push_subscription(
+    endpoint: Annotated[str, Query()],
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+):
+    """
+    Delete a push subscription by endpoint.
+    """
+    success = await notification_crud.delete_push_subscription(
+        db, user_id=current_user.id, endpoint=endpoint
+    )
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Subscription not found",
+        )
+    await db.commit()

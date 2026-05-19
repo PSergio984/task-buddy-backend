@@ -66,3 +66,55 @@ async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: s
     )
     assert response.status_code == 200
     assert response.json() == []
+
+
+async def test_audit_log_date_and_action_filtering(async_client: AsyncClient, logged_in_token: str):
+    from datetime import datetime, timedelta
+
+    # 1. Create a task to generate a create log
+    await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "Audit Date Filter Task"},
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+
+    now = datetime.utcnow()
+    start_date = (now - timedelta(minutes=5)).isoformat()
+    end_date = (now + timedelta(minutes=5)).isoformat()
+    future_date = (now + timedelta(days=1)).isoformat()
+    past_date = (now - timedelta(days=1)).isoformat()
+
+    # Query with date range containing now should return logs
+    response = await async_client.get(
+        f"/api/v1/audit/logs?start_date={start_date}&end_date={end_date}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 200
+    logs = response.json()
+    assert len(logs) > 0
+
+    # Query with date range in future should return empty list
+    response = await async_client.get(
+        f"/api/v1/audit/logs?start_date={future_date}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+
+    # Query with date range in past should return empty list
+    response = await async_client.get(
+        f"/api/v1/audit/logs?end_date={past_date}",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 200
+    assert len(response.json()) == 0
+
+    # Query with action filter
+    response = await async_client.get(
+        "/api/v1/audit/logs?action=create",
+        headers={"Authorization": f"Bearer {logged_in_token}"}
+    )
+    assert response.status_code == 200
+    logs = response.json()
+    assert len(logs) > 0
+    assert all(log["action"] == "create" for log in logs)

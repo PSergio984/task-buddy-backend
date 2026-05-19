@@ -24,6 +24,13 @@ from app.config import (
     COOKIE_SAMESITE,
     COOKIE_SECURE,
     FRONTEND_URL,
+    RATE_LIMIT_AUTH_FORGOT_PASSWORD,
+    RATE_LIMIT_AUTH_LOGIN,
+    RATE_LIMIT_AUTH_REGISTER,
+    RATE_LIMIT_AUTH_RESEND,
+    RATE_LIMIT_AUTH_RESET_PASSWORD,
+    RATE_LIMIT_USER_UPDATE_PASSWORD,
+    RATE_LIMIT_USER_UPDATE_USERNAME,
     SECRET_KEY,
 )
 from app.crud import user as user_crud
@@ -76,7 +83,7 @@ router = APIRouter(
 @router.post(
     REGISTER_PATH, status_code=201, responses={400: {"description": EMAIL_ALREADY_REGISTERED}}
 )
-@limiter.limit("3/minute")
+@limiter.limit(RATE_LIMIT_AUTH_REGISTER)
 async def register_user(
     user: UserCreateRequest,
     background_tasks: BackgroundTasks,
@@ -124,7 +131,7 @@ async def register_user(
 
 
 @router.post("/resend-confirmation", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Email already confirmed or invalid request"}})
-@limiter.limit("3/minute")
+@limiter.limit(RATE_LIMIT_AUTH_RESEND)
 async def resend_confirmation(
     background_tasks: BackgroundTasks,
     email: Annotated[str, Body(embed=True)],
@@ -151,7 +158,7 @@ async def resend_confirmation(
 
 
 @router.post(TOKEN_PATH, responses={401: {"description": AUTH_CREDENTIALS_ERROR}})
-@limiter.limit("5/minute")
+@limiter.limit(RATE_LIMIT_AUTH_LOGIN)
 @audit_log(action=AuditAction.LOGIN, target_type="USER", commit=True)
 async def login(
     response: Response,
@@ -293,7 +300,7 @@ async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_us
 
 
 @router.patch("/me/username", responses={400: {"description": "Invalid username or already taken"}})
-@limiter.limit("5/minute")
+@limiter.limit(RATE_LIMIT_USER_UPDATE_USERNAME)
 async def update_username(
     username_data: UsernameUpdate,
     request: Request,
@@ -331,7 +338,7 @@ async def update_username(
 
 
 @router.patch("/me/password", responses={400: {"description": "Incorrect current password or weak new password"}})
-@limiter.limit("5/minute")
+@limiter.limit(RATE_LIMIT_USER_UPDATE_PASSWORD)
 async def update_password(
     password_data: PasswordUpdate,
     request: Request,
@@ -413,7 +420,7 @@ async def logout(
 
 
 @router.post("/forgot-password")
-@limiter.limit("3/minute")
+@limiter.limit(RATE_LIMIT_AUTH_FORGOT_PASSWORD)
 async def forgot_password(
     forgot_password_data: ForgotPasswordRequest,
     background_tasks: BackgroundTasks,
@@ -451,7 +458,7 @@ async def reset_password_page(token: str):
 
 
 @router.post("/reset-password", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
-@limiter.limit("3/minute")
+@limiter.limit(RATE_LIMIT_AUTH_RESET_PASSWORD)
 async def reset_password(
     reset_password_data: ResetPasswordRequest,
     background_tasks: BackgroundTasks,

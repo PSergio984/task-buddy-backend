@@ -1,3 +1,4 @@
+from datetime import datetime
 from typing import Optional
 
 from sqlalchemy import select
@@ -5,6 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.audit import AuditLog
 from app.schemas.enums import AuditAction
+
+TARGET_TYPE_TASK = "TASK"
 
 
 async def create_audit_log(
@@ -34,12 +37,21 @@ async def get_audit_logs(
     offset: int = 0,
     action: Optional[str] = None,
     target_type: Optional[str] = None,
-    ) -> list[AuditLog]:
+    task_id: Optional[int] = None,
+    start_date: Optional[datetime] = None,
+    end_date: Optional[datetime] = None,
+) -> list[AuditLog]:
     query = select(AuditLog).where(AuditLog.user_id == user_id)
     if action:
         query = query.where(AuditLog.action == action)
     if target_type:
         query = query.where(AuditLog.target_type == target_type)
+    if task_id is not None:
+        query = query.where(AuditLog.target_id == task_id).where(AuditLog.target_type == "TASK")
+    if start_date:
+        query = query.where(AuditLog.created_at >= start_date)
+    if end_date:
+        query = query.where(AuditLog.created_at <= end_date)
 
     query = query.order_by(AuditLog.created_at.desc()).limit(limit).offset(offset)
     result = await db.execute(query)

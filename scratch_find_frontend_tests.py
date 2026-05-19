@@ -14,7 +14,7 @@ for root, _, files in os.walk(frontend_dir):
             filepath = os.path.join(root, file)
             rel = os.path.relpath(filepath, frontend_dir).replace("\\", "/")
             try:
-                with open(filepath, "r", encoding="utf-8") as f:
+                with open(filepath, encoding="utf-8") as f:
                     content = f.read()
                 matches = test_pattern.findall(content)
                 if matches:

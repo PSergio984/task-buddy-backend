@@ -5,6 +5,12 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import (
+    RATE_LIMIT_PROJECT_CREATE,
+    RATE_LIMIT_PROJECT_DELETE,
+    RATE_LIMIT_PROJECT_UPDATE,
+    RATE_LIMIT_TASK_GET,
+)
 from app.crud import project as project_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
@@ -30,7 +36,10 @@ router = APIRouter(
 )
 
 @router.get("/", response_model=list[ProjectResponse])
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def list_projects(
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
@@ -48,7 +57,7 @@ async def list_projects(
     return projects
 
 @router.post("/", response_model=ProjectResponse, status_code=201)
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT_PROJECT_CREATE)
 async def create_project(
     project_in: ProjectCreateRequest,
     request: Request,
@@ -83,8 +92,11 @@ async def create_project(
     return db_project
 
 @router.get("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}})
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_project(
     project_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -98,8 +110,11 @@ async def get_project(
     return db_project
 
 @router.get("/{project_id}/tasks", response_model=list[TaskCreateResponse], responses={404: {"description": PROJECT_NOT_FOUND}})
+@limiter.limit(RATE_LIMIT_TASK_GET)
 async def list_project_tasks(
     project_id: int,
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):
@@ -114,7 +129,7 @@ async def list_project_tasks(
     return tasks
 
 @router.put("/{project_id}", response_model=ProjectResponse, responses={404: {"description": PROJECT_NOT_FOUND}, 400: {"description": NO_FIELDS_TO_UPDATE}})
-@limiter.limit("20/minute")
+@limiter.limit(RATE_LIMIT_PROJECT_UPDATE)
 async def update_project(
     project_id: int,
     project_update: ProjectUpdateRequest,
@@ -150,7 +165,7 @@ async def update_project(
     return db_project
 
 @router.delete("/{project_id}", responses={404: {"description": PROJECT_NOT_FOUND}})
-@limiter.limit("10/minute")
+@limiter.limit(RATE_LIMIT_PROJECT_DELETE)
 async def delete_project(
     project_id: int,
     request: Request,
@@ -180,8 +195,11 @@ async def delete_project(
     return {"message": "Project deleted successfully"}
 
 @router.post("/reorder")
+@limiter.limit(RATE_LIMIT_PROJECT_UPDATE)
 async def reorder_projects(
     ordered_ids: list[int],
+    request: Request,
+    response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ):

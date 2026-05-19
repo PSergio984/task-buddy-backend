@@ -62,9 +62,11 @@ async def test_mark_as_read(db: AsyncSession, confirmed_user: dict):
         type=NotificationType.REMINDER_DUE
     )
     notification = await create_notification(db, notification_in)
+    await db.commit()
     assert notification.is_read is False
 
     updated = await mark_notification_as_read(db, notification.id, user_id)
+    assert updated is not None
     assert updated.is_read is True
 
 @pytest.mark.asyncio
@@ -106,7 +108,8 @@ async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict):
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is not None
 
-    await delete_push_subscription(db, endpoint)
+    success = await delete_push_subscription(db, user_id, endpoint)
+    assert success is True
 
     # Verify gone
     res = await db.execute(stmt)

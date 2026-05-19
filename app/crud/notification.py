@@ -1,6 +1,7 @@
 from typing import Optional
 
 from sqlalchemy import delete, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification, PushSubscription
@@ -90,10 +91,14 @@ async def create_or_update_push_subscription(
     return db_subscription
 
 
-async def delete_push_subscription(db: AsyncSession, endpoint: str) -> None:
+async def delete_push_subscription(db: AsyncSession, user_id: int, endpoint: str) -> bool:
     """
     Remove an invalid subscription (needed for 410 Gone handling later).
     """
-    stmt = delete(PushSubscription).where(PushSubscription.endpoint == endpoint)
-    await db.execute(stmt)
+    stmt = delete(PushSubscription).where(
+        PushSubscription.endpoint == endpoint,
+        PushSubscription.user_id == user_id
+    )
+    result: CursorResult = await db.execute(stmt)  # type: ignore[assignment]
     await db.flush()
+    return result.rowcount > 0

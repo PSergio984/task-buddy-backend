@@ -76,8 +76,13 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         return await self._execute_idempotent_request(request, call_next, user_id, idempotency_key)
 
     def _should_apply_idempotency(self, request: Request) -> bool:
-        """Determines if the request should be subject to idempotency checks."""
-        if request.method not in ["POST", "PUT", "PATCH", "DELETE"]:
+        """Determines if the request should be subject to idempotency checks.
+
+        Only POST requests are cached — PUT/PATCH/DELETE are excluded because
+        the same URL+body can represent different legitimate state transitions
+        (e.g. toggling a task's completed flag back and forth).
+        """
+        if request.method != "POST":
             return False
 
         path = request.url.path.rstrip("/")
