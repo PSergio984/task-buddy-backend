@@ -35,6 +35,15 @@ class GlobalConfig(BaseConfig):
     DATABASE_URL: Optional[str] = os.environ.get("DATABASE_URL")
     REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     SECRET_KEY: Optional[str] = os.environ.get("SECRET_KEY")
+    SUPABASE_SIGNING_KEY_FILE: str = "supabase_signing_key.json"
+    SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS: int = 300
+
+    @field_validator("SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS")
+    @classmethod
+    def validate_realtime_token_expire(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS must be >= 1")
+        return v
     DB_FORCE_ROLL_BACK: bool = False
     ALLOWED_ORIGINS: Union[list[str], str] = [
         "http://localhost:3000",
@@ -95,6 +104,7 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_NOTIFICATION_READ: str = "60/minute"
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
+    RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -245,6 +255,7 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_NOTIFICATION_READ: str = "60/minute"
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
+    RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
 
     model_config = SettingsConfigDict(env_prefix="TEST_", env_file=".env", extra="ignore")
 

@@ -102,6 +102,7 @@ else:
         "max_overflow": config.DB_MAX_OVERFLOW,
         "pool_timeout": config.DB_POOL_TIMEOUT,
         "pool_recycle": config.DB_POOL_RECYCLE,
+        "pool_pre_ping": True,
     })
 
 # Create the async engine

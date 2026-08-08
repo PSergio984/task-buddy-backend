@@ -12,6 +12,7 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routers import audit, notifications, project, realtime, stats, task, user
 from app.config import DevConfig, config
+from app.libs.supabase_signing import SigningKeyCache
 from app.limiter import limiter
 from app.logging_conf import configure_logging
 from app.middleware.idempotency import IdempotencyMiddleware
@@ -33,6 +34,7 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
+app.state.signing_key_cache = SigningKeyCache()
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
