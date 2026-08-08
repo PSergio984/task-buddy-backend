@@ -1,19 +1,24 @@
+"""Tests for the /api/v1/notifications endpoints."""
+
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import NotificationType
 
 
-@pytest.mark.asyncio
-async def test_notifications_list_unauthorized(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_notifications_list_unauthorized(async_client: AsyncClient) -> None:
     """
     Test that listing notifications requires authentication.
     """
     response = await async_client.get("/api/v1/notifications/")
     assert response.status_code == 401
 
-@pytest.mark.asyncio
-async def test_push_subscription_unauthorized(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_push_subscription_unauthorized(async_client: AsyncClient) -> None:
     """
     Test that registering a push subscription requires authentication.
     """
@@ -27,16 +32,16 @@ async def test_push_subscription_unauthorized(async_client: AsyncClient):
     )
     assert response.status_code == 401
 
-@pytest.mark.asyncio
-async def test_mark_as_read_unauthorized(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_mark_as_read_unauthorized(async_client: AsyncClient) -> None:
     """
     Test that marking a notification as read requires authentication.
     """
     response = await async_client.patch("/api/v1/notifications/1/read")
     assert response.status_code == 401
 
-@pytest.mark.asyncio
-async def test_notifications_list_authorized(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_notifications_list_authorized(authenticated_async_client: AsyncClient) -> None:
     """
     Test that authenticated user can list notifications.
     """
@@ -44,8 +49,8 @@ async def test_notifications_list_authorized(authenticated_async_client: AsyncCl
     assert response.status_code == 200
     assert isinstance(response.json(), list)
 
-@pytest.mark.asyncio
-async def test_push_subscription_authorized(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_push_subscription_authorized(authenticated_async_client: AsyncClient) -> None:
     """
     Test that authenticated user can register push subscription.
     """
@@ -62,8 +67,10 @@ async def test_push_subscription_authorized(authenticated_async_client: AsyncCli
     assert data["endpoint"] == "https://example.com/push/123"
     assert "id" in data
 
-@pytest.mark.asyncio
-async def test_notifications_filtering(authenticated_async_client: AsyncClient, db, confirmed_user):
+@pytest.mark.anyio
+async def test_notifications_filtering(
+    authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
     """
     Test filtering notifications by is_read status.
     """
@@ -95,8 +102,10 @@ async def test_notifications_filtering(authenticated_async_client: AsyncClient, 
     assert len(data) == 1
     assert data[0]["title"] == "Read"
 
-@pytest.mark.asyncio
-async def test_mark_as_read_success(authenticated_async_client: AsyncClient, db, confirmed_user):
+@pytest.mark.anyio
+async def test_mark_as_read_success(
+    authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
     """
     Test successfully marking a notification as read.
     """
@@ -113,8 +122,10 @@ async def test_mark_as_read_success(authenticated_async_client: AsyncClient, db,
     assert response.status_code == 200
     assert response.json()["is_read"] is True
 
-@pytest.mark.asyncio
-async def test_mark_as_read_not_found_or_not_owned(authenticated_async_client: AsyncClient, db, confirmed_user):
+@pytest.mark.anyio
+async def test_mark_as_read_not_found_or_not_owned(
+    authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
     """
     Test that marking a non-existent or someone else's notification as read returns 404.
     """

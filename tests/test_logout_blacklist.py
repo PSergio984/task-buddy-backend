@@ -1,3 +1,7 @@
+"""Tests for logout token blacklisting."""
+
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 
@@ -5,7 +9,7 @@ from app.security import is_token_blacklisted
 
 
 @pytest.fixture(autouse=True)
-def mock_redis_security(mocker):
+def mock_redis_security(mocker: Any) -> None:
     """Override the global autouse fixture with a stateful mock Redis client."""
     blacklist = set()
 
@@ -25,8 +29,11 @@ def mock_redis_security(mocker):
 
 
 
-@pytest.mark.asyncio
-async def test_logout_blacklists_token(async_client: AsyncClient, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_logout_blacklists_token(
+    async_client: AsyncClient, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify logout blacklists the token and subsequent requests are rejected."""
     # 1. Login to get a token
     login_response = await async_client.post(
         "/api/v1/users/token",

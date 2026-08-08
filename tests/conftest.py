@@ -1,9 +1,12 @@
+"""Shared fixtures and test environment setup for the test suite."""
+
+import asyncio
 import os
 
 os.environ["ENV_STATE"] = "test"
 import tempfile
 from collections.abc import AsyncGenerator, Generator
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -36,18 +39,21 @@ test_engine = create_async_engine(
 
 # Cleanup the temp file after the session
 @pytest.fixture(scope="session", autouse=True)
-def cleanup_temp_db():
+def cleanup_temp_db() -> Generator:
     yield
     try:
-        if os.path.exists(_db_path):
-            os.remove(_db_path)
+        asyncio.run(test_engine.dispose())
+    except RuntimeError:
+        pass
+    try:
+        os.remove(_db_path)
     except PermissionError:
         # On Windows, the file may still be locked by the engine disposal process
         pass
 
 # Enable SQLite foreign key enforcement
 @event.listens_for(test_engine.sync_engine, "connect")
-def set_sqlite_pragma(dbapi_connection, connection_record):
+def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
     cursor = dbapi_connection.cursor()
     cursor.execute("PRAGMA foreign_keys=ON")
     cursor.execute("PRAGMA journal_mode=WAL")
@@ -80,7 +86,7 @@ app.state.limiter.enabled = False
 
 # Mock Redis for security blacklist checks
 @pytest.fixture(autouse=True)
-def mock_redis_security(mocker):
+def mock_redis_security(mocker: Any) -> Any:
     mocker.patch("app.security.is_token_blacklisted", return_value=False)
     mocker.patch("app.security.blacklist_token", return_value=None)
 
@@ -133,7 +139,7 @@ async def async_client() -> AsyncGenerator:
         yield ac
 
 @pytest.fixture()
-async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
+async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict[str, Any]:
     user_data: dict[str, Any] = {
         "username": "testuser",
         "email": "testuser@example.com",
@@ -150,7 +156,7 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict:
     return user_data
 
 @pytest.fixture()
-async def confirmed_user(db: AsyncSession, registered_user: dict) -> dict:
+async def confirmed_user(db: AsyncSession, registered_user: dict[str, Any]) -> dict[str, Any]:
     stmt = (
         update(User).where(User.email == registered_user["email"]).values(confirmed=True)
     )
@@ -166,12 +172,12 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
     )
     assert response.status_code == 200, f"Login failed: {response.text}"
     payload = response.json()
-    token = payload.get("access_token")
+    token = cast(str, payload.get("access_token"))
     assert token, "Login response missing access_token"
     return token
 
 @pytest.fixture(autouse=True)
-def mock_httpx_client(mocker):
+def mock_httpx_client(mocker: Any) -> Any:
     """Mock httpx.AsyncClient to prevent real HTTP requests during tests."""
     mocked_client = mocker.patch("app.tasks.httpx.AsyncClient")
     mocked_smtp = mocker.patch("app.tasks.smtplib.SMTP")
@@ -179,7 +185,7 @@ def mock_httpx_client(mocker):
     mocker.patch("app.tasks.config.MAIL_FROM_NAME", "Task Buddy")
     mocker.patch("app.tasks.config.MAIL_SMTP_HOST", "smtp-relay.brevo.com")
     mocker.patch("app.tasks.config.MAIL_SMTP_PORT", 587)
-    mocker.patch("app.tasks.config.MAIL_SMTP_USERNAME", "9d9828001@smtp-brevo.com")
+    mocker.patch("app.tasks.config.MAIL_SMTP_USERNAME", "test-user@smtp-brevo.com")
     mocker.patch("app.tasks.config.MAIL_SMTP_PASSWORD", "test-smtp-password")
     mocker.patch("app.tasks.config.MAIL_SMTP_USE_TLS", True)
 
@@ -200,7 +206,7 @@ def mock_httpx_client(mocker):
     return mocked_async_client
 
 @pytest.fixture(autouse=True)
-def mock_celery_tasks(mocker):
+def mock_celery_tasks(mocker: Any) -> bool:
     """Mock all celery tasks' delay method to prevent hanging in tests."""
     mocker.patch("app.tasks.send_confirmation_email.delay")
     mocker.patch("app.tasks.send_password_reset_email.delay")

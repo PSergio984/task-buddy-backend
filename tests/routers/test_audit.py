@@ -1,7 +1,12 @@
+"""Tests for the /api/v1/audit logs endpoints."""
+
+import pytest
 from httpx import AsyncClient
 
 
-async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify audit logs are returned for a logged-in user."""
     response = await async_client.get(
         "/api/v1/audit/logs",
         headers={"Authorization": f"Bearer {logged_in_token}"}
@@ -13,7 +18,11 @@ async def test_get_audit_logs_empty(async_client: AsyncClient, logged_in_token: 
     assert any(log["action"] == "login" for log in logs)
 
 
-async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_log_after_task_creation(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify a create log is recorded when a task is created."""
     # 1. Create a task
     task_data = {"title": "Test Task", "description": "Testing audit logs"}
     create_response = await async_client.post(
@@ -44,7 +53,9 @@ async def test_audit_log_after_task_creation(async_client: AsyncClient, logged_i
     assert "Test Task" in task_log.get("details", "")
 
 
-async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify audit logs support limit and action filters."""
     # Create multiple tasks
     for i in range(3):
         await async_client.post(
@@ -68,7 +79,11 @@ async def test_audit_log_filtering(async_client: AsyncClient, logged_in_token: s
     assert response.json() == []
 
 
-async def test_audit_log_date_and_action_filtering(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_log_date_and_action_filtering(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify audit logs support date-range and action filters."""
     from datetime import datetime, timedelta
 
     # 1. Create a task to generate a create log

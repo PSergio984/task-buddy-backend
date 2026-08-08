@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 
 
 class NotificationType(str, enum.Enum):
+    """Type of notification delivered to a user."""
+
     REMINDER_BEFORE = "REMINDER_BEFORE"
     REMINDER_DUE = "REMINDER_DUE"
     REMINDER_OVERDUE = "REMINDER_OVERDUE"
@@ -23,10 +25,14 @@ class NotificationType(str, enum.Enum):
 
 
 class Notification(Base):
+    """In-app notification shown to a user."""
+
     __tablename__ = "tbl_notifications"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    )
     task_id: Mapped[int | None] = mapped_column(
         ForeignKey("tbl_tasks.id", ondelete="SET NULL"), nullable=True
     )
@@ -48,10 +54,14 @@ class Notification(Base):
 
 
 class PushSubscription(Base):
+    """Web push subscription registered by a user's browser."""
+
     __tablename__ = "tbl_push_subscriptions"
 
     id: Mapped[int] = mapped_column(primary_key=True)
-    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
+    )
     endpoint: Mapped[str] = mapped_column(String, unique=True, nullable=False)
     p256dh: Mapped[str] = mapped_column(String, nullable=False)
     auth: Mapped[str] = mapped_column(String, nullable=False)
@@ -61,4 +71,7 @@ class PushSubscription(Base):
     user: Mapped[User] = relationship(back_populates="push_subscriptions")
 
     def __repr__(self) -> str:
-        return f"<PushSubscription(id={self.id}, user_id={self.user_id}, endpoint={self.endpoint[:20]}...)>"
+        return (
+            f"<PushSubscription(id={self.id}, user_id={self.user_id}, "
+            f"endpoint={self.endpoint[:20]}...)>"
+        )

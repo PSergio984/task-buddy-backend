@@ -24,6 +24,10 @@ COPY scripts/ scripts/
 # Ensure start script is executable
 RUN chmod +x start.sh
 
+# Run as an unprivileged user
+RUN useradd --create-home --shell /usr/sbin/nologin appuser \
+    && chown -R appuser:appuser /app
+USER appuser
+
 # Run
 CMD ["./start.sh"]
-

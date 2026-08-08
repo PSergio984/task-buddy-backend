@@ -1,9 +1,13 @@
+"""Tests for background notification task behavior."""
+
 from datetime import datetime, timezone
+from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 from pywebpush import WebPushException
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification, PushSubscription
 from app.models.task import Task
@@ -14,8 +18,11 @@ from app.tasks import (
 )
 
 
-@pytest.mark.asyncio
-async def test_send_push_notification_success(db, confirmed_user, mocker):
+@pytest.mark.anyio
+async def test_send_push_notification_success(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """Verify a push notification is sent for an existing subscription."""
     user_id = confirmed_user["id"]
     # Create a subscription
     sub = PushSubscription(
@@ -39,8 +46,11 @@ async def test_send_push_notification_success(db, confirmed_user, mocker):
     assert "Title" in kwargs["data"]
     assert "Message" in kwargs["data"]
 
-@pytest.mark.asyncio
-async def test_send_push_notification_410_gone(db, confirmed_user, mocker):
+@pytest.mark.anyio
+async def test_send_push_notification_410_gone(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """Verify a 410 response deletes the expired push subscription."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/expired"
     sub = PushSubscription(
@@ -65,8 +75,11 @@ async def test_send_push_notification_410_gone(db, confirmed_user, mocker):
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is None
 
-@pytest.mark.asyncio
-async def test_process_reminders_triggers_channels(db, confirmed_user, mocker):
+@pytest.mark.anyio
+async def test_process_reminders_triggers_channels(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """Verify reminder processing triggers push and email channels."""
     user_id = confirmed_user["id"]
     now = datetime.now(timezone.utc)
 
@@ -96,8 +109,9 @@ async def test_process_reminders_triggers_channels(db, confirmed_user, mocker):
     notifications = (await db.execute(stmt)).scalars().all()
     assert len(notifications) == 1
 
-@pytest.mark.asyncio
-async def test_send_confirmation_email_calls_brevo(mocker):
+@pytest.mark.anyio
+async def test_send_confirmation_email_calls_brevo(mocker: Any) -> None:
+    """Verify the confirmation email is sent via Brevo."""
     mock_brevo = mocker.patch("app.tasks.send_brevo_email", return_value=MagicMock())
 
     await _send_confirmation_email_async("test@example.com", "Subject", "Body")

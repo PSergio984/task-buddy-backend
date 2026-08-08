@@ -18,6 +18,8 @@ if TYPE_CHECKING:
 
 
 class TaskPriority(str, enum.Enum):
+    """Priority level of a task."""
+
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
@@ -34,6 +36,8 @@ task_tags = Table(
 
 
 class Task(AsyncAttrs, Base):
+    """Top-level to-do item owned by a user."""
+
     __tablename__ = "tbl_tasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -64,6 +68,8 @@ class Task(AsyncAttrs, Base):
 
 
 class SubTask(Base):
+    """Sub-task nested underneath a parent task."""
+
     __tablename__ = "tbl_subtasks"
 
     id: Mapped[int] = mapped_column(primary_key=True)

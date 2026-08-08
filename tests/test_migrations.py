@@ -1,9 +1,11 @@
+"""Tests for alembic migration up/down against a clean database."""
+
 import os
 import subprocess
 import sys
 
 
-def test_alembic_migrations():
+def test_alembic_migrations() -> None:
     """
     Test that alembic migration can run against a clean database successfully.
     """

@@ -1,4 +1,7 @@
+"""Tests for authentication token and password security helpers."""
+
 import datetime
+from typing import Any
 
 import pytest
 from jose import jwt
@@ -90,52 +93,76 @@ def test_create_confirmation_token():
     ).items()
 
 
-async def test_get_user(db: AsyncSession, registered_user: dict):
+@pytest.mark.anyio
+async def test_get_user(db: AsyncSession, registered_user: dict[str, Any]) -> None:
+    """Verify a user can be fetched by email."""
     user = await get_user_by_email(db, registered_user["email"])
     assert user is not None
     assert user.email == registered_user["email"]
 
 
-async def test_get_user_not_found(db: AsyncSession):
+@pytest.mark.anyio
+async def test_get_user_not_found(db: AsyncSession) -> None:
+    """Verify fetching an unknown email returns None."""
     user = await get_user_by_email(db, "nonexistent@example.com")
     assert user is None
 
 
-async def test_authenticate_user(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_authenticate_user(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
+    """Verify valid credentials authenticate successfully."""
     user = await security.authenticate_user(db, confirmed_user["email"], confirmed_user["password"])
     assert user is not None
     assert user.email == confirmed_user["email"]
 
 
-async def test_authenticate_user_not_found(db: AsyncSession):
+@pytest.mark.anyio
+async def test_authenticate_user_not_found(db: AsyncSession) -> None:
+    """Verify authenticating an unknown user raises HTTPException."""
     with pytest.raises(security.HTTPException):
         await security.authenticate_user(db, "nonexistent@example.com", "wrong_password")
 
 
-async def test_authenticate_user_wrong_password(db: AsyncSession, registered_user: dict):
+@pytest.mark.anyio
+async def test_authenticate_user_wrong_password(
+    db: AsyncSession, registered_user: dict[str, Any]
+) -> None:
+    """Verify authenticating with a wrong password raises HTTPException."""
     with pytest.raises(security.HTTPException):
         await security.authenticate_user(db, registered_user["email"], "wrong_password")
 
 
-async def test_get_current_user(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_get_current_user(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
+    """Verify a valid access token resolves the current user."""
     token = security.create_access_token(confirmed_user["id"])
     user = await security.get_current_user(token, db)
     assert user is not None
     assert user.email == confirmed_user["email"]
 
 
-async def test_get_current_user_invalid_token(db: AsyncSession):
+@pytest.mark.anyio
+async def test_get_current_user_invalid_token(db: AsyncSession) -> None:
+    """Verify an invalid token raises HTTPException."""
     with pytest.raises(security.HTTPException):
         await security.get_current_user("invalid_token", db)
 
 
-async def test_get_current_user_wrong_type_token(db: AsyncSession, registered_user: dict):
+@pytest.mark.anyio
+async def test_get_current_user_wrong_type_token(
+    db: AsyncSession, registered_user: dict[str, Any]
+) -> None:
+    """Verify a confirm token is rejected by get_current_user."""
     token = security.create_confirm_token(registered_user["id"])
     with pytest.raises(security.HTTPException):
         await security.get_current_user(token, db)
 
 
-async def test_authenticate_user_lazy_migration(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_authenticate_user_lazy_migration(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify legacy pbkdf2 hashes are re-hashed to Argon2 on login."""
     # Manually set a legacy pbkdf2_sha256 hash for the user
     legacy_ctx = CryptContext(schemes=["pbkdf2_sha256"])
     legacy_hash = legacy_ctx.hash(confirmed_user["password"])

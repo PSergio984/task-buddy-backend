@@ -1,3 +1,7 @@
+"""Tests for notification CRUD operations via the notification service."""
+
+from typing import Any
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -14,7 +18,10 @@ from app.schemas.notification import NotificationCreate, PushSubscriptionCreate
 
 
 @pytest.mark.anyio
-async def test_create_and_get_notification(db: AsyncSession, confirmed_user: dict):
+async def test_create_and_get_notification(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a notification can be created and listed."""
     user_id = confirmed_user["id"]
     noti_in = NotificationCreate(
         user_id=user_id,
@@ -33,7 +40,10 @@ async def test_create_and_get_notification(db: AsyncSession, confirmed_user: dic
 
 
 @pytest.mark.anyio
-async def test_mark_as_read(db: AsyncSession, confirmed_user: dict):
+async def test_mark_as_read(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a notification can be marked as read and filtered."""
     user_id = confirmed_user["id"]
     noti_in = NotificationCreate(
         user_id=user_id, title="Test Noti", message="Test Message", type=NotificationType.SYSTEM
@@ -52,7 +62,10 @@ async def test_mark_as_read(db: AsyncSession, confirmed_user: dict):
 
 
 @pytest.mark.anyio
-async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict):
+async def test_push_subscription_upsert(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a push subscription is created and updated in place."""
     user_id = confirmed_user["id"]
     sub_in = PushSubscriptionCreate(
         endpoint="https://example.com/endpoint", p256dh="p256dh", auth="auth"
@@ -75,7 +88,10 @@ async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict):
 
 
 @pytest.mark.anyio
-async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict):
+async def test_delete_push_subscription(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a push subscription can be deleted."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/endpoint"
     sub_in = PushSubscriptionCreate(endpoint=endpoint, p256dh="p256dh", auth="auth")

@@ -1,3 +1,6 @@
+"""API endpoints for user statistics."""
+
+import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, Request, Response
@@ -20,6 +23,9 @@ router = APIRouter(
     },
 )
 
+logger = logging.getLogger(__name__)
+
+
 @router.get("/overview", response_model=SystemOverview)
 @limiter.limit(RATE_LIMIT_STATS_OVERVIEW)
 async def get_system_overview(
@@ -27,8 +33,9 @@ async def get_system_overview(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> SystemOverview:
     """
     Retrieve a summary of tasks and tag distribution for the current user.
     """
+    logger.info("%s %s - get_system_overview", request.method, request.url.path)
     return await stats_crud.get_system_overview(db, user_id=current_user.id)

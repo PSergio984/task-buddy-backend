@@ -12,6 +12,7 @@ from datetime import datetime, timedelta, timezone
 from dotenv import load_dotenv
 from passlib.context import CryptContext
 from sqlalchemy import create_engine, text
+from sqlalchemy.engine import Connection
 from sqlalchemy.exc import IntegrityError
 
 # Load .env if it exists
@@ -58,16 +59,35 @@ if not DATABASE_URL:
 CONN_STR = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
 
-def _get_or_create_demo_user(conn):
-    """Returns user_id of the demo user, creating it if missing."""
+SEED_DOMAINS = {"example.com", "test.dev"}
+
+DEFAULT_SEED_EMAIL = "demo@example.com"
+
+
+def _validate_seed_email(email: str) -> str:
+    """Validate SEED_EMAIL, failing closed on malformed values."""
+    local, _, domain = email.partition("@")
+    if not local or not domain or "." not in domain:
+        raise SystemExit(f"Invalid SEED_EMAIL: expected user@domain, got {email!r}")
+    return email
+
+
+def _is_seed_domain(email: str) -> bool:
+    domain = email.partition("@")[2].lower()
+    return domain in SEED_DOMAINS or domain.endswith(".local")
+
+
+def _get_or_create_demo_user(conn: Connection, email: str) -> int:
+    """Returns user_id of the seed target account, creating it if missing."""
     res = conn.execute(
-        text("SELECT id FROM tbl_users WHERE email = :email"), {"email": "demo@example.com"}
+        text("SELECT id FROM tbl_users WHERE email = :email"), {"email": email}
     )
     row = res.mappings().fetchone()
 
     if not row:
-        logger.info("Creating demo user...")
-        hashed = pwd_context.hash("password123")
+        logger.info("Creating seed user %s...", email)
+        password = os.environ.get("SEED_PASSWORD", "password123")
+        hashed = pwd_context.hash(password)
         res = conn.execute(
             text("""
             INSERT INTO tbl_users (username, email, password, confirmed)
@@ -75,8 +95,8 @@ def _get_or_create_demo_user(conn):
             RETURNING id
             """),
             {
-                "username": "demouser",
-                "email": "demo@example.com",
+                "username": email.partition("@")[0],
+                "email": email,
                 "password": hashed,
                 "confirmed": True,
             },
@@ -87,12 +107,12 @@ def _get_or_create_demo_user(conn):
         return row2["id"]
 
     user_id = row["id"]
-    logger.info(f"Demo user found (ID: {user_id}). Purging existing seed data...")
+    logger.info("Seed target %s found (ID: %s). Purging existing seed data...", email, user_id)
     _clear_user_data(conn, user_id)
     return user_id
 
 
-def _clear_user_data(conn, user_id):
+def _clear_user_data(conn: Connection, user_id: int) -> None:
     """Deletes existing tasks, subtasks, projects, and tags for the user."""
     conn.execute(
         text(
@@ -248,7 +268,18 @@ def seed_data(override_url=None):
     if env == "production" and seed_allowed != "true":
         logger.error(
             "Seed script blocked in production. "
-            "Set SEED_ALLOWED=true to override (destructive — wipes demo user data)."
+            "Set SEED_ALLOWED=true to override (destructive — wipes seed user data)."
+        )
+        raise SystemExit(1)
+
+    email = _validate_seed_email(os.environ.get("SEED_EMAIL", DEFAULT_SEED_EMAIL))
+
+    if seed_allowed != "true" and not _is_seed_domain(email):
+        logger.error(
+            "Seed refused: SEED_EMAIL %s is not a seed domain (%s). "
+            "Set SEED_ALLOWED=true to override (destructive — purges that account's data).",
+            email,
+            ", ".join(sorted(SEED_DOMAINS)),
         )
         raise SystemExit(1)
 
@@ -263,7 +294,7 @@ def seed_data(override_url=None):
 
     with engine.begin() as conn:
         try:
-            user_id = _get_or_create_demo_user(conn)
+            user_id = _get_or_create_demo_user(conn, email)
             project_ids = _create_projects(conn, user_id)
             tag_ids = _create_tags(conn, user_id)
             task_ids = _create_tasks(conn, user_id, project_ids, tag_ids, priority_sql)

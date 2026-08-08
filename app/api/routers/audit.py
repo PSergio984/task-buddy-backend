@@ -1,3 +1,5 @@
+"""API endpoints for retrieving audit logs."""
+
 import logging
 from datetime import datetime
 from typing import Annotated, Optional
@@ -9,6 +11,7 @@ from app.config import RATE_LIMIT_AUDIT_LIST
 from app.crud import audit as audit_crud
 from app.dependencies import get_db
 from app.limiter import limiter
+from app.models.audit import AuditLog as AuditLogModel
 from app.models.user import User
 from app.schemas.audit import AuditLog
 from app.security import get_confirmed_user
@@ -38,7 +41,7 @@ async def list_audit_logs(
     target_type: Annotated[Optional[str], Query()] = None,
     start_date: Annotated[Optional[datetime], Query()] = None,
     end_date: Annotated[Optional[datetime], Query()] = None,
-):
+) -> list[AuditLogModel]:
     """
     Retrieve audit logs for the current user.
     """

@@ -1,11 +1,19 @@
+"""Tests for notification deletion."""
+
+from typing import Any
+
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification
 
 
-@pytest.mark.asyncio
-async def test_delete_notification(db, confirmed_user):
+@pytest.mark.anyio
+async def test_delete_notification(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a notification can be deleted."""
     user_id = confirmed_user["id"]
 
     # Create a notification

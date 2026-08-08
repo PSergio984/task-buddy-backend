@@ -1,3 +1,5 @@
+"""FastAPI application entrypoint: app factory, middleware, and exception handlers."""
+
 import logging
 from contextlib import asynccontextmanager
 
@@ -12,30 +14,35 @@ from slowapi.middleware import SlowAPIMiddleware
 
 from app.api.routers import audit, notifications, project, realtime, stats, task, user
 from app.config import DevConfig, config
+from app.libs.supabase_signing import SigningKeyCache
 from app.limiter import limiter
 from app.logging_conf import configure_logging
 from app.middleware.idempotency import IdempotencyMiddleware
 
 logger = logging.getLogger(__name__)
 
-sentry_sdk.init(
-    dsn=config.SENTRY_DSN,
-    send_default_pii=isinstance(config, DevConfig),
-    enable_logs=isinstance(config, DevConfig),
-)
+if config.SENTRY_DSN:
+    sentry_sdk.init(
+        dsn=config.SENTRY_DSN,
+        send_default_pii=isinstance(config, DevConfig),
+        enable_logs=isinstance(config, DevConfig),
+    )
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    """Run startup and shutdown logic for the application."""
     configure_logging()
     yield
 
 
 app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
+app.state.signing_key_cache = SigningKeyCache()
 
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
+    """Return a 429 response when the client exceeds a rate limit."""
     response = JSONResponse(
         status_code=429,
         content={"detail": "Too many attempts. Please try again in a few minutes."},
@@ -48,6 +55,7 @@ async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
 
 @app.exception_handler(RequestValidationError)
 async def validation_exception_handler(request: Request, exc: RequestValidationError):
+    """Flatten request validation errors into a single response detail string."""
     errors = []
     for error in exc.errors():
         loc = " -> ".join(str(item) for item in error.get("loc", []))
@@ -75,17 +83,20 @@ app.include_router(realtime.router, prefix="/api/v1")
 
 @app.get("/health")
 async def health_check():
+    """Return a simple liveness response."""
     return {"status": "ok"}
 
 @app.get("/test-limit")
 @limiter.limit("100/minute")
 async def test_limit(request: Request, response: Response):
+    """Return a response for exercising the rate limiter."""
     return {"message": "limit test"}
 
 
 
 @app.exception_handler(HTTPException)
 async def log_http_exception(request: Request, exc: HTTPException):
+    """Log and re-emit an HTTPException as a JSON response."""
     logger.warning(
         "%s %s - HTTP %s: %s",
         request.method,
@@ -102,6 +113,7 @@ async def log_http_exception(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def log_unhandled_exception(request: Request, exc: Exception):
+    """Log unhandled exceptions and return a generic 500 response."""
     logger.exception("%s %s - unhandled error", request.method, request.url.path)
     return JSONResponse(status_code=500, content={"detail": "Internal Server Error"})
 
@@ -118,6 +130,7 @@ app.add_middleware(
 
 @app.middleware("http")
 async def add_security_headers(request: Request, call_next):
+    """Add security-related response headers to every response."""
     response = await call_next(request)
     response.headers["X-Frame-Options"] = "DENY"
     response.headers["X-Content-Type-Options"] = "nosniff"

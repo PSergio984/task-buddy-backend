@@ -10,7 +10,8 @@ from app.models.user import User
 from app.tasks import _process_reminders_async
 
 
-async def main():
+async def main() -> None:
+    """Create a live test task and run the reminder processor."""
     print("Connecting to live development database...")
     async with AsyncSessionLocal() as db:
         # Find the first user in the database

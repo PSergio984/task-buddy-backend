@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class Tag(Base):
+    """User-defined label that can be attached to tasks."""
+
     __tablename__ = "tbl_tags"
 
     id: Mapped[int] = mapped_column(primary_key=True)

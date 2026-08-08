@@ -1,3 +1,5 @@
+"""API endpoints for user authentication and profile management."""
+
 import datetime
 import logging
 from typing import Annotated
@@ -90,7 +92,7 @@ async def register_user(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     logger.debug("Attempting to register user with email: %s", user.email)
     existing_user = await user_crud.get_user_by_email(db, user.email)
     if existing_user:
@@ -130,7 +132,13 @@ async def register_user(
     }
 
 
-@router.post("/resend-confirmation", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Email already confirmed or invalid request"}})
+@router.post(
+    "/resend-confirmation",
+    responses={
+        404: {"description": USER_NOT_FOUND},
+        400: {"description": "Email already confirmed or invalid request"},
+    },
+)
 @limiter.limit(RATE_LIMIT_AUTH_RESEND)
 async def resend_confirmation(
     background_tasks: BackgroundTasks,
@@ -138,7 +146,7 @@ async def resend_confirmation(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     """Resend a confirmation email for an existing, unconfirmed user."""
     user = await user_crud.get_user_by_email(db, email)
     if user is None:
@@ -165,7 +173,7 @@ async def login(
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     auth_user = await authenticate_user(db, form_data.username, form_data.password)
     # Commit any potential lazy migration (password re-hash)
     await db.commit()
@@ -193,8 +201,16 @@ async def login(
     }
 
 
-@router.get("/confirm/{token}", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid confirmation token"}})
-async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]):
+@router.get(
+    "/confirm/{token}",
+    responses={
+        404: {"description": USER_NOT_FOUND},
+        400: {"description": "Invalid confirmation token"},
+    },
+)
+async def confirm_email(
+    token: str, db: Annotated[AsyncSession, Depends(get_db)]
+) -> HTMLResponse:
     subject = get_subject_for_token_type(token, expected_type="confirm")
     try:
         user_id = int(subject)
@@ -292,7 +308,7 @@ async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]
 
 
 @router.get("/me", response_model=User)
-async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_user)]):
+async def get_my_profile(current_user: Annotated[UserORM, Depends(get_current_user)]) -> UserORM:
     """
     Retrieve the current user's profile information.
     """
@@ -307,7 +323,7 @@ async def update_username(
     response: Response,
     current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     """
     Update the current user's username.
     Checks for uniqueness and length.
@@ -337,7 +353,10 @@ async def update_username(
     return {"message": "Username updated successfully"}
 
 
-@router.patch("/me/password", responses={400: {"description": "Incorrect current password or weak new password"}})
+@router.patch(
+    "/me/password",
+    responses={400: {"description": "Incorrect current password or weak new password"}},
+)
 @limiter.limit(RATE_LIMIT_USER_UPDATE_PASSWORD)
 async def update_password(
     password_data: PasswordUpdate,
@@ -345,7 +364,7 @@ async def update_password(
     response: Response,
     current_user: Annotated[UserORM, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     """
     Update the current user's password securely.
     Verifies the current password before updating to the new one.
@@ -374,7 +393,7 @@ async def logout(
     response: Response,
     request: Request,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     """
     Logout the current user. Clears the session cookie regardless of authentication status.
     """
@@ -427,7 +446,7 @@ async def forgot_password(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     """
     Initiate password reset flow by sending an email with a reset token.
     """
@@ -449,7 +468,7 @@ async def forgot_password(
 
 
 @router.get("/reset-password/{token}", include_in_schema=False)
-async def reset_password_page(token: str):
+async def reset_password_page(token: str) -> dict:
     """
     Placeholder for the reset password page.
     In a real app, this would be handled by the frontend.
@@ -457,7 +476,13 @@ async def reset_password_page(token: str):
     return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
 
 
-@router.post("/reset-password", responses={404: {"description": USER_NOT_FOUND}, 400: {"description": "Invalid reset token or weak password"}})
+@router.post(
+    "/reset-password",
+    responses={
+        404: {"description": USER_NOT_FOUND},
+        400: {"description": "Invalid reset token or weak password"},
+    },
+)
 @limiter.limit(RATE_LIMIT_AUTH_RESET_PASSWORD)
 async def reset_password(
     reset_password_data: ResetPasswordRequest,
@@ -465,7 +490,7 @@ async def reset_password(
     request: Request,
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)]
-):
+) -> dict:
     """
     Reset user password using a valid reset token.
     """

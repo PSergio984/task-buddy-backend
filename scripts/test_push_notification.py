@@ -1,15 +1,22 @@
 import asyncio
+import logging
 import os
 import sys
 
 # Add the current directory to sys.path so we can import app
 sys.path.append(os.getcwd())
 
+from pywebpush import WebPushException
+from sqlalchemy.exc import SQLAlchemyError
+
 from app.config import config
 from app.tasks import _send_push_notification_async
 
+logger = logging.getLogger(__name__)
 
-async def test_push(user_id: int):
+
+async def test_push(user_id: int) -> None:
+    """Send a test push notification to all of the user's push subscriptions."""
     print("--- Push Notification Delivery Test ---")
     print(f"Target User ID: {user_id}")
     print(f"VAPID Public Key:  {config.VAPID_PUBLIC_KEY[:15]}..." if config.VAPID_PUBLIC_KEY else "None")
@@ -23,8 +30,10 @@ async def test_push(user_id: int):
         print(f"Sending push notification to all subscriptions for user {user_id}...")
         await _send_push_notification_async(user_id, title, message, action_url)
         print("[DONE] Check your browser/device for the notification.")
-    except Exception as e:
-        print(f"[ERROR] Failed to send push notification: {e}")
+    except (WebPushException, SQLAlchemyError) as exc:
+        logger.error("Failed to send push notification to user %s: %s", user_id, exc)
+        print(f"[ERROR] Failed to send push notification: {exc}")
+        raise
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

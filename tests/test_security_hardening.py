@@ -1,9 +1,16 @@
+"""Tests for security headers, CORS, and rate-limiting enforcement."""
+
+from typing import Any
+
+import pytest
 from httpx import AsyncClient
 
 from app.main import app
 
 
-async def test_security_headers(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_security_headers(async_client: AsyncClient) -> None:
+    """Verify security-related response headers are set."""
     response = await async_client.get("/api/v1/tasks")
     assert response.headers["X-Frame-Options"] == "DENY"
     assert response.headers["X-Content-Type-Options"] == "nosniff"
@@ -17,19 +24,27 @@ async def test_security_headers(async_client: AsyncClient):
     assert "Permissions-Policy" in response.headers
     assert "geolocation=()" in response.headers["Permissions-Policy"]
 
-async def test_cors_allowed_origin(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_cors_allowed_origin(async_client: AsyncClient) -> None:
+    """Verify the default allowed CORS origin is accepted."""
     # Default allowed origin is http://localhost:3000
     headers = {"Origin": "http://localhost:3000"}
     response = await async_client.options("/api/v1/users/register", headers=headers)
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
-async def test_cors_disallowed_origin(async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_cors_disallowed_origin(async_client: AsyncClient) -> None:
+    """Verify disallowed CORS origins are not reflected."""
     headers = {"Origin": "http://evil.com"}
     response = await async_client.options("/api/v1/users/register", headers=headers)
     assert "access-control-allow-origin" not in response.headers or response.headers["access-control-allow-origin"] != "http://evil.com"
 
-async def test_rate_limiting_register(async_client: AsyncClient, mocker):
+@pytest.mark.anyio
+async def test_rate_limiting_register(async_client: AsyncClient, mocker: Any) -> None:
+    """Verify the register endpoint rate-limits after 5 requests per minute."""
     # Enable limiter specifically for this test
+    limiter_enabled = app.state.limiter.enabled
+    app.state.limiter.reset()
     app.state.limiter.enabled = True
     try:
         # Mock get_real_ip to ensure we have a consistent key
@@ -55,10 +70,15 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker):
         assert "detail" in resp_json
         assert "Too many attempts" in resp_json["detail"]
     finally:
-        app.state.limiter.enabled = False
+        app.state.limiter.enabled = limiter_enabled
 
-async def test_rate_limiting_create_project(async_client: AsyncClient, mocker, authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_rate_limiting_create_project(
+    async_client: AsyncClient, mocker: Any, authenticated_async_client: AsyncClient
+) -> None:
+    """Verify the project creation endpoint rate-limits after 10 requests per minute."""
     # Enable limiter specifically for this test
+    limiter_enabled = app.state.limiter.enabled
     app.state.limiter.enabled = True
     try:
         # Mock get_real_ip to ensure we have a consistent key
@@ -82,11 +102,14 @@ async def test_rate_limiting_create_project(async_client: AsyncClient, mocker, a
         assert "detail" in resp_json
         assert "Too many attempts" in resp_json["detail"]
     finally:
-        app.state.limiter.enabled = False
+        app.state.limiter.enabled = limiter_enabled
 
 
-async def test_rate_limiting_login(async_client: AsyncClient, mocker):
+@pytest.mark.anyio
+async def test_rate_limiting_login(async_client: AsyncClient, mocker: Any) -> None:
+    """Verify the login endpoint rate-limits after 5 requests per minute."""
     # Enable limiter specifically for this test
+    limiter_enabled = app.state.limiter.enabled
     app.state.limiter.enabled = True
     try:
         # Mock get_real_ip to ensure we have a consistent key
@@ -111,5 +134,5 @@ async def test_rate_limiting_login(async_client: AsyncClient, mocker):
         assert "detail" in resp_json
         assert "Too many attempts" in resp_json["detail"]
     finally:
-        app.state.limiter.enabled = False
+        app.state.limiter.enabled = limiter_enabled
 

@@ -1,11 +1,13 @@
+"""Concurrency tests for task and project endpoints."""
+
 import asyncio
 
 import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
-async def test_concurrent_task_creation(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_concurrent_task_creation(authenticated_async_client: AsyncClient) -> None:
     """Test creating multiple tasks concurrently."""
     num_tasks = 20
     tasks_data = [
@@ -31,8 +33,8 @@ async def test_concurrent_task_creation(authenticated_async_client: AsyncClient)
     assert len(list_response.json()) >= num_tasks
 
 
-@pytest.mark.asyncio
-async def test_concurrent_task_updates_same_task(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_concurrent_task_updates_same_task(authenticated_async_client: AsyncClient) -> None:
     """Test updating the SAME task concurrently to check for deadlocks/race conditions."""
     # 1. Create a task
     create_resp = await authenticated_async_client.post(
@@ -64,8 +66,8 @@ async def test_concurrent_task_updates_same_task(authenticated_async_client: Asy
     assert final_resp.json()["title"].startswith("Updated Title")
 
 
-@pytest.mark.asyncio
-async def test_concurrent_project_creation(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_concurrent_project_creation(authenticated_async_client: AsyncClient) -> None:
     """Test creating multiple projects concurrently."""
     num_projects = 10
     projects_data = [

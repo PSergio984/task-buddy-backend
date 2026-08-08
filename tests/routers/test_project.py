@@ -1,11 +1,16 @@
+"""Tests for the /api/v1/projects endpoints."""
+
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select, update
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.user import User
 
 
-async def create_project(name: str, client: AsyncClient, token: str) -> dict:
+async def create_project(name: str, client: AsyncClient, token: str) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/projects/",
         json={"name": name, "color": "blue"},
@@ -14,7 +19,7 @@ async def create_project(name: str, client: AsyncClient, token: str) -> dict:
     return response.json()
 
 @pytest.fixture()
-async def second_user(db, async_client: AsyncClient) -> dict:
+async def second_user(db: AsyncSession, async_client: AsyncClient) -> dict[str, Any]:
     user_data = {
         "username": "seconduser",
         "email": "second@example.com",
@@ -43,7 +48,9 @@ async def second_user(db, async_client: AsyncClient) -> dict:
 
     return user_data
 
-async def test_create_project(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_project(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a user can create a project."""
     response = await async_client.post(
         "/api/v1/projects/",
         json={"name": "Test Project", "color": "red"},
@@ -55,7 +62,9 @@ async def test_create_project(async_client: AsyncClient, logged_in_token: str):
     assert data["color"] == "red"
     assert "id" in data
 
-async def test_list_projects(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_list_projects(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a user can list their projects."""
     await create_project("Project 1", async_client, logged_in_token)
     await create_project("Project 2", async_client, logged_in_token)
 
@@ -67,7 +76,9 @@ async def test_list_projects(async_client: AsyncClient, logged_in_token: str):
     data = response.json()
     assert len(data) == 2
 
-async def test_get_project(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_get_project(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a user can fetch a single project."""
     project = await create_project("My Project", async_client, logged_in_token)
 
     response = await async_client.get(
@@ -77,7 +88,9 @@ async def test_get_project(async_client: AsyncClient, logged_in_token: str):
     assert response.status_code == 200
     assert response.json()["name"] == "My Project"
 
-async def test_update_project(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_update_project(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a user can update a project."""
     project = await create_project("Old Name", async_client, logged_in_token)
 
     response = await async_client.put(
@@ -88,7 +101,9 @@ async def test_update_project(async_client: AsyncClient, logged_in_token: str):
     assert response.status_code == 200
     assert response.json()["name"] == "New Name"
 
-async def test_delete_project(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_delete_project(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a user can delete a project."""
     project = await create_project("To Delete", async_client, logged_in_token)
 
     response = await async_client.delete(
@@ -104,9 +119,11 @@ async def test_delete_project(async_client: AsyncClient, logged_in_token: str):
     )
     assert response.status_code == 404
 
+@pytest.mark.anyio
 async def test_project_idor_protection(
-    async_client: AsyncClient, logged_in_token: str, second_user: dict
-):
+    async_client: AsyncClient, logged_in_token: str, second_user: dict[str, Any]
+) -> None:
+    """Verify users cannot access, update, or delete another user's project."""
     # User 1 creates a project
     project = await create_project("User 1 Project", async_client, logged_in_token)
 
@@ -132,9 +149,11 @@ async def test_project_idor_protection(
     )
     assert response.status_code == 404
 
+@pytest.mark.anyio
 async def test_task_project_idor_protection(
-    async_client: AsyncClient, logged_in_token: str, second_user: dict
-):
+    async_client: AsyncClient, logged_in_token: str, second_user: dict[str, Any]
+) -> None:
+    """Verify users cannot attach their tasks to another user's project."""
     # User 1 creates a project
     project = await create_project("User 1 Project", async_client, logged_in_token)
 
@@ -165,7 +184,9 @@ async def test_task_project_idor_protection(
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid project_id"
 
-async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify only tasks belonging to a project are listed."""
     project = await create_project("Work", async_client, logged_in_token)
 
     # Create tasks in project
@@ -196,7 +217,11 @@ async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: st
     for task in data:
         assert task["project_id"] == project["id"]
 
-async def test_create_duplicate_project_error(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_duplicate_project_error(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify creating a project with a duplicate name returns 400."""
     # Create first project
     project_data = {"name": "Duplicate Project", "color": "blue"}
     response = await async_client.post(
@@ -217,7 +242,11 @@ async def test_create_duplicate_project_error(async_client: AsyncClient, logged_
     assert response.json()["detail"] == "Project with this name already exists"
 
 
-async def test_create_project_quota_limit(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_project_quota_limit(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify project creation is limited to 20 projects per user."""
     # Create 20 projects
     for i in range(20):
         response = await async_client.post(

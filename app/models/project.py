@@ -14,6 +14,8 @@ if TYPE_CHECKING:
 
 
 class Project(Base):
+    """Project container used to organize a user's tasks."""
+
     __tablename__ = "tbl_projects"
     __table_args__ = (UniqueConstraint("user_id", "name", name="uq_project_user_name"),)
 

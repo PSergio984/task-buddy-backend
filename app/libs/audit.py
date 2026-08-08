@@ -53,7 +53,9 @@ def _extract_user_id_from_context(
             return arg.user_id
 
     if isinstance(result, dict):
-        user_id = result.get("user_id") or (result.get("user", {}).get("id") if isinstance(result.get("user"), dict) else None)
+        user_id = result.get("user_id") or (
+            result.get("user", {}).get("id") if isinstance(result.get("user"), dict) else None
+        )
     else:
         user_id = getattr(result, "user_id", None)
 
@@ -65,19 +67,29 @@ def _extract_user_id_from_context(
 def _extract_target_id_from_context(bound_args: inspect.BoundArguments, result: Any) -> Any:
     """Extract target object ID from result or arguments."""
     if isinstance(result, dict):
-        target_id = result.get("id") or (result.get("user", {}).get("id") if isinstance(result.get("user"), dict) else None)
+        target_id = result.get("id") or (
+            result.get("user", {}).get("id") if isinstance(result.get("user"), dict) else None
+        )
     else:
         target_id = getattr(result, "id", None)
 
     if target_id is None:
-        target_id = bound_args.arguments.get("id") or bound_args.arguments.get("task_id") or \
-                    bound_args.arguments.get("project_id") or bound_args.arguments.get("tag_id")
+        target_id = (
+            bound_args.arguments.get("id")
+            or bound_args.arguments.get("task_id")
+            or bound_args.arguments.get("project_id")
+            or bound_args.arguments.get("tag_id")
+        )
     return target_id
 
 def _find_db_obj(bound_args: inspect.BoundArguments) -> Any:
     """Find the database object in the arguments."""
     for arg in bound_args.arguments.values():
-        if hasattr(arg, "id") and not isinstance(arg, AsyncSession) and not hasattr(arg, "model_dump"):
+        if (
+            hasattr(arg, "id")
+            and not isinstance(arg, AsyncSession)
+            and not hasattr(arg, "model_dump")
+        ):
             return arg
     return None
 
@@ -127,8 +139,8 @@ def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: 
         # Robust comparison
         is_changed = False
         if isinstance(old_value, datetime) and isinstance(new_value, datetime):
-            # Normalize datetimes for comparison: remove microseconds and ensure same timezone status
-            # If one is naive and other is aware, we treat them as same if UTC-equivalent
+            # Normalize datetimes for comparison: remove microseconds and
+            # ensure same timezone status (naive vs aware treated as equal when UTC-equivalent)
             o = old_value.replace(microsecond=0)
             n = new_value.replace(microsecond=0)
             if o.tzinfo is not None and n.tzinfo is None:

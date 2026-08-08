@@ -13,7 +13,7 @@ class BaseConfig(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
 
-def _get_env_state():
+def _get_env_state() -> str:
     """Helper to get ENV_STATE even if not in os.environ yet."""
     state = os.environ.get("ENV_STATE")
     if state:
@@ -35,6 +35,15 @@ class GlobalConfig(BaseConfig):
     DATABASE_URL: Optional[str] = os.environ.get("DATABASE_URL")
     REDIS_URL: str = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
     SECRET_KEY: Optional[str] = os.environ.get("SECRET_KEY")
+    SUPABASE_SIGNING_KEY_FILE: str = "supabase_signing_key.json"
+    SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS: int = 300
+
+    @field_validator("SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS")
+    @classmethod
+    def validate_realtime_token_expire(cls, v: int) -> int:
+        if v < 1:
+            raise ValueError("SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS must be >= 1")
+        return v
     DB_FORCE_ROLL_BACK: bool = False
     ALLOWED_ORIGINS: Union[list[str], str] = [
         "http://localhost:3000",
@@ -95,6 +104,7 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_NOTIFICATION_READ: str = "60/minute"
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
+    RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -107,13 +117,18 @@ class GlobalConfig(BaseConfig):
             return [i.strip() for i in v.split(",")]
         elif isinstance(v, str):
             try:
-                return json.loads(v)
+                parsed = json.loads(v)
             except json.JSONDecodeError:
                 return [v]
-        return v
+            if isinstance(parsed, list):
+                return parsed
+            return [parsed]
+        if isinstance(v, list):
+            return v
+        return [str(v)]
 
     @model_validator(mode="after")
-    def fix_database_url(self):
+    def fix_database_url(self) -> "GlobalConfig":
         """Fix postgres:// prefix to postgresql:// for SQLAlchemy 2.0."""
         if self.DATABASE_URL and self.DATABASE_URL.startswith("postgres://"):
             self.DATABASE_URL = self.DATABASE_URL.replace("postgres://", "postgresql://", 1)
@@ -125,7 +140,7 @@ class DevConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="DEV_", env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
-    def fallback_settings(self):
+    def fallback_settings(self) -> "DevConfig":
         if not self.SECRET_KEY:
             self.SECRET_KEY = os.environ.get("SECRET_KEY")
         if not self.MAIL_FROM_EMAIL:
@@ -156,25 +171,31 @@ class ProdConfig(GlobalConfig):
     model_config = SettingsConfigDict(env_prefix="PROD_", env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
-    def ensure_required_vars(self):
+    def ensure_required_vars(self) -> "ProdConfig":
         """Fail-fast in production when critical vars are not set."""
         self._validate_critical_vars()
         self._apply_mail_fallbacks()
         self._apply_infrastructure_fallbacks()
         return self
 
-    def _validate_critical_vars(self):
+    def _validate_critical_vars(self) -> None:
+        # ProdConfig reads PROD_-prefixed vars only; no unprefixed fallbacks.
         if not self.SECRET_KEY:
-            self.SECRET_KEY = os.environ.get("SECRET_KEY")
-            if not self.SECRET_KEY:
-                raise ValueError("SECRET_KEY (or PROD_SECRET_KEY) must be set in production")
+            raise ValueError("PROD_SECRET_KEY must be set in production")
 
         if not self.DATABASE_URL:
-            self.DATABASE_URL = os.environ.get("DATABASE_URL")
-            if not self.DATABASE_URL:
-                raise ValueError("DATABASE_URL (or PROD_DATABASE_URL) must be set in production")
+            raise ValueError("PROD_DATABASE_URL must be set in production")
 
-    def _apply_mail_fallbacks(self):
+        try:
+            from app.libs.supabase_signing import SigningKeyCache
+
+            SigningKeyCache().load(self.SUPABASE_SIGNING_KEY_FILE)
+        except ValueError as e:
+            raise ValueError(
+                f"Supabase signing key is required in production: {e}"
+            ) from e
+
+    def _apply_mail_fallbacks(self) -> None:
         # Fallback for MAIL settings if PROD_ prefix is missing
         if not self.MAIL_SMTP_HOST:
             self.MAIL_SMTP_HOST = os.environ.get("MAIL_SMTP_HOST")
@@ -187,7 +208,7 @@ class ProdConfig(GlobalConfig):
         if not self.MAIL_FROM_NAME:
             self.MAIL_FROM_NAME = os.environ.get("MAIL_FROM_NAME", "Task Buddy")
 
-    def _apply_infrastructure_fallbacks(self):
+    def _apply_infrastructure_fallbacks(self) -> "ProdConfig":
         # Fallback for Redis
         if not self.REDIS_URL:
             self.REDIS_URL = os.environ.get("REDIS_URL", "redis://localhost:6379/0")
@@ -213,7 +234,7 @@ class ProdConfig(GlobalConfig):
 class TestConfig(GlobalConfig):
     ENV_STATE: str = "test"
     DATABASE_URL: str = "sqlite:///./test.db"
-    DB_FORCE_ROLL_BACK: bool = False
+    DB_FORCE_ROLL_BACK: bool = True
     RATE_LIMIT_ENABLED: bool = False
     DEBUG: bool = False
     RATE_LIMIT_STATS_OVERVIEW: str = "20/minute"
@@ -245,11 +266,12 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_NOTIFICATION_READ: str = "60/minute"
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
+    RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
 
     model_config = SettingsConfigDict(env_prefix="TEST_", env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
-    def fallback_settings(self):
+    def fallback_settings(self) -> "TestConfig":
         if not self.SECRET_KEY:
             self.SECRET_KEY = os.environ.get("SECRET_KEY")
         if not self.MAIL_FROM_EMAIL:

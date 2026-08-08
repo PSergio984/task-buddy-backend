@@ -1,3 +1,5 @@
+"""Stress and resilience tests for mixed concurrent operations."""
+
 import asyncio
 import random
 
@@ -5,8 +7,8 @@ import pytest
 from httpx import AsyncClient
 
 
-@pytest.mark.asyncio
-async def test_high_concurrency_mixed_operations(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_high_concurrency_mixed_operations(authenticated_async_client: AsyncClient) -> None:
     """
     Stress test with mixed concurrent operations:
     - Create tasks
@@ -70,8 +72,8 @@ async def test_high_concurrency_mixed_operations(authenticated_async_client: Asy
     for status in results:
         assert status < 500, f"System failed with status {status}"
 
-@pytest.mark.asyncio
-async def test_audit_log_resilience_under_load(authenticated_async_client: AsyncClient):
+@pytest.mark.anyio
+async def test_audit_log_resilience_under_load(authenticated_async_client: AsyncClient) -> None:
     """Verify that audit logs are correctly recorded even under high load."""
     num_tasks = 15
 
