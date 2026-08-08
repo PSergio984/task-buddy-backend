@@ -1,6 +1,9 @@
+"""Tests for idempotency edge cases: concurrency, failures, and Redis outages."""
+
 import asyncio
 import json
 import uuid
+from typing import Any
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -8,7 +11,9 @@ from httpx import AsyncClient
 
 
 @pytest.mark.anyio
-async def test_idempotency_concurrent_same_key(authenticated_async_client: AsyncClient, mocker):
+async def test_idempotency_concurrent_same_key(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
     """
     Test that concurrent requests with the same idempotency key result in only one success
     and others getting a 409 Conflict.
@@ -49,7 +54,9 @@ async def test_idempotency_concurrent_same_key(authenticated_async_client: Async
 
 
 @pytest.mark.anyio
-async def test_idempotency_server_error_clears_lock(authenticated_async_client: AsyncClient, mocker):
+async def test_idempotency_server_error_clears_lock(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
     """
     Test that if a request fails with a 500 error, the idempotency lock is cleared
     so the user can retry.
@@ -77,7 +84,9 @@ async def test_idempotency_server_error_clears_lock(authenticated_async_client: 
 
 
 @pytest.mark.anyio
-async def test_idempotency_redis_unavailable_fails_open(authenticated_async_client: AsyncClient, mocker):
+async def test_idempotency_redis_unavailable_fails_open(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
     """
     Test that if Redis is down, the request still proceeds (fail open).
     """

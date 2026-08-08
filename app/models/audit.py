@@ -13,6 +13,8 @@ if TYPE_CHECKING:
 
 
 class AuditLog(Base):
+    """Audit log entry recording a user action against a target object."""
+
     __tablename__ = "tbl_audit_logs"
 
     id: Mapped[int] = mapped_column(primary_key=True)

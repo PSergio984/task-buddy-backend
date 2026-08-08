@@ -1,9 +1,14 @@
+"""Tests for the database seeding script."""
+
+import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from scripts.seed import seed_data
 
 
-async def test_seed_data(async_client: AsyncClient, db):
+@pytest.mark.anyio
+async def test_seed_data(async_client: AsyncClient, db: AsyncSession) -> None:
     """
     Test that the seeding script successfully populates a confirmed user,
     with retrievable tasks, projects, subtasks, and tags.

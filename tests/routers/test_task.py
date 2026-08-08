@@ -1,10 +1,17 @@
+"""Tests for the /api/v1/tasks endpoints."""
+
+from typing import Any
+
 import pytest
 from httpx import AsyncClient
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import security
 
 
-async def create_task(body: dict, client: AsyncClient, logged_in_token: str) -> dict:
+async def create_task(
+    body: dict[str, Any], client: AsyncClient, logged_in_token: str
+) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
     )
@@ -13,7 +20,7 @@ async def create_task(body: dict, client: AsyncClient, logged_in_token: str) -> 
 
 async def create_subtask(
     body: str, task_id: int, client: AsyncClient, logged_in_token: str
-) -> dict:
+) -> dict[str, Any]:
 
     response = await client.post(
         "/api/v1/tasks/subtask",
@@ -23,7 +30,9 @@ async def create_subtask(
     return response.json()
 
 
-async def create_tag(body: str, task_id: int, client: AsyncClient, logged_in_token: str) -> dict:
+async def create_tag(
+    body: str, task_id: int, client: AsyncClient, logged_in_token: str
+) -> dict[str, Any]:
     response = await client.post(
         f"/api/v1/tasks/{task_id}/tags",
         json={"name": body},
@@ -33,25 +42,31 @@ async def create_tag(body: str, task_id: int, client: AsyncClient, logged_in_tok
 
 
 @pytest.fixture()
-async def created_task(db, async_client: AsyncClient, logged_in_token: str) -> dict:
+async def created_task(
+    db: AsyncSession, async_client: AsyncClient, logged_in_token: str
+) -> dict[str, Any]:
     return await create_task({"title": "Test Task"}, async_client, logged_in_token)
 
 
 @pytest.fixture()
 async def created_subtask(
-    created_task: dict, async_client: AsyncClient, logged_in_token: str
-) -> dict:
+    created_task: dict[str, Any], async_client: AsyncClient, logged_in_token: str
+) -> dict[str, Any]:
     return await create_subtask("Test SubTask", created_task["id"], async_client, logged_in_token)
 
 
 @pytest.fixture()
-async def created_tag(created_task: dict, async_client: AsyncClient, logged_in_token: str) -> dict:
+async def created_tag(
+    created_task: dict[str, Any], async_client: AsyncClient, logged_in_token: str
+) -> dict[str, Any]:
     return await create_tag("Important", created_task["id"], async_client, logged_in_token)
 
 
+@pytest.mark.anyio
 async def test_create_task(
-    db, async_client: AsyncClient, logged_in_token: str, confirmed_user: dict
-):
+    db: AsyncSession, async_client: AsyncClient, logged_in_token: str, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a user can create a task."""
     body = {"title": "Test Task"}
 
     response = await async_client.post(
@@ -65,7 +80,11 @@ async def test_create_task(
     assert "id" in data
 
 
-async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_empty_task(
+    db: AsyncSession, async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify creating a task with an empty body returns 422."""
 
     response = await async_client.post(
         "/api/v1/tasks/", json={}, headers={"Authorization": f"Bearer {logged_in_token}"}
@@ -74,9 +93,11 @@ async def test_create_empty_task(db, async_client: AsyncClient, logged_in_token:
     assert response.status_code == 422
 
 
+@pytest.mark.anyio
 async def test_create_task_expired_token(
-    db, async_client: AsyncClient, confirmed_user: dict, monkeypatch
-):
+    db: AsyncSession, async_client: AsyncClient, confirmed_user: dict[str, Any], monkeypatch
+) -> None:
+    """Verify creating a task with an expired token returns 401."""
     monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
     token = security.create_access_token(confirmed_user["email"])
     response = await async_client.post(
@@ -90,7 +111,11 @@ async def test_create_task_expired_token(
     )
 
 
-async def test_get_all_tasks(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_get_all_tasks(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can list their tasks."""
     response = await async_client.get(
         "/api/v1/tasks/", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
@@ -99,12 +124,14 @@ async def test_get_all_tasks(async_client: AsyncClient, created_task: dict, logg
     assert response.json() == [created_task]
 
 
+@pytest.mark.anyio
 async def test_create_subtask(
     async_client: AsyncClient,
-    created_task: dict,
+    created_task: dict[str, Any],
     logged_in_token: str,
-    confirmed_user: dict,
-):
+    confirmed_user: dict[str, Any],
+) -> None:
+    """Verify a user can create a subtask."""
     body = {"title": "Test SubTask", "task_id": created_task["id"]}
 
     response = await async_client.post(
@@ -120,9 +147,11 @@ async def test_create_subtask(
     }.items() <= response.json().items()
 
 
+@pytest.mark.anyio
 async def test_get_subtasks_on_task(
-    async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_task: dict[str, Any], created_subtask: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify subtasks are listed on a task."""
     response = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/subtask",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -132,9 +161,11 @@ async def test_get_subtasks_on_task(
     assert response.json() == [created_subtask]
 
 
+@pytest.mark.anyio
 async def test_get_subtasks_on_task_empty(
-    async_client: AsyncClient, created_task: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a task without subtasks returns an empty list."""
     response = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/subtask",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -144,9 +175,11 @@ async def test_get_subtasks_on_task_empty(
     assert response.json() == []
 
 
+@pytest.mark.anyio
 async def test_get_task_with_subtasks(
-    async_client: AsyncClient, created_task: dict, created_subtask: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_task: dict[str, Any], created_subtask: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a task response includes its subtasks."""
     response = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/subtasks",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -161,9 +194,11 @@ async def test_get_task_with_subtasks(
     }
 
 
+@pytest.mark.anyio
 async def test_get_missing_task_with_subtasks(
-    async_client: AsyncClient, created_subtask: dict, created_task: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_subtask: dict[str, Any], created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify fetching subtasks of a missing task returns 404."""
     response = await async_client.get(
         "/api/v1/tasks/999/subtasks", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
@@ -171,12 +206,14 @@ async def test_get_missing_task_with_subtasks(
     assert response.status_code == 404
 
 
+@pytest.mark.anyio
 async def test_create_tag(
     async_client: AsyncClient,
-    created_task: dict,
+    created_task: dict[str, Any],
     logged_in_token: str,
-    confirmed_user: dict,
-):
+    confirmed_user: dict[str, Any],
+) -> None:
+    """Verify a user can create a tag on a task."""
     body = {"name": "Important"}
 
     response = await async_client.post(
@@ -193,12 +230,14 @@ async def test_create_tag(
     }.items() <= response.json().items()
 
 
+@pytest.mark.anyio
 async def test_get_tags_on_task(
     async_client: AsyncClient,
-    created_task: dict,
-    created_tag: dict,
+    created_task: dict[str, Any],
+    created_tag: dict[str, Any],
     logged_in_token: str,
-):
+) -> None:
+    """Verify tags are listed on a task."""
     response = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/tags",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -208,7 +247,9 @@ async def test_get_tags_on_task(
     assert response.json() == [created_tag]
 
 
-async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify fetching tags of a missing task returns 404."""
     response = await async_client.get(
         "/api/v1/tasks/999/tags",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -217,7 +258,11 @@ async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_tok
     assert response.status_code == 404
 
 
-async def test_reuse_tag_across_tasks(db, async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_reuse_tag_across_tasks(
+    db: AsyncSession, async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify a tag is reused rather than duplicated across tasks."""
     first_task = await create_task({"title": "Task One"}, async_client, logged_in_token)
     second_task = await create_task({"title": "Task Two"}, async_client, logged_in_token)
 
@@ -238,7 +283,11 @@ async def test_reuse_tag_across_tasks(db, async_client: AsyncClient, logged_in_t
     assert second_response.json() == [first_tag]
 
 
-async def test_update_task(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_update_task(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can update a task."""
     response = await async_client.put(
         f"/api/v1/tasks/{created_task['id']}",
         json={"title": "Updated Title", "completed": True},
@@ -255,7 +304,11 @@ async def test_update_task(async_client: AsyncClient, created_task: dict, logged
     assert get_resp.json()["completed"] is True
 
 
-async def test_delete_task(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_delete_task(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can delete a task."""
     response = await async_client.delete(
         f"/api/v1/tasks/{created_task['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -270,9 +323,11 @@ async def test_delete_task(async_client: AsyncClient, created_task: dict, logged
     assert get_resp.status_code == 404
 
 
+@pytest.mark.anyio
 async def test_update_subtask(
-    async_client: AsyncClient, created_subtask: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_subtask: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can update a subtask."""
     response = await async_client.put(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
         json={"title": "Updated Subtask", "completed": True},
@@ -289,9 +344,11 @@ async def test_update_subtask(
     assert get_resp.json()["completed"] is True
 
 
+@pytest.mark.anyio
 async def test_delete_subtask(
-    async_client: AsyncClient, created_subtask: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_subtask: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can delete a subtask."""
     response = await async_client.delete(
         f"/api/v1/tasks/subtask/{created_subtask['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -306,9 +363,11 @@ async def test_delete_subtask(
     assert get_resp.status_code == 404
 
 
+@pytest.mark.anyio
 async def test_get_tasks_filtered_by_project(
     async_client: AsyncClient, logged_in_token: str
-):
+) -> None:
+    """Verify tasks can be filtered by project_id."""
     # Create a project
     project_resp = await async_client.post(
         "/api/v1/projects/",
@@ -338,9 +397,11 @@ async def test_get_tasks_filtered_by_project(
     assert task_out["id"] not in [t["id"] for t in data]
 
 
+@pytest.mark.anyio
 async def test_detach_tag(
-    async_client: AsyncClient, created_task: dict, created_tag: dict, logged_in_token: str
-):
+    async_client: AsyncClient, created_task: dict[str, Any], created_tag: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can detach a tag from a task."""
     response = await async_client.delete(
         f"/api/v1/tasks/{created_task['id']}/tags/{created_tag['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
@@ -355,23 +416,21 @@ async def test_detach_tag(
     assert created_tag not in get_resp.json()
 
 
-async def test_delete_tag(async_client: AsyncClient, created_tag: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_delete_tag(
+    async_client: AsyncClient, created_tag: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify a user can delete a tag."""
     response = await async_client.delete(
         f"/api/v1/tasks/tags/{created_tag['id']}",
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
 
-    # Verify tag itself is gone (or at least not returned for this user)
-    # Since we don't have a GET /tags, we check if it can be attached again as a NEW tag
-    # Actually, we can check if it's attached to any other task
-    # Or just assume the DELETE 200 and audit log integration is enough for now,
-    # but let's try to fetch it if we had an endpoint.
-    # We don't have a direct GET /tags/{tag_id}.
-    # But we can try detaching it again, which should 404.
 
-
-async def test_create_task_limit_tags(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_task_limit_tags(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify task creation is limited to 10 tags."""
     # 11 tags - should fail
     body = {
         "title": "Task with too many tags",
@@ -394,7 +453,9 @@ async def test_create_task_limit_tags(async_client: AsyncClient, logged_in_token
     assert response_ok.status_code == 201
 
 
-async def test_create_task_limit_subtasks(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_task_limit_subtasks(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify task creation is limited to 50 subtasks."""
     # 51 subtasks - should fail
     body = {
         "title": "Task with too many subtasks",
@@ -417,7 +478,11 @@ async def test_create_task_limit_subtasks(async_client: AsyncClient, logged_in_t
     assert response_ok.status_code == 201
 
 
-async def test_update_task_limit_tags(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_update_task_limit_tags(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify task updates are limited to 10 tags."""
     # 11 tags - should fail
     response = await async_client.put(
         f"/api/v1/tasks/{created_task['id']}",
@@ -436,7 +501,11 @@ async def test_update_task_limit_tags(async_client: AsyncClient, created_task: d
     assert response_ok.status_code == 200
 
 
-async def test_create_subtask_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_subtask_limit(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify subtask creation is limited to 50 per task."""
     # Add 50 subtasks
     for i in range(50):
         resp = await async_client.post(
@@ -456,7 +525,11 @@ async def test_create_subtask_limit(async_client: AsyncClient, created_task: dic
     assert resp_fail.json()["detail"] == "Cannot exceed 50 subtasks per task"
 
 
-async def test_create_tag_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_create_tag_limit(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify tag creation is limited to 10 per task."""
     # Add 10 tags
     for i in range(10):
         resp = await async_client.post(
@@ -484,7 +557,11 @@ async def test_create_tag_limit(async_client: AsyncClient, created_task: dict, l
     assert resp_dup.status_code == 201
 
 
-async def test_attach_tag_limit(async_client: AsyncClient, created_task: dict, logged_in_token: str):
+@pytest.mark.anyio
+async def test_attach_tag_limit(
+    async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
+) -> None:
+    """Verify attaching tags is limited to 10 per task."""
     # Create 11 tags in the system
     tag_ids = []
     for i in range(11):

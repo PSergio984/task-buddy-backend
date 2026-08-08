@@ -1,4 +1,7 @@
+"""Tests for the Redis-backed cache layer."""
+
 from datetime import datetime
+from typing import Any
 
 import pytest
 
@@ -8,7 +11,7 @@ from app.schemas.task import TaskCreateResponse
 
 
 @pytest.mark.anyio
-async def test_cache_primitive_data(mocker):
+async def test_cache_primitive_data(mocker: Any) -> None:
     """Test caching primitive python types."""
     # Setup mock Redis client
     mock_redis = mocker.MagicMock()
@@ -37,7 +40,7 @@ async def test_cache_primitive_data(mocker):
 
 
 @pytest.mark.anyio
-async def test_cache_sqlalchemy_model(mocker):
+async def test_cache_sqlalchemy_model(mocker: Any) -> None:
     """Test that SQLAlchemy models are serialized using jsonable_encoder without causing PydanticSerializationError."""
     mock_redis = mocker.MagicMock()
     stored_data = {}
@@ -86,7 +89,7 @@ async def test_cache_sqlalchemy_model(mocker):
 
 
 @pytest.mark.anyio
-async def test_cache_list_of_sqlalchemy_models(mocker):
+async def test_cache_list_of_sqlalchemy_models(mocker: Any) -> None:
     """Test that a list of SQLAlchemy models can be cleanly cached and retrieved."""
     mock_redis = mocker.MagicMock()
     stored_data = {}

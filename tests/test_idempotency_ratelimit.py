@@ -1,4 +1,7 @@
+"""Tests that 429 rate-limit responses are not cached by the idempotency middleware."""
+
 import uuid
+from typing import Any
 
 import pytest
 from httpx import AsyncClient
@@ -6,9 +9,13 @@ from httpx import AsyncClient
 from app.main import app
 
 
-@pytest.mark.asyncio
-async def test_ratelimit_not_cached_by_idempotency(authenticated_async_client: AsyncClient, mocker):
+@pytest.mark.anyio
+async def test_ratelimit_not_cached_by_idempotency(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
+    """Verify a 429 response is not cached, so a retry after reset succeeds."""
     # Enable limiter specifically for this test
+    limiter_enabled = app.state.limiter.enabled
     app.state.limiter.enabled = True
     # Reset limiter to ensure we start fresh
     app.state.limiter.reset()
@@ -59,4 +66,4 @@ async def test_ratelimit_not_cached_by_idempotency(authenticated_async_client: A
 
     finally:
         app.state.limiter.reset()
-        app.state.limiter.enabled = False
+        app.state.limiter.enabled = limiter_enabled

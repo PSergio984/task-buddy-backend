@@ -1,15 +1,21 @@
+"""Tests for the REMINDER_BEFORE notification trigger."""
+
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytest
 from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.notification import Notification, NotificationType
 from app.models.task import Task
 from app.tasks import _process_reminders_async
 
 
-@pytest.mark.asyncio
-async def test_trigger_reminder_before_notification(db, confirmed_user, mocker):
+@pytest.mark.anyio
+async def test_trigger_reminder_before_notification(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
     """
     This test verifies that the REMINDER_BEFORE notification is generated
     for a task that is due exactly 60 minutes from now.
@@ -51,5 +57,3 @@ async def test_trigger_reminder_before_notification(db, confirmed_user, mocker):
     assert notifications[0].type == NotificationType.REMINDER_BEFORE
     assert "Test Reminder Before Task" in notifications[0].title
     assert "due in 1 hour" in notifications[0].message
-
-    print("\n✅ SUCCESS: The REMINDER_BEFORE notification was correctly generated for a task due in 60 minutes!")

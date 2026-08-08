@@ -32,7 +32,7 @@ SSL:
 ## 2. Pooling (SQLAlchemy settings, PgBouncer implications, Celery)
 
 SQLAlchemy basics ([Connection Pooling](https://docs.sqlalchemy.org/en/20/core/pooling.html)):
-- `QueuePool` is default for all engines; tuning params pass to `create_engine`: `pool_size` (default 5), `max_overflow` (default 10), `pool_recycle`, `pool_timeout`. Pools are lazy (no pre-created connections).
+- Pool defaults are dialect-dependent: SQLAlchemy's synchronous `QueuePool` defaults to `pool_size=5`, `max_overflow=10`; the **asyncpg dialect defaults to `NullPool`** (no pooling) unless configured - relevant because this app uses asyncpg via `create_async_engine` and sets explicit pool options.
 - `pool_pre_ping=True` = pessimistic disconnect handling: emits a liveness check at checkout, recycles stale connections; recommended pattern ("Modern SQLAlchemy tends to favor the pessimistic approach" — [FAQ](https://docs.sqlalchemy.org/en/20/faq/connections.html)).
 - `pool_recycle` = optimistic: drops connections older than N seconds at next checkout; the doc's rationale is backends that close idle connections ([Pooling](https://docs.sqlalchemy.org/en/20/core/pooling.html#setting-pool-recycle)) — Postgres itself does not idle-close, so this is optional against Supabase.
 - `pool_use_lifo=True` pairs with `pool_pre_ping` to let server-side timeouts reclaim idle connections ([Pooling](https://docs.sqlalchemy.org/en/20/core/pooling.html#using-fifo-vs-lifo)).
@@ -55,7 +55,7 @@ Celery worker:
 ---
 
 ## 3. Alembic migrations against Supabase
-
+**Alembic is authoritative for this repository's schema.** B-02 runs `alembic upgrade head` against Supabase (head `ed27f78207cd` applied); all bootstrap guidance below defers to that.
 - Supabase's own migration tooling is CLI-based (`supabase db push`), tracked in `supabase_migrations.schema_migrations`; golden rule: never change remote schema outside migration files or `db push` breaks sync. ([Database Migrations](https://supabase.com/docs/guides/deployment/database-migrations)) — Alembic manages its own `alembic_version`; the two systems must not both drive the same schema.
 - Run migrations as the **`postgres` role**: the connection-management doc identifies `postgres` as the role used by external tools (explicitly: "Prisma, SQLAlchemy, PSQL..."). ([Connection management](https://supabase.com/docs/guides/database/connection-management)) The migration guide also restores/dumps as the project's postgres user. ([Migrate from Postgres](https://supabase.com/docs/guides/platform/migrating-to-supabase/postgres))
 - Migrations should connect via **direct connection** (documented use: "migrations") or session pooler; do not use transaction mode for DDL. ([Connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres))
@@ -83,7 +83,7 @@ Postgres → Supabase (official guide: [Migrate from Postgres](https://supabase.
 
 SQLite dev → Supabase:
 - No official Supabase guide for SQLite; the sanctioned path is schema via migration tooling + data via dump/import. SQLAlchemy mechanism: `MetaData.create_all(engine)` emits dialect-specific DDL (one statement set per dialect) — usable to create the Postgres schema from the SQLAlchemy metadata, but it bypasses Alembic history and does not migrate data. ([SQLAlchemy MetaData](https://docs.sqlalchemy.org/en/20/core/metadata.html))
-- Practical route (not primary-sourced): keep Alembic as source of truth — write the Postgres baseline by `alembic revision` from existing models (or `create_all` then `alembic stamp`), then copy data row-by-row from SQLite via SQLAlchemy sessions. Type/constraint translation (SQLite JSON/Boolean/text dates vs Postgres JSONB/BOOLEAN/timestamptz; SQLite `INTEGER PRIMARY KEY` → Postgres identity/serial; autoincrement counters/sequences) must be validated per table. See Open questions.
+- Practical route (not primary-sourced): keep Alembic as source of truth — write the Postgres baseline by `alembic revision` from existing models (or `create_all` then `alembic stamp`), then copy data row-by-row from SQLite via SQLAlchemy sessions. **Default bootstrap for an empty Supabase database is `alembic upgrade head`** (B-02 executed this); `create_all`/`stamp` are fallbacks only when history is unavailable. Type/constraint translation (SQLite JSON/Boolean/text dates vs Postgres JSONB/BOOLEAN/timestamptz; SQLite `INTEGER PRIMARY KEY` → Postgres identity/serial; autoincrement counters/sequences) must be validated per table. See Open questions.
 
 ---
 

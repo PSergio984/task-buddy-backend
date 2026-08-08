@@ -1,3 +1,5 @@
+"""CRUD operations for audit logs."""
+
 from datetime import datetime
 from typing import Optional
 

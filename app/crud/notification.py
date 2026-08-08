@@ -1,3 +1,5 @@
+"""CRUD operations for notifications and push subscriptions."""
+
 from typing import Optional
 
 from sqlalchemy import delete, select

@@ -1,9 +1,14 @@
+"""Tests for audit logging of task, project, and tag creation."""
+
+import pytest
 from httpx import AsyncClient
 
 from app.schemas.enums import AuditAction
 
 
-async def test_audit_task_creation(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_task_creation(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a create log is recorded when a task is created."""
     # 1. Create a task
     task_body = {"title": "Audit Test Task"}
     response = await async_client.post(
@@ -27,7 +32,9 @@ async def test_audit_task_creation(async_client: AsyncClient, logged_in_token: s
     assert relevant_log is not None
     assert relevant_log["target_id"] == task_id
 
-async def test_audit_project_creation(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_project_creation(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a create log is recorded when a project is created."""
     # 1. Create a project
     project_body = {"name": "Audit Test Project", "color": "red"}
     response = await async_client.post(
@@ -51,7 +58,9 @@ async def test_audit_project_creation(async_client: AsyncClient, logged_in_token
     assert relevant_log is not None
     assert relevant_log["target_id"] == project_id
 
-async def test_audit_tag_creation(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_tag_creation(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a create log is recorded when a tag is created."""
     # 1. Create a task first (to attach tag to)
     task_resp = await async_client.post(
         "/api/v1/tasks/",

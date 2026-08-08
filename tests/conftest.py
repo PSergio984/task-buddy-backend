@@ -1,3 +1,5 @@
+"""Shared fixtures and test environment setup for the test suite."""
+
 import os
 
 os.environ["ENV_STATE"] = "test"

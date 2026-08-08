@@ -1,5 +1,7 @@
+"""API endpoints for tasks, subtasks, and tags."""
+
 import logging
-from typing import Annotated
+from typing import Annotated, Any, cast
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, select
@@ -28,7 +30,7 @@ from app.dependencies import get_db
 from app.libs.cache import get_cache_key, get_cached_data, set_cached_data
 from app.limiter import limiter
 from app.models.tag import Tag
-from app.models.task import Task
+from app.models.task import SubTask, Task
 from app.models.user import User
 from app.schemas.tag import TagCreate, TagResponse, TagUpdate
 from app.schemas.task import (
@@ -110,7 +112,11 @@ async def _validate_tags_limit(db: AsyncSession, tags: list[str] | None, user_id
                 raise HTTPException(status_code=400, detail="Cannot exceed 50 tags per user")
 
 
-@router.get("/", response_model=list[TaskCreateResponse], responses={400: {"description": BAD_REQUEST}})
+@router.get(
+    "/",
+    response_model=list[TaskCreateResponse],
+    responses={400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_tasks(
     request: Request,
@@ -122,7 +128,7 @@ async def get_tasks(
     tag_id: Annotated[int | None, Query()] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 100,
     offset: Annotated[int, Query(ge=0)] = 0,
-):
+) -> list[Task]:
     cache_key = get_cache_key(
         "tasks_list",
         current_user.id,
@@ -134,7 +140,7 @@ async def get_tasks(
     )
     cached = await get_cached_data(cache_key, list[TaskCreateResponse])
     if cached is not None:
-        return cached
+        return cast(list[Task], cached)
 
     tasks = await task_crud.get_tasks(
         db,
@@ -160,7 +166,7 @@ async def get_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Task:
     logger.info("GET /%s - fetching task", task_id)
     task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
 
@@ -170,7 +176,12 @@ async def get_task(
 
     return task
 
-@router.post("/", response_model=TaskCreateResponse, status_code=201, responses={400: {"description": BAD_REQUEST}})
+@router.post(
+    "/",
+    response_model=TaskCreateResponse,
+    status_code=201,
+    responses={400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TASK_CREATE)
 async def create_task(
     task: TaskCreateRequest,
@@ -178,7 +189,7 @@ async def create_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Task:
     logger.info("POST / - creating task title=%s", task.title)
 
     if task.subtasks and len(task.subtasks) > 50:
@@ -197,7 +208,7 @@ async def create_task(
     await verify_project_ownership(db, task.project_id, current_user.id)
 
     try:
-        db_task = await task_crud.create_task(db, user_id=current_user.id, task_in=task)
+        db_task: Task = await task_crud.create_task(db, user_id=current_user.id, task_in=task)
         await db.commit()
         await db.refresh(db_task)
     except IntegrityError as e:
@@ -218,6 +229,7 @@ async def create_task(
 
 @router.put(
     "/{task_id}",
+    response_model=TaskCreateResponse,
     responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 @limiter.limit(RATE_LIMIT_TASK_UPDATE)
@@ -228,7 +240,7 @@ async def update_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Task:
     logger.info("PUT /%s - updating task", task_id)
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
@@ -265,7 +277,10 @@ async def update_task(
     return db_task
 
 
-@router.delete("/{task_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.delete(
+    "/{task_id}",
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TASK_DELETE)
 async def delete_task(
     task_id: int,
@@ -273,7 +288,7 @@ async def delete_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     logger.info("DELETE /%s - deleting task", task_id)
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
@@ -299,7 +314,7 @@ async def get_subtasks_on_task_list(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> list[SubTask]:
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
@@ -307,7 +322,9 @@ async def get_subtasks_on_task_list(
 
 
 @router.get(
-    "/{task_id}/subtasks", response_model=TaskWithSubTasks, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}}
+    "/{task_id}/subtasks",
+    response_model=TaskWithSubTasks,
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
 )
 @limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_task_with_subtasks(
@@ -316,7 +333,7 @@ async def get_task_with_subtasks(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict[str, Any]:
     logger.info("GET /%s/subtasks - fetching task and subtasks", task_id)
 
     cache_key = get_cache_key("task_detail", current_user.id, task_id=task_id, with_subtasks=True)
@@ -349,7 +366,7 @@ async def create_subtask(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> SubTask:
     logger.info("POST /subtask - creating subtask for task_id=%s", subtask.task_id)
 
     db_task = await task_crud.get_task(db, task_id=subtask.task_id, user_id=current_user.id)
@@ -360,7 +377,9 @@ async def create_subtask(
     if len(existing_subtasks) >= 50:
         raise HTTPException(status_code=400, detail=MAX_SUBTASKS_EXCEEDED)
 
-    db_subtask = await task_crud.create_subtask(db, task_id=subtask.task_id, user_id=current_user.id, subtask_in=subtask)
+    db_subtask: SubTask = await task_crud.create_subtask(
+        db, task_id=subtask.task_id, user_id=current_user.id, subtask_in=subtask
+    )
     await db.commit()
     await db.refresh(db_subtask)
 
@@ -381,7 +400,7 @@ async def get_subtask(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> SubTask:
     logger.info("GET /subtask/%s - fetching subtask", subtask_id)
     db_subtask = await task_crud.get_subtask(db, subtask_id=subtask_id, user_id=current_user.id)
 
@@ -406,7 +425,7 @@ async def update_subtask(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> SubTask:
     logger.info("PUT /subtask/%s - updating subtask", subtask_id)
     db_subtask = await task_crud.get_subtask(db, subtask_id=subtask_id, user_id=current_user.id)
     if not db_subtask:
@@ -426,7 +445,10 @@ async def update_subtask(
     return db_subtask
 
 
-@router.delete("/subtask/{subtask_id}", responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.delete(
+    "/subtask/{subtask_id}",
+    responses={404: {"description": SUBTASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_SUBTASK_DELETE)
 async def delete_subtask(
     subtask_id: int,
@@ -434,7 +456,7 @@ async def delete_subtask(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     logger.info("DELETE /subtask/%s - deleting subtask", subtask_id)
     db_subtask = await task_crud.get_subtask(db, subtask_id=subtask_id, user_id=current_user.id)
     if not db_subtask:
@@ -457,14 +479,16 @@ async def reorder_subtasks(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     logger.info("POST /%s/subtask/reorder - reordering subtasks", task_id)
     # Verify task ownership
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    await task_crud.reorder_subtasks(db, task_id=task_id, user_id=current_user.id, ordered_ids=ordered_ids)
+    await task_crud.reorder_subtasks(
+        db, task_id=task_id, user_id=current_user.id, ordered_ids=ordered_ids
+    )
     await db.commit()
     logger.info("POST /%s/subtask/reorder - subtasks reordered", task_id)
     await invalidate_task_cache(current_user.id, task_id)
@@ -473,18 +497,27 @@ async def reorder_subtasks(
 
 # --- Tag Endpoints ---
 
-@router.get("/tags/", response_model=list[TagResponse], responses={400: {"description": BAD_REQUEST}})
+@router.get(
+    "/tags/",
+    response_model=list[TagResponse],
+    responses={400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_all_tags(
     request: Request,
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> list[Tag]:
     return await tag_crud.get_user_tags(db, user_id=current_user.id)
 
 
-@router.post("/tags/", response_model=TagResponse, status_code=201, responses={400: {"description": "Tag already exists or invalid request"}})
+@router.post(
+    "/tags/",
+    response_model=TagResponse,
+    status_code=201,
+    responses={400: {"description": "Tag already exists or invalid request"}},
+)
 @limiter.limit(RATE_LIMIT_TAG_CREATE)
 async def create_tag(
     tag: TagCreate,
@@ -492,7 +525,7 @@ async def create_tag(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Tag:
     existing_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag.name)
     if existing_tag:
         raise HTTPException(status_code=400, detail="Tag already exists")
@@ -505,7 +538,7 @@ async def create_tag(
         raise HTTPException(status_code=400, detail="Cannot exceed 50 tags per user")
 
     try:
-        db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag)
+        db_tag: Tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag)
         await db.commit()
         await db.refresh(db_tag)
         return db_tag
@@ -514,7 +547,11 @@ async def create_tag(
         raise HTTPException(status_code=400, detail="Tag already exists") from None
 
 
-@router.put("/tags/{tag_id}", response_model=TagResponse, responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.put(
+    "/tags/{tag_id}",
+    response_model=TagResponse,
+    responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TAG_UPDATE)
 async def update_tag(
     tag_id: int,
@@ -523,7 +560,7 @@ async def update_tag(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Tag:
     # Verify ownership
     query = select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id)
     result = await db.execute(query)
@@ -533,7 +570,9 @@ async def update_tag(
         raise HTTPException(status_code=404, detail=TAG_NOT_FOUND)
 
     try:
-        updated_tag = await tag_crud.update_tag(db, db_tag=db_tag, tag_in=tag_update, user_id=current_user.id)
+        updated_tag: Tag = await tag_crud.update_tag(
+            db, db_tag=db_tag, tag_in=tag_update, user_id=current_user.id
+        )
         await db.commit()
         await db.refresh(updated_tag)
         await invalidate_task_cache(current_user.id)
@@ -543,7 +582,10 @@ async def update_tag(
         raise HTTPException(status_code=400, detail="Tag name already exists") from None
 
 
-@router.delete("/tags/{tag_id}", responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.delete(
+    "/tags/{tag_id}",
+    responses={404: {"description": TAG_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TAG_DELETE)
 async def delete_tag(
     tag_id: int,
@@ -551,7 +593,7 @@ async def delete_tag(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     # Verify ownership
     query = select(Tag).where(Tag.id == tag_id, Tag.user_id == current_user.id)
     result = await db.execute(query)
@@ -574,14 +616,19 @@ async def reorder_tags(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     await tag_crud.reorder_tags(db, user_id=current_user.id, ordered_ids=ordered_ids)
     await db.commit()
     await invalidate_task_cache(current_user.id)
     return {"message": "Tags reordered successfully"}
 
 
-@router.post("/{task_id}/tags", response_model=TagResponse, status_code=201, responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.post(
+    "/{task_id}/tags",
+    response_model=TagResponse,
+    status_code=201,
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TAG_CREATE_ATTACH)
 async def create_and_attach_tag(
     task_id: int,
@@ -590,7 +637,7 @@ async def create_and_attach_tag(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Tag:
     # Verify task ownership
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
@@ -607,7 +654,9 @@ async def create_and_attach_tag(
         db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
         if not db_tag:
             # Enforce tag count limit per user
-            tag_count_query = select(func.count()).select_from(Tag).where(Tag.user_id == current_user.id)
+            tag_count_query = select(func.count()).select_from(Tag).where(
+                Tag.user_id == current_user.id
+            )
             tag_count_res = await db.execute(tag_count_query)
             tag_count = tag_count_res.scalar() or 0
             if tag_count >= 50:
@@ -617,7 +666,9 @@ async def create_and_attach_tag(
             await db.flush() # Get the tag ID
 
         # Attach to task
-        await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id)
+        await tag_crud.attach_tag_to_task(
+            db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id
+        )
 
         await db.commit()
         await db.refresh(db_tag)
@@ -632,7 +683,9 @@ async def create_and_attach_tag(
 
         # Try attaching again if it was just the creation that failed
         try:
-            await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id)
+            await tag_crud.attach_tag_to_task(
+                db, task_id=task_id, tag_id=db_tag.id, user_id=current_user.id
+            )
             await db.commit()
             await db.refresh(db_tag)
             await invalidate_task_cache(current_user.id, task_id)
@@ -655,7 +708,7 @@ async def get_tags_on_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> list[Tag]:
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
@@ -663,7 +716,10 @@ async def get_tags_on_task(
     return await tag_crud.get_tags_on_task(db, task_id=task_id)
 
 
-@router.post("/{task_id}/tags/{tag_id}", responses={404: {"description": "Task or Tag not found"}, 400: {"description": BAD_REQUEST}})
+@router.post(
+    "/{task_id}/tags/{tag_id}",
+    responses={404: {"description": "Task or Tag not found"}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TAG_ATTACH)
 async def attach_tag_to_task(
     task_id: int,
@@ -672,7 +728,7 @@ async def attach_tag_to_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     # Verify ownership of both task and tag
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
@@ -689,7 +745,9 @@ async def attach_tag_to_task(
         raise HTTPException(status_code=400, detail=MAX_TAGS_EXCEEDED)
 
     try:
-        attached = await tag_crud.attach_tag_to_task(db, task_id=task_id, tag_id=tag_id, user_id=current_user.id)
+        attached = await tag_crud.attach_tag_to_task(
+            db, task_id=task_id, tag_id=tag_id, user_id=current_user.id
+        )
         if not attached:
             return {"message": "Tag already attached"}
         await db.commit()
@@ -701,7 +759,10 @@ async def attach_tag_to_task(
     return {"message": "Tag attached successfully"}
 
 
-@router.delete("/{task_id}/tags/{tag_id}", responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}})
+@router.delete(
+    "/{task_id}/tags/{tag_id}",
+    responses={404: {"description": TASK_NOT_FOUND}, 400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TAG_DETACH)
 async def detach_tag_from_task(
     task_id: int,
@@ -710,7 +771,7 @@ async def detach_tag_from_task(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> dict:
     # Verify ownership
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:

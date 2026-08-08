@@ -1,3 +1,5 @@
+"""Compatibility shim mapping the top-level ``api`` package to ``app``."""
+
 from pathlib import Path
 
 # Make `import api.foo` load modules from the `app/` package directory.

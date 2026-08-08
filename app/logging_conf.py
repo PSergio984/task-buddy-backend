@@ -1,12 +1,24 @@
+"""Logging configuration: obfuscation helpers, filters, and dictConfig setup.
+
+Email values are redacted before they reach handlers; invalid values that
+cannot be parsed as emails are fully masked rather than logged unchanged.
+"""
+
 import logging
 from logging.config import dictConfig
 
 from app.config import DevConfig, ProdConfig, config
 
+REDACTED_MARKER = "***"
+
 
 def obfuscated(email: str, obfuscated_length: int = 2) -> str:
+    """Redact an email address, keeping the first ``obfuscated_length`` local chars.
+
+    Values that do not contain "@" are treated as invalid and fully masked.
+    """
     if "@" not in email:
-        return email  # Not a valid email, return as is
+        return REDACTED_MARKER
 
     local_part, domain = email.split("@", 1)
     if len(local_part) <= obfuscated_length:
@@ -19,7 +31,9 @@ def obfuscated(email: str, obfuscated_length: int = 2) -> str:
 
 
 class EmailObfuscationFilter(logging.Filter):
-    def __init__(self, name: str = "", obfuscated_length: int = 2):
+    """Rewrite the ``email`` field of log records with a redacted value."""
+
+    def __init__(self, name: str = "", obfuscated_length: int = 2) -> None:
         super().__init__(name)
         self.obfuscated_length = obfuscated_length
 
@@ -30,12 +44,16 @@ class EmailObfuscationFilter(logging.Filter):
         return True
 
 
-handlers = ["default", "rotating_file"]
-if isinstance(config, DevConfig):
-    handlers.append("sentryHandler")
+def _handler_names() -> list:
+    """Return the enabled handler names for the ``app`` logger."""
+    names = ["default", "rotating_file"]
+    if isinstance(config, DevConfig):
+        names.append("sentryHandler")
+    return names
 
 
-def configure_logging():
+def configure_logging() -> None:
+    """Apply the application logging configuration via dictConfig."""
     dictConfig(
         {
             "version": 1,
@@ -55,12 +73,18 @@ def configure_logging():
                 "console": {
                     "class": "logging.Formatter",
                     "datefmt": "%Y-%m-%d %H:%M:%S",
-                    "format": "(%(correlation_id)s)%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+                    "format": (
+                        "(%(correlation_id)s)%(asctime)s - %(name)s - "
+                        "%(levelname)s - %(message)s"
+                    ),
                 },
                 "file": {
                     "class": "pythonjsonlogger.jsonlogger.JsonFormatter",
                     "datefmt": "%Y-%m-%d %H:%M:%S",
-                    "format": "%(asctime)s %(msecs)03d %(levelname)s %(name)s %(lineno)d %(correlation_id)s %(message)s",
+                    "format": (
+                        "%(asctime)s %(msecs)03d %(levelname)s %(name)s "
+                        "%(lineno)d %(correlation_id)s %(message)s"
+                    ),
                 },
             },
             "handlers": {
@@ -94,7 +118,7 @@ def configure_logging():
                     "propagate": False,
                 },
                 "app": {
-                    "handlers": handlers,
+                    "handlers": _handler_names(),
                     "level": "DEBUG" if not isinstance(config, ProdConfig) else "INFO",
                     "propagate": False,
                 },

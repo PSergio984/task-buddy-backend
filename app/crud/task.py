@@ -1,3 +1,5 @@
+"""CRUD operations for tasks and subtasks."""
+
 from typing import Optional
 
 from sqlalchemy import select
@@ -123,14 +125,18 @@ async def update_task(db: AsyncSession, db_task: Task, task_in: TaskUpdateReques
         await db.execute(stmt)
 
         unique_names = list(dict.fromkeys(name.strip() for name in tag_names if name.strip()))
-        existing_tags = await tag_crud.get_tags_by_names(db, user_id=db_task.user_id, names=unique_names)
+        existing_tags = await tag_crud.get_tags_by_names(
+            db, user_id=db_task.user_id, names=unique_names
+        )
         existing_names = {t.name for t in existing_tags}
 
         for name in unique_names:
             if name in existing_names:
                 db_tag = next(t for t in existing_tags if t.name == name)
             else:
-                db_tag = await tag_crud.create_tag(db, user_id=db_task.user_id, tag_in=TagCreate(name=name))
+                db_tag = await tag_crud.create_tag(
+                    db, user_id=db_task.user_id, tag_in=TagCreate(name=name)
+                )
                 await db.flush()
 
             await tag_crud.attach_tag_to_task(
@@ -152,7 +158,9 @@ async def delete_task(db: AsyncSession, db_task: Task, user_id: int | None = Non
 
 # SubTask CRUD
 @audit_log(action=AuditAction.CREATE, target_type="SUBTASK")
-async def create_subtask(db: AsyncSession, task_id: int, user_id: int, subtask_in: SubTaskCreateRequest) -> SubTask:
+async def create_subtask(
+    db: AsyncSession, task_id: int, user_id: int, subtask_in: SubTaskCreateRequest
+) -> SubTask:
     subtask_data = subtask_in.model_dump()
     subtask_data.pop("task_id", None)  # Avoid duplicate task_id
     db_subtask = SubTask(
@@ -172,7 +180,9 @@ async def get_subtask(db: AsyncSession, subtask_id: int, user_id: int) -> Option
 
 
 @audit_log(action=AuditAction.UPDATE, target_type="SUBTASK", include_diff=True)
-async def update_subtask(db: AsyncSession, db_subtask: SubTask, subtask_in: SubTaskUpdateRequest) -> SubTask:
+async def update_subtask(
+    db: AsyncSession, db_subtask: SubTask, subtask_in: SubTaskUpdateRequest
+) -> SubTask:
     update_data = subtask_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_subtask, field, value)
@@ -195,7 +205,9 @@ async def get_subtasks_on_task(db: AsyncSession, task_id: int) -> list[SubTask]:
     return list(result.scalars().all())
 
 
-async def reorder_subtasks(db: AsyncSession, task_id: int, user_id: int, ordered_ids: list[int]) -> None:
+async def reorder_subtasks(
+    db: AsyncSession, task_id: int, user_id: int, ordered_ids: list[int]
+) -> None:
     """
     Updates the position of subtasks for a given task in bulk.
     """

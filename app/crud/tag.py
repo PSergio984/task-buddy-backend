@@ -1,3 +1,5 @@
+"""CRUD operations for tags and task-tag links."""
+
 from typing import Optional
 
 from sqlalchemy import select
@@ -45,7 +47,9 @@ async def create_tag(db: AsyncSession, user_id: int, tag_in: TagCreate) -> Tag:
 
 
 @audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_TAG)
-async def update_tag(db: AsyncSession, db_tag: Tag, tag_in: TagUpdate, user_id: int | None = None) -> Tag:
+async def update_tag(
+    db: AsyncSession, db_tag: Tag, tag_in: TagUpdate, user_id: int | None = None
+) -> Tag:
     update_data = tag_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_tag, field, value)
@@ -97,7 +101,11 @@ async def detach_tag_from_task(
 
 
 async def get_tags_on_task(db: AsyncSession, task_id: int) -> list[Tag]:
-    query = select(Tag).join(task_tags, Tag.id == task_tags.c.tag_id).where(task_tags.c.task_id == task_id)
+    query = (
+        select(Tag)
+        .join(task_tags, Tag.id == task_tags.c.tag_id)
+        .where(task_tags.c.task_id == task_id)
+    )
     result = await db.execute(query)
     return list(result.scalars().all())
 

@@ -1,3 +1,5 @@
+"""Tests for the Supabase Realtime token endpoint and signing-key cache."""
+
 import datetime
 import json
 import uuid
@@ -54,7 +56,7 @@ async def test_realtime_token_unauthorized(async_client: AsyncClient) -> None:
 @pytest.mark.anyio
 async def test_realtime_token_authorized(
     authenticated_async_client: AsyncClient,
-    confirmed_user: dict,
+    confirmed_user: dict[str, Any],
     signing_key_file,
 ) -> None:
     from app.api.routers import realtime
@@ -104,6 +106,7 @@ async def test_realtime_token_rate_limited(
     from app.api.routers import realtime
     from app.main import app
 
+    limiter_enabled = app.state.limiter.enabled
     app.state.limiter.enabled = True
     app.state.limiter.reset()
     try:
@@ -115,7 +118,7 @@ async def test_realtime_token_rate_limited(
         assert statuses[-1] == 429
     finally:
         app.state.limiter.reset()
-        app.state.limiter.enabled = False
+        app.state.limiter.enabled = limiter_enabled
 
 
 def test_signing_key_cache_invalidated_on_rotation(tmp_path) -> None:

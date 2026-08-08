@@ -1,3 +1,5 @@
+"""CRUD operations for projects."""
+
 from typing import Optional
 
 from sqlalchemy import delete, select
@@ -12,7 +14,9 @@ from app.schemas.project import ProjectCreateRequest, ProjectUpdateRequest
 PROJECT_TARGET_TYPE = "PROJECT"
 
 
-async def get_projects(db: AsyncSession, user_id: int, limit: int = 100, offset: int = 0) -> list[Project]:
+async def get_projects(
+    db: AsyncSession, user_id: int, limit: int = 100, offset: int = 0
+) -> list[Project]:
     query = (
         select(Project)
         .where(Project.user_id == user_id)
@@ -31,7 +35,9 @@ async def get_project(db: AsyncSession, project_id: int, user_id: int) -> Option
 
 
 @audit_log(action=AuditAction.CREATE, target_type=PROJECT_TARGET_TYPE)
-async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCreateRequest) -> Project:
+async def create_project(
+    db: AsyncSession, user_id: int, project_in: ProjectCreateRequest
+) -> Project:
     # Lock existing projects of this user to prevent concurrent insertions
     lock_query = (
         select(Project.id)
@@ -58,7 +64,9 @@ async def create_project(db: AsyncSession, user_id: int, project_in: ProjectCrea
     target_type=PROJECT_TARGET_TYPE,
     include_diff=True
 )
-async def update_project(db: AsyncSession, db_project: Project, project_in: ProjectUpdateRequest) -> Project:
+async def update_project(
+    db: AsyncSession, db_project: Project, project_in: ProjectUpdateRequest
+) -> Project:
     update_data = project_in.model_dump(exclude_unset=True)
     for field, value in update_data.items():
         setattr(db_project, field, value)
@@ -68,7 +76,12 @@ async def update_project(db: AsyncSession, db_project: Project, project_in: Proj
 
 
 @audit_log(action=AuditAction.DELETE, target_type=PROJECT_TARGET_TYPE)
-async def delete_project(db: AsyncSession, db_project: Project, user_id: int | None = None, delete_tasks: bool = False) -> None:
+async def delete_project(
+    db: AsyncSession,
+    db_project: Project,
+    user_id: int | None = None,
+    delete_tasks: bool = False,
+) -> None:
     if delete_tasks and user_id:
         stmt = delete(Task).where(Task.project_id == db_project.id, Task.user_id == user_id)
         await db.execute(stmt)

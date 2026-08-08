@@ -14,5 +14,5 @@ Grill the user (one question at a time) and resolve with domain-modeling on the 
 
 1. **Published entities:** `tbl_tasks`, `tbl_subtasks`, `tbl_projects`, `tbl_tags`, `tbl_notifications` — the UI-live set, all user-scoped, RLS-gated.
 2. **Not published:** audit logs (append-only history page, already excluded from offline persistence; refetch on open), users, push_subscriptions (server-internal).
-3. **Payload shape: PK-only + refetch** — default REPLICA IDENTITY; subscribe → invalidate affected TanStack Query → refetch. No REPLICA IDENTITY FULL, no client-side patching.
+3. **Payload shape: PK-only + refetch** - default REPLICA IDENTITY: INSERT/UPDATE payloads carry the full new row; UPDATE/DELETE `old_record` carries the PK only (full old values would require REPLICA IDENTITY FULL, which is not used). Subscriber invalidates the affected TanStack Query and refetches. No client-side patching.
 4. Backend work implied: add the five tables to the `supabase_realtime` publication (per B-01); per-user `FOR SELECT` RLS policies using `sub` claim vs `user_id` column (Realtime delivery is gated by SELECT policies; INSERT/UPDATE policies remain write-enforcement only).

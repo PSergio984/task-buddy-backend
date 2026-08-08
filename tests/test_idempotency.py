@@ -1,4 +1,7 @@
+"""Tests for the idempotency middleware."""
+
 import uuid
+from typing import Any
 from unittest.mock import AsyncMock
 
 import pytest
@@ -6,7 +9,10 @@ from httpx import AsyncClient
 
 
 @pytest.mark.anyio
-async def test_idempotency_middleware_caching(async_client: AsyncClient, logged_in_token: str, mocker):
+async def test_idempotency_middleware_caching(
+    async_client: AsyncClient, logged_in_token: str, mocker: Any
+) -> None:
+    """Verify a repeated request with the same idempotency key is served from cache."""
     # Mock Redis client
     mock_redis = AsyncMock()
     # Initial state: key not in cache
@@ -48,7 +54,10 @@ async def test_idempotency_middleware_caching(async_client: AsyncClient, logged_
     assert mock_redis.set.call_count == 2
 
 @pytest.mark.anyio
-async def test_idempotency_invalid_format(async_client: AsyncClient, logged_in_token: str):
+async def test_idempotency_invalid_format(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Verify an invalid idempotency key format returns 400."""
     headers = {
         "X-Idempotency-Key": "not-a-uuid",
         "Authorization": f"Bearer {logged_in_token}"

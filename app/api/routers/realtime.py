@@ -2,6 +2,7 @@ import asyncio
 import datetime
 import json
 import logging
+from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
@@ -72,11 +73,11 @@ async def realtime_token(
 async def stream(
     request: Request,
     current_user: Annotated[User, Depends(get_confirmed_user)],
-):
+) -> StreamingResponse:
     """
     SSE endpoint for real-time updates.
     """
-    async def event_generator():
+    async def event_generator() -> AsyncIterator[str]:
         queue = broadcaster.subscribe(current_user.id)
         try:
             # Send an initial heart beat or connection confirmation
@@ -94,7 +95,12 @@ async def stream(
                     # Keep-alive ping
                     yield ": ping\n\n"
         except Exception:
-            pass
+            logger.exception(
+                "SSE stream error for user %s (path %s)",
+                current_user.id,
+                request.url.path,
+            )
+            raise
         finally:
             broadcaster.unsubscribe(current_user.id, queue)
 

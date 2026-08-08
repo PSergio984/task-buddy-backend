@@ -1,3 +1,5 @@
+"""Tests for background email task behavior."""
+
 import httpx
 import pytest
 
@@ -5,6 +7,7 @@ from app.tasks import APIResponseError, _send_confirmation_email_async, send_con
 
 
 def test_send_confirmation_email(mock_httpx_client):
+    """Verify the Brevo API path is used and SMTP is not called."""
     send_confirmation_email("test@example.com", "Test Subject", "Test Body")
     # Verify Brevo API (primary path) was called
     mock_httpx_client.post.assert_called_once()
@@ -19,7 +22,9 @@ def test_send_confirmation_email(mock_httpx_client):
     mock_httpx_client.smtp.assert_not_called()
 
 
-async def test_send_confirmation_email_api_error(mock_httpx_client):
+@pytest.mark.anyio
+async def test_send_confirmation_email_api_error(mock_httpx_client) -> None:
+    """Verify an API error surfaces as APIResponseError when SMTP also fails."""
     # Force Brevo API to fail so we exercise the SMTP fallback
     mock_httpx_client.post.side_effect = httpx.HTTPStatusError(
         "Server error", request=httpx.Request("POST", "/"), response=httpx.Response(500)
@@ -33,6 +38,7 @@ async def test_send_confirmation_email_api_error(mock_httpx_client):
 
 
 def test_send_confirmation_email_falls_back_to_smtp(mock_httpx_client):
+    """Verify the SMTP fallback is used when the Brevo API fails."""
     # Force Brevo API to fail
     mock_httpx_client.post.side_effect = httpx.HTTPStatusError(
         "Server error", request=httpx.Request("POST", "/"), response=httpx.Response(500)

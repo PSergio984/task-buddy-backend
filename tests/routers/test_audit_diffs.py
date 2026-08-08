@@ -1,9 +1,14 @@
+"""Tests for audit logging of update diffs and deletions."""
+
+import pytest
 from httpx import AsyncClient
 
 from app.schemas.enums import AuditAction
 
 
-async def test_audit_task_update_diff(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_task_update_diff(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify an update log records the task field diff."""
     # 1. Create a task
     task_body = {"title": "Initial Title", "description": "Initial Description"}
     response = await async_client.post(
@@ -36,7 +41,9 @@ async def test_audit_task_update_diff(async_client: AsyncClient, logged_in_token
     assert update_log is not None
     assert "title: 'Initial Title' -> 'Updated Title'" in update_log["details"]
 
-async def test_audit_project_update_diff(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_project_update_diff(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify an update log records the project field diff."""
     # 1. Create a project
     project_body = {"name": "Old Project", "color": "blue"}
     response = await async_client.post(
@@ -70,7 +77,9 @@ async def test_audit_project_update_diff(async_client: AsyncClient, logged_in_to
     assert "name: 'Old Project' -> 'New Project'" in update_log["details"]
     assert "color: 'blue' -> 'green'" in update_log["details"]
 
-async def test_audit_task_deletion(async_client: AsyncClient, logged_in_token: str):
+@pytest.mark.anyio
+async def test_audit_task_deletion(async_client: AsyncClient, logged_in_token: str) -> None:
+    """Verify a delete log is recorded when a task is deleted."""
     # 1. Create a task
     task_body = {"title": "Delete Me"}
     response = await async_client.post(
@@ -100,4 +109,3 @@ async def test_audit_task_deletion(async_client: AsyncClient, logged_in_token: s
     delete_log = next((log for log in logs if log["target_type"] == "TASK" and log["action"] == AuditAction.DELETE and log["target_id"] == task_id), None)
     assert delete_log is not None
     assert "Delete task: Delete Me" in delete_log["details"]
-

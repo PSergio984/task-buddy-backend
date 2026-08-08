@@ -7,6 +7,7 @@ file mtime so dashboard key rotations are picked up without a restart.
 """
 
 import base64
+import hashlib
 import json
 import logging
 from pathlib import Path
@@ -33,10 +34,11 @@ class _CacheEntry(NamedTuple):
     key_file: str
     signing_key: SigningKey
     mtime_ns: int
+    digest: str
 
 
 class SigningKeyCache:
-    """Process-lifetime cache for the signing key, invalidated by file mtime."""
+    """Process-lifetime cache for the signing key, invalidated by file mtime + content."""
 
     def __init__(self) -> None:
         self._cache: Optional[_CacheEntry] = None
@@ -46,8 +48,8 @@ class SigningKeyCache:
 
         Returns (private key, kid). Raises ValueError if the file is missing,
         malformed, or missing the private component or kid. Cached per file
-        path + mtime (nanosecond) so a file swap (key rotation) invalidates
-        the cache.
+        path + mtime (nanosecond) + content digest so a file swap (key
+        rotation) invalidates the cache even when timestamps are unchanged.
         """
         path = Path(key_file)
 
@@ -60,19 +62,30 @@ class SigningKeyCache:
             self._cache is not None
             and self._cache.key_file == key_file
             and self._cache.mtime_ns == mtime_ns
+            and self._cache.digest == _file_digest(path)
         ):
             return self._cache.signing_key
 
         try:
             signing_key = _load_key_from_file(path)
             self._cache = _CacheEntry(
-                key_file=key_file, signing_key=signing_key, mtime_ns=mtime_ns
+                key_file=key_file,
+                signing_key=signing_key,
+                mtime_ns=mtime_ns,
+                digest=_file_digest(path),
             )
             logger.debug("Loaded Supabase signing key (kid=%s)", signing_key.kid)
         except (KeyError, ValueError) as e:
             raise ValueError("Supabase signing key file unreadable") from e
 
         return signing_key
+
+
+def _file_digest(path: Path) -> str:
+    try:
+        return hashlib.sha256(path.read_bytes()).hexdigest()
+    except OSError as e:
+        raise ValueError("Supabase signing key file unreadable") from e
 
 
 def _load_key_from_file(path: Path) -> SigningKey:

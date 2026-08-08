@@ -1,3 +1,5 @@
+"""API endpoints for notifications and push subscriptions."""
+
 import logging
 from typing import Annotated, Optional
 
@@ -13,6 +15,7 @@ from app.config import (
 from app.crud import notification as notification_crud
 from app.dependencies import get_db
 from app.limiter import limiter
+from app.models.notification import Notification, PushSubscription
 from app.models.user import User
 from app.schemas.notification import (
     NotificationRead,
@@ -33,7 +36,7 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 @router.get("/vapid-key")
-async def get_vapid_key():
+async def get_vapid_key() -> dict:
     """
     Get the VAPID public key for push notification subscription.
     """
@@ -49,7 +52,7 @@ async def list_notifications(
     skip: Annotated[int, Query(ge=0)] = 0,
     limit: Annotated[int, Query(ge=1, le=100)] = 20,
     is_read: Annotated[Optional[bool], Query()] = None,
-):
+) -> list[Notification]:
     """
     Retrieve notifications for the current user.
     """
@@ -65,7 +68,7 @@ async def mark_as_read(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> Notification:
     """
     Mark a notification as read.
     """
@@ -89,7 +92,7 @@ async def delete_notification(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> None:
     """
     Delete a notification.
     """
@@ -113,7 +116,7 @@ async def register_push_subscription(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> PushSubscription:
     """
     Register or update a push subscription for the current user.
     """
@@ -132,7 +135,7 @@ async def delete_push_subscription(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-):
+) -> None:
     """
     Delete a push subscription by endpoint.
     """

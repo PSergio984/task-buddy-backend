@@ -1,4 +1,7 @@
+"""Tests for notification CRUD operations and reminder processing."""
+
 from datetime import datetime, timedelta, timezone
+from typing import Any
 
 import pytest
 from sqlalchemy import select
@@ -17,8 +20,11 @@ from app.schemas.notification import NotificationCreate, PushSubscriptionCreate
 from app.tasks import _process_reminders_async
 
 
-@pytest.mark.asyncio
-async def test_create_notification(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_create_notification(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a notification can be created."""
     user_id = confirmed_user["id"]
     notification_in = NotificationCreate(
         user_id=user_id,
@@ -31,8 +37,11 @@ async def test_create_notification(db: AsyncSession, confirmed_user: dict):
     assert notification.title == "Test Title"
     assert notification.user_id == user_id
 
-@pytest.mark.asyncio
-async def test_get_notifications(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_get_notifications(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify notifications can be listed for a user."""
     user_id = confirmed_user["id"]
     # Create 3 notifications with different titles
     for i in range(3):
@@ -52,8 +61,11 @@ async def test_get_notifications(db: AsyncSession, confirmed_user: dict):
     assert "Title 1" in titles
     assert "Title 2" in titles
 
-@pytest.mark.asyncio
-async def test_mark_as_read(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_mark_as_read(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a notification can be marked as read."""
     user_id = confirmed_user["id"]
     notification_in = NotificationCreate(
         user_id=user_id,
@@ -69,8 +81,11 @@ async def test_mark_as_read(db: AsyncSession, confirmed_user: dict):
     assert updated is not None
     assert updated.is_read is True
 
-@pytest.mark.asyncio
-async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_push_subscription_upsert(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a push subscription is created and updated in place."""
     user_id = confirmed_user["id"]
     sub_in = PushSubscriptionCreate(
         endpoint="https://example.com/1",
@@ -92,8 +107,11 @@ async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict):
     assert sub_updated.id == sub.id
     assert sub_updated.p256dh == "p1-updated"
 
-@pytest.mark.asyncio
-async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict):
+@pytest.mark.anyio
+async def test_delete_push_subscription(
+    db: AsyncSession, confirmed_user: dict[str, Any]
+) -> None:
+    """Verify a push subscription can be deleted."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/del"
     sub_in = PushSubscriptionCreate(
@@ -115,8 +133,11 @@ async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict):
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is None
 
-@pytest.mark.asyncio
-async def test_process_reminders_deduplication(db: AsyncSession, confirmed_user: dict, mocker):
+@pytest.mark.anyio
+async def test_process_reminders_deduplication(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """Verify reminder processing does not create duplicate notifications."""
     user_id = confirmed_user["id"]
     now = datetime.now(timezone.utc)
 
