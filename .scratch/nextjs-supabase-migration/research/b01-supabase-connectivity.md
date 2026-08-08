@@ -1,7 +1,7 @@
 # B01 — Supabase Connectivity Research
 
 Research ticket: FastAPI/SQLAlchemy 2.0 backend → Supabase Cloud Postgres.
-Primary sources only: supabase.com/docs, postgresql.org/docs/15, docs.sqlalchemy.org/en/20, alembic.sqlalchemy.org, pgbouncer.org. No code modified.
+Primary sources are preferred (supabase.com/docs, postgresql.org/docs/15, docs.sqlalchemy.org/en/20, alembic.sqlalchemy.org, pgbouncer.org); secondary sources and practical guidance are labeled inline. No code modified.
 
 ---
 
@@ -39,12 +39,12 @@ SQLAlchemy basics ([Connection Pooling](https://docs.sqlalchemy.org/en/20/core/p
 
 Supabase-side pool sizing ([Connection management](https://supabase.com/docs/guides/database/connection-management), [Connecting to Postgres FAQ](https://supabase.com/docs/guides/database/connecting-to-postgres#how-does-the-default-pool-size-work)):
 - Supavisor pool size is set in dashboard (Database Settings → Connection pooling); guidance: ~80% of DB max connections to the pool if not heavily using PostgREST, ~40% if you are.
-- Pooler backend connections (pool_size) are shared between session-mode and transaction-mode ports under one limit; running both poolers + direct connections stacks load toward the compute tier's max connections (`Direct + Supavisor ≤ pool_size + PgBouncer ≤ pool_size ≤ max_connections`).
+- Pooler backend connections (pool_size) are shared between session-mode and transaction-mode ports under one limit; running both poolers + direct connections stacks load toward the compute tier's max connections (direct + Supavisor + PgBouncer backend connections together count toward `max_connections`, with separate pooler caps).
 - App-side pools "are satisfactory on their own" for long-standing containers/VMs (deployed static architecture) — i.e., a persistent FastAPI deployment needs no server-side pooler by default. ([Connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres#application-side-poolers))
 
 PgBouncer/Supavisor transaction-mode implications:
 - Transaction mode: "A server connection is assigned to a client only during a transaction" and returned when it ends ([PgBouncer usage](https://www.pgbouncer.org/usage.html#transaction-pooling)). Consequence: anything session-scoped does not survive — named/prepared statements, session-level advisory locks, `SET SESSION`, LISTEN/NOTIFY. Supabase's documented limitation: "Transaction mode does not support prepared statements... turn off prepared statements for your connection library." ([Connecting to Postgres](https://supabase.com/docs/guides/database/connecting-to-postgres#pooler-transaction-mode))
-- SQLAlchemy/asyncpg vs PgBouncer: use `poolclass=NullPool` and dynamic prepared statement names (`prepared_statement_name_func`); PgBouncer must be configured to `DISCARD` on return or prepared statements accumulate ("Without proper setup, prepared statements can accumulate quickly and cause performance issues"). ([SQLAlchemy PostgreSQL dialect](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#prepared-statement-name-with-pgbouncer)) — relevant only if the driver auto-prepares (asyncpg; psycopg2 named-prepare threshold).
+- SQLAlchemy/asyncpg vs PgBouncer: use `poolclass=NullPool` and dynamic prepared statement names (`prepared_statement_name_func`); PgBouncer must be configured to `DISCARD` on return or prepared statements accumulate ("Without proper setup, prepared statements can accumulate quickly and cause performance issues"). ([SQLAlchemy PostgreSQL dialect](https://docs.sqlalchemy.org/en/20/dialects/postgresql.html#prepared-statement-name-with-pgbouncer)) — relevant only for asyncpg, which auto-prepares; psycopg2 has no equivalent auto-prepare threshold.
 - Do NOT run long-lived session-scoped work (migrations, replication, advisory-lock workflows) through transaction mode.
 
 Celery worker:

@@ -78,6 +78,7 @@ class SigningKeyCache:
 def _load_key_from_file(path: Path) -> SigningKey:
     jwk_data = _read_jwk(path)
     _validate_jwk_shape(jwk_data)
+    _validate_components(jwk_data)
 
     d = int.from_bytes(b64u_decode(jwk_data["d"]), "big")
     private_key = ec.derive_private_key(d, ec.SECP256R1())
@@ -104,7 +105,15 @@ def _validate_jwk_shape(jwk_data: dict[str, Any]) -> None:
         raise ValueError("Supabase signing key file has an invalid key type")
 
 
+def _validate_components(jwk_data: dict[str, Any]) -> None:
+    for component in ("d", "x", "y"):
+        value = jwk_data.get(component)
+        if not isinstance(value, str) or not value:
+            raise ValueError(f"Supabase signing key file has an invalid '{component}' component")
+
+
 def b64u_decode(value: str) -> bytes:
+    """Decode URL-safe Base64 text into bytes."""
     return base64.urlsafe_b64decode(value + "=" * (-len(value) % 4))
 
 

@@ -1,6 +1,8 @@
 import datetime
 import json
 import uuid
+from pathlib import Path
+from typing import Any
 
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
@@ -11,7 +13,7 @@ from jose import jwt as jose_jwt
 from app.libs.supabase_signing import b64u_decode
 
 
-def _make_test_jwk() -> dict:
+def _make_test_jwk() -> dict[str, Any]:
     """Generate a fresh ES256 keypair JWK at runtime (never commit private keys)."""
     private_key = ec.generate_private_key(ec.SECP256R1())
     jwk_data = jose_jwk.construct(private_key, "ES256").to_dict()
@@ -21,20 +23,20 @@ def _make_test_jwk() -> dict:
     return jwk_data
 
 
-def _public_key_for(jwk_data: dict):
+def _public_key_for(jwk_data: dict[str, Any]) -> ec.EllipticCurvePublicKey:
     x = int.from_bytes(b64u_decode(jwk_data["x"]), "big")
     y = int.from_bytes(b64u_decode(jwk_data["y"]), "big")
     return ec.EllipticCurvePublicNumbers(x, y, ec.SECP256R1()).public_key()
 
 
-def _write_key(tmp_path, jwk_data: dict):
+def _write_key(tmp_path: Path, jwk_data: dict[str, Any]) -> Path:
     key_file = tmp_path / "signing_key.json"
     key_file.write_text(json.dumps(jwk_data))
     return key_file
 
 
 @pytest.fixture()
-def signing_key_file(mocker, tmp_path):
+def signing_key_file(mocker, tmp_path: Path) -> Path:
     """Write a runtime-generated signing key JWK and point config at it."""
     from app.api.routers import realtime
 
@@ -166,6 +168,18 @@ def test_signing_key_missing_kid_rejected(tmp_path) -> None:
     cache = SigningKeyCache()
     bad_jwk = _make_test_jwk()
     del bad_jwk["kid"]
+    key_file = _write_key(tmp_path, bad_jwk)
+
+    with pytest.raises(ValueError):
+        cache.load(str(key_file))
+
+
+def test_signing_key_rejects_non_string_components(tmp_path) -> None:
+    from app.libs.supabase_signing import SigningKeyCache
+
+    cache = SigningKeyCache()
+    bad_jwk = _make_test_jwk()
+    bad_jwk["d"] = 12345
     key_file = _write_key(tmp_path, bad_jwk)
 
     with pytest.raises(ValueError):
