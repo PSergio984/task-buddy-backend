@@ -86,7 +86,8 @@ def _get_or_create_demo_user(conn: Connection, email: str) -> int:
 
     if not row:
         logger.info("Creating seed user %s...", email)
-        hashed = pwd_context.hash("password123")
+        password = os.environ.get("SEED_PASSWORD", "password123")
+        hashed = pwd_context.hash(password)
         res = conn.execute(
             text("""
             INSERT INTO tbl_users (username, email, password, confirmed)
@@ -94,7 +95,7 @@ def _get_or_create_demo_user(conn: Connection, email: str) -> int:
             RETURNING id
             """),
             {
-                "username": email.split("@")[0],
+                "username": email.partition("@")[0],
                 "email": email,
                 "password": hashed,
                 "confirmed": True,

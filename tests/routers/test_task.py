@@ -3,10 +3,11 @@
 from typing import Any, cast
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import security
+from app.main import app
 
 
 async def create_task(
@@ -258,6 +259,25 @@ async def test_get_all_tags_not_shadowed_by_task_id(
     )
 
     assert response.status_code == 200, f"Tags list shadowed by /{{task_id}}: {response.text}"
+    names = [tag["name"] for tag in response.json()]
+    assert "Important" in names
+
+
+@pytest.mark.anyio
+async def test_get_all_tags_with_trailing_slash(
+    created_task: dict[str, Any],
+    created_tag: dict[str, Any],
+    logged_in_token: str,
+) -> None:
+    """The frontend's with-slash URL (/tasks/tags/) also reaches the tags list."""
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://testserver/", follow_redirects=True) as ac:
+        response = await ac.get(
+            "/api/v1/tasks/tags/",
+            headers={"Authorization": f"Bearer {logged_in_token}"},
+        )
+
+    assert response.status_code == 200, f"With-slash tags list failed: {response.text}"
     names = [tag["name"] for tag in response.json()]
     assert "Important" in names
 

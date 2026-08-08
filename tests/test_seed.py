@@ -79,6 +79,29 @@ async def test_seed_data_targets_seed_email(
     assert demo_response.status_code == 401
 
 
+@pytest.mark.anyio
+async def test_seed_password_override(
+    async_client: AsyncClient, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """SEED_PASSWORD controls the credential of a freshly seeded account."""
+    sync_url = _sync_url(db)
+    monkeypatch.setenv("SEED_EMAIL", "e2e@test.dev")
+    monkeypatch.setenv("SEED_PASSWORD", "E2eTest!2026")
+    seed_data(sync_url)
+
+    response = await async_client.post(
+        "/api/v1/users/token",
+        data={"username": "e2e@test.dev", "password": "E2eTest!2026"},
+    )
+    assert response.status_code == 200, "Failed to login with SEED_PASSWORD"
+    # The default password must not work.
+    default_response = await async_client.post(
+        "/api/v1/users/token",
+        data={"username": "e2e@test.dev", "password": "password123"},
+    )
+    assert default_response.status_code == 401
+
+
 def test_seed_rejects_malformed_seed_email(
     db: AsyncSession, monkeypatch: pytest.MonkeyPatch
 ) -> None:

@@ -160,6 +160,11 @@ async def get_tasks(
     response_model=list[TagResponse],
     responses={400: {"description": BAD_REQUEST}},
 )
+@router.get(
+    "/tags/",
+    response_model=list[TagResponse],
+    responses={400: {"description": BAD_REQUEST}},
+)
 @limiter.limit(RATE_LIMIT_TASK_GET)
 async def get_all_tags(
     request: Request,
