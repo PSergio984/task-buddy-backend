@@ -13,6 +13,7 @@ from py_vapid import Vapid
 
 
 def main() -> None:
+    """Generate VAPID keys: print the public key, save the private key owner-only."""
     vapid = Vapid()
     vapid.generate_keys()
 
@@ -28,7 +29,8 @@ def main() -> None:
     ).decode("utf-8")
 
     out_path = Path(os.environ.get("VAPID_PRIVATE_KEY_FILE", "vapid_private_key.pem"))
-    out_path.write_text(private_pem)
+    with out_path.open("x", encoding="utf-8") as fh:
+        fh.write(private_pem)
     try:
         out_path.chmod(0o600)
     except OSError:

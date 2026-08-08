@@ -9,7 +9,7 @@ from app.security import is_token_blacklisted
 
 
 @pytest.fixture(autouse=True)
-def mock_redis_security(mocker: Any):
+def mock_redis_security(mocker: Any) -> None:
     """Override the global autouse fixture with a stateful mock Redis client."""
     blacklist = set()
 

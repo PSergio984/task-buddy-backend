@@ -44,6 +44,7 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker: Any) ->
     """Verify the register endpoint rate-limits after 5 requests per minute."""
     # Enable limiter specifically for this test
     limiter_enabled = app.state.limiter.enabled
+    app.state.limiter.reset()
     app.state.limiter.enabled = True
     try:
         # Mock get_real_ip to ensure we have a consistent key

@@ -13,12 +13,14 @@ from pywebpush import vapid_keys
 
 
 def main() -> None:
+    """Generate VAPID keys: print the public key, save the private key owner-only."""
     keys = vapid_keys.generate_vapid_keys()
     public_key = keys["public_key"]
     private_key = keys["private_key"]
 
     out_path = Path(os.environ.get("VAPID_PRIVATE_KEY_FILE", "vapid_private_key.json"))
-    out_path.write_text(json.dumps({"private_key": private_key}))
+    with out_path.open("x", encoding="utf-8") as fh:
+        fh.write(json.dumps({"private_key": private_key}))
     try:
         out_path.chmod(0o600)
     except OSError:

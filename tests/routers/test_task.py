@@ -1,6 +1,6 @@
 """Tests for the /api/v1/tasks endpoints."""
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 from httpx import AsyncClient
@@ -15,8 +15,7 @@ async def create_task(
     response = await client.post(
         "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {logged_in_token}"}
     )
-    return response.json()
-
+    return cast(dict[str, Any], response.json())
 
 async def create_subtask(
     body: str, task_id: int, client: AsyncClient, logged_in_token: str
@@ -27,8 +26,7 @@ async def create_subtask(
         json={"title": body, "task_id": task_id},
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
-    return response.json()
-
+    return cast(dict[str, Any], response.json())
 
 async def create_tag(
     body: str, task_id: int, client: AsyncClient, logged_in_token: str
@@ -38,8 +36,7 @@ async def create_tag(
         json={"name": body},
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
-    return response.json()
-
+    return cast(dict[str, Any], response.json())
 
 @pytest.fixture()
 async def created_task(
@@ -95,7 +92,7 @@ async def test_create_empty_task(
 
 @pytest.mark.anyio
 async def test_create_task_expired_token(
-    db: AsyncSession, async_client: AsyncClient, confirmed_user: dict[str, Any], monkeypatch
+    db: AsyncSession, async_client: AsyncClient, confirmed_user: dict[str, Any], monkeypatch: Any
 ) -> None:
     """Verify creating a task with an expired token returns 401."""
     monkeypatch.setattr(security, "access_token_expire_time", lambda: -1)
