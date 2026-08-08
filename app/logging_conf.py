@@ -15,12 +15,16 @@ REDACTED_MARKER = "***"
 def obfuscated(email: str, obfuscated_length: int = 2) -> str:
     """Redact an email address, keeping the first ``obfuscated_length`` local chars.
 
-    Values that do not contain "@" are treated as invalid and fully masked.
+    Values that are not valid single-``@`` emails (empty local or domain part,
+    extra ``@`` characters, whitespace) are fully masked.
     """
-    if "@" not in email:
+    if email.count("@") != 1:
         return REDACTED_MARKER
 
     local_part, domain = email.split("@", 1)
+    if not local_part or not domain or any(ch.isspace() for ch in email):
+        return REDACTED_MARKER
+
     if len(local_part) <= obfuscated_length:
         obfuscated_local = "*" * len(local_part)
     else:
