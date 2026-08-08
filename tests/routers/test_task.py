@@ -245,6 +245,24 @@ async def test_get_tags_on_task(
 
 
 @pytest.mark.anyio
+async def test_get_all_tags_not_shadowed_by_task_id(
+    async_client: AsyncClient,
+    created_task: dict[str, Any],
+    created_tag: dict[str, Any],
+    logged_in_token: str,
+) -> None:
+    """GET /tags must not be swallowed by GET /{task_id} (task_id='tags' would 422)."""
+    response = await async_client.get(
+        "/api/v1/tasks/tags",
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+
+    assert response.status_code == 200, f"Tags list shadowed by /{{task_id}}: {response.text}"
+    names = [tag["name"] for tag in response.json()]
+    assert "Important" in names
+
+
+@pytest.mark.anyio
 async def test_get_tags_on_missing_task(async_client: AsyncClient, logged_in_token: str) -> None:
     """Verify fetching tags of a missing task returns 404."""
     response = await async_client.get(

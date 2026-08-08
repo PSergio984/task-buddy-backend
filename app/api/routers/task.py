@@ -154,6 +154,22 @@ async def get_tasks(
     await set_cached_data(cache_key, tasks)
     return tasks
 
+
+@router.get(
+    "/tags",
+    response_model=list[TagResponse],
+    responses={400: {"description": BAD_REQUEST}},
+)
+@limiter.limit(RATE_LIMIT_TASK_GET)
+async def get_all_tags(
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[Tag]:
+    return await tag_crud.get_user_tags(db, user_id=current_user.id)
+
+
 @router.get(
     "/{task_id}",
     response_model=TaskCreateResponse,
@@ -496,21 +512,6 @@ async def reorder_subtasks(
 
 
 # --- Tag Endpoints ---
-
-@router.get(
-    "/tags/",
-    response_model=list[TagResponse],
-    responses={400: {"description": BAD_REQUEST}},
-)
-@limiter.limit(RATE_LIMIT_TASK_GET)
-async def get_all_tags(
-    request: Request,
-    response: Response,
-    current_user: Annotated[User, Depends(get_confirmed_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[Tag]:
-    return await tag_crud.get_user_tags(db, user_id=current_user.id)
-
 
 @router.post(
     "/tags/",
