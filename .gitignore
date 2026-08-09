@@ -142,7 +142,9 @@ docs
 .agents
 .azure
 .gemini
-.github
+.github/agents
+.github/instructions
+.github/copilot-instructions.md
 .planning
 .superpowers
 .claude/*.json
