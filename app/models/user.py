@@ -30,8 +30,12 @@ class User(Base):
     # Relationships
     tasks: Mapped[list[Task]] = relationship(back_populates="user", cascade="all, delete-orphan")
     tags: Mapped[list[Tag]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    projects: Mapped[list[Project]] = relationship(back_populates="user", cascade="all, delete-orphan")
-    audit_logs: Mapped[list[AuditLog]] = relationship(back_populates="user", cascade="all, delete-orphan")
+    projects: Mapped[list[Project]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
+    audit_logs: Mapped[list[AuditLog]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
     notifications: Mapped[list[Notification]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )

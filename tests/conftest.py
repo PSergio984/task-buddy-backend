@@ -34,8 +34,9 @@ test_engine = create_async_engine(
     connect_args={"check_same_thread": False},
     pool_size=20,
     max_overflow=30,
-    pool_timeout=60
+    pool_timeout=60,
 )
+
 
 # Cleanup the temp file after the session
 @pytest.fixture(scope="session", autouse=True)
@@ -51,6 +52,7 @@ def cleanup_temp_db() -> Generator:
         # On Windows, the file may still be locked by the engine disposal process
         pass
 
+
 # Enable SQLite foreign key enforcement
 @event.listens_for(test_engine.sync_engine, "connect")
 def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
@@ -60,12 +62,9 @@ def set_sqlite_pragma(dbapi_connection: Any, connection_record: Any) -> None:
     cursor.execute("PRAGMA synchronous=NORMAL")
     cursor.close()
 
+
 TestSessionLocal = async_sessionmaker(
-    bind=test_engine,
-    class_=AsyncSession,
-    expire_on_commit=False,
-    autocommit=False,
-    autoflush=False
+    bind=test_engine, class_=AsyncSession, expire_on_commit=False, autocommit=False, autoflush=False
 )
 
 # Patch app.database globally
@@ -74,15 +73,18 @@ app_db.AsyncSessionLocal = TestSessionLocal
 app_deps.AsyncSessionLocal = TestSessionLocal
 app_tasks.AsyncSessionLocal = TestSessionLocal
 
+
 # Override get_db dependency
 async def override_get_db() -> AsyncGenerator:
     async with TestSessionLocal() as session:
         yield session
 
+
 app.dependency_overrides[get_db] = override_get_db
 
 # Disable rate limiting for tests
 app.state.limiter.enabled = False
+
 
 # Mock Redis for security blacklist checks
 @pytest.fixture(autouse=True)
@@ -105,9 +107,11 @@ def mock_redis_security(mocker: Any) -> Any:
     mocker.patch("app.libs.cache.get_redis_client", return_value=mock_redis)
     mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
 
+
 @pytest.fixture(scope="session")
 def anyio_backend():
     return "asyncio"
+
 
 @pytest.fixture(scope="session", autouse=True)
 async def setup_db_schema():
@@ -116,6 +120,7 @@ async def setup_db_schema():
         await conn.run_sync(Base.metadata.create_all)
     yield
     await test_engine.dispose()
+
 
 @pytest.fixture()
 async def db() -> AsyncGenerator:
@@ -126,17 +131,20 @@ async def db() -> AsyncGenerator:
 
     async with TestSessionLocal() as session:
         yield session
-        await session.rollback() # Ensure nothing leaks
+        await session.rollback()  # Ensure nothing leaks
+
 
 @pytest.fixture()
 def client() -> Generator:
     yield TestClient(app)
+
 
 @pytest.fixture()
 async def async_client() -> AsyncGenerator:
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://testserver/") as ac:
         yield ac
+
 
 @pytest.fixture()
 async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict[str, Any]:
@@ -155,14 +163,14 @@ async def registered_user(db: AsyncSession, async_client: AsyncClient) -> dict[s
     user_data["id"] = user.id
     return user_data
 
+
 @pytest.fixture()
 async def confirmed_user(db: AsyncSession, registered_user: dict[str, Any]) -> dict[str, Any]:
-    stmt = (
-        update(User).where(User.email == registered_user["email"]).values(confirmed=True)
-    )
+    stmt = update(User).where(User.email == registered_user["email"]).values(confirmed=True)
     await db.execute(stmt)
     await db.commit()
     return registered_user
+
 
 @pytest.fixture()
 async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> str:
@@ -175,6 +183,7 @@ async def logged_in_token(async_client: AsyncClient, confirmed_user: dict) -> st
     token = cast(str, payload.get("access_token"))
     assert token, "Login response missing access_token"
     return token
+
 
 @pytest.fixture(autouse=True)
 def mock_httpx_client(mocker: Any) -> Any:
@@ -205,6 +214,7 @@ def mock_httpx_client(mocker: Any) -> Any:
     mocked_async_client.smtp_client = smtp_client
     return mocked_async_client
 
+
 @pytest.fixture(autouse=True)
 def mock_celery_tasks(mocker: Any) -> bool:
     """Mock all celery tasks' delay method to prevent hanging in tests."""
@@ -213,10 +223,12 @@ def mock_celery_tasks(mocker: Any) -> bool:
     mocker.patch("app.tasks.send_password_changed_confirmation.delay")
     return True
 
+
 @pytest.fixture()
-async def authenticated_async_client(async_client: AsyncClient, logged_in_token: str) -> AsyncGenerator:
+async def authenticated_async_client(
+    async_client: AsyncClient, logged_in_token: str
+) -> AsyncGenerator:
     async_client.headers.update({"Authorization": f"Bearer {logged_in_token}"})
     yield async_client
     if "Authorization" in async_client.headers:
         del async_client.headers["Authorization"]
-

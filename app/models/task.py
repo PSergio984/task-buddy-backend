@@ -62,7 +62,6 @@ class Task(AsyncAttrs, Base):
     )
     tags: Mapped[list[Tag]] = relationship(secondary=task_tags, back_populates="tasks")
 
-
     def __repr__(self) -> str:
         return f"<Task(id={self.id}, title={self.title}, completed={self.completed})>"
 

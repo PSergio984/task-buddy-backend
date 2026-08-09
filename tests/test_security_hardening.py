@@ -24,6 +24,7 @@ async def test_security_headers(async_client: AsyncClient) -> None:
     assert "Permissions-Policy" in response.headers
     assert "geolocation=()" in response.headers["Permissions-Policy"]
 
+
 @pytest.mark.anyio
 async def test_cors_allowed_origin(async_client: AsyncClient) -> None:
     """Verify the default allowed CORS origin is accepted."""
@@ -32,12 +33,17 @@ async def test_cors_allowed_origin(async_client: AsyncClient) -> None:
     response = await async_client.options("/api/v1/users/register", headers=headers)
     assert response.headers.get("access-control-allow-origin") == "http://localhost:3000"
 
+
 @pytest.mark.anyio
 async def test_cors_disallowed_origin(async_client: AsyncClient) -> None:
     """Verify disallowed CORS origins are not reflected."""
     headers = {"Origin": "http://evil.com"}
     response = await async_client.options("/api/v1/users/register", headers=headers)
-    assert "access-control-allow-origin" not in response.headers or response.headers["access-control-allow-origin"] != "http://evil.com"
+    assert (
+        "access-control-allow-origin" not in response.headers
+        or response.headers["access-control-allow-origin"] != "http://evil.com"
+    )
+
 
 @pytest.mark.anyio
 async def test_rate_limiting_register(async_client: AsyncClient, mocker: Any) -> None:
@@ -71,6 +77,7 @@ async def test_rate_limiting_register(async_client: AsyncClient, mocker: Any) ->
         assert "Too many attempts" in resp_json["detail"]
     finally:
         app.state.limiter.enabled = limiter_enabled
+
 
 @pytest.mark.anyio
 async def test_rate_limiting_create_project(
@@ -135,4 +142,3 @@ async def test_rate_limiting_login(async_client: AsyncClient, mocker: Any) -> No
         assert "Too many attempts" in resp_json["detail"]
     finally:
         app.state.limiter.enabled = limiter_enabled
-

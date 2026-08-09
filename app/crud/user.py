@@ -36,11 +36,7 @@ async def create_user(db: AsyncSession, user_in: UserCreateRequest, hashed_passw
     return db_user
 
 
-@audit_log(
-    action=AuditAction.UPDATE,
-    target_type=TARGET_TYPE_USER,
-    include_diff=True
-)
+@audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_USER, include_diff=True)
 async def update_user_confirmation(db: AsyncSession, db_user: User, confirmed: bool = True) -> User:
     db_user.confirmed = confirmed
     db_user.confirmation_failed = not confirmed
@@ -59,7 +55,7 @@ async def get_user_by_username(db: AsyncSession, username: str) -> Optional[User
     action=AuditAction.UPDATE,
     target_type=TARGET_TYPE_USER,
     include_diff=True,
-    blacklist=[PASSWORD_FIELD]
+    blacklist=[PASSWORD_FIELD],
 )
 async def update_user(db: AsyncSession, db_user: User, update_data: dict) -> User:
     for field, value in update_data.items():

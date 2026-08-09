@@ -29,10 +29,7 @@ async def test_trigger_reminder_before_notification(
 
     # 1. Create a task that is due in 1 hour
     task = Task(
-        title="Test Reminder Before Task",
-        user_id=user_id,
-        due_date=due_in_1_hour,
-        completed=False
+        title="Test Reminder Before Task", user_id=user_id, due_date=due_in_1_hour, completed=False
     )
     db.add(task)
     await db.commit()
@@ -47,8 +44,7 @@ async def test_trigger_reminder_before_notification(
 
     # 3. Verify that the REMINDER_BEFORE notification was created in the database
     stmt = select(Notification).where(
-        Notification.task_id == task.id,
-        Notification.type == NotificationType.REMINDER_BEFORE
+        Notification.task_id == task.id, Notification.type == NotificationType.REMINDER_BEFORE
     )
     notifications = (await db.execute(stmt)).scalars().all()
 

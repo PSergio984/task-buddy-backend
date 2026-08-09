@@ -35,12 +35,14 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
+
 @router.get("/vapid-key")
 async def get_vapid_key() -> dict:
     """
     Get the VAPID public key for push notification subscription.
     """
     return {"public_key": config.VAPID_PUBLIC_KEY}
+
 
 @router.get("/", response_model=list[NotificationRead])
 @limiter.limit(RATE_LIMIT_NOTIFICATION_LIST)
@@ -59,6 +61,7 @@ async def list_notifications(
     return await notification_crud.get_notifications(
         db, user_id=current_user.id, skip=skip, limit=limit, is_read=is_read
     )
+
 
 @router.patch("/{notification_id}/read", response_model=NotificationRead)
 @limiter.limit(RATE_LIMIT_NOTIFICATION_READ)
@@ -83,6 +86,7 @@ async def mark_as_read(
     await db.commit()
     await db.refresh(notification)
     return notification
+
 
 @router.delete("/{notification_id}", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(RATE_LIMIT_NOTIFICATION_READ)
@@ -126,6 +130,7 @@ async def register_push_subscription(
     await db.commit()
     await db.refresh(db_subscription)
     return db_subscription
+
 
 @router.delete("/push-subscription", status_code=status.HTTP_204_NO_CONTENT)
 @limiter.limit(RATE_LIMIT_PUSH_SUBSCRIBE)

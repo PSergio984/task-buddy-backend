@@ -26,10 +26,7 @@ async def test_send_push_notification_success(
     user_id = confirmed_user["id"]
     # Create a subscription
     sub = PushSubscription(
-        user_id=user_id,
-        endpoint="https://example.com/push",
-        p256dh="p256",
-        auth="auth123"
+        user_id=user_id, endpoint="https://example.com/push", p256dh="p256", auth="auth123"
     )
     db.add(sub)
     await db.commit()
@@ -46,6 +43,7 @@ async def test_send_push_notification_success(
     assert "Title" in kwargs["data"]
     assert "Message" in kwargs["data"]
 
+
 @pytest.mark.anyio
 async def test_send_push_notification_410_gone(
     db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
@@ -53,12 +51,7 @@ async def test_send_push_notification_410_gone(
     """Verify a 410 response deletes the expired push subscription."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/expired"
-    sub = PushSubscription(
-        user_id=user_id,
-        endpoint=endpoint,
-        p256dh="p256",
-        auth="auth123"
-    )
+    sub = PushSubscription(user_id=user_id, endpoint=endpoint, p256dh="p256", auth="auth123")
     db.add(sub)
     await db.commit()
 
@@ -75,6 +68,7 @@ async def test_send_push_notification_410_gone(
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is None
 
+
 @pytest.mark.anyio
 async def test_process_reminders_triggers_channels(
     db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
@@ -84,12 +78,7 @@ async def test_process_reminders_triggers_channels(
     now = datetime.now(timezone.utc)
 
     # Create a task due now
-    task = Task(
-        title="Due Now Task",
-        user_id=user_id,
-        due_date=now,
-        completed=False
-    )
+    task = Task(title="Due Now Task", user_id=user_id, due_date=now, completed=False)
     db.add(task)
     await db.commit()
     await db.refresh(task)
@@ -108,6 +97,7 @@ async def test_process_reminders_triggers_channels(
     stmt = select(Notification).where(Notification.task_id == task.id)
     notifications = (await db.execute(stmt)).scalars().all()
     assert len(notifications) == 1
+
 
 @pytest.mark.anyio
 async def test_send_confirmation_email_calls_brevo(mocker: Any) -> None:

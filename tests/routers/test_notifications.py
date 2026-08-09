@@ -17,6 +17,7 @@ async def test_notifications_list_unauthorized(async_client: AsyncClient) -> Non
     response = await async_client.get("/api/v1/notifications/")
     assert response.status_code == 401
 
+
 @pytest.mark.anyio
 async def test_push_subscription_unauthorized(async_client: AsyncClient) -> None:
     """
@@ -24,13 +25,10 @@ async def test_push_subscription_unauthorized(async_client: AsyncClient) -> None
     """
     response = await async_client.post(
         "/api/v1/notifications/push-subscription",
-        json={
-            "endpoint": "https://example.com",
-            "p256dh": "p256dh",
-            "auth": "auth"
-        }
+        json={"endpoint": "https://example.com", "p256dh": "p256dh", "auth": "auth"},
     )
     assert response.status_code == 401
+
 
 @pytest.mark.anyio
 async def test_mark_as_read_unauthorized(async_client: AsyncClient) -> None:
@@ -40,6 +38,7 @@ async def test_mark_as_read_unauthorized(async_client: AsyncClient) -> None:
     response = await async_client.patch("/api/v1/notifications/1/read")
     assert response.status_code == 401
 
+
 @pytest.mark.anyio
 async def test_notifications_list_authorized(authenticated_async_client: AsyncClient) -> None:
     """
@@ -48,6 +47,7 @@ async def test_notifications_list_authorized(authenticated_async_client: AsyncCl
     response = await authenticated_async_client.get("/api/v1/notifications/")
     assert response.status_code == 200
     assert isinstance(response.json(), list)
+
 
 @pytest.mark.anyio
 async def test_push_subscription_authorized(authenticated_async_client: AsyncClient) -> None:
@@ -59,13 +59,14 @@ async def test_push_subscription_authorized(authenticated_async_client: AsyncCli
         json={
             "endpoint": "https://example.com/push/123",
             "p256dh": "p256dh_test",
-            "auth": "auth_test"
-        }
+            "auth": "auth_test",
+        },
     )
     assert response.status_code == 200
     data = response.json()
     assert data["endpoint"] == "https://example.com/push/123"
     assert "id" in data
+
 
 @pytest.mark.anyio
 async def test_notifications_filtering(
@@ -79,13 +80,21 @@ async def test_notifications_filtering(
     from app.schemas.notification import NotificationCreate
 
     # Create unread
-    await create_notification(db, NotificationCreate(
-        user_id=user_id, title="Unread", message="...", type=NotificationType.REMINDER_DUE
-    ))
+    await create_notification(
+        db,
+        NotificationCreate(
+            user_id=user_id, title="Unread", message="...", type=NotificationType.REMINDER_DUE
+        ),
+    )
     # Create read (manually set is_read since NotificationCreate doesn't have it)
     from app.models.notification import Notification
+
     read_noti = Notification(
-        user_id=user_id, title="Read", message="...", type=NotificationType.REMINDER_DUE, is_read=True
+        user_id=user_id,
+        title="Read",
+        message="...",
+        type=NotificationType.REMINDER_DUE,
+        is_read=True,
     )
     db.add(read_noti)
     await db.commit()
@@ -102,6 +111,7 @@ async def test_notifications_filtering(
     assert len(data) == 1
     assert data[0]["title"] == "Read"
 
+
 @pytest.mark.anyio
 async def test_mark_as_read_success(
     authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict[str, Any]
@@ -113,14 +123,18 @@ async def test_mark_as_read_success(
     from app.crud.notification import create_notification
     from app.schemas.notification import NotificationCreate
 
-    noti = await create_notification(db, NotificationCreate(
-        user_id=user_id, title="To Read", message="...", type=NotificationType.REMINDER_DUE
-    ))
+    noti = await create_notification(
+        db,
+        NotificationCreate(
+            user_id=user_id, title="To Read", message="...", type=NotificationType.REMINDER_DUE
+        ),
+    )
     await db.commit()
 
     response = await authenticated_async_client.patch(f"/api/v1/notifications/{noti.id}/read")
     assert response.status_code == 200
     assert response.json()["is_read"] is True
+
 
 @pytest.mark.anyio
 async def test_mark_as_read_not_found_or_not_owned(
@@ -143,9 +157,15 @@ async def test_mark_as_read_not_found_or_not_owned(
     await db.commit()
     await db.refresh(other_user)
 
-    noti = await create_notification(db, NotificationCreate(
-        user_id=other_user.id, title="Other Noti", message="...", type=NotificationType.REMINDER_DUE
-    ))
+    noti = await create_notification(
+        db,
+        NotificationCreate(
+            user_id=other_user.id,
+            title="Other Noti",
+            message="...",
+            type=NotificationType.REMINDER_DUE,
+        ),
+    )
     await db.commit()
 
     # Try to mark someone else's as read

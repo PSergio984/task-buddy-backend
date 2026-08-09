@@ -40,9 +40,7 @@ async def test_create_and_get_notification(
 
 
 @pytest.mark.anyio
-async def test_mark_as_read(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_mark_as_read(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a notification can be marked as read and filtered."""
     user_id = confirmed_user["id"]
     noti_in = NotificationCreate(
@@ -62,9 +60,7 @@ async def test_mark_as_read(
 
 
 @pytest.mark.anyio
-async def test_push_subscription_upsert(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a push subscription is created and updated in place."""
     user_id = confirmed_user["id"]
     sub_in = PushSubscriptionCreate(
@@ -88,9 +84,7 @@ async def test_push_subscription_upsert(
 
 
 @pytest.mark.anyio
-async def test_delete_push_subscription(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a push subscription can be deleted."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/endpoint"

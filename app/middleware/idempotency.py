@@ -28,6 +28,7 @@ EXCLUDED_PATHS = {
     "/api/v1/users/resend-confirmation",
 }
 
+
 class IdempotencyMiddleware(BaseHTTPMiddleware):
     """
     Middleware to handle request idempotency using an X-Idempotency-Key header.
@@ -52,7 +53,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if len(idempotency_key) < 8:
             return JSONResponse(
                 status_code=400,
-                content={"detail": "Invalid X-Idempotency-Key format. Must be at least 8 characters."}
+                content={
+                    "detail": "Invalid X-Idempotency-Key format. Must be at least 8 characters."
+                },
             )
 
         # Validate UUID or SHA-256 hash format
@@ -69,7 +72,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if not is_valid:
             return JSONResponse(
                 status_code=400,
-                content={"detail": "Invalid X-Idempotency-Key format. Must be a valid UUID or SHA-256 hash."}
+                content={
+                    "detail": "Invalid X-Idempotency-Key format. Must be a valid UUID or SHA-256 hash."
+                },
             )
 
         user_id = self._get_user_id(request)
@@ -107,21 +112,25 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         cache_key = f"{CACHE_PREFIX}{user_id}:{idempotency_key}"
 
         # 1. Check if we have a cached response or an in-progress lock
-        cached_response = await self._get_cached_response(redis_client, cache_key, idempotency_key, user_id)
+        cached_response = await self._get_cached_response(
+            redis_client, cache_key, idempotency_key, user_id
+        )
         if cached_response:
             return cached_response
 
         # 2. Try to acquire an atomic lock
         if not await self._set_lock(redis_client, cache_key):
             # If lock acquisition fails, check again if it finished in the meantime
-            cached_response = await self._get_cached_response(redis_client, cache_key, idempotency_key, user_id)
+            cached_response = await self._get_cached_response(
+                redis_client, cache_key, idempotency_key, user_id
+            )
             if cached_response:
                 return cached_response
 
             # Otherwise, return conflict as it's truly in progress
             return JSONResponse(
                 status_code=409,
-                content={"detail": "Request already in progress with this idempotency key."}
+                content={"detail": "Request already in progress with this idempotency key."},
             )
 
         try:
@@ -156,7 +165,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
 
         return None
 
-    async def _get_cached_response(self, redis_client: Any, cache_key: str, idempotency_key: str, user_id: str) -> Optional[Response]:
+    async def _get_cached_response(
+        self, redis_client: Any, cache_key: str, idempotency_key: str, user_id: str
+    ) -> Optional[Response]:
         """
         Retrieve a cached response from Redis if it exists.
         Returns a JSONResponse(409) if the request is still in progress.
@@ -170,15 +181,19 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             if data == "IN_PROGRESS":
                 return JSONResponse(
                     status_code=409,
-                    content={"detail": "Request already in progress with this idempotency key."}
+                    content={"detail": "Request already in progress with this idempotency key."},
                 )
 
-            logger.info("Returning cached response for idempotency key: %s (user: %s)", idempotency_key, user_id)
+            logger.info(
+                "Returning cached response for idempotency key: %s (user: %s)",
+                idempotency_key,
+                user_id,
+            )
             return Response(
                 content=data["body"],
                 status_code=data["status_code"],
                 headers=data["headers"],
-                media_type=data["media_type"]
+                media_type=data["media_type"],
             )
         except Exception:
             logger.exception("Error checking idempotency cache")
@@ -198,7 +213,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             # If we can't set a lock, we shouldn't proceed to avoid double processing
             return False
 
-    async def _handle_response(self, redis_client: Any, cache_key: str, response: Response) -> Response:
+    async def _handle_response(
+        self, redis_client: Any, cache_key: str, response: Response
+    ) -> Response:
         """
         Finalize the response handling: cache successful responses and clean up locks for errors.
         """
@@ -227,7 +244,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             "status_code": response.status_code,
             "body": body_str,
             "headers": dict(response.headers),
-            "media_type": response.media_type
+            "media_type": response.media_type,
         }
 
         # Store the full response in cache
@@ -238,5 +255,5 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             content=response_body,
             status_code=response.status_code,
             headers=dict(response.headers),
-            media_type=response.media_type
+            media_type=response.media_type,
         )

@@ -64,19 +64,13 @@ async def delete_tag(db: AsyncSession, db_tag: Tag, user_id: int | str | None = 
 
 @audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_TASK)
 async def attach_tag_to_task(
-    db: AsyncSession,
-    task_id: int,
-    tag_id: int,
-    user_id: int | None = None
+    db: AsyncSession, task_id: int, tag_id: int, user_id: int | None = None
 ) -> bool:
     """
     Attaches a tag to a task. Returns True if a new link was created.
     """
     # Check if already exists
-    query = select(task_tags).where(
-        task_tags.c.task_id == task_id,
-        task_tags.c.tag_id == tag_id
-    )
+    query = select(task_tags).where(task_tags.c.task_id == task_id, task_tags.c.tag_id == tag_id)
     result = await db.execute(query)
     if result.scalar_one_or_none():
         return False
@@ -88,15 +82,9 @@ async def attach_tag_to_task(
 
 @audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_TASK)
 async def detach_tag_from_task(
-    db: AsyncSession,
-    task_id: int,
-    tag_id: int,
-    user_id: int | None = None
+    db: AsyncSession, task_id: int, tag_id: int, user_id: int | None = None
 ) -> None:
-    stmt = task_tags.delete().where(
-        task_tags.c.task_id == task_id,
-        task_tags.c.tag_id == tag_id
-    )
+    stmt = task_tags.delete().where(task_tags.c.task_id == task_id, task_tags.c.tag_id == tag_id)
     await db.execute(stmt)
 
 

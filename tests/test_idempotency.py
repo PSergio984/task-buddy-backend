@@ -22,10 +22,7 @@ async def test_idempotency_middleware_caching(
 
     # First request
     idempotency_key = str(uuid.uuid4())
-    headers = {
-        "X-Idempotency-Key": idempotency_key,
-        "Authorization": f"Bearer {logged_in_token}"
-    }
+    headers = {"X-Idempotency-Key": idempotency_key, "Authorization": f"Bearer {logged_in_token}"}
     payload = {"title": "Test Task", "description": "Testing idempotency"}
 
     # Send first request
@@ -53,15 +50,11 @@ async def test_idempotency_middleware_caching(
     # Ensure set was NOT called again for the second request
     assert mock_redis.set.call_count == 2
 
+
 @pytest.mark.anyio
-async def test_idempotency_invalid_format(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_idempotency_invalid_format(async_client: AsyncClient, logged_in_token: str) -> None:
     """Verify an invalid idempotency key format returns 400."""
-    headers = {
-        "X-Idempotency-Key": "not-a-uuid",
-        "Authorization": f"Bearer {logged_in_token}"
-    }
+    headers = {"X-Idempotency-Key": "not-a-uuid", "Authorization": f"Bearer {logged_in_token}"}
     response = await async_client.post("/api/v1/tasks/", json={}, headers=headers)
     assert response.status_code == 400
     assert "Invalid X-Idempotency-Key format" in response.text

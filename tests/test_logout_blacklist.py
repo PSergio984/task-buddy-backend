@@ -28,7 +28,6 @@ def mock_redis_security(mocker: Any) -> None:
     mocker.patch("app.security.get_redis_client", return_value=mock_redis)
 
 
-
 @pytest.mark.anyio
 async def test_logout_blacklists_token(
     async_client: AsyncClient, confirmed_user: dict[str, Any]

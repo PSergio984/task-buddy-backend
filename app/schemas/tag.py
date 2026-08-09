@@ -24,4 +24,3 @@ class TagUpdate(BaseModel):
     color: Optional[str] = None
     icon: Optional[str] = None
     position: Optional[int] = None
-

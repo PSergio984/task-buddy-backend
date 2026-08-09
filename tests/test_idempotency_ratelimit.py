@@ -32,17 +32,14 @@ async def test_ratelimit_not_cached_by_idempotency(
         # 1. Hit the limit (10 per minute)
         for _ in range(10):
             response = await authenticated_async_client.post(
-                "/api/v1/projects/",
-                json={"name": f"Project {uuid.uuid4()}"}
+                "/api/v1/projects/", json={"name": f"Project {uuid.uuid4()}"}
             )
             assert response.status_code != 429
 
         # 2. 11th request with idempotency key - should be rate limited (429)
         # This request will NOT be cached because of our fix.
         response = await authenticated_async_client.post(
-            "/api/v1/projects/",
-            json={"name": "Final Project"},
-            headers=headers
+            "/api/v1/projects/", json={"name": "Final Project"}, headers=headers
         )
         assert response.status_code == 429
 
@@ -56,9 +53,7 @@ async def test_ratelimit_not_cached_by_idempotency(
         # If the 429 was NOT cached, this should now proceed to the handler.
         # It might return 201 (Created) or 400 (if we didn't reset everything).
         response = await authenticated_async_client.post(
-            "/api/v1/projects/",
-            json={"name": "Final Project Unique"},
-            headers=headers
+            "/api/v1/projects/", json={"name": "Final Project Unique"}, headers=headers
         )
 
         # If it was cached, it would be 429. If not cached, it should be 201.

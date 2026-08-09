@@ -9,8 +9,8 @@ from app.schemas.stats import SystemOverview, TagDistribution, TaskStats
 async def get_system_overview(db: AsyncSession, user_id: int) -> SystemOverview:
     # Task Stats
     total_query = select(func.count()).select_from(Task).where(Task.user_id == user_id)
-    completed_query = select(func.count()).select_from(Task).where(
-        Task.user_id == user_id, Task.completed
+    completed_query = (
+        select(func.count()).select_from(Task).where(Task.user_id == user_id, Task.completed)
     )
 
     total_tasks = (await db.execute(total_query)).scalar() or 0
@@ -22,7 +22,7 @@ async def get_system_overview(db: AsyncSession, user_id: int) -> SystemOverview:
         total_tasks=total_tasks,
         completed_tasks=completed_tasks,
         pending_tasks=pending_tasks,
-        completion_percentage=round(completion_percentage, 2)
+        completion_percentage=round(completion_percentage, 2),
     )
 
     # Tag Distribution
@@ -35,11 +35,7 @@ async def get_system_overview(db: AsyncSession, user_id: int) -> SystemOverview:
 
     tag_results = (await db.execute(tag_query)).all()
     tag_distribution = [
-        TagDistribution(tag_name=row.name, task_count=row.task_count)
-        for row in tag_results
+        TagDistribution(tag_name=row.name, task_count=row.task_count) for row in tag_results
     ]
 
-    return SystemOverview(
-        task_stats=task_stats,
-        tag_distribution=tag_distribution
-    )
+    return SystemOverview(task_stats=task_stats, tag_distribution=tag_distribution)

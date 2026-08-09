@@ -29,12 +29,12 @@ def _is_valid_url(url: str | None) -> bool:
     return bool(url and url.startswith("https://"))
 
 
-async def send_brevo_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> httpx.Response:
+async def send_brevo_email(
+    to_email: str, subject: str, text_body: str, html_body: str | None = None
+) -> httpx.Response:
     mail_url = config.MAIL_URL
     if not _is_valid_url(mail_url):
-        raise APIResponseError(
-            f"Invalid MAIL_URL: {mail_url}. Must start with https://"
-        )
+        raise APIResponseError(f"Invalid MAIL_URL: {mail_url}. Must start with https://")
     # Assert for type checker narrowing (mail_url is now guaranteed to be str)
     assert mail_url is not None
 
@@ -66,7 +66,9 @@ async def send_brevo_email(to_email: str, subject: str, text_body: str, html_bod
         return response
 
 
-def send_smtp_email(to_email: str, subject: str, text_body: str, html_body: str | None = None) -> None:
+def send_smtp_email(
+    to_email: str, subject: str, text_body: str, html_body: str | None = None
+) -> None:
     if not config.MAIL_SMTP_HOST:
         raise APIResponseError("Missing MAIL_SMTP_HOST for Brevo SMTP transactional email")
     if not config.MAIL_SMTP_USERNAME:
@@ -183,6 +185,7 @@ def run_async_coroutine(coro):
         asyncio.get_running_loop()
         # If we reach here, a loop is running. Run in a thread to block synchronously.
         import concurrent.futures
+
         with concurrent.futures.ThreadPoolExecutor() as pool:
             return pool.submit(asyncio.run, coro).result()
     except RuntimeError:
@@ -194,7 +197,7 @@ def run_async_coroutine(coro):
     name="app.tasks.send_confirmation_email",
     autoretry_for=(Exception,),
     retry_backoff=True,
-    max_retries=3
+    max_retries=3,
 )
 def send_confirmation_email(
     to_email: str,
@@ -208,6 +211,8 @@ def send_confirmation_email(
             to_email, subject, body, confirmation_url, suppress_exceptions=True
         )
     )
+
+
 async def _send_password_reset_email_async(
     to_email: str,
     reset_url: str,
@@ -236,20 +241,21 @@ async def _send_password_reset_email_async(
     except Exception as smtp_error:
         logger.exception("SMTP fallback failed for %s", to_email)
         if not suppress_exceptions:
-            raise APIResponseError(
-                "Failed to send email via Brevo API and SMTP"
-            ) from smtp_error
+            raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 
 
 @celery_app.task(
     name="app.tasks.send_password_reset_email",
     autoretry_for=(Exception,),
     retry_backoff=True,
-    max_retries=3
+    max_retries=3,
 )
 def send_password_reset_email(to_email: str, reset_url: str) -> None:
     """Celery task to send password reset email."""
-    run_async_coroutine(_send_password_reset_email_async(to_email, reset_url, suppress_exceptions=True))
+    run_async_coroutine(
+        _send_password_reset_email_async(to_email, reset_url, suppress_exceptions=True)
+    )
+
 
 async def _send_password_changed_confirmation_async(
     to_email: str,
@@ -278,16 +284,14 @@ async def _send_password_changed_confirmation_async(
     except Exception as smtp_error:
         logger.exception("SMTP fallback failed for %s", to_email)
         if not suppress_exceptions:
-            raise APIResponseError(
-                "Failed to send email via Brevo API and SMTP"
-            ) from smtp_error
+            raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 
 
 @celery_app.task(
     name="app.tasks.send_password_changed_confirmation",
     autoretry_for=(Exception,),
     retry_backoff=True,
-    max_retries=3
+    max_retries=3,
 )
 def send_password_changed_confirmation(to_email: str) -> None:
     """Celery task to send password changed confirmation email."""
@@ -310,22 +314,22 @@ def _get_notification_windows(now: datetime) -> list[dict]:
             "start": now + timedelta(minutes=59),
             "end": now + timedelta(minutes=61),
             "title": "Upcoming Task: {title}",
-            "message": "Your task '{title}' is due in 1 hour."
+            "message": "Your task '{title}' is due in 1 hour.",
         },
         {
             "type": NotificationType.REMINDER_DUE,
             "start": now - timedelta(minutes=1),
             "end": now + timedelta(minutes=1),
             "title": "Task Due Now: {title}",
-            "message": "Your task '{title}' is due now."
+            "message": "Your task '{title}' is due now.",
         },
         {
             "type": NotificationType.REMINDER_OVERDUE,
             "start": now - timedelta(hours=24, minutes=1),
             "end": now - timedelta(hours=23, minutes=59),
             "title": "Task Overdue: {title}",
-            "message": "Your task '{title}' is 24 hours overdue."
-        }
+            "message": "Your task '{title}' is 24 hours overdue.",
+        },
     ]
 
 
@@ -335,9 +339,7 @@ async def _fetch_tasks_to_process(db, now: datetime) -> list[Task]:
     max_end = now + timedelta(minutes=70)
 
     stmt = select(Task).where(
-        Task.completed.is_(False),
-        Task.due_date >= min_start,
-        Task.due_date <= max_end
+        Task.completed.is_(False), Task.due_date >= min_start, Task.due_date <= max_end
     )
     result = await db.execute(stmt)
     return list(result.scalars().all())
@@ -361,7 +363,7 @@ async def _handle_notification_delivery(db, task: Task, window: dict) -> None:
         type=window["type"],
         title=title,
         message=message,
-        action_url=action_url
+        action_url=action_url,
     )
     db.add(notification)
 
@@ -391,10 +393,9 @@ async def _process_task_notifications(db, task: Task, windows: list[dict]) -> No
 
         if win_start <= task_due_date <= win_end:
             # Deduplication: Check if notification already exists for this task and type
-            exists_stmt = select(exists().where(
-                Notification.task_id == task.id,
-                Notification.type == window["type"]
-            ))
+            exists_stmt = select(
+                exists().where(Notification.task_id == task.id, Notification.type == window["type"])
+            )
             already_notified = (await db.execute(exists_stmt)).scalar()
 
             if not already_notified:
@@ -416,14 +417,18 @@ async def _process_reminders_async() -> None:
     name="app.tasks.send_push_notification",
     autoretry_for=(Exception,),
     retry_backoff=True,
-    max_retries=3
+    max_retries=3,
 )
-def send_push_notification(user_id: int, title: str, message: str, action_url: str | None = None) -> None:
+def send_push_notification(
+    user_id: int, title: str, message: str, action_url: str | None = None
+) -> None:
     """Celery task to send web push notifications to all user subscriptions."""
     run_async_coroutine(_send_push_notification_async(user_id, title, message, action_url))
 
 
-async def _send_push_notification_async(user_id: int, title: str, message: str, action_url: str | None = None) -> None:
+async def _send_push_notification_async(
+    user_id: int, title: str, message: str, action_url: str | None = None
+) -> None:
     if not config.VAPID_PRIVATE_KEY:
         logger.error("VAPID_PRIVATE_KEY not configured, cannot send push notifications")
         return
@@ -436,11 +441,7 @@ async def _send_push_notification_async(user_id: int, title: str, message: str, 
         if not subscriptions:
             return
 
-        payload = json.dumps({
-            "title": title,
-            "body": message,
-            "action_url": action_url
-        })
+        payload = json.dumps({"title": title, "body": message, "action_url": action_url})
 
         for sub in subscriptions:
             try:
@@ -450,16 +451,11 @@ async def _send_push_notification_async(user_id: int, title: str, message: str, 
                     webpush,
                     subscription_info={
                         "endpoint": sub.endpoint,
-                        "keys": {
-                            "p256dh": sub.p256dh,
-                            "auth": sub.auth
-                        }
+                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
                     },
                     data=payload,
                     vapid_private_key=config.VAPID_PRIVATE_KEY,
-                    vapid_claims={
-                        "sub": f"mailto:{config.VAPID_ADMIN_EMAIL}"
-                    }
+                    vapid_claims={"sub": f"mailto:{config.VAPID_ADMIN_EMAIL}"},
                 )
             except WebPushException as ex:
                 if ex.response is not None and ex.response.status_code == 410:

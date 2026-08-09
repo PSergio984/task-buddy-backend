@@ -17,10 +17,7 @@ async def test_concurrent_task_creation(authenticated_async_client: AsyncClient)
 
     # Create tasks concurrently
     responses = await asyncio.gather(
-        *[
-            authenticated_async_client.post("/api/v1/tasks/", json=data)
-            for data in tasks_data
-        ]
+        *[authenticated_async_client.post("/api/v1/tasks/", json=data) for data in tasks_data]
     )
 
     # Verify all tasks were created successfully
@@ -71,15 +68,11 @@ async def test_concurrent_project_creation(authenticated_async_client: AsyncClie
     """Test creating multiple projects concurrently."""
     num_projects = 10
     projects_data = [
-        {"name": f"Project {i}", "description": f"Desc {i}"}
-        for i in range(num_projects)
+        {"name": f"Project {i}", "description": f"Desc {i}"} for i in range(num_projects)
     ]
 
     responses = await asyncio.gather(
-        *[
-            authenticated_async_client.post("/api/v1/projects/", json=data)
-            for data in projects_data
-        ]
+        *[authenticated_async_client.post("/api/v1/projects/", json=data) for data in projects_data]
     )
 
     for response in responses:

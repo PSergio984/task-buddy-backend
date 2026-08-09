@@ -79,9 +79,7 @@ def _is_seed_domain(email: str) -> bool:
 
 def _get_or_create_demo_user(conn: Connection, email: str) -> int:
     """Returns user_id of the seed target account, creating it if missing."""
-    res = conn.execute(
-        text("SELECT id FROM tbl_users WHERE email = :email"), {"email": email}
-    )
+    res = conn.execute(text("SELECT id FROM tbl_users WHERE email = :email"), {"email": email})
     row = res.mappings().fetchone()
 
     if not row:
@@ -156,7 +154,9 @@ def _create_tags(conn, user_id):
     tag_ids = []
     for name in tag_names:
         res = conn.execute(
-            text("INSERT INTO tbl_tags (name, user_id, position) VALUES (:name, :user_id, 0) RETURNING id"),
+            text(
+                "INSERT INTO tbl_tags (name, user_id, position) VALUES (:name, :user_id, 0) RETURNING id"
+            ),
             {"name": name, "user_id": user_id},
         )
         t_row = res.mappings().fetchone()
@@ -170,28 +170,88 @@ def _create_tasks(conn, user_id, project_ids, tag_ids, priority_sql):
     logger.info("Creating 24 tasks...")
     now = datetime.now(timezone.utc)
     task_templates = [
-        ("Finalize Q3 Infrastructure Audit", "Deep dive into cloud costs and performance bottlenecks.", 0, "HIGH", 2),
-        ("Review Q4 Roadmap with Stakeholders", "Alignment session for upcoming features.", 0, "MEDIUM", 5),
-        ("Compliance Certification Renewal", "Annual SOC2 compliance documentation review.", 0, "HIGH", 10),
+        (
+            "Finalize Q3 Infrastructure Audit",
+            "Deep dive into cloud costs and performance bottlenecks.",
+            0,
+            "HIGH",
+            2,
+        ),
+        (
+            "Review Q4 Roadmap with Stakeholders",
+            "Alignment session for upcoming features.",
+            0,
+            "MEDIUM",
+            5,
+        ),
+        (
+            "Compliance Certification Renewal",
+            "Annual SOC2 compliance documentation review.",
+            0,
+            "HIGH",
+            10,
+        ),
         ("Quarterly Financial Recap", "Prepare charts for the board meeting.", 0, "MEDIUM", 3),
         ("Legacy API Deprecation Plan", "Phase out v1 endpoints safely.", 0, "LOW", 15),
         ("Update Onboarding Documentation", "Refresh the engineering wiki.", 0, "LOW", 7),
         ("UI Brand System Refresh", "Consolidate design tokens for v2.0.", 1, "HIGH", 1),
-        ("User Interview Synthesis", "Extract key pain points from the last 10 sessions.", 1, "MEDIUM", 4),
-        ("Accessibility Audit - Main Flow", "Ensure WCAG 2.1 compliance on Dashboard.", 1, "HIGH", 6),
+        (
+            "User Interview Synthesis",
+            "Extract key pain points from the last 10 sessions.",
+            1,
+            "MEDIUM",
+            4,
+        ),
+        (
+            "Accessibility Audit - Main Flow",
+            "Ensure WCAG 2.1 compliance on Dashboard.",
+            1,
+            "HIGH",
+            6,
+        ),
         ("High-Fidelity Mobile Mockups", "Finalize layouts for iOS/Android apps.", 1, "MEDIUM", 8),
         ("Prototyping Interaction Hooks", "Implement micro-interactions for sidebar.", 1, "LOW", 2),
         ("Design Critique: Dark Mode", "Gather feedback on new palette.", 1, "LOW", 3),
         ("Launch Early Access Campaign", "Email sequence for top 500 users.", 2, "HIGH", 0),
-        ("SEO Content Strategy Audit", "Keyword research for upcoming blog series.", 2, "MEDIUM", 12),
-        ("A/B Test Landing Page Hero", "Compare 'Effortless' vs 'Strategic' messaging.", 2, "HIGH", 2),
-        ("Affiliate Program Outreach", "Identify 20 key influencers in productivity space.", 2, "MEDIUM", 9),
+        (
+            "SEO Content Strategy Audit",
+            "Keyword research for upcoming blog series.",
+            2,
+            "MEDIUM",
+            12,
+        ),
+        (
+            "A/B Test Landing Page Hero",
+            "Compare 'Effortless' vs 'Strategic' messaging.",
+            2,
+            "HIGH",
+            2,
+        ),
+        (
+            "Affiliate Program Outreach",
+            "Identify 20 key influencers in productivity space.",
+            2,
+            "MEDIUM",
+            9,
+        ),
         ("Social Media Visual Assets", "Graphics for Twitter/LinkedIn launch.", 2, "LOW", 5),
         ("Analyze Conversion Funnel", "Identify drop-off points in registration.", 2, "MEDIUM", 1),
-        ("Advanced React Patterns Study", "Deep dive into Server Components and Actions.", 3, "HIGH", 4),
+        (
+            "Advanced React Patterns Study",
+            "Deep dive into Server Components and Actions.",
+            3,
+            "HIGH",
+            4,
+        ),
         ("Weekly Retrospective", "Reflect on wins and alignment with core goals.", 3, "MEDIUM", 0),
         ("Curate Professional Portfolio", "Update project case studies.", 3, "MEDIUM", 20),
-        ("Daily Deep Work Session", "2 hours of focused output without distractions.", 3, "HIGH", 0),
+        (
+            "Daily Deep Work Session",
+            "2 hours of focused output without distractions.",
+            3,
+            "HIGH",
+            0,
+        ),
         ("Read: 'Building a Second Brain'", "Apply PARA method to current notes.", 3, "LOW", 30),
         ("Setup Automated Backup Logic", "Secure local environment data.", 3, "LOW", 10),
     ]
@@ -240,7 +300,10 @@ def _create_subtasks(conn, user_id, task_ids):
     """Creates subtasks for selected tasks."""
     logger.info("Creating subtasks...")
     subtask_data = [
-        (task_ids[0], ["Review AWS billing", "Identify idle EC2 instances", "Draft cost-saving proposal"]),
+        (
+            task_ids[0],
+            ["Review AWS billing", "Identify idle EC2 instances", "Draft cost-saving proposal"],
+        ),
         (task_ids[6], ["Audit color palette", "Update typography scale", "Export SVG assets"]),
         (task_ids[12], ["Draft email templates", "Segment user list", "Configure tracking links"]),
         (task_ids[18], ["Watch conference talks", "Implement demo project", "Write summary notes"]),

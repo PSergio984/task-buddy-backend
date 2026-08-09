@@ -78,7 +78,7 @@ router = APIRouter(
     tags=[ROUTER_TAG],
     responses={
         400: {"description": "Bad request"},
-    }
+    },
 )
 
 
@@ -91,7 +91,7 @@ async def register_user(
     background_tasks: BackgroundTasks,
     request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     logger.debug("Attempting to register user with email: %s", user.email)
     existing_user = await user_crud.get_user_by_email(db, user.email)
@@ -128,7 +128,7 @@ async def register_user(
     return {
         "detail": "User registered successfully.",
         "access_token": access_token,
-        "user": User.model_validate(db_user)
+        "user": User.model_validate(db_user),
     }
 
 
@@ -145,7 +145,7 @@ async def resend_confirmation(
     email: Annotated[str, Body(embed=True)],
     request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """Resend a confirmation email for an existing, unconfirmed user."""
     user = await user_crud.get_user_by_email(db, email)
@@ -172,7 +172,7 @@ async def login(
     response: Response,
     form_data: Annotated[OAuth2PasswordRequestForm, Depends()],
     request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     auth_user = await authenticate_user(db, form_data.username, form_data.password)
     # Commit any potential lazy migration (password re-hash)
@@ -208,9 +208,7 @@ async def login(
         400: {"description": "Invalid confirmation token"},
     },
 )
-async def confirm_email(
-    token: str, db: Annotated[AsyncSession, Depends(get_db)]
-) -> HTMLResponse:
+async def confirm_email(token: str, db: Annotated[AsyncSession, Depends(get_db)]) -> HTMLResponse:
     subject = get_subject_for_token_type(token, expected_type="confirm")
     try:
         user_id = int(subject)
@@ -230,7 +228,8 @@ async def confirm_email(
     await user_crud.update_user_confirmation(db, db_user=user, confirmed=True)
     await db.commit()
 
-    return HTMLResponse(content=f"""
+    return HTMLResponse(
+        content=f"""
         <!DOCTYPE html>
         <html>
             <head>
@@ -304,7 +303,8 @@ async def confirm_email(
                 </div>
             </body>
         </html>
-    """)
+    """
+    )
 
 
 @router.get("/me", response_model=User)
@@ -390,9 +390,7 @@ async def update_password(
 @router.post("/logout")
 @audit_log(action=AuditAction.LOGOUT, target_type="USER", commit=True)
 async def logout(
-    response: Response,
-    request: Request,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    response: Response, request: Request, db: Annotated[AsyncSession, Depends(get_db)]
 ) -> dict:
     """
     Logout the current user. Clears the session cookie regardless of authentication status.
@@ -445,7 +443,7 @@ async def forgot_password(
     background_tasks: BackgroundTasks,
     request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """
     Initiate password reset flow by sending an email with a reset token.
@@ -489,7 +487,7 @@ async def reset_password(
     background_tasks: BackgroundTasks,
     request: Request,
     response: Response,
-    db: Annotated[AsyncSession, Depends(get_db)]
+    db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
     """
     Reset user password using a valid reset token.

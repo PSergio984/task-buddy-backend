@@ -19,19 +19,27 @@ async def test_high_concurrency_mixed_operations(authenticated_async_client: Asy
     """
     num_iterations = 20
 
-
     # Concurrent creation of tasks and tags
     async def create_initial():
-        t_res = await asyncio.gather(*[
-            authenticated_async_client.post("/api/v1/tasks/", json={"title": f"Initial Task {i}"})
-            for i in range(10)
-        ])
-        tg_res = await asyncio.gather(*[
-            authenticated_async_client.post("/api/v1/tasks/tags/", json={"name": f"Initial Tag {i}"})
-            for i in range(5)
-        ])
-        return [r.json()["id"] for r in t_res if r.status_code == 201], \
-               [r.json()["id"] for r in tg_res if r.status_code == 201]
+        t_res = await asyncio.gather(
+            *[
+                authenticated_async_client.post(
+                    "/api/v1/tasks/", json={"title": f"Initial Task {i}"}
+                )
+                for i in range(10)
+            ]
+        )
+        tg_res = await asyncio.gather(
+            *[
+                authenticated_async_client.post(
+                    "/api/v1/tasks/tags/", json={"name": f"Initial Tag {i}"}
+                )
+                for i in range(5)
+            ]
+        )
+        return [r.json()["id"] for r in t_res if r.status_code == 201], [
+            r.json()["id"] for r in tg_res if r.status_code == 201
+        ]
 
     task_ids, tag_ids = await create_initial()
 
@@ -40,16 +48,14 @@ async def test_high_concurrency_mixed_operations(authenticated_async_client: Asy
 
         if op_type == "create_task":
             resp = await authenticated_async_client.post(
-                "/api/v1/tasks/",
-                json={"title": f"Stress Task {random.randint(0, 1000)}"}
+                "/api/v1/tasks/", json={"title": f"Stress Task {random.randint(0, 1000)}"}
             )
             return resp.status_code
 
         elif op_type == "update_task" and task_ids:
             tid = random.choice(task_ids)
             resp = await authenticated_async_client.put(
-                f"/api/v1/tasks/{tid}",
-                json={"title": f"Updated Stress {random.randint(0, 1000)}"}
+                f"/api/v1/tasks/{tid}", json={"title": f"Updated Stress {random.randint(0, 1000)}"}
             )
             return resp.status_code
 
@@ -72,16 +78,19 @@ async def test_high_concurrency_mixed_operations(authenticated_async_client: Asy
     for status in results:
         assert status < 500, f"System failed with status {status}"
 
+
 @pytest.mark.anyio
 async def test_audit_log_resilience_under_load(authenticated_async_client: AsyncClient) -> None:
     """Verify that audit logs are correctly recorded even under high load."""
     num_tasks = 15
 
     # Create tasks concurrently
-    responses = await asyncio.gather(*[
-        authenticated_async_client.post("/api/v1/tasks/", json={"title": f"Audit Stress {i}"})
-        for i in range(num_tasks)
-    ])
+    responses = await asyncio.gather(
+        *[
+            authenticated_async_client.post("/api/v1/tasks/", json={"title": f"Audit Stress {i}"})
+            for i in range(num_tasks)
+        ]
+    )
 
     for r in responses:
         assert r.status_code == 201
@@ -95,7 +104,9 @@ async def test_audit_log_resilience_under_load(authenticated_async_client: Async
     logs = audit_resp.json()
 
     # Filter for task creations
-    create_logs = [log for log in logs if log["action"] == "create" and log["target_type"] == "TASK"]
+    create_logs = [
+        log for log in logs if log["action"] == "create" and log["target_type"] == "TASK"
+    ]
 
     # Should have at least num_tasks logs (might have more from previous tests in same session)
     assert len(create_logs) >= num_tasks

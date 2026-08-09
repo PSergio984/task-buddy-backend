@@ -14,7 +14,7 @@ async def test_email(target_email: str, test_type: str = "simple"):
     print(f"Env State: {config.ENV_STATE}")
 
     # Safely get previews for debug
-    env_key = os.environ.get('TEST_MAIL_API_KEY') or os.environ.get('MAIL_API_KEY')
+    env_key = os.environ.get("TEST_MAIL_API_KEY") or os.environ.get("MAIL_API_KEY")
     env_preview = f"{env_key[:10]}..." if env_key else "None"
     config_preview = f"{config.MAIL_API_KEY[:10]}..." if config.MAIL_API_KEY else "None"
 
@@ -26,13 +26,17 @@ async def test_email(target_email: str, test_type: str = "simple"):
 
     if test_type == "confirmation":
         subject = "Successfully signed up - Confirm your email for Task Buddy"
-        text_body = "Please confirm your email by clicking: http://localhost:5173/confirm/test-token"
+        text_body = (
+            "Please confirm your email by clicking: http://localhost:5173/confirm/test-token"
+        )
         from app.libs.email_templates import get_confirmation_html
+
         html_body = get_confirmation_html("http://localhost:5173/confirm/test-token")
     elif test_type == "reset":
         subject = "Password Reset Request - Task Buddy"
         text_body = "Reset your password at: http://localhost:5173/reset/test-token"
         from app.libs.email_templates import get_password_reset_html
+
         html_body = get_password_reset_html("http://localhost:5173/reset/test-token")
     else:
         subject = "Task Buddy - Simple Connectivity Test"
@@ -57,9 +61,12 @@ async def test_email(target_email: str, test_type: str = "simple"):
     except Exception as e:
         print(f"[ERROR] All delivery methods failed: {e}")
 
+
 if __name__ == "__main__":
     if len(sys.argv) < 2:
-        print("Usage: python scripts/test_email_delivery.py <your-email> [type: simple|confirmation|reset]")
+        print(
+            "Usage: python scripts/test_email_delivery.py <your-email> [type: simple|confirmation|reset]"
+        )
         sys.exit(1)
 
     email_to = sys.argv[1]

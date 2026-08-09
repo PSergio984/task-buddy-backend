@@ -39,6 +39,7 @@ router = APIRouter(
     },
 )
 
+
 @router.get("/", response_model=list[ProjectResponse])
 @limiter.limit(RATE_LIMIT_TASK_GET)
 async def list_projects(
@@ -61,6 +62,7 @@ async def list_projects(
     )
     await set_cached_data(cache_key, projects)
     return projects
+
 
 @router.post("/", response_model=ProjectResponse, status_code=201)
 @limiter.limit(RATE_LIMIT_PROJECT_CREATE)
@@ -99,6 +101,7 @@ async def create_project(
 
     return db_project
 
+
 @router.get(
     "/{project_id}",
     response_model=ProjectResponse,
@@ -120,6 +123,7 @@ async def get_project(
 
     logger.info("GET /%s - project found", project_id)
     return db_project
+
 
 @router.get(
     "/{project_id}/tasks",
@@ -143,6 +147,7 @@ async def list_project_tasks(
 
     tasks = await task_crud.get_tasks_by_project(db, project_id=project_id, user_id=current_user.id)
     return tasks
+
 
 @router.put(
     "/{project_id}",
@@ -187,6 +192,7 @@ async def update_project(
 
     return db_project
 
+
 @router.delete("/{project_id}", responses={404: {"description": PROJECT_NOT_FOUND}})
 @limiter.limit(RATE_LIMIT_PROJECT_DELETE)
 async def delete_project(
@@ -218,6 +224,7 @@ async def delete_project(
             await redis.delete(*keys)
 
     return {"message": "Project deleted successfully"}
+
 
 @router.post("/reorder")
 @limiter.limit(RATE_LIMIT_PROJECT_UPDATE)

@@ -63,11 +63,7 @@ router = APIRouter(
         404: {"description": TASK_NOT_FOUND},
         400: {
             "description": "Bad Request - Invalid parameters or missing fields",
-            "content": {
-                "application/json": {
-                    "example": {"detail": BAD_REQUEST}
-                }
-            }
+            "content": {"application/json": {"example": {"detail": BAD_REQUEST}}},
         },
         401: {"description": "Not authenticated"},
     },
@@ -136,7 +132,7 @@ async def get_tasks(
         project_id=project_id,
         tag_id=tag_id,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
     cached = await get_cached_data(cache_key, list[TaskCreateResponse])
     if cached is not None:
@@ -149,7 +145,7 @@ async def get_tasks(
         project_id=project_id,
         tag_id=tag_id,
         limit=limit,
-        offset=offset
+        offset=offset,
     )
     await set_cached_data(cache_key, tasks)
     return tasks
@@ -196,6 +192,7 @@ async def get_task(
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
     return task
+
 
 @router.post(
     "/",
@@ -518,6 +515,7 @@ async def reorder_subtasks(
 
 # --- Tag Endpoints ---
 
+
 @router.post(
     "/tags/",
     response_model=TagResponse,
@@ -660,8 +658,8 @@ async def create_and_attach_tag(
         db_tag = await tag_crud.get_tag_by_name(db, user_id=current_user.id, name=tag_in.name)
         if not db_tag:
             # Enforce tag count limit per user
-            tag_count_query = select(func.count()).select_from(Tag).where(
-                Tag.user_id == current_user.id
+            tag_count_query = (
+                select(func.count()).select_from(Tag).where(Tag.user_id == current_user.id)
             )
             tag_count_res = await db.execute(tag_count_query)
             tag_count = tag_count_res.scalar() or 0
@@ -669,7 +667,7 @@ async def create_and_attach_tag(
                 raise HTTPException(status_code=400, detail="Cannot exceed 50 tags per user")
 
             db_tag = await tag_crud.create_tag(db, user_id=current_user.id, tag_in=tag_in)
-            await db.flush() # Get the tag ID
+            await db.flush()  # Get the tag ID
 
         # Attach to task
         await tag_crud.attach_tag_to_task(

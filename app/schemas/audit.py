@@ -14,6 +14,7 @@ class AuditLog(BaseModel):
     details: str | None = None
     created_at: datetime
 
+
 class AuditLogCreate(BaseModel):
     action: str
     target_type: str

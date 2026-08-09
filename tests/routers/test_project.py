@@ -14,9 +14,10 @@ async def create_project(name: str, client: AsyncClient, token: str) -> dict[str
     response = await client.post(
         "/api/v1/projects/",
         json={"name": name, "color": "blue"},
-        headers={"Authorization": f"Bearer {token}"}
+        headers={"Authorization": f"Bearer {token}"},
     )
     return response.json()
+
 
 @pytest.fixture()
 async def second_user(db: AsyncSession, async_client: AsyncClient) -> dict[str, Any]:
@@ -48,19 +49,21 @@ async def second_user(db: AsyncSession, async_client: AsyncClient) -> dict[str, 
 
     return user_data
 
+
 @pytest.mark.anyio
 async def test_create_project(async_client: AsyncClient, logged_in_token: str) -> None:
     """Verify a user can create a project."""
     response = await async_client.post(
         "/api/v1/projects/",
         json={"name": "Test Project", "color": "red"},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 201
     data = response.json()
     assert data["name"] == "Test Project"
     assert data["color"] == "red"
     assert "id" in data
+
 
 @pytest.mark.anyio
 async def test_list_projects(async_client: AsyncClient, logged_in_token: str) -> None:
@@ -69,12 +72,12 @@ async def test_list_projects(async_client: AsyncClient, logged_in_token: str) ->
     await create_project("Project 2", async_client, logged_in_token)
 
     response = await async_client.get(
-        "/api/v1/projects/",
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        "/api/v1/projects/", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
+
 
 @pytest.mark.anyio
 async def test_get_project(async_client: AsyncClient, logged_in_token: str) -> None:
@@ -82,11 +85,11 @@ async def test_get_project(async_client: AsyncClient, logged_in_token: str) -> N
     project = await create_project("My Project", async_client, logged_in_token)
 
     response = await async_client.get(
-        f"/api/v1/projects/{project['id']}",
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        f"/api/v1/projects/{project['id']}", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 200
     assert response.json()["name"] == "My Project"
+
 
 @pytest.mark.anyio
 async def test_update_project(async_client: AsyncClient, logged_in_token: str) -> None:
@@ -96,10 +99,11 @@ async def test_update_project(async_client: AsyncClient, logged_in_token: str) -
     response = await async_client.put(
         f"/api/v1/projects/{project['id']}",
         json={"name": "New Name"},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
     assert response.json()["name"] == "New Name"
+
 
 @pytest.mark.anyio
 async def test_delete_project(async_client: AsyncClient, logged_in_token: str) -> None:
@@ -107,17 +111,16 @@ async def test_delete_project(async_client: AsyncClient, logged_in_token: str) -
     project = await create_project("To Delete", async_client, logged_in_token)
 
     response = await async_client.delete(
-        f"/api/v1/projects/{project['id']}",
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        f"/api/v1/projects/{project['id']}", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 200
 
     # Verify gone
     response = await async_client.get(
-        f"/api/v1/projects/{project['id']}",
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        f"/api/v1/projects/{project['id']}", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
     assert response.status_code == 404
+
 
 @pytest.mark.anyio
 async def test_project_idor_protection(
@@ -130,7 +133,7 @@ async def test_project_idor_protection(
     # User 2 tries to access it
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}",
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 404
 
@@ -138,16 +141,17 @@ async def test_project_idor_protection(
     response = await async_client.put(
         f"/api/v1/projects/{project['id']}",
         json={"name": "Hacked"},
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 404
 
     # User 2 tries to delete it
     response = await async_client.delete(
         f"/api/v1/projects/{project['id']}",
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 404
+
 
 @pytest.mark.anyio
 async def test_task_project_idor_protection(
@@ -161,7 +165,7 @@ async def test_task_project_idor_protection(
     response = await async_client.post(
         "/api/v1/tasks/",
         json={"title": "Hacker Task", "project_id": project["id"]},
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid project_id"
@@ -170,7 +174,7 @@ async def test_task_project_idor_protection(
     response = await async_client.post(
         "/api/v1/tasks/",
         json={"title": "Legit Task"},
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 201
     task = response.json()
@@ -179,10 +183,11 @@ async def test_task_project_idor_protection(
     response = await async_client.put(
         f"/api/v1/tasks/{task['id']}",
         json={"project_id": project["id"]},
-        headers={"Authorization": f"Bearer {second_user['token']}"}
+        headers={"Authorization": f"Bearer {second_user['token']}"},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Invalid project_id"
+
 
 @pytest.mark.anyio
 async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: str) -> None:
@@ -193,29 +198,30 @@ async def test_list_project_tasks(async_client: AsyncClient, logged_in_token: st
     await async_client.post(
         "/api/v1/tasks/",
         json={"title": "Task 1", "project_id": project["id"]},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     await async_client.post(
         "/api/v1/tasks/",
         json={"title": "Task 2", "project_id": project["id"]},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     # Create task NOT in project
     await async_client.post(
         "/api/v1/tasks/",
         json={"title": "Task 3"},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
 
     response = await async_client.get(
         f"/api/v1/projects/{project['id']}/tasks",
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 200
     data = response.json()
     assert len(data) == 2
     for task in data:
         assert task["project_id"] == project["id"]
+
 
 @pytest.mark.anyio
 async def test_create_duplicate_project_error(
@@ -227,7 +233,7 @@ async def test_create_duplicate_project_error(
     response = await async_client.post(
         "/api/v1/projects/",
         json=project_data,
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 201
 
@@ -235,7 +241,7 @@ async def test_create_duplicate_project_error(
     response = await async_client.post(
         "/api/v1/projects/",
         json=project_data,
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
 
     assert response.status_code == 400
@@ -243,16 +249,14 @@ async def test_create_duplicate_project_error(
 
 
 @pytest.mark.anyio
-async def test_create_project_quota_limit(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_create_project_quota_limit(async_client: AsyncClient, logged_in_token: str) -> None:
     """Verify project creation is limited to 20 projects per user."""
     # Create 20 projects
     for i in range(20):
         response = await async_client.post(
             "/api/v1/projects/",
             json={"name": f"Quota Project {i}", "color": "blue"},
-            headers={"Authorization": f"Bearer {logged_in_token}"}
+            headers={"Authorization": f"Bearer {logged_in_token}"},
         )
         # Some projects might fail to create if the user already has projects from other tests,
         # but fixtures in pytest run clean unless there's an existing DB state.
@@ -263,7 +267,7 @@ async def test_create_project_quota_limit(
     response = await async_client.post(
         "/api/v1/projects/",
         json={"name": "Beyond Quota Project", "color": "blue"},
-        headers={"Authorization": f"Bearer {logged_in_token}"}
+        headers={"Authorization": f"Bearer {logged_in_token}"},
     )
     assert response.status_code == 400
     assert response.json()["detail"] == "Cannot exceed 20 projects per user"

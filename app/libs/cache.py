@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+
 async def get_cached_data(cache_key: str, model_type: type[T]) -> Optional[T]:
     """
     Retrieve and deserialize data from Redis.
@@ -26,6 +27,7 @@ async def get_cached_data(cache_key: str, model_type: type[T]) -> Optional[T]:
         logger.exception("Error retrieving from cache")
     return None
 
+
 async def set_cached_data(cache_key: str, data: Any, expire: int = 300) -> None:
     """
     Serialize and store data in Redis.
@@ -38,12 +40,14 @@ async def set_cached_data(cache_key: str, data: Any, expire: int = 300) -> None:
         # If it's a list of Pydantic models or SQLAlchemy objects, we need to serialize them
         # We can use TypeAdapter to serialize consistently
         from fastapi.encoders import jsonable_encoder
+
         serializable_data = jsonable_encoder(data)
         adapter = TypeAdapter(Any)
         json_data = adapter.dump_json(serializable_data)
         await redis_client.setex(cache_key, expire, json_data)
     except Exception:
         logger.exception("Error storing in cache")
+
 
 def get_cache_key(prefix: str, user_id: int, **params) -> str:
     """

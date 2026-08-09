@@ -43,7 +43,7 @@ async def test_idempotency_concurrent_same_key(
     responses = await asyncio.gather(
         authenticated_async_client.post("/api/v1/projects/", json={"name": "P1"}, headers=headers),
         authenticated_async_client.post("/api/v1/projects/", json={"name": "P1"}, headers=headers),
-        return_exceptions=True
+        return_exceptions=True,
     )
 
     status_codes = [r.status_code for r in responses if not isinstance(r, BaseException)]
@@ -71,11 +71,16 @@ async def test_idempotency_server_error_clears_lock(
     headers = {"X-Idempotency-Key": idempotency_key}
 
     # Force a 500 error by hitting an endpoint and mocking the service to fail
-    with patch("app.api.routers.project.project_crud.create_project", side_effect=Exception("Database error")):
+    with patch(
+        "app.api.routers.project.project_crud.create_project",
+        side_effect=Exception("Database error"),
+    ):
         # AsyncClient might propagate the exception if not caught by an exception handler middleware
         # that's outside our idempotency middleware.
         try:
-            await authenticated_async_client.post("/api/v1/projects/", json={"name": "Fail"}, headers=headers)
+            await authenticated_async_client.post(
+                "/api/v1/projects/", json={"name": "Fail"}, headers=headers
+            )
         except Exception:
             pass
 
@@ -95,5 +100,7 @@ async def test_idempotency_redis_unavailable_fails_open(
     idempotency_key = str(uuid.uuid4())
     headers = {"X-Idempotency-Key": idempotency_key}
 
-    response = await authenticated_async_client.post("/api/v1/projects/", json={"name": "Open"}, headers=headers)
+    response = await authenticated_async_client.post(
+        "/api/v1/projects/", json={"name": "Open"}, headers=headers
+    )
     assert response.status_code == 201

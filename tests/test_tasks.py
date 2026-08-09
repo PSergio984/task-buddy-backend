@@ -34,7 +34,9 @@ async def test_send_confirmation_email_api_error(mock_httpx_client) -> None:
 
     with pytest.raises(APIResponseError):
         # We call the async implementation directly to test error handling
-        await _send_confirmation_email_async("test@example.com", "Test Subject", "Test Body", suppress_exceptions=False)
+        await _send_confirmation_email_async(
+            "test@example.com", "Test Subject", "Test Body", suppress_exceptions=False
+        )
 
 
 def test_send_confirmation_email_falls_back_to_smtp(mock_httpx_client):

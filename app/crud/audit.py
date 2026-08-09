@@ -22,7 +22,7 @@ async def create_audit_log(
 ) -> AuditLog:
     db_log = AuditLog(
         user_id=user_id,
-        action=action.value if hasattr(action, 'value') else action,
+        action=action.value if hasattr(action, "value") else action,
         target_type=target_type,
         target_id=target_id,
         details=details,

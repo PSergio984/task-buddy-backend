@@ -22,4 +22,5 @@ class Broadcaster:
             for queue in self.subscribers[user_id]:
                 await queue.put(event)
 
+
 broadcaster = Broadcaster()

@@ -38,9 +38,7 @@ async def realtime_token(
     signing key (JWK on disk); claims: role=authenticated, sub=<user_id>, exp.
     """
     try:
-        signing_key = request.app.state.signing_key_cache.load(
-            config.SUPABASE_SIGNING_KEY_FILE
-        )
+        signing_key = request.app.state.signing_key_cache.load(config.SUPABASE_SIGNING_KEY_FILE)
     except ValueError as e:
         logger.warning("Realtime token minting unavailable: %s", e)
         raise HTTPException(
@@ -77,6 +75,7 @@ async def stream(
     """
     SSE endpoint for real-time updates.
     """
+
     async def event_generator() -> AsyncIterator[str]:
         queue = broadcaster.subscribe(current_user.id)
         try:
@@ -111,5 +110,5 @@ async def stream(
             "Cache-Control": "no-cache",
             "Connection": "keep-alive",
             "X-Accel-Buffering": "no",
-        }
+        },
     )

@@ -13,6 +13,7 @@ logger = logging.getLogger(__name__)
 
 T = TypeVar("T")
 
+
 def _extract_db_from_args(bound_args: inspect.BoundArguments) -> AsyncSession | None:
     """Extract database session from function arguments."""
     db = bound_args.arguments.get("db")
@@ -23,6 +24,7 @@ def _extract_db_from_args(bound_args: inspect.BoundArguments) -> AsyncSession | 
             return arg
     return None
 
+
 def _extract_display_name(obj: Any) -> str | None:
     """Extract a human-readable name (title, name, or username) from an object or dict."""
     if obj is None:
@@ -31,11 +33,9 @@ def _extract_display_name(obj: Any) -> str | None:
         return obj.get("title") or obj.get("name") or obj.get("username")
     return getattr(obj, "title", getattr(obj, "name", getattr(obj, "username", None)))
 
+
 def _extract_user_id_from_context(
-    bound_args: inspect.BoundArguments,
-    result: Any,
-    target_type: str,
-    target_id: Any
+    bound_args: inspect.BoundArguments, result: Any, target_type: str, target_id: Any
 ) -> Any:
     """Extract user ID from arguments, result, or target context."""
     user_id = bound_args.arguments.get("user_id")
@@ -64,6 +64,7 @@ def _extract_user_id_from_context(
 
     return user_id
 
+
 def _extract_target_id_from_context(bound_args: inspect.BoundArguments, result: Any) -> Any:
     """Extract target object ID from result or arguments."""
     if isinstance(result, dict):
@@ -82,6 +83,7 @@ def _extract_target_id_from_context(bound_args: inspect.BoundArguments, result: 
         )
     return target_id
 
+
 def _find_db_obj(bound_args: inspect.BoundArguments) -> Any:
     """Find the database object in the arguments."""
     for arg in bound_args.arguments.values():
@@ -93,6 +95,7 @@ def _find_db_obj(bound_args: inspect.BoundArguments) -> Any:
             return arg
     return None
 
+
 def _find_update_data(bound_args: inspect.BoundArguments) -> Any:
     """Find the update data (dict or model) in the arguments."""
     for arg in bound_args.arguments.values():
@@ -102,11 +105,12 @@ def _find_update_data(bound_args: inspect.BoundArguments) -> Any:
             return arg
     return None
 
+
 def _extract_pre_execution_data(
     bound_args: inspect.BoundArguments,
     action_str: str,
     include_diff: bool,
-    field_blacklist: list[str]
+    field_blacklist: list[str],
 ):
     """Capture initial state and identifiers before the operation executes."""
     db_obj = _find_db_obj(bound_args)
@@ -125,6 +129,7 @@ def _extract_pre_execution_data(
             }
 
     return db_obj, target_id, pre_name, old_values, update_data
+
 
 def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: list[str]) -> str:
     """Generate a readable diff string for updates."""
@@ -158,6 +163,7 @@ def _generate_diff_string(old_values: dict, update_data: dict, field_blacklist: 
 
     return f" | Changes: {', '.join(changes)}" if changes else ""
 
+
 def _format_audit_details(
     action_str: str,
     target_type: str,
@@ -165,7 +171,7 @@ def _format_audit_details(
     include_diff: bool,
     old_values: dict,
     update_data: dict | None,
-    field_blacklist: list[str]
+    field_blacklist: list[str],
 ) -> str:
     """Generate the details string for the audit log."""
     # Special case: password updates for users should be concise
@@ -182,6 +188,7 @@ def _format_audit_details(
         details += _generate_diff_string(old_values, update_data, field_blacklist)
     return details
 
+
 async def _persist_audit_log(
     db: AsyncSession,
     user_id: Any,
@@ -190,25 +197,30 @@ async def _persist_audit_log(
     target_id: Any,
     details: str,
     commit: bool,
-    func_name: str
+    func_name: str,
 ):
     """Persist the audit log entry to the database."""
     try:
         await create_audit_log(
-            db=db, user_id=user_id, action=action,
-            target_type=target_type, target_id=target_id, details=details
+            db=db,
+            user_id=user_id,
+            action=action,
+            target_type=target_type,
+            target_id=target_id,
+            details=details,
         )
         if commit:
             await db.commit()
     except Exception:
         logger.exception(f"Failed to create audit log for {func_name}")
 
+
 def audit_log(
     action: AuditAction | str,
     target_type: str,
     include_diff: bool = False,
     blacklist: list[str] | None = None,
-    commit: bool = False
+    commit: bool = False,
 ):
     """
     Decorator to automatically create an audit log entry after a CRUD operation.
@@ -245,13 +257,20 @@ def audit_log(
             if db and user_id:
                 display_name = _extract_display_name(result) or pre_name
                 details = _format_audit_details(
-                    action_str, target_type, display_name,
-                    include_diff, old_values, update_data, field_blacklist
+                    action_str,
+                    target_type,
+                    display_name,
+                    include_diff,
+                    old_values,
+                    update_data,
+                    field_blacklist,
                 )
                 await _persist_audit_log(
                     db, user_id, action, target_type, target_id, details, commit, func.__name__
                 )
 
             return result
+
         return wrapper
+
     return decorator

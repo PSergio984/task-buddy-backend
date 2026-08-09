@@ -39,11 +39,7 @@ async def create_project(
     db: AsyncSession, user_id: int, project_in: ProjectCreateRequest
 ) -> Project:
     # Lock existing projects of this user to prevent concurrent insertions
-    lock_query = (
-        select(Project.id)
-        .where(Project.user_id == user_id)
-        .with_for_update()
-    )
+    lock_query = select(Project.id).where(Project.user_id == user_id).with_for_update()
     result = await db.execute(lock_query)
     count = len(result.all())
 
@@ -59,11 +55,7 @@ async def create_project(
     return db_project
 
 
-@audit_log(
-    action=AuditAction.UPDATE,
-    target_type=PROJECT_TARGET_TYPE,
-    include_diff=True
-)
+@audit_log(action=AuditAction.UPDATE, target_type=PROJECT_TARGET_TYPE, include_diff=True)
 async def update_project(
     db: AsyncSession, db_project: Project, project_in: ProjectUpdateRequest
 ) -> Project:

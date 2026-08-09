@@ -88,29 +88,26 @@ engine_options: dict[str, Any] = {
 # (as we do in Celery tasks), the event loop is created and destroyed for each
 # task. asyncpg connections are loop-bound and cannot be safely pooled/reused
 # across different loops. We use NullPool to ensure a fresh connection per task.
-is_celery_worker = (
-    os.environ.get("IS_CELERY_WORKER") == "true" or
-    (len(sys.argv) > 0 and "celery" in sys.argv[0].lower())
+is_celery_worker = os.environ.get("IS_CELERY_WORKER") == "true" or (
+    len(sys.argv) > 0 and "celery" in sys.argv[0].lower()
 )
 
 if is_celery_worker:
     engine_options["poolclass"] = NullPool
     logger.info("Database engine configured with NullPool for Celery worker/task compatibility.")
 else:
-    engine_options.update({
-        "pool_size": config.DB_POOL_SIZE,
-        "max_overflow": config.DB_MAX_OVERFLOW,
-        "pool_timeout": config.DB_POOL_TIMEOUT,
-        "pool_recycle": config.DB_POOL_RECYCLE,
-        "pool_pre_ping": True,
-    })
+    engine_options.update(
+        {
+            "pool_size": config.DB_POOL_SIZE,
+            "max_overflow": config.DB_MAX_OVERFLOW,
+            "pool_timeout": config.DB_POOL_TIMEOUT,
+            "pool_recycle": config.DB_POOL_RECYCLE,
+            "pool_pre_ping": True,
+        }
+    )
 
 # Create the async engine
-engine = create_async_engine(
-    ASYNC_DATABASE_URL,
-    connect_args=connect_args,
-    **engine_options
-)
+engine = create_async_engine(ASYNC_DATABASE_URL, connect_args=connect_args, **engine_options)
 
 # Create the session factory
 AsyncSessionLocal = async_sessionmaker(

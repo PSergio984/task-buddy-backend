@@ -44,6 +44,7 @@ class GlobalConfig(BaseConfig):
         if v < 1:
             raise ValueError("SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS must be >= 1")
         return v
+
     DB_FORCE_ROLL_BACK: bool = False
     ALLOWED_ORIGINS: Union[list[str], str] = [
         "http://localhost:3000",
@@ -191,9 +192,7 @@ class ProdConfig(GlobalConfig):
 
             SigningKeyCache().load(self.SUPABASE_SIGNING_KEY_FILE)
         except ValueError as e:
-            raise ValueError(
-                f"Supabase signing key is required in production: {e}"
-            ) from e
+            raise ValueError(f"Supabase signing key is required in production: {e}") from e
 
     def _apply_mail_fallbacks(self) -> None:
         # Fallback for MAIL settings if PROD_ prefix is missing

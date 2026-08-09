@@ -7,9 +7,11 @@ class TaskStats(BaseModel):
     pending_tasks: int
     completion_percentage: float
 
+
 class TagDistribution(BaseModel):
     tag_name: str
     task_count: int
+
 
 class SystemOverview(BaseModel):
     task_stats: TaskStats

@@ -40,6 +40,7 @@ app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 app.state.signing_key_cache = SigningKeyCache()
 
+
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Return a 429 response when the client exceeds a rate limit."""
@@ -69,6 +70,7 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         content={"detail": detail},
     )
 
+
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SlowAPIMiddleware)
@@ -81,17 +83,18 @@ app.include_router(stats.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
 
+
 @app.get("/health")
 async def health_check():
     """Return a simple liveness response."""
     return {"status": "ok"}
+
 
 @app.get("/test-limit")
 @limiter.limit("100/minute")
 async def test_limit(request: Request, response: Response):
     """Return a response for exercising the rate limiter."""
     return {"message": "limit test"}
-
 
 
 @app.exception_handler(HTTPException)
@@ -145,4 +148,3 @@ async def add_security_headers(request: Request, call_next):
     response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
     response.headers["Permissions-Policy"] = "geolocation=(), microphone=(), camera=(), payment=()"
     return response
-

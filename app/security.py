@@ -139,9 +139,7 @@ async def is_token_blacklisted(token: str) -> bool:
     """
     client = get_redis_client()
     if client is None:
-        logger.warning(
-            "Redis client is not initialized; assuming token is not blacklisted."
-        )
+        logger.warning("Redis client is not initialized; assuming token is not blacklisted.")
         return False
     try:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
@@ -215,7 +213,11 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     """
     Verify a plain text password against a hashed password.
     """
-    logger.debug("Verifying password. Hash type: %s, Hash length: %s", type(hashed_password), len(hashed_password))
+    logger.debug(
+        "Verifying password. Hash type: %s, Hash length: %s",
+        type(hashed_password),
+        len(hashed_password),
+    )
     # Log the first 10 characters of the hash for debugging (safe enough for logs)
     logger.debug("Hash prefix: %s...", hashed_password[:10] if hashed_password else "EMPTY")
     try:

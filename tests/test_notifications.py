@@ -21,26 +21,23 @@ from app.tasks import _process_reminders_async
 
 
 @pytest.mark.anyio
-async def test_create_notification(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_create_notification(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a notification can be created."""
     user_id = confirmed_user["id"]
     notification_in = NotificationCreate(
         user_id=user_id,
         title="Test Title",
         message="Test Message",
-        type=NotificationType.REMINDER_DUE
+        type=NotificationType.REMINDER_DUE,
     )
     notification = await create_notification(db, notification_in)
     assert notification.id is not None
     assert notification.title == "Test Title"
     assert notification.user_id == user_id
 
+
 @pytest.mark.anyio
-async def test_get_notifications(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_get_notifications(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify notifications can be listed for a user."""
     user_id = confirmed_user["id"]
     # Create 3 notifications with different titles
@@ -49,7 +46,7 @@ async def test_get_notifications(
             user_id=user_id,
             title=f"Title {i}",
             message=f"Message {i}",
-            type=NotificationType.REMINDER_DUE
+            type=NotificationType.REMINDER_DUE,
         )
         await create_notification(db, notification_in)
 
@@ -61,17 +58,16 @@ async def test_get_notifications(
     assert "Title 1" in titles
     assert "Title 2" in titles
 
+
 @pytest.mark.anyio
-async def test_mark_as_read(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_mark_as_read(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a notification can be marked as read."""
     user_id = confirmed_user["id"]
     notification_in = NotificationCreate(
         user_id=user_id,
         title="Test Title",
         message="Test Message",
-        type=NotificationType.REMINDER_DUE
+        type=NotificationType.REMINDER_DUE,
     )
     notification = await create_notification(db, notification_in)
     await db.commit()
@@ -81,17 +77,12 @@ async def test_mark_as_read(
     assert updated is not None
     assert updated.is_read is True
 
+
 @pytest.mark.anyio
-async def test_push_subscription_upsert(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_push_subscription_upsert(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a push subscription is created and updated in place."""
     user_id = confirmed_user["id"]
-    sub_in = PushSubscriptionCreate(
-        endpoint="https://example.com/1",
-        p256dh="p1",
-        auth="a1"
-    )
+    sub_in = PushSubscriptionCreate(endpoint="https://example.com/1", p256dh="p1", auth="a1")
     # Create
     sub = await create_or_update_push_subscription(db, user_id, sub_in)
     assert sub.id is not None
@@ -99,26 +90,19 @@ async def test_push_subscription_upsert(
 
     # Update
     sub_in_updated = PushSubscriptionCreate(
-        endpoint="https://example.com/1",
-        p256dh="p1-updated",
-        auth="a1-updated"
+        endpoint="https://example.com/1", p256dh="p1-updated", auth="a1-updated"
     )
     sub_updated = await create_or_update_push_subscription(db, user_id, sub_in_updated)
     assert sub_updated.id == sub.id
     assert sub_updated.p256dh == "p1-updated"
 
+
 @pytest.mark.anyio
-async def test_delete_push_subscription(
-    db: AsyncSession, confirmed_user: dict[str, Any]
-) -> None:
+async def test_delete_push_subscription(db: AsyncSession, confirmed_user: dict[str, Any]) -> None:
     """Verify a push subscription can be deleted."""
     user_id = confirmed_user["id"]
     endpoint = "https://example.com/del"
-    sub_in = PushSubscriptionCreate(
-        endpoint=endpoint,
-        p256dh="p1",
-        auth="a1"
-    )
+    sub_in = PushSubscriptionCreate(endpoint=endpoint, p256dh="p1", auth="a1")
     await create_or_update_push_subscription(db, user_id, sub_in)
 
     # Verify exists
@@ -133,6 +117,7 @@ async def test_delete_push_subscription(
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is None
 
+
 @pytest.mark.anyio
 async def test_process_reminders_deduplication(
     db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
@@ -143,10 +128,7 @@ async def test_process_reminders_deduplication(
 
     # Create a task due in 1 hour (window: REMINDER_BEFORE)
     task = Task(
-        title="Dedupe Task",
-        user_id=user_id,
-        due_date=now + timedelta(hours=1),
-        completed=False
+        title="Dedupe Task", user_id=user_id, due_date=now + timedelta(hours=1), completed=False
     )
     db.add(task)
     await db.commit()
@@ -170,5 +152,5 @@ async def test_process_reminders_deduplication(
     await _process_reminders_async()
     notifications = (await db.execute(stmt)).scalars().all()
     assert len(notifications) == 1
-    assert mock_push.call_count == 1 # Still 1
-    assert mock_email.call_count == 1 # Still 1
+    assert mock_push.call_count == 1  # Still 1
+    assert mock_email.call_count == 1  # Still 1

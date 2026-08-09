@@ -34,7 +34,7 @@ async def main() -> None:
             due_date=due_in_1_hour,
             completed=False,
             user_id=user.id,
-            project_id=None
+            project_id=None,
         )
         db.add(new_task)
         await db.commit()
@@ -48,8 +48,7 @@ async def main() -> None:
 
         # Verify the notification was created
         notif_result = await db.execute(
-            select(Notification)
-            .where(Notification.task_id == new_task.id)
+            select(Notification).where(Notification.task_id == new_task.id)
         )
         notifs = notif_result.scalars().all()
 
@@ -57,9 +56,12 @@ async def main() -> None:
             print(f"🎉 SUCCESS! {len(notifs)} notification(s) created in the live database.")
             for n in notifs:
                 print(f"   -> [{n.type}] {n.title}: {n.message}")
-            print("\n👉 Go to your frontend browser! You should see the Notification Bell badge light up within 2 minutes (or refresh the page).")
+            print(
+                "\n👉 Go to your frontend browser! You should see the Notification Bell badge light up within 2 minutes (or refresh the page)."
+            )
         else:
             print("❌ Something went wrong, no notifications were created.")
+
 
 if __name__ == "__main__":
     asyncio.run(main())

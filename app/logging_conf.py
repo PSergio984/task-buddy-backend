@@ -78,8 +78,7 @@ def configure_logging() -> None:
                     "class": "logging.Formatter",
                     "datefmt": "%Y-%m-%d %H:%M:%S",
                     "format": (
-                        "(%(correlation_id)s)%(asctime)s - %(name)s - "
-                        "%(levelname)s - %(message)s"
+                        "(%(correlation_id)s)%(asctime)s - %(name)s - %(levelname)s - %(message)s"
                     ),
                 },
                 "file": {

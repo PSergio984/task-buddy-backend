@@ -66,7 +66,7 @@ async def test_cache_sqlalchemy_model(mocker: Any) -> None:
         completed=False,
         priority="MEDIUM",
         user_id=1,
-        created_at=datetime(2026, 5, 17, 12, 0, 0)
+        created_at=datetime(2026, 5, 17, 12, 0, 0),
     )
 
     # Try storing the SQLAlchemy model directly.
@@ -114,7 +114,7 @@ async def test_cache_list_of_sqlalchemy_models(mocker: Any) -> None:
             completed=False,
             priority="LOW",
             user_id=1,
-            created_at=datetime(2026, 5, 17, 12, 0, 0)
+            created_at=datetime(2026, 5, 17, 12, 0, 0),
         ),
         Task(
             id=102,
@@ -122,8 +122,8 @@ async def test_cache_list_of_sqlalchemy_models(mocker: Any) -> None:
             completed=True,
             priority="HIGH",
             user_id=1,
-            created_at=datetime(2026, 5, 17, 13, 0, 0)
-        )
+            created_at=datetime(2026, 5, 17, 13, 0, 0),
+        ),
     ]
 
     # Store

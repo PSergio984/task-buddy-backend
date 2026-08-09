@@ -19,7 +19,11 @@ async def test_push(user_id: int) -> None:
     """Send a test push notification to all of the user's push subscriptions."""
     print("--- Push Notification Delivery Test ---")
     print(f"Target User ID: {user_id}")
-    print(f"VAPID Public Key:  {config.VAPID_PUBLIC_KEY[:15]}..." if config.VAPID_PUBLIC_KEY else "None")
+    print(
+        f"VAPID Public Key:  {config.VAPID_PUBLIC_KEY[:15]}..."
+        if config.VAPID_PUBLIC_KEY
+        else "None"
+    )
     print(f"VAPID Private Key: {'Set (Hidden)' if config.VAPID_PRIVATE_KEY else 'None'}")
 
     title = "🔔 Test Notification"
@@ -34,6 +38,7 @@ async def test_push(user_id: int) -> None:
         logger.error("Failed to send push notification to user %s: %s", user_id, exc)
         print(f"[ERROR] Failed to send push notification: {exc}")
         raise
+
 
 if __name__ == "__main__":
     if len(sys.argv) < 2:

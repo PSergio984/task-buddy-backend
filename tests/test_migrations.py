@@ -24,7 +24,7 @@ def test_alembic_migrations() -> None:
             capture_output=True,
             text=True,
             env=env,
-            timeout=30
+            timeout=30,
         )
     except subprocess.TimeoutExpired as e:
         raise AssertionError(f"Alembic upgrade timed out. Partial output: {e.output}") from e
@@ -39,7 +39,7 @@ def test_alembic_migrations() -> None:
             capture_output=True,
             text=True,
             env=env,
-            timeout=30
+            timeout=30,
         )
     except subprocess.TimeoutExpired as e:
         raise AssertionError(f"Alembic downgrade timed out. Partial output: {e.output}") from e
@@ -53,10 +53,12 @@ def test_alembic_migrations() -> None:
             capture_output=True,
             text=True,
             env=env,
-            timeout=30
+            timeout=30,
         )
     except subprocess.TimeoutExpired as e:
-        raise AssertionError(f"Alembic secondary upgrade timed out. Partial output: {e.output}") from e
+        raise AssertionError(
+            f"Alembic secondary upgrade timed out. Partial output: {e.output}"
+        ) from e
 
     assert result.returncode == 0, f"Alembic secondary upgrade failed: {result.stderr}"
 

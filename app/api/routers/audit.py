@@ -27,6 +27,7 @@ router = APIRouter(
 
 logger = logging.getLogger(__name__)
 
+
 @router.get("/logs", response_model=list[AuditLog])
 @limiter.limit(RATE_LIMIT_AUDIT_LIST)
 async def list_audit_logs(
