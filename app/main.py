@@ -43,7 +43,7 @@ app.state.signing_key_cache = SigningKeyCache()
 @app.exception_handler(RateLimitExceeded)
 async def rate_limit_exceeded_handler(request: Request, exc: RateLimitExceeded):
     """Return a 429 response when the client exceeds a rate limit."""
-    response = JSONResponse(
+    response: Response = JSONResponse(
         status_code=429,
         content={"detail": "Too many attempts. Please try again in a few minutes."},
     )

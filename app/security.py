@@ -1,7 +1,7 @@
 import datetime
 import hashlib
 import logging
-from typing import Annotated, Any, Literal, Optional
+from typing import Annotated, Any, Literal, Optional, cast
 
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
@@ -145,7 +145,8 @@ async def is_token_blacklisted(token: str) -> bool:
         return False
     try:
         token_hash = hashlib.sha256(token.encode()).hexdigest()
-        return await client.exists(f"blacklist:{token_hash}") > 0
+        exists_count: int = await client.exists(f"blacklist:{token_hash}")
+        return exists_count > 0
     except RuntimeError as e:
         if "Event loop is closed" in str(e):
             # Re-initialize client for the new loop
@@ -154,7 +155,8 @@ async def is_token_blacklisted(token: str) -> bool:
             client = get_redis_client()
             if client:
                 token_hash = hashlib.sha256(token.encode()).hexdigest()
-                return await client.exists(f"blacklist:{token_hash}") > 0
+                exists_count = await client.exists(f"blacklist:{token_hash}")
+                return exists_count > 0
         raise
     except Exception as e:
         logger.exception("Failed to check token blacklist in Redis")
@@ -171,7 +173,7 @@ def create_access_token(user_id: int) -> str:
         minutes=access_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "access"}
-    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
+    jwt_encoded: str = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -184,7 +186,7 @@ def create_confirm_token(user_id: int) -> str:
         minutes=confirm_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "confirm"}
-    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
+    jwt_encoded: str = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -197,7 +199,7 @@ def create_reset_token(user_id: int) -> str:
         minutes=reset_token_expire_time()
     )
     jwt_payload = {"sub": str(user_id), "exp": expire, "type": "reset"}
-    jwt_encoded = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
+    jwt_encoded: str = jwt.encode(jwt_payload, SECRET_KEY, algorithm=ALGORITHM)
     return jwt_encoded
 
 
@@ -205,7 +207,8 @@ def get_password_hash(password: str) -> str:
     """
     Hash a plain text password using the configured CryptContext.
     """
-    return pwd_context.hash(password)
+    hashed: str = pwd_context.hash(password)
+    return hashed
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -216,7 +219,8 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
     # Log the first 10 characters of the hash for debugging (safe enough for logs)
     logger.debug("Hash prefix: %s...", hashed_password[:10] if hashed_password else "EMPTY")
     try:
-        return pwd_context.verify(plain_password, hashed_password)
+        verified: bool = pwd_context.verify(plain_password, hashed_password)
+        return verified
     except UnknownHashError:
         logger.warning("Unknown hash format encountered. Rejecting authentication.")
         return False
@@ -236,7 +240,7 @@ def get_subject_for_token_type(
         logger.debug("JWT decode error: %s", str(e))
         raise create_credentials_exception("Invalid token") from e
 
-    subject = payload.get("sub")
+    subject = cast(str, payload.get("sub"))
     if subject is None:
         raise create_credentials_exception("Token is missing subject field")
     token_type = payload.get("type")

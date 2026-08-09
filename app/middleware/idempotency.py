@@ -2,7 +2,8 @@ import json
 import logging
 import re
 import uuid
-from typing import Any, Callable, Optional
+from collections.abc import Awaitable, Callable
+from typing import Any, Optional
 
 from fastapi import Request, Response
 from jose import JWTError, jwt
@@ -34,7 +35,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
     Responses are cached in Redis for a configurable duration.
     """
 
-    async def dispatch(self, request: Request, call_next: Callable) -> Response:
+    async def dispatch(
+        self, request: Request, call_next: Callable[[Request], Awaitable[Response]]
+    ) -> Response:
         """
         Intercepts requests to check for idempotency keys and manage response caching.
         """
@@ -88,7 +91,13 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         path = request.url.path.rstrip("/")
         return path not in EXCLUDED_PATHS
 
-    async def _execute_idempotent_request(self, request: Request, call_next: Callable, user_id: str, idempotency_key: str) -> Response:
+    async def _execute_idempotent_request(
+        self,
+        request: Request,
+        call_next: Callable[[Request], Awaitable[Response]],
+        user_id: str,
+        idempotency_key: str,
+    ) -> Response:
         """Orchestrates the idempotency logic with Redis caching and locking."""
         redis_client = get_redis_client()
         if not redis_client:
@@ -204,7 +213,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             async for chunk in response.body_iterator:
                 response_body += chunk
         else:
-            response_body = response.body
+            response_body = bytes(response.body)
 
         # Ensure response_body is always bytes (Starlette can return memoryview)
         response_body = bytes(response_body or b"")

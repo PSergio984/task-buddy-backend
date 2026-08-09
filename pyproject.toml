@@ -143,6 +143,14 @@ warn_no_return = true
 [[tool.mypy.overrides]]
 module = [
     "sqlalchemy.*",
+    "jose",
+    "jose.*",
+    "passlib.context",
+    "passlib.exc",
+    "celery",
+    "b2sdk",
+    "b2sdk.v2",
+    "pywebpush",
 ]
 ignore_missing_imports = true
 

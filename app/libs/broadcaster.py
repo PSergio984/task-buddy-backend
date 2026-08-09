@@ -7,7 +7,7 @@ class Broadcaster:
         self.subscribers = defaultdict(set)
 
     def subscribe(self, user_id: int):
-        queue = asyncio.Queue()
+        queue: asyncio.Queue = asyncio.Queue()
         self.subscribers[user_id].add(queue)
         return queue
 
