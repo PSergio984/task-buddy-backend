@@ -75,10 +75,11 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements-dev.txt
       - name: Lint with ruff
-        # ruff format --check excluded: repo has a pre-existing 66-file
-        # formatting baseline; sweep it in a separate change before enforcing.
         run: |
           ruff check .
+      - name: Check formatting with ruff
+        run: |
+          ruff format --check .
 
   typecheck:
     runs-on: ubuntu-latest
