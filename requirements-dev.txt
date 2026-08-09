@@ -90,6 +90,8 @@ h11==0.16.0
     #   uvicorn
 httpcore==1.0.9
     # via httpx
+http-ece==1.2.1
+    # via pywebpush
 httptools==0.7.1
     # via uvicorn
 httpx==0.28.1
@@ -167,6 +169,10 @@ pygments==2.20.0
     # via
     #   pytest
     #   rich
+py-vapid==1.9.4
+    # via pywebpush
+pywebpush==2.3.0
+    # via task-buddy-backend (pyproject.toml)
 pytest==9.0.3
     # via
     #   task-buddy-backend (pyproject.toml)
