@@ -66,6 +66,7 @@ jobs:
       DATABASE_URL: "sqlite+aiosqlite:///:memory:"
       SECRET_KEY: test-secret-key-for-ci-purposes-only
       MAIL_URL: "https://api.brevo.com/v3"
+      MAIL_API_KEY: "ci-test-key"
       ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: 30
       LOG_LEVEL: INFO
