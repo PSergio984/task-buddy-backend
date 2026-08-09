@@ -302,16 +302,27 @@ def get_config(env_state: str) -> GlobalConfig:
 
 config = get_config(_get_env_state())
 
+DEV_SECRET_KEY = "dev-secret-key-do-not-use-in-production"
+
+
+def _resolve_secret_key(secret_key: Optional[str], env_state: str) -> str:
+    """Return a usable SECRET_KEY, or fail hard outside dev/test.
+
+    The well-known dev key is only acceptable for local development and
+    tests. Any other environment (prod, staging, typo'd states) must
+    provide a real key; silently falling back would sign JWTs with a
+    publicly known secret.
+    """
+    if secret_key and secret_key != DEV_SECRET_KEY:
+        return secret_key
+    if env_state in ("dev", "test"):
+        return DEV_SECRET_KEY
+    raise RuntimeError("SECRET_KEY (or PROD_SECRET_KEY) must be set in production environment")
+
+
 # Convenience top-level exports so other modules can import settings directly
 DATABASE_URL = config.DATABASE_URL
-SECRET_KEY: str = config.SECRET_KEY or ""
-
-# Only enforce strict SECRET_KEY in production mode
-if not SECRET_KEY and config.ENV_STATE == "prod":
-    raise RuntimeError("SECRET_KEY (or PROD_SECRET_KEY) must be set in production environment")
-elif not SECRET_KEY:
-    # Use a dummy key for dev/test if everything else failed
-    SECRET_KEY = "dev-secret-key-do-not-use-in-production"
+SECRET_KEY: str = _resolve_secret_key(config.SECRET_KEY, config.ENV_STATE)
 
 ALGORITHM = config.ALGORITHM
 REDIS_URL = config.REDIS_URL
