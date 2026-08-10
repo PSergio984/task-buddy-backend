@@ -19,7 +19,7 @@ from typing import Any, NamedTuple
 from unittest.mock import patch
 
 import pytest
-from httpx import AsyncClient
+from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
 
 from app.main import app
@@ -41,6 +41,7 @@ class FakeRedis:
     """Minimal dict-backed stand-in for the AsyncRedis surface the middleware uses."""
 
     def __init__(self) -> None:
+        """Start with an empty store and no recorded calls."""
         self.store: dict[str, str] = {}
         self.deleted: list[str] = []
         self.set_calls: list[SetCall] = []
@@ -52,11 +53,13 @@ class FakeRedis:
         self._recheck_armed = False
 
     async def get(self, key: str) -> Any:
+        """Return the stored value, or the recheck replay once a SET NX race was lost."""
         if self._recheck_armed and self.replay_on_recheck is not None:
             return self.replay_on_recheck
         return self.store.get(key)
 
     async def set(self, key: str, value: str, ex: int | None = None, nx: bool = False) -> bool:
+        """Store a value (with SET NX semantics), recording the call and optional lock race."""
         self.set_calls.append(SetCall(key, value, ex, nx))
         if nx and (key in self.store or self.block_next_nx):
             self.block_next_nx = False
@@ -66,6 +69,7 @@ class FakeRedis:
         return True
 
     async def delete(self, *keys: str) -> int:
+        """Remove the given keys, recording every deletion attempt."""
         removed = 0
         for key in keys:
             self.deleted.append(key)
@@ -80,6 +84,7 @@ class FakeRedis:
 
 
 def _install_fake_redis(mocker: Any) -> FakeRedis:
+    """Patch both Redis access points with a shared FakeRedis instance."""
     fake = FakeRedis()
     mocker.patch("app.middleware.idempotency.get_redis_client", return_value=fake)
     mocker.patch("app.security.get_redis_client", return_value=fake)
@@ -105,10 +110,12 @@ def _scenario(mocker: Any) -> Scenario:
 
 
 def _payload() -> dict[str, str]:
+    """Return a unique, valid project creation payload."""
     return {"name": f"Project {uuid.uuid4()}"}
 
 
 def _fresh_headers() -> dict[str, str]:
+    """Return headers carrying a brand-new idempotency key."""
     return {"X-Idempotency-Key": str(uuid.uuid4())}
 
 
@@ -122,6 +129,7 @@ def _replayed_headers(headers: Any) -> dict[str, str]:
 
 
 async def _project_count(db: Any) -> int:
+    """Count the projects persisted in the test database."""
     result = await db.execute(select(func.count()).select_from(Project))
     return int(result.scalar_one())
 
@@ -152,7 +160,8 @@ async def test_same_key_executes_handler_once(
     lock_sets = [call for call in fake.set_calls if call.value == IN_PROGRESS_MARKER]
     assert lock_sets, "Expected an IN_PROGRESS lock write"
     lock = lock_sets[-1]
-    assert lock.ex == LOCK_TTL and lock.nx is True, "Lock must be SET NX with a 30s TTL"
+    assert lock.ex == LOCK_TTL, "Lock TTL must be 30s"
+    assert lock.nx is True, "Lock must be acquired with SET NX"
 
     cache_sets = [call for call in fake.set_calls if call.value != IN_PROGRESS_MARKER]
     assert cache_sets, "Expected a cached response write"
@@ -215,13 +224,13 @@ async def test_retry_after_500_creates_single_row(
         "app.api.routers.project.project_crud.create_project",
         side_effect=Exception("Database error"),
     ):
-        try:
-            await authenticated_async_client.post(
-                "/api/v1/projects/", json=payload, headers=headers
-            )
-            pytest.fail("Expected the patched CRUD failure to propagate")
-        except Exception as exc:
-            assert "Database error" in str(exc)
+        # raise_app_exceptions=False so the client observes the real 500 response
+        # instead of the re-raised exception
+        transport = ASGITransport(app=app, raise_app_exceptions=False)
+        async with AsyncClient(transport=transport, base_url="http://testserver/") as client:
+            client.headers.update(authenticated_async_client.headers)
+            failed = await client.post("/api/v1/projects/", json=payload, headers=headers)
+            assert failed.status_code == 500
 
     assert fake.deleted == [lock_key], "The lock must be cleared on failure so the user can retry"
 
@@ -315,8 +324,7 @@ async def test_ratelimit_429_clears_lock_and_is_not_cached(
     lock_key = _cache_key(confirmed_user["id"], key)
     payload = _payload()
 
-    limiter_enabled = app.state.limiter.enabled
-    app.state.limiter.enabled = True
+    mocker.patch.object(app.state.limiter, "enabled", True)
     app.state.limiter.reset()
     mocker.patch("slowapi.util.get_remote_address", return_value="1.2.3.4")
     try:
@@ -343,7 +351,6 @@ async def test_ratelimit_429_clears_lock_and_is_not_cached(
         assert await _project_count(db) == 11
     finally:
         app.state.limiter.reset()
-        app.state.limiter.enabled = limiter_enabled
 
 
 @pytest.mark.anyio
