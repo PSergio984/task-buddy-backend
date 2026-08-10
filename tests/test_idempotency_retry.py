@@ -122,6 +122,11 @@ def _cached_response_calls(fake: FakeRedis) -> list[SetCall]:
     return [call for call in fake.set_calls if call.value != IN_PROGRESS_MARKER]
 
 
+def _lock_calls(fake: FakeRedis) -> list[SetCall]:
+    """The SET calls that wrote IN_PROGRESS lock markers."""
+    return [call for call in fake.set_calls if call.value == IN_PROGRESS_MARKER]
+
+
 def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
     """Build a cache payload shaped like the one `_handle_response` stores for a successful finisher."""
     return {
@@ -176,7 +181,7 @@ async def test_same_key_executes_handler_once(
     assert await _project_count(db) == 1, "Handler executed more than once for the same key"
 
     # The lock write is atomic (SET NX) with a 30s TTL; the cached response uses the 1h TTL
-    lock_sets = [call for call in fake.set_calls if call.value == IN_PROGRESS_MARKER]
+    lock_sets = _lock_calls(fake)
     assert lock_sets, "Expected an IN_PROGRESS lock write"
     lock = lock_sets[-1]
     assert lock.ex == LOCK_TTL, "Lock TTL must be 30s"
@@ -184,7 +189,7 @@ async def test_same_key_executes_handler_once(
 
     cache_sets = _cached_response_calls(fake)
     assert cache_sets, "Expected a cached response write"
-    assert cache_sets[-1].ex == CACHE_TTL
+    assert cache_sets[-1].ex == CACHE_TTL, "The cached response must be written with the 1h TTL"
 
     # Success-path cleanup: the lock marker is gone, replaced by the cached response
     cached = json.loads(fake.store[lock.key])
@@ -385,7 +390,7 @@ async def test_set_nx_conflict_returns_409(
     assert await _project_count(db) == 0
 
     # The lost race was decided by an atomic SET NX — not by any non-atomic check
-    lock_sets = [call for call in fake.set_calls if call.value == IN_PROGRESS_MARKER]
+    lock_sets = _lock_calls(fake)
     assert lock_sets, "Expected an IN_PROGRESS lock attempt"
     assert lock_sets[-1].nx is True, "Lock must be attempted with SET NX"
 
