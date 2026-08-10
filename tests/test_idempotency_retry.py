@@ -3,7 +3,7 @@
 Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a repeated request with the same key executes the handler exactly once,
 - a 409 lock conflict is served the in-flight request's cached response once it finishes,
-- a 500 clears the lock so the user can retry and still create exactly one row,
+- a 500 (raised or returned) clears the lock so the user can retry and still create exactly one row,
 - a crashed request leaves only a short-lived IN_PROGRESS marker, not a permanent block,
 - a lost SET NX race returns 409 without executing the handler,
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
@@ -24,6 +24,7 @@ from unittest.mock import patch
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import func, select
+from starlette.responses import Response
 
 from app.main import app
 from app.models.project import Project
@@ -348,6 +349,41 @@ async def test_retry_after_500_creates_single_row(
 
 
 @pytest.mark.anyio
+async def test_returned_500_response_clears_lock_and_is_not_cached(
+    authenticated_async_client: AsyncClient, db: Any, mocker: Any, confirmed_user: dict[str, Any]
+) -> None:
+    """A handler that RETURNS a 500 response (without raising) also clears the lock
+    and caches nothing, so a retry with the same key re-executes instead of replaying."""
+    fake, key, headers = _scenario(mocker)
+    lock_key = _cache_key(confirmed_user["id"], key)
+
+    async def _returns_500() -> Response:
+        return Response(status_code=500)
+
+    # FastAPI resolves route endpoints at registration, so a throwaway route on the
+    # test app is the way to exercise the _handle_response >= 500 branch without
+    # modifying the project routers
+    app.add_api_route("/test/500", _returns_500, methods=["POST"])
+    try:
+        first = await authenticated_async_client.post("/test/500", headers=headers)
+        assert first.status_code == 500
+        assert fake.deleted == [lock_key], "A returned 500 must clear the lock"
+        assert not fake.store, "A returned 500 must not be cached"
+
+        # Retry with the same key: nothing was cached, so the handler re-executes
+        retried = await authenticated_async_client.post("/test/500", headers=headers)
+        assert retried.status_code == 500
+        assert fake.deleted == [lock_key, lock_key], "Retry must re-execute, not replay"
+        assert not fake.store, "Retry must not be served from cache"
+    finally:
+        # getattr with default is required: mypy types routes as BaseRoute, which
+        # has no .path attribute
+        app.router.routes[:] = [
+            r for r in app.router.routes if getattr(r, "path", None) != "/test/500"
+        ]
+
+
+@pytest.mark.anyio
 async def test_crashed_request_leaves_short_lived_lock(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any, confirmed_user: dict[str, Any]
 ) -> None:
@@ -478,12 +514,15 @@ async def test_distinct_keys_are_independent(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any
 ) -> None:
     """Different idempotency keys create independent resources."""
-    _install_fake_redis(mocker)
+    _, _, headers = _scenario(mocker)
 
-    for _ in range(2):
-        response = await authenticated_async_client.post(
-            "/api/v1/projects/", json=_payload(), headers=_fresh_headers()
-        )
-        assert response.status_code == 201
+    first = await authenticated_async_client.post(
+        "/api/v1/projects/", json=_payload(), headers=headers
+    )
+    assert first.status_code == 201
+    second = await authenticated_async_client.post(
+        "/api/v1/projects/", json=_payload(), headers=_fresh_headers()
+    )
+    assert second.status_code == 201
 
     assert await _project_count(db) == 2
