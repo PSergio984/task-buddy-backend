@@ -9,6 +9,9 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
 - a 429 rate-limit response clears the lock and is never cached,
 - deterministic 4xx responses are cached and replayed without re-execution,
+- a changed body under the same key still replays the original response,
+- once the 1h cached response expires, the same key re-executes — with a fresh payload
+  it succeeds, with the original body it hits the app's unique-name domain guard,
 - independent keys are independent (no accidental cross-key de-duplication),
 - the lock is atomic (SET NX), has a 30s TTL, and is replaced by the 1h cached response on success.
 """
@@ -114,6 +117,16 @@ def _payload() -> dict[str, str]:
     return {"name": f"Project {uuid.uuid4()}"}
 
 
+def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
+    """Mirror the cache payload `_handle_response` stores for a successful finisher."""
+    return {
+        "status_code": 201,
+        "body": json.dumps({"id": 1, "name": payload["name"]}),
+        "headers": {"content-type": "application/json"},
+        "media_type": "application/json",
+    }
+
+
 def _fresh_headers() -> dict[str, str]:
     """Return headers carrying a brand-new idempotency key."""
     return {"X-Idempotency-Key": str(uuid.uuid4())}
@@ -153,6 +166,7 @@ async def test_same_key_executes_handler_once(
     )
     assert second.status_code == 201, f"Replay failed: {second.text}"
     assert second.json() == first.json()
+    assert second.content == first.content
     assert _replayed_headers(second.headers) == _replayed_headers(first.headers)
     assert await _project_count(db) == 1, "Handler executed more than once for the same key"
 
@@ -194,13 +208,7 @@ async def test_retry_after_409_conflict_succeeds(
     # The in-flight request finishes: the middleware replaced the lock with the cached
     # response (the same shape _handle_response stores on success). The retry is served
     # that response without re-running the handler — no row is ever created by the retry.
-    finisher_response = {
-        "status_code": 201,
-        "body": json.dumps({"id": 1, "name": payload["name"]}),
-        "headers": {"content-type": "application/json"},
-        "media_type": "application/json",
-    }
-    fake.store[cache_key] = json.dumps(finisher_response)
+    fake.store[cache_key] = json.dumps(_cached_finisher_response(payload))
 
     retried = await authenticated_async_client.post(
         "/api/v1/projects/", json=payload, headers=headers
@@ -209,6 +217,86 @@ async def test_retry_after_409_conflict_succeeds(
     assert retried.json()["name"] == payload["name"]
     # Replayed from cache — the handler must NOT have run again
     assert await _project_count(db) == 0
+
+
+@pytest.mark.anyio
+async def test_same_key_different_payload_replays_original(
+    authenticated_async_client: AsyncClient, db: Any, mocker: Any
+) -> None:
+    """A changed body under the same key still returns the original cached response."""
+    fake, _, headers = _scenario(mocker)
+    payload = _payload()
+
+    first = await authenticated_async_client.post(
+        "/api/v1/projects/", json=payload, headers=headers
+    )
+    assert first.status_code == 201
+    assert await _project_count(db) == 1
+
+    # The cache key is user-scoped and body-independent — the middleware never reads
+    # the request body, so a retry with a different payload must not re-execute
+    second = await authenticated_async_client.post(
+        "/api/v1/projects/", json=_payload(), headers=headers
+    )
+    assert second.status_code == 201
+    assert second.json() == first.json(), "Replay must return the original response"
+    assert await _project_count(db) == 1, "Changed body must not re-execute the handler"
+
+
+@pytest.mark.anyio
+async def test_cached_response_expiry_allows_re_execution(
+    authenticated_async_client: AsyncClient, db: Any, mocker: Any, confirmed_user: dict[str, Any]
+) -> None:
+    """Once the 1h cached response expires, the same key re-executes and creates a new row."""
+    fake, key, headers = _scenario(mocker)
+    cache_key = _cache_key(confirmed_user["id"], key)
+    payload = _payload()
+
+    first = await authenticated_async_client.post(
+        "/api/v1/projects/", json=payload, headers=headers
+    )
+    assert first.status_code == 201
+    assert await _project_count(db) == 1
+
+    # 1h TTL elapses without any request — the cached response is gone
+    fake.expire(cache_key)
+
+    # The key is reusable for a new request; a fresh payload avoids the app's own
+    # unique (user_id, name) constraint, which is a domain guard, not idempotency
+    second_payload = _payload()
+    second = await authenticated_async_client.post(
+        "/api/v1/projects/", json=second_payload, headers=headers
+    )
+    assert second.status_code == 201, f"Re-execution failed: {second.text}"
+    assert second.json()["name"] == second_payload["name"]
+    assert await _project_count(db) == 2, "Cache expiry must allow re-execution"
+
+
+@pytest.mark.anyio
+async def test_same_payload_retry_after_expiry_hits_domain_guard(
+    authenticated_async_client: AsyncClient, db: Any, mocker: Any, confirmed_user: dict[str, Any]
+) -> None:
+    """After the 1h window, retrying the original body re-executes into the app's
+    unique (user_id, name) guard — the domain, not idempotency, rejects the duplicate."""
+    fake, key, headers = _scenario(mocker)
+    cache_key = _cache_key(confirmed_user["id"], key)
+    payload = _payload()
+
+    first = await authenticated_async_client.post(
+        "/api/v1/projects/", json=payload, headers=headers
+    )
+    assert first.status_code == 201
+    assert await _project_count(db) == 1
+
+    # 1h TTL elapses — the cached response is gone, so the retry reaches the handler
+    fake.expire(cache_key)
+
+    retried = await authenticated_async_client.post(
+        "/api/v1/projects/", json=payload, headers=headers
+    )
+    assert retried.status_code == 400
+    assert "already exists" in retried.text
+    assert await _project_count(db) == 1, "No duplicate row — the domain guard held"
 
 
 @pytest.mark.anyio
@@ -298,14 +386,7 @@ async def test_set_nx_conflict_replays_finished_response(
     fake, _, headers = _scenario(mocker)
     payload = _payload()
     fake.block_next_nx = True
-    fake.replay_on_recheck = json.dumps(
-        {
-            "status_code": 201,
-            "body": json.dumps({"id": 1, "name": payload["name"]}),
-            "headers": {"content-type": "application/json"},
-            "media_type": "application/json",
-        }
-    )
+    fake.replay_on_recheck = json.dumps(_cached_finisher_response(payload))
 
     response = await authenticated_async_client.post(
         "/api/v1/projects/", json=payload, headers=headers
@@ -348,6 +429,7 @@ async def test_ratelimit_429_clears_lock_and_is_not_cached(
             "/api/v1/projects/", json=payload, headers=headers
         )
         assert retried.status_code == 201, f"Retry after rate limit failed: {retried.text}"
+        # 10 limit-exhaustion attempts + 1 successful retry
         assert await _project_count(db) == 11
     finally:
         app.state.limiter.reset()
