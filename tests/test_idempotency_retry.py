@@ -3,7 +3,8 @@
 Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a repeated request with the same key executes the handler exactly once,
 - a 409 lock conflict is served the in-flight request's cached response once it finishes,
-- a 500 (raised or returned) clears the lock so the user can retry and still create exactly one row,
+- a 500 clears the lock and is never cached — a raised 500 retries into exactly one row,
+  a returned 500 retries into re-execution,
 - a crashed request leaves only a short-lived IN_PROGRESS marker, not a permanent block,
 - a lost SET NX race returns 409 without executing the handler,
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
@@ -356,8 +357,11 @@ async def test_returned_500_response_clears_lock_and_is_not_cached(
     and caches nothing, so a retry with the same key re-executes instead of replaying."""
     fake, key, headers = _scenario(mocker)
     lock_key = _cache_key(confirmed_user["id"], key)
+    calls = 0
 
     async def _returns_500() -> Response:
+        nonlocal calls
+        calls += 1
         return Response(status_code=500)
 
     # FastAPI resolves route endpoints at registration, so a throwaway route on the
@@ -373,6 +377,7 @@ async def test_returned_500_response_clears_lock_and_is_not_cached(
         # Retry with the same key: nothing was cached, so the handler re-executes
         retried = await authenticated_async_client.post("/test/500", headers=headers)
         assert retried.status_code == 500
+        assert calls == 2, "The handler must run again — not be served from cache"
         assert fake.deleted == [lock_key, lock_key], "Retry must re-execute, not replay"
         assert not fake.store, "Retry must not be served from cache"
     finally:
