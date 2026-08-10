@@ -117,6 +117,11 @@ def _payload() -> dict[str, str]:
     return {"name": f"Project {uuid.uuid4()}"}
 
 
+def _cached_response_calls(fake: FakeRedis) -> list[SetCall]:
+    """The SET calls that wrote cached responses, excluding IN_PROGRESS lock writes."""
+    return [call for call in fake.set_calls if call.value != IN_PROGRESS_MARKER]
+
+
 def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
     """Build a cache payload shaped like the one `_handle_response` stores for a successful finisher."""
     return {
@@ -177,7 +182,7 @@ async def test_same_key_executes_handler_once(
     assert lock.ex == LOCK_TTL, "Lock TTL must be 30s"
     assert lock.nx is True, "Lock must be acquired with SET NX"
 
-    cache_sets = [call for call in fake.set_calls if call.value != IN_PROGRESS_MARKER]
+    cache_sets = _cached_response_calls(fake)
     assert cache_sets, "Expected a cached response write"
     assert cache_sets[-1].ex == CACHE_TTL
 
@@ -302,6 +307,9 @@ async def test_same_payload_retry_after_expiry_hits_domain_guard(
     assert len(fake.store) == 1
     cached = json.loads(fake.store[cache_key])
     assert cached["status_code"] == 400
+    cache_sets = _cached_response_calls(fake)
+    assert cache_sets, "Expected a cached response write"
+    assert cache_sets[-1].ex == CACHE_TTL, "The 400 must be cached with the 1h TTL"
 
 
 @pytest.mark.anyio
