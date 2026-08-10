@@ -118,7 +118,7 @@ def _payload() -> dict[str, str]:
 
 
 def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
-    """Mirror the cache payload `_handle_response` stores for a successful finisher."""
+    """Build a cache payload shaped like the one `_handle_response` stores for a successful finisher."""
     return {
         "status_code": 201,
         "body": json.dumps({"id": 1, "name": payload["name"]}),
@@ -224,7 +224,7 @@ async def test_same_key_different_payload_replays_original(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any
 ) -> None:
     """A changed body under the same key still returns the original cached response."""
-    fake, _, headers = _scenario(mocker)
+    _, _, headers = _scenario(mocker)
     payload = _payload()
 
     first = await authenticated_async_client.post(
@@ -297,6 +297,11 @@ async def test_same_payload_retry_after_expiry_hits_domain_guard(
     assert retried.status_code == 400
     assert "already exists" in retried.text
     assert await _project_count(db) == 1, "No duplicate row — the domain guard held"
+
+    # The deterministic 400 is cached for the 1h window
+    assert len(fake.store) == 1
+    cached = json.loads(fake.store[cache_key])
+    assert cached["status_code"] == 400
 
 
 @pytest.mark.anyio
