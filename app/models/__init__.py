@@ -2,6 +2,13 @@
 
 from app.models.audit import AuditLog
 from app.models.base import Base
+from app.models.knowledge import (
+    JudgeVerdict,
+    KnowledgeAnswer,
+    KnowledgeFeedback,
+    SourceType,
+    TaskKnowledge,
+)
 from app.models.notification import Notification, NotificationType, PushSubscription
 from app.models.project import Project
 from app.models.tag import Tag
@@ -19,4 +26,9 @@ __all__ = [
     "Notification",
     "NotificationType",
     "PushSubscription",
+    "TaskKnowledge",
+    "KnowledgeAnswer",
+    "KnowledgeFeedback",
+    "SourceType",
+    "JudgeVerdict",
 ]

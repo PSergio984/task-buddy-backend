@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.routers import audit, notifications, project, realtime, stats, task, user
+from app.api.routers import audit, knowledge, notifications, project, realtime, stats, task, user
 from app.config import DevConfig, config
 from app.libs.supabase_signing import SigningKeyCache
 from app.limiter import limiter
@@ -76,6 +76,7 @@ app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
+app.include_router(knowledge.router, prefix="/api/v1/tasks")
 app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")

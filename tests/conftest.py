@@ -232,3 +232,22 @@ async def authenticated_async_client(
     yield async_client
     if "Authorization" in async_client.headers:
         del async_client.headers["Authorization"]
+
+
+@pytest.fixture(autouse=True)
+def mock_embedder(mocker: Any) -> None:
+    """Stub the local embedding model so tests never load sentence-transformers.
+
+    Returns a deterministic stand-in embedding built from the input text
+    length. Wave 2 creates app.knowledge.embeddings; until then the patch
+    target does not exist, so the fixture tolerates a missing module.
+    """
+    import numpy as np  # noqa: PLC0415
+
+    def _fake_embed(text: str) -> np.ndarray:
+        return np.full(384, len(text) % 7) / 384
+
+    try:
+        mocker.patch("app.knowledge.embeddings.get_embedder", return_value=_fake_embed)
+    except (ImportError, AttributeError):
+        pass
