@@ -110,6 +110,10 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
+    # Local embedding model (zero per-query cost, offline-capable). Multilingual
+    # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
+    EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
+    EMBEDDING_DIM: int = 384
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -372,3 +376,5 @@ RATE_LIMIT_NOTIFICATION_LIST = config.RATE_LIMIT_NOTIFICATION_LIST
 RATE_LIMIT_NOTIFICATION_READ = config.RATE_LIMIT_NOTIFICATION_READ
 RATE_LIMIT_NOTIFICATION_READ_ALL = config.RATE_LIMIT_NOTIFICATION_READ_ALL
 RATE_LIMIT_PUSH_SUBSCRIBE = config.RATE_LIMIT_PUSH_SUBSCRIBE
+EMBEDDING_MODEL = config.EMBEDDING_MODEL
+EMBEDDING_DIM = config.EMBEDDING_DIM

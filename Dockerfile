@@ -12,7 +12,14 @@ WORKDIR /app
 
 # Install Python dependencies
 COPY requirements.txt .
+# CPU-only torch first (avoids the ~2.5 GB CUDA download that the lock file's
+# torch dependency would otherwise pull via sentence-transformers).
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch
 RUN pip install --no-cache-dir -r requirements.txt
+
+# Bake the local embedding model weights into the image so the container starts
+# cold-ready with no HuggingFace dependency at runtime.
+RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy application code and scripts
 COPY app/ app/

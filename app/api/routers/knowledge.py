@@ -16,8 +16,10 @@ from app.config import (
 from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
+from app.knowledge.ingest import ingest_knowledge
+from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
-from app.models.knowledge import TaskKnowledge
+from app.models.knowledge import SourceType, TaskKnowledge
 from app.models.user import User
 from app.schemas.knowledge import (
     KnowledgeCreateRequest,
@@ -60,6 +62,11 @@ async def create_knowledge(
 ) -> TaskKnowledge:
     logger.info("POST /tasks/%s/knowledge - %s", task_id, current_user.id)
 
+    if knowledge_in.source_type != SourceType.NOTE:
+        raise HTTPException(
+            status_code=400, detail="Only the note source type is supported for now"
+        )
+
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
@@ -69,6 +76,16 @@ async def create_knowledge(
     )
     await db.commit()
     await db.refresh(db_knowledge)
+
+    # Index the note for retrieval (chunks persisted in a second transaction).
+    # Ingest failure degrades search only — the note itself stays saved.
+    try:
+        await ingest_knowledge(db, db_knowledge)
+        await db.commit()
+        await UserKnowledgeIndex().ensure_index(db, current_user.id)
+    except Exception as exc:
+        await db.rollback()
+        logger.warning("knowledge ingest failed for id=%s: %s", db_knowledge.id, exc)
 
     logger.info("POST /tasks/%s/knowledge - created id=%s", task_id, db_knowledge.id)
     await invalidate_task_cache(current_user.id, task_id)
@@ -157,6 +174,19 @@ async def update_knowledge(
     await db.commit()
     await db.refresh(db_knowledge)
 
+    # Re-index: drop the old chunks, embed the updated content.
+    # Failure degrades search only — the content edit itself stays saved.
+    try:
+        await UserKnowledgeIndex().remove_knowledge_chunks(
+            db, user_id=current_user.id, knowledge_id=db_knowledge.id
+        )
+        await ingest_knowledge(db, db_knowledge)
+        await db.commit()
+        await UserKnowledgeIndex().ensure_index(db, current_user.id)
+    except Exception as exc:
+        await db.rollback()
+        logger.warning("knowledge re-ingest failed for id=%s: %s", db_knowledge.id, exc)
+
     logger.info("PUT /tasks/%s/knowledge/%s - updated", task_id, knowledge_id)
     await invalidate_task_cache(current_user.id, task_id)
     return db_knowledge
@@ -190,7 +220,12 @@ async def delete_knowledge(
     if not deleted:
         raise HTTPException(status_code=404, detail=KNOWLEDGE_NOT_FOUND)
 
+    await UserKnowledgeIndex().remove_knowledge_chunks(
+        db, user_id=current_user.id, knowledge_id=knowledge_id
+    )
     await db.commit()
+    # Drop the deleted chunks from the in-memory index.
+    await UserKnowledgeIndex().ensure_index(db, current_user.id)
 
     logger.info("DELETE /tasks/%s/knowledge/%s - deleted", task_id, knowledge_id)
     await invalidate_task_cache(current_user.id, task_id)

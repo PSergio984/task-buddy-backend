@@ -129,6 +129,10 @@ async def db() -> AsyncGenerator:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
 
+    from app.knowledge.retrieval import UserKnowledgeIndex
+
+    UserKnowledgeIndex.clear_cache()
+
     async with TestSessionLocal() as session:
         yield session
         await session.rollback()  # Ensure nothing leaks
@@ -238,16 +242,15 @@ async def authenticated_async_client(
 def mock_embedder(mocker: Any) -> None:
     """Stub the local embedding model so tests never load sentence-transformers.
 
-    Returns a deterministic stand-in embedding built from the input text
-    length. Wave 2 creates app.knowledge.embeddings; until then the patch
-    target does not exist, so the fixture tolerates a missing module.
+    The fake embedder mirrors the real contract: get_embedder() returns an
+    object with .encode(texts, normalize_embeddings=True) producing a
+    deterministic 384-dim vector per text (built from text length).
     """
+
     import numpy as np  # noqa: PLC0415
 
-    def _fake_embed(text: str) -> np.ndarray:
-        return np.full(384, len(text) % 7) / 384
+    class _FakeEmbedder:
+        def encode(self, texts: list[str], normalize_embeddings: bool = True) -> np.ndarray:
+            return np.array([np.full(384, len(t) % 7) / 384 for t in texts], dtype=np.float32)
 
-    try:
-        mocker.patch("app.knowledge.embeddings.get_embedder", return_value=_fake_embed)
-    except (ImportError, AttributeError):
-        pass
+    mocker.patch("app.knowledge.embeddings.get_embedder", return_value=_FakeEmbedder())

@@ -1,0 +1,164 @@
+{
+  "test_cases": [
+    {
+      "task_id": 1,
+      "task_query": "database project requirements",
+      "task_title": "Finish database project",
+      "notes": [
+        {
+          "knowledge_id": 1,
+          "content": "Database project requirements: 1) design the ER diagram with at least 8 entities, 2) normalize to 3NF, 3) implement the SQL schema with constraints and indexes, 4) write 20 test queries covering joins, aggregations, and subqueries, 5) document the design in a 10-page report. Deadline: Friday, 11:59 PM. Submission is via the LMS portal, PDF only. Penalty: 5 points per day late."
+        },
+        {
+          "knowledge_id": 2,
+          "content": "Professor's grading rubric: ER diagram 25%, normalization 20%, SQL implementation 30%, documentation 15%, test queries 10%. Partial credit is given for incomplete normalization steps. Use the class template header on the first page of the report."
+        }
+      ],
+      "relevant_knowledge_ids": [1, 2]
+    },
+    {
+      "task_id": 2,
+      "task_query": "thesis defense slides format",
+      "task_title": "Prepare thesis defense slides",
+      "notes": [
+        {
+          "knowledge_id": 3,
+          "content": "Defense presentation guidelines: 15-minute talk, max 20 slides, include title slide with panel names, problem statement, methodology diagram, results with screenshots, and future work. Panel asks questions for 10 minutes after. Bring two printed copies of the slides and the full thesis draft."
+        },
+        {
+          "knowledge_id": 4,
+          "content": "Previous defense feedback: avoid reading slides verbatim, prepare answers about limitations of the study, expect questions on why you chose your evaluation metrics. Practice the demo on a backup laptop in case of projector issues."
+        }
+      ],
+      "relevant_knowledge_ids": [3, 4]
+    },
+    {
+      "task_id": 3,
+      "task_query": "docker setup steps",
+      "task_title": "Learn Docker for the capstone",
+      "notes": [
+        {
+          "knowledge_id": 5,
+          "content": "Docker study path: 1) install Docker Desktop, 2) run hello-world, 3) learn images vs containers, 4) write a Dockerfile for a Python app, 5) use docker compose for app + database, 6) tag and push to a registry. Focus on compose because the capstone deploys FastAPI + Postgres + Redis together."
+        }
+      ],
+      "relevant_knowledge_ids": [5]
+    },
+    {
+      "task_id": 4,
+      "task_query": "capstone amazon presentation requirements",
+      "task_title": "Draft capstone project presentation",
+      "notes": [
+        {
+          "knowledge_id": 6,
+          "content": "Capstone presentation structure: 5-minute demo of the working journey end to end, 3+ workshop topics used as central parts of the solution, mention what was pre-existing vs newly built. Audience is non-technical so avoid deep architecture slides; show the user journey with screenshots."
+        },
+        {
+          "knowledge_id": 7,
+          "content": "Checklist before demo day: synthetic data only, all credentials revoked or hidden, demo script rehearsed twice, backup recording of the demo ready, answer prepared for 'what would you do next' questions."
+        }
+      ],
+      "relevant_knowledge_ids": [6, 7]
+    },
+    {
+      "task_id": 5,
+      "task_query": "grocery budget list",
+      "task_title": "Buy groceries for the week",
+      "notes": [
+        {
+          "knowledge_id": 8,
+          "content": "Weekly groceries: rice 5kg, eggs 2 dozen, chicken 1kg, pork 500g, vegetables (sayote, kangkong, kamatis), canned sardines x4, coffee, milk, instant noodles. Budget is 1500 pesos max. The palengke near the university is cheaper for vegetables; SM is better for canned goods."
+        }
+      ],
+      "relevant_knowledge_ids": [8]
+    },
+    {
+      "task_id": 6,
+      "task_query": "pay tuition deadline",
+      "task_title": "Pay tuition for this semester",
+      "notes": [
+        {
+          "knowledge_id": 9,
+          "content": "Tuition payment: 28,500 pesos including miscellaneous fees. Due before enrollment week ends or you get a 500-peso late fee and lose your preferred schedule slot. Pay via GCash or bank transfer; keep the reference number as proof. Financial aid office closes at 4 PM."
+        }
+      ],
+      "relevant_knowledge_ids": [9]
+    },
+    {
+      "task_id": 7,
+      "task_query": "clean the house checklist",
+      "task_title": "Clean the house",
+      "notes": [
+        {
+          "knowledge_id": 10,
+          "content": "House cleaning routine: 1) declutter surfaces in the living room, 2) vacuum and mop all floors, 3) scrub the banyo (toilet and sink), 4) wipe the kusina counters and stove, 5) take out the trash and replace the liners, 6) change the bedsheets and wash the laundry. Allocate 2 hours; music helps me keep pace."
+        },
+        {
+          "knowledge_id": 11,
+          "content": "Cleaning supplies check before starting: floor cleaner, dish soap, sponge, trash bags, laundry detergent, fabcon. If anything is out, add it to the grocery list first so I don't start without supplies."
+        }
+      ],
+      "relevant_knowledge_ids": [10, 11]
+    },
+    {
+      "task_id": 8,
+      "task_query": "team meeting agenda prep",
+      "task_title": "Attend team meeting",
+      "notes": [
+        {
+          "knowledge_id": 12,
+          "content": "Team sync meeting every Thursday 10 AM, 30 minutes. Be ready with: 1) status update on my current ticket, 2) any blockers to raise early, 3) questions for the other members' updates. Update the shared tracking sheet before the meeting so the standup is short. Meeting link is in the team channel."
+        }
+      ],
+      "relevant_knowledge_ids": [12]
+    },
+    {
+      "task_id": 9,
+      "task_query": "gym workout plan for the week",
+      "task_title": "Go to the gym 4 times this week",
+      "notes": [
+        {
+          "knowledge_id": 13,
+          "content": "Workout split this week: Monday chest and triceps, Wednesday back and biceps, Friday legs, Saturday shoulders and core. Rest days Tuesday, Thursday, Sunday. Bring a towel and water bottle; the gym is crowded after 6 PM so go before 5. Protein shake after each session."
+        }
+      ],
+      "relevant_knowledge_ids": [13]
+    },
+    {
+      "task_id": 10,
+      "task_query": "class reading and quiz topics",
+      "task_title": "Attend database class",
+      "notes": [
+        {
+          "knowledge_id": 14,
+          "content": "Database class this week: topic is indexing and query optimization. Required reading is chapters 8-9 of the textbook, and there is a 10-item quiz at the start of class. Review the lecture notes on B-tree indexes and the EXPLAIN command examples. Bring the printed ER diagram homework for peer checking."
+        }
+      ],
+      "relevant_knowledge_ids": [14]
+    },
+    {
+      "task_id": 11,
+      "task_query": "date night dinner plan",
+      "task_title": "Have a date",
+      "notes": [
+        {
+          "knowledge_id": 15,
+          "content": "Date night plan: dinner at the ramen place near the mall at 6:30 PM, then walk around the waterfront after. I booked the table already, confirm 2 hours before. Bring the gift I wrapped. Check the weather — if it rains, switch the walk to the cinema instead. Keep the phone away during dinner."
+        }
+      ],
+      "relevant_knowledge_ids": [15]
+    },
+    {
+      "task_id": 12,
+      "task_query": "asikaso enrollment forms deadline",
+      "task_title": "Submit enrollment forms",
+      "notes": [
+        {
+          "knowledge_id": 16,
+          "content": "Enrollment forms: signed advising sheet, proof of payment, and the curriculum checklist. Submit to the department office before 3 PM on Friday. Asikasuhin mo na agad kasi mahaba ang pila pag Friday. Bring two photocopies of the payment receipt."
+        }
+      ],
+      "relevant_knowledge_ids": [16]
+    }
+  ]
+}

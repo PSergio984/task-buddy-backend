@@ -6,6 +6,7 @@ import enum
 from datetime import datetime
 from decimal import Decimal
 
+from pgvector.sqlalchemy import Vector
 from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
@@ -18,9 +19,11 @@ JsonType = JSON().with_variant(JSONB(), "postgresql")
 
 
 class SourceType(str, enum.Enum):
-    """Where a knowledge row's content came from. Text notes first; file/url later."""
+    """Where a knowledge row's content came from. Notes live; file/url are stubs."""
 
     NOTE = "note"
+    FILE = "file"
+    URL = "url"
 
 
 class JudgeVerdict(str, enum.Enum):
@@ -101,6 +104,32 @@ class KnowledgeFeedback(Base):
     # rating is +1 or -1 (user thumbs up/down on an answer)
     rating: Mapped[int] = mapped_column(nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+
+
+class KnowledgeChunk(Base):
+    """An embedded chunk of a knowledge row, stored per user for retrieval."""
+
+    __tablename__ = "tbl_knowledge_chunks"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
+    knowledge_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_knowledge.id", ondelete="CASCADE"), nullable=False
+    )
+    task_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
+    )
+    chunk_index: Mapped[int] = mapped_column(nullable=False)
+    content: Mapped[str] = mapped_column(Text, nullable=False)
+    # Embeddings are serialized via format_embedding (str(list) literal): pgvector
+    # stores the vector literal, SQLite stores the identical string (Text variant).
+    embedding: Mapped[str] = mapped_column(
+        Vector(384).with_variant(Text(), "sqlite"), nullable=False
+    )
+    content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )

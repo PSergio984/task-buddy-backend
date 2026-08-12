@@ -33,6 +33,15 @@ if config.SENTRY_DSN:
 async def lifespan(app: FastAPI):
     """Run startup and shutdown logic for the application."""
     configure_logging()
+    # Pre-warm the local embedding model so the first query is not the slow one.
+    # Boot must never crash if the model is missing — graceful degradation.
+    try:
+        from app.knowledge.embeddings import get_embedder
+
+        get_embedder()
+        logger.info("Embedder pre-warmed")
+    except Exception as exc:
+        logger.warning("embedder pre-warm failed: %s", exc)
     yield
 
 

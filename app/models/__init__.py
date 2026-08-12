@@ -5,6 +5,7 @@ from app.models.base import Base
 from app.models.knowledge import (
     JudgeVerdict,
     KnowledgeAnswer,
+    KnowledgeChunk,
     KnowledgeFeedback,
     SourceType,
     TaskKnowledge,
@@ -29,6 +30,7 @@ __all__ = [
     "TaskKnowledge",
     "KnowledgeAnswer",
     "KnowledgeFeedback",
+    "KnowledgeChunk",
     "SourceType",
     "JudgeVerdict",
 ]

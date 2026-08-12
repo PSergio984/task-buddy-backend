@@ -7,7 +7,7 @@ name = "task-buddy-backend"
 version = "0.1.0"
 description = "FastAPI backend for Task Buddy application"
 readme = "README.md"
-requires-python = ">=3.9"
+requires-python = ">=3.10"
 license = "MIT"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
@@ -39,6 +39,10 @@ dependencies = [
     "b2sdk>=2.5.0",
     "pywebpush>=2.0.0",
     "numpy>=2.0.0",
+    "nltk==3.9.1",
+    "sentence-transformers>=5.6.0",
+    "pgvector>=0.3.0",
+    "openai>=1.30.0",
 ]
 
 [project.optional-dependencies]
@@ -130,7 +134,7 @@ ignore = [
 ]
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.12"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false
@@ -152,6 +156,14 @@ module = [
     "b2sdk",
     "b2sdk.v2",
     "pywebpush",
+    "numpy",
+    "numpy.*",
+    "nltk",
+    "nltk.*",
+    "sentence_transformers",
+    "sentence_transformers.*",
+    "pgvector",
+    "pgvector.*",
 ]
 ignore_missing_imports = true
 
