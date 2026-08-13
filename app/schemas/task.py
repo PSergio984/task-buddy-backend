@@ -50,6 +50,7 @@ class SubTaskCreateResponse(SubTaskCreateRequest):
     id: int
     position: int
     created_at: datetime
+    updated_at: datetime
 
 
 class TaskCreateResponse(BaseModel):
@@ -64,6 +65,7 @@ class TaskCreateResponse(BaseModel):
     project_id: Optional[int] = None
     user_id: int
     created_at: datetime
+    updated_at: datetime
     tags: list[TagResponse] = Field(default_factory=list)
     subtasks: list[SubTaskCreateResponse] = Field(default_factory=list)
 

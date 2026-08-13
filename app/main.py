@@ -12,7 +12,17 @@ from fastapi.responses import JSONResponse
 from slowapi.errors import RateLimitExceeded
 from slowapi.middleware import SlowAPIMiddleware
 
-from app.api.routers import audit, knowledge, notifications, project, realtime, stats, task, user
+from app.api.routers import (
+    audit,
+    knowledge,
+    notifications,
+    project,
+    realtime,
+    stats,
+    sync,
+    task,
+    user,
+)
 from app.config import DevConfig, config
 from app.libs.supabase_signing import SigningKeyCache
 from app.limiter import limiter
@@ -99,6 +109,7 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
+app.include_router(sync.router, prefix="/api/v1")
 
 
 @app.get("/health")

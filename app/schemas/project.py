@@ -28,3 +28,4 @@ class ProjectResponse(ProjectBase):
     id: int
     user_id: int
     created_at: datetime
+    updated_at: datetime

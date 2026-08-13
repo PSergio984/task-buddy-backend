@@ -110,6 +110,7 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
+    RATE_LIMIT_SYNC: str = "60/minute"
     # Local embedding model (zero per-query cost, offline-capable). Multilingual
     # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
@@ -296,6 +297,7 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_NOTIFICATION_READ_ALL: str = "60/minute"
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
+    RATE_LIMIT_SYNC: str = "60/minute"
 
     model_config = SettingsConfigDict(env_prefix="TEST_", env_file=".env", extra="ignore")
 
@@ -394,6 +396,8 @@ RATE_LIMIT_NOTIFICATION_LIST = config.RATE_LIMIT_NOTIFICATION_LIST
 RATE_LIMIT_NOTIFICATION_READ = config.RATE_LIMIT_NOTIFICATION_READ
 RATE_LIMIT_NOTIFICATION_READ_ALL = config.RATE_LIMIT_NOTIFICATION_READ_ALL
 RATE_LIMIT_PUSH_SUBSCRIBE = config.RATE_LIMIT_PUSH_SUBSCRIBE
+RATE_LIMIT_REALTIME_TOKEN = config.RATE_LIMIT_REALTIME_TOKEN
+RATE_LIMIT_SYNC = config.RATE_LIMIT_SYNC
 RATE_LIMIT_KNOWLEDGE_ASK = config.RATE_LIMIT_KNOWLEDGE_ASK
 RATE_LIMIT_KNOWLEDGE_FEEDBACK = config.RATE_LIMIT_KNOWLEDGE_FEEDBACK
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
