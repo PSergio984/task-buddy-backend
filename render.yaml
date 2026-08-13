@@ -1,0 +1,55 @@
+# Render Blueprint — one-click backend deploy (phase-7 HITL deploy task)
+#
+# Memory notes: the free plan (512MB) is an OOM bet once the ~470MB embedding
+# model loads. start.sh already mitigates: WEB_CONCURRENCY=1, CELERY_CONCURRENCY=1,
+# lazy get_embedder(). If the model load OOMs, upgrade this plan to standard.
+services:
+  - type: web
+    name: task-buddy-backend
+    runtime: docker
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      # Prod config requires ENV_STATE=prod (ProdConfig reads PROD_* prefixed vars).
+      - key: ENV_STATE
+        value: prod
+      - key: PROD_SECRET_KEY
+        sync: false
+      - key: PROD_DATABASE_URL
+        sync: false
+      - key: PROD_REDIS_URL
+        sync: false
+      - key: PROD_MAIL_SMTP_HOST
+        sync: false
+      - key: PROD_MAIL_SMTP_PORT
+        sync: false
+      - key: PROD_MAIL_SMTP_USERNAME
+        sync: false
+      - key: PROD_MAIL_SMTP_PASSWORD
+        sync: false
+      - key: PROD_MAIL_FROM_EMAIL
+        sync: false
+      - key: PROD_MAIL_FROM_NAME
+        sync: false
+      - key: PROD_FRONTEND_URL
+        sync: false
+      - key: OPENAI_API_KEY
+        sync: false
+      - key: PROD_VAPID_PUBLIC_KEY
+        sync: false
+      - key: PROD_VAPID_PRIVATE_KEY
+        sync: false
+      - key: PROD_VAPID_ADMIN_EMAIL
+        sync: false
+      - key: PROD_B2_KEY_ID
+        sync: false
+      - key: PROD_B2_APPLICATION_KEY
+        sync: false
+      - key: PROD_B2_BUCKET_NAME
+        sync: false
+      - key: SUPABASE_SIGNING_KEY_FILE
+        sync: false
+      - key: WEB_CONCURRENCY
+        value: "1"
+      - key: CELERY_CONCURRENCY
+        value: "1"
