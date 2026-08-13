@@ -1,0 +1,14 @@
+# Snyk policy file — project-level ignores.
+# nltk is used ONLY for PorterStemmer with a local stopwords file
+# (app/knowledge/retrieval/tokenize.py); the vulnerable data-downloader
+# code paths (download/verify/download URLs) are never executed.
+version: v1.5.0
+ignore:
+  SNYK-PYTHON-NLTK-17821336:
+    - "*":
+        reason: nltk data downloader not used - local stopwords.txt + PorterStemmer only
+        expires: 2027-08-13
+  SNYK-PYTHON-NLTK-18592338:
+    - "*":
+        reason: nltk data downloader not used - local stopwords.txt + PorterStemmer only
+        expires: 2027-08-13
