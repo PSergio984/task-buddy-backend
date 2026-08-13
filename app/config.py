@@ -114,6 +114,10 @@ class GlobalConfig(BaseConfig):
     # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
+    # Pre-warm the embedding model at boot. Dev/test warm it (fast first
+    # query); prod overrides to False so the ~470MB model never loads into
+    # Render's 512MB free tier at startup (get_embedder() stays lazy there).
+    EMBEDDER_PREWARM: bool = True
     # OpenAI LLM settings (generation + judge). The key comes from env only —
     # never hardcoded. Rates are USD per 1M tokens for OPENAI_MODEL
     # (gpt-4o-mini). gpt-4.1-mini upgrade path = change OPENAI_MODEL + these two
@@ -187,6 +191,8 @@ class ProdConfig(GlobalConfig):
     DEBUG: bool = False
     COOKIE_SECURE: bool = True
     COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "none"
+    # 512MB free tier cannot hold the ~470MB embedding model at boot.
+    EMBEDDER_PREWARM: bool = False
     model_config = SettingsConfigDict(env_prefix="PROD_", env_file=".env", extra="ignore")
 
     @model_validator(mode="after")
