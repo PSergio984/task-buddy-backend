@@ -6,7 +6,7 @@ from typing import Optional
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.knowledge.assistant import LLMCallRecord
+from app.knowledge.records import LLMCallRecord, normalize_citations
 from app.libs.audit import audit_log
 from app.models.knowledge import (
     JudgeVerdict,
@@ -101,14 +101,6 @@ async def create_answer(
     judge_explanation: Optional[str],
 ) -> KnowledgeAnswer:
     """Persist an instrumented answer row (flush-not-commit; router commits)."""
-    normalized_chunks = [
-        {
-            "knowledge_id": chunk.get("knowledge_id"),
-            "chunk_text": chunk.get("chunk_text", ""),
-            "rrf_score": chunk.get("rrf_score", 0.0),
-        }
-        for chunk in retrieved_chunks
-    ]
     db_answer = KnowledgeAnswer(
         user_id=user_id,
         task_id=task_id,
@@ -119,7 +111,7 @@ async def create_answer(
         total_tokens=record.total_tokens,
         cost_usd=Decimal(str(record.cost)),
         response_time_ms=round(record.response_time * 1000, 2),
-        retrieved_chunks=normalized_chunks,
+        retrieved_chunks=normalize_citations(retrieved_chunks),
         judge_verdict=JudgeVerdict(judge_label) if judge_label else None,
         judge_explanation=judge_explanation,
     )

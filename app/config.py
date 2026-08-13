@@ -277,7 +277,7 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_KNOWLEDGE_UPDATE: str = "20/minute"
     RATE_LIMIT_KNOWLEDGE_DELETE: str = "20/minute"
     RATE_LIMIT_KNOWLEDGE_ASK: str = "10/minute"
-    RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "20/minute"
+    RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
     RATE_LIMIT_TAG_CREATE: str = "20/minute"
     RATE_LIMIT_TAG_UPDATE: str = "20/minute"
     RATE_LIMIT_TAG_DELETE: str = "20/minute"

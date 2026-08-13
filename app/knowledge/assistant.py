@@ -12,8 +12,6 @@ import asyncio
 import json
 import logging
 import time
-from dataclasses import dataclass, field
-from datetime import datetime
 from typing import Any, Literal, Optional
 
 from openai import OpenAI
@@ -22,7 +20,9 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import OPENAI_API_KEY, OPENAI_MODEL
+from app.crud.knowledge import create_answer
 from app.knowledge.cost import calculate_cost
+from app.knowledge.records import LLMCallRecord, normalize_citations
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.models.knowledge import KnowledgeAnswer, KnowledgeChunk
 from app.models.task import Task
@@ -49,22 +49,6 @@ JUDGE_SYSTEM_PROMPT = (
     "First write a short explanation of your reasoning, then return JSON with "
     'the shape {"relevance": "<label>", "explanation": "<your explanation>"}.'
 )
-
-
-@dataclass
-class LLMCallRecord:
-    """Everything we keep about one LLM call (llm-zc field-for-field)."""
-
-    model: str
-    prompt: str
-    instructions: str
-    answer: str
-    prompt_tokens: int
-    completion_tokens: int
-    total_tokens: int
-    response_time: float
-    cost: float
-    timestamp: datetime = field(default_factory=datetime.now)
 
 
 class RelevanceVerdict(BaseModel):
@@ -107,7 +91,7 @@ def _build_generation_prompt(
         if not text:
             continue
         if len(text) > CHUNK_TEXT_LIMIT:
-            text = text[:CHUNK_TEXT_LIMIT] + "..."
+            text = text[: CHUNK_TEXT_LIMIT - 3] + "..."
         context_parts.append(f"[{chunk.get('chunk_id')}] {text}")
 
     description = (task_description or "").strip()
@@ -198,8 +182,6 @@ class KnowledgeAssistant:
         self, db: AsyncSession, task: Task, query: Optional[str] = None
     ) -> KnowledgeAnswer:
         """Answer 'what do I need for this task' and persist the answer row."""
-        from app.crud.knowledge import create_answer  # lazy: avoids import cycle
-
         effective_query = (query or task.title or "").strip()
         chunks = await UserKnowledgeIndex().search(
             db, task.user_id, effective_query, limit=MAX_RETRIEVED_CHUNKS
@@ -222,7 +204,11 @@ class KnowledgeAssistant:
         )
 
     async def _build_citations(self, db: AsyncSession, chunks: list[dict]) -> list[dict]:
-        """Map search chunks (chunk_id + text) to {knowledge_id, chunk_text, rrf_score}."""
+        """Map search chunks (chunk_id + text) to canonical citations.
+
+        Chunks that no longer resolve to a knowledge row are dropped — a
+        fabricated knowledge_id must never be persisted (RESEARCH §7 shape).
+        """
         if not chunks:
             return []
         chunk_ids = [c["chunk_id"] for c in chunks]
@@ -232,11 +218,9 @@ class KnowledgeAssistant:
             )
         )
         knowledge_by_chunk: dict[int, int] = {row[0]: row[1] for row in result.all()}
-        return [
-            {
-                "knowledge_id": knowledge_by_chunk.get(c["chunk_id"], c["chunk_id"]),
-                "chunk_text": c.get("text", ""),
-                "rrf_score": float(c.get("rrf_score", 0.0)),
-            }
+        resolved = [
+            {**c, "knowledge_id": knowledge_by_chunk[c["chunk_id"]]}
             for c in chunks
+            if c["chunk_id"] in knowledge_by_chunk
         ]
+        return normalize_citations(resolved)

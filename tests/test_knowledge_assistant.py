@@ -438,3 +438,121 @@ async def test_no_api_key_in_any_response(
     assert "api_key" not in lowered
     assert "authorization" not in lowered
     assert key_prefix not in body
+
+
+def test_llm_call_record_importable_from_neutral_module() -> None:
+    """LLMCallRecord lives in a neutral module so crud needs no assistant import."""
+    from app.knowledge.assistant import LLMCallRecord as AssistantRecord
+    from app.knowledge.records import LLMCallRecord as RecordsRecord
+
+    assert RecordsRecord is AssistantRecord
+
+
+def test_crud_knowledge_does_not_import_assistant() -> None:
+    """app.crud.knowledge must import without pulling in app.knowledge.assistant.
+
+    ARCHITECTURE.md lists circular imports between layers as a known risk;
+    the persistence layer depends on the record type, not the assistant module.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    repo_root = Path(__file__).resolve().parents[1]
+    code = (
+        "import sys; "
+        "import app.crud.knowledge as k; "
+        "sys.exit(1 if 'app.knowledge.assistant' in sys.modules else 0)"
+    )
+    result = subprocess.run(
+        [sys.executable, "-c", code], cwd=repo_root, capture_output=True, text=True
+    )
+    assert result.returncode == 0, result.stderr
+
+
+def test_citation_normalization_single_shape() -> None:
+    """One normalizer collapses the {knowledge_id, chunk_text, rrf_score} shape."""
+    from app.knowledge.records import normalize_citation
+
+    canonical = {"knowledge_id": 7, "chunk_text": "rubric text", "rrf_score": 0.5}
+    assert normalize_citation(canonical) == canonical
+    # text-keyed variant maps to the same canonical shape.
+    assert (
+        normalize_citation({"knowledge_id": 7, "text": "rubric text", "rrf_score": 0.5})
+        == canonical
+    )
+
+
+def test_build_citations_drops_orphan_chunks() -> None:
+    """A chunk with no resolved knowledge row must not mint a fabricated id."""
+    from app.knowledge.records import normalize_citations
+
+    # Raw search chunk: chunk_id only, no knowledge_id -> not a citation.
+    assert normalize_citations([{"chunk_id": 999, "text": "ghost", "rrf_score": 0.1}]) == []
+    # Explicit knowledge_id -> kept.
+    assert normalize_citations([{"knowledge_id": 7, "chunk_text": "x", "rrf_score": 0.5}]) == [
+        {"knowledge_id": 7, "chunk_text": "x", "rrf_score": 0.5}
+    ]
+
+
+@pytest.mark.anyio
+async def test_build_citations_maps_only_resolved_chunks(
+    db: AsyncSession,
+) -> None:
+    """_build_citations skips chunks that no longer resolve to a knowledge row."""
+    from app.knowledge.assistant import KnowledgeAssistant
+    from app.models.knowledge import KnowledgeChunk, TaskKnowledge
+    from app.models.task import Task
+
+    user = User(username="u9", email="u9@example.com", password="x")
+    db.add(user)
+    await db.flush()
+    task = Task(title="t9", user_id=user.id)
+    db.add(task)
+    await db.flush()
+    knowledge = TaskKnowledge(user_id=user.id, task_id=task.id, content="rubric")
+    db.add(knowledge)
+    await db.flush()
+
+    resolved = KnowledgeChunk(
+        user_id=user.id,
+        task_id=task.id,
+        knowledge_id=knowledge.id,
+        chunk_index=0,
+        content="rubric",
+        embedding="[0.1,0.2,0.3]",
+        content_hash="abc",
+    )
+    db.add(resolved)
+    await db.commit()
+
+    citations = await KnowledgeAssistant()._build_citations(
+        db,
+        [
+            {"chunk_id": resolved.id, "text": "rubric", "rrf_score": 0.5},
+            {"chunk_id": 999, "text": "ghost", "rrf_score": 0.1},
+        ],
+    )
+    assert len(citations) == 1
+    assert citations[0]["knowledge_id"] == knowledge.id
+    assert citations[0]["chunk_text"] == "rubric"
+
+
+def test_generation_prompt_truncates_chunk_to_1500() -> None:
+    """Truncated chunk text stays within CHUNK_TEXT_LIMIT (1500)."""
+    from app.knowledge.assistant import CHUNK_TEXT_LIMIT, _build_generation_prompt
+
+    long_text = "x" * 3000
+    prompt = _build_generation_prompt(
+        "title", None, [{"chunk_id": 1, "text": long_text, "rrf_score": 0.5}]
+    )
+    chunk_line = next(line for line in prompt.splitlines() if line.startswith("[1] "))
+    assert len(chunk_line) - len("[1] ") <= CHUNK_TEXT_LIMIT
+
+
+def test_testconfig_feedback_rate_limit_matches_spec() -> None:
+    """TestConfig RATE_LIMIT_KNOWLEDGE_FEEDBACK matches the spec (30/minute)."""
+    from app.config import RATE_LIMIT_KNOWLEDGE_FEEDBACK, TestConfig
+
+    assert TestConfig().RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
+    assert RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
