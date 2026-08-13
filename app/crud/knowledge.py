@@ -1,12 +1,19 @@
 """CRUD operations for task-attached knowledge."""
 
+from decimal import Decimal
 from typing import Optional
 
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.knowledge.assistant import LLMCallRecord
 from app.libs.audit import audit_log
-from app.models.knowledge import TaskKnowledge
+from app.models.knowledge import (
+    JudgeVerdict,
+    KnowledgeAnswer,
+    KnowledgeFeedback,
+    TaskKnowledge,
+)
 from app.schemas.enums import AuditAction
 from app.schemas.knowledge import KnowledgeCreateRequest, KnowledgeUpdateRequest
 
@@ -81,3 +88,70 @@ async def delete_knowledge(db: AsyncSession, knowledge_id: int, user_id: int) ->
         return False
     await db.delete(db_knowledge)
     return True
+
+
+async def create_answer(
+    db: AsyncSession,
+    user_id: int,
+    task_id: int,
+    answer_text: str,
+    record: LLMCallRecord,
+    retrieved_chunks: list[dict],
+    judge_label: Optional[str],
+    judge_explanation: Optional[str],
+) -> KnowledgeAnswer:
+    """Persist an instrumented answer row (flush-not-commit; router commits)."""
+    normalized_chunks = [
+        {
+            "knowledge_id": chunk.get("knowledge_id"),
+            "chunk_text": chunk.get("chunk_text", ""),
+            "rrf_score": chunk.get("rrf_score", 0.0),
+        }
+        for chunk in retrieved_chunks
+    ]
+    db_answer = KnowledgeAnswer(
+        user_id=user_id,
+        task_id=task_id,
+        answer=answer_text,
+        model=record.model,
+        prompt_tokens=record.prompt_tokens,
+        completion_tokens=record.completion_tokens,
+        total_tokens=record.total_tokens,
+        cost_usd=Decimal(str(record.cost)),
+        response_time_ms=round(record.response_time * 1000, 2),
+        retrieved_chunks=normalized_chunks,
+        judge_verdict=JudgeVerdict(judge_label) if judge_label else None,
+        judge_explanation=judge_explanation,
+    )
+    db.add(db_answer)
+    await db.flush()
+    await db.refresh(db_answer)
+    return db_answer
+
+
+async def create_feedback(
+    db: AsyncSession,
+    user_id: int,
+    answer_id: int,
+    rating: int,
+    comment: Optional[str],
+) -> KnowledgeFeedback:
+    """Persist user +1/-1 feedback on an answer (flush-not-commit)."""
+    if rating not in (+1, -1):
+        raise ValueError("rating must be +1 or -1")
+    db_feedback = KnowledgeFeedback(
+        user_id=user_id, answer_id=answer_id, rating=rating, comment=comment
+    )
+    db.add(db_feedback)
+    await db.flush()
+    await db.refresh(db_feedback)
+    return db_feedback
+
+
+async def get_answer(db: AsyncSession, answer_id: int, user_id: int) -> Optional[KnowledgeAnswer]:
+    """Fetch an answer scoped by user (T-7-15: ownership gate)."""
+    query = select(KnowledgeAnswer).where(
+        KnowledgeAnswer.id == answer_id, KnowledgeAnswer.user_id == user_id
+    )
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
