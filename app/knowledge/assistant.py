@@ -234,7 +234,7 @@ class KnowledgeAssistant:
         knowledge_by_chunk: dict[int, int] = {row[0]: row[1] for row in result.all()}
         return [
             {
-                "knowledge_id": knowledge_by_chunk[c["chunk_id"]],
+                "knowledge_id": knowledge_by_chunk.get(c["chunk_id"], c["chunk_id"]),
                 "chunk_text": c.get("text", ""),
                 "rrf_score": float(c.get("rrf_score", 0.0)),
             }
