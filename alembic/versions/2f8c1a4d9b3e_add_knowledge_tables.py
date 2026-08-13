@@ -33,7 +33,8 @@ def upgrade() -> None:
         sa.Column("task_id", sa.Integer(), nullable=False),
         sa.Column(
             "source_type",
-            sa.Enum("note", name="sourcetype"),
+            # Values, not member names — matches the model's values_callable.
+            sa.Enum("note", "file", "url", name="sourcetype"),
             nullable=False,
         ),
         sa.Column("title", sa.String(), nullable=True),
@@ -114,6 +115,10 @@ def upgrade() -> None:
             sa.DateTime(timezone=True),
             server_default=sa.text("(CURRENT_TIMESTAMP)"),
             nullable=False,
+        ),
+        sa.CheckConstraint(
+            "rating IN (-1, 1)",
+            name="ck_tbl_knowledge_feedback_rating",
         ),
         sa.ForeignKeyConstraint(
             ["user_id"],

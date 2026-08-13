@@ -13,14 +13,20 @@ WORKDIR /app
 # Install Python dependencies
 COPY requirements.txt .
 # CPU-only torch first (avoids the ~2.5 GB CUDA download that the lock file's
-# torch dependency would otherwise pull via sentence-transformers).
+# torch dependency would otherwise pull via sentence-transformers). Pinned to
+# the same version requirements.txt resolves.
 # NOSONAR: requirements.txt is fully pinned; sdist builds are required for
 # http-ece (no Linux wheel), so --only-binary is not used.
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch
+RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch==2.13.0
 RUN pip install --no-cache-dir -r requirements.txt
 
 # Bake the local embedding model weights into the image so the container starts
-# cold-ready with no HuggingFace dependency at runtime.
+# cold-ready with no HuggingFace dependency at runtime. Cache lives under /app
+# (HF_HOME/SENTENCE_TRANSFORMERS_HOME) because the build runs as root but the
+# runtime user is appuser — divergent default cache paths would force a runtime
+# re-download; /app is chowned to appuser below.
+ENV HF_HOME=/app/.cache/huggingface \
+    SENTENCE_TRANSFORMERS_HOME=/app/.cache/sentence_transformers
 RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTransformer('sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2')"
 
 # Copy application code and scripts

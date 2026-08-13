@@ -48,5 +48,7 @@ def rrf_search(
             }
         )
 
-    combined.sort(key=lambda x: x["rrf_score"], reverse=True)
+    # Deterministic ordering: score desc, then chunk_id (set iteration order
+    # would otherwise decide ties).
+    combined.sort(key=lambda x: (-x["rrf_score"], x["chunk_id"]))
     return combined[:limit]

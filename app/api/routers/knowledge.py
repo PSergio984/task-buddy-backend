@@ -49,7 +49,10 @@ logger = logging.getLogger(__name__)
     "/{task_id}/knowledge",
     response_model=KnowledgeResponse,
     status_code=201,
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={
+        404: {"description": TASK_NOT_FOUND},
+        400: {"description": "Bad request"},
+    },
 )
 @limiter.limit(RATE_LIMIT_KNOWLEDGE_CREATE)
 async def create_knowledge(
@@ -146,7 +149,10 @@ async def get_knowledge(
 @router.put(
     "/{task_id}/knowledge/{knowledge_id}",
     response_model=KnowledgeResponse,
-    responses={404: {"description": KNOWLEDGE_NOT_FOUND}},
+    responses={
+        404: {"description": KNOWLEDGE_NOT_FOUND},
+        400: {"description": "Bad request"},
+    },
 )
 @limiter.limit(RATE_LIMIT_KNOWLEDGE_UPDATE)
 async def update_knowledge(
@@ -224,8 +230,12 @@ async def delete_knowledge(
         db, user_id=current_user.id, knowledge_id=knowledge_id
     )
     await db.commit()
-    # Drop the deleted chunks from the in-memory index.
-    await UserKnowledgeIndex().ensure_index(db, current_user.id)
+    try:
+        # Drop the deleted chunks from the in-memory index. A rebuild failure
+        # must not 5xx an already-committed deletion.
+        await UserKnowledgeIndex().ensure_index(db, current_user.id)
+    except Exception as exc:
+        logger.warning("knowledge index rebuild failed after delete id=%s: %s", knowledge_id, exc)
 
     logger.info("DELETE /tasks/%s/knowledge/%s - deleted", task_id, knowledge_id)
     await invalidate_task_cache(current_user.id, task_id)

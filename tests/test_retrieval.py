@@ -168,6 +168,10 @@ async def test_content_hash_cache_invalidation(db: AsyncSession) -> None:
 
     second = await service.search(db, user_id=user.id, query="grocery", limit=5)
     assert second, "rebuild must pick up the edited content"
+    # The result must be the REBUILT index — the edited content, not the old.
+    assert any("asikaso grocery list" in r.get("text", "") for r in second), (
+        "search must return the edited chunk content"
+    )
 
 
 async def test_chunks_persist_to_knowledge_chunks(db: AsyncSession) -> None:

@@ -109,16 +109,24 @@ class UserKnowledgeIndex:
         text_chunks: list[str],
         embeddings: np.ndarray,
     ) -> list[int]:
-        """Persist chunk rows (flush-not-commit) and return their ids."""
+        """Persist chunk rows (flush-not-commit) and return their ids.
+
+        Embeddings are bound dialect-natively: a float list for pgvector's
+        Vector(384) (its adapter rejects string literals), the format_embedding
+        string for the SQLite Text variant.
+        """
+        is_postgres = db.bind is not None and db.bind.dialect.name == "postgresql"
         chunk_ids: list[int] = []
         for i, (chunk_text, embedding) in enumerate(zip(text_chunks, embeddings)):
+            emb = np.asarray(embedding, dtype=np.float32)
+            db_value: str | list[float] = emb.tolist() if is_postgres else format_embedding(emb)
             row = KnowledgeChunk(
                 user_id=user_id,
                 task_id=task_id,
                 knowledge_id=knowledge_id,
                 chunk_index=i,
                 content=chunk_text,
-                embedding=format_embedding(np.asarray(embedding, dtype=np.float32)),
+                embedding=db_value,
                 content_hash=chunk_hash(chunk_text),
             )
             db.add(row)

@@ -66,7 +66,9 @@ class InvertedIndex:
         if self._avg_doc_len is None:
             if self.term_frequencies:
                 total = sum(sum(c.values()) for c in self.term_frequencies.values())
-                self._avg_doc_len = total / len(self.term_frequencies)
+                # Tokenless documents (all stopwords) yield avg 0 — fall back
+                # to 1.0 to keep the saturation ratio defined.
+                self._avg_doc_len = total / len(self.term_frequencies) or 1.0
             else:
                 self._avg_doc_len = 1.0
 

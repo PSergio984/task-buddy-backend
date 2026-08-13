@@ -6,7 +6,7 @@ Every time work reaches a "done" state — a phase/plan execution completes with
 
 1. **SonarCloud scan** — run SonarCloud analysis (sonar-scanner) on the branch and address or record findings (bugs, vulnerabilities, smells, coverage).
 2. **CodeRabbit review** — invoke the CodeRabbit AI review (workspace skill: `.agents/skills/rabbit-code-review`) on the branch/PR and address or record findings.
-3. **CI/CD check** — confirm GitHub Actions CI (`.github/workflows/python-app.yml`, `sonar-secrets.yml`) passes on the branch/PR; extend pipelines when needed.
+3. **CI/CD check** — confirm GitHub Actions CI (`.github/workflows/python-app.yml`, `sonar-secrets.yml`, `sonarcloud.yml`) passes on the branch/PR; extend pipelines when needed.
 
 This complements the two-axis `/code-review` skill (Standards + Spec), which runs BEFORE commit on uncommitted work.
 

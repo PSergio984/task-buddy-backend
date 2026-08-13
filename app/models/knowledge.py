@@ -7,7 +7,7 @@ from datetime import datetime
 from decimal import Decimal
 
 from pgvector.sqlalchemy import Vector
-from sqlalchemy import JSON, DateTime, ForeignKey, Numeric, String, Text, func
+from sqlalchemy import JSON, CheckConstraint, DateTime, ForeignKey, Numeric, String, Text, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
@@ -47,7 +47,11 @@ class TaskKnowledge(Base):
         ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
     )
     source_type: Mapped[SourceType] = mapped_column(
-        SQLEnum(SourceType), default=SourceType.NOTE, nullable=False
+        # values_callable persists the VALUES ("note"), not member names ("NOTE")
+        # — the migration enum and API wire format both use values.
+        SQLEnum(SourceType, values_callable=lambda members: [m.value for m in members]),
+        default=SourceType.NOTE,
+        nullable=False,
     )
     title: Mapped[str | None] = mapped_column(String, nullable=True)
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -98,7 +102,10 @@ class KnowledgeFeedback(Base):
         ForeignKey("tbl_knowledge_answers.id", ondelete="CASCADE"), nullable=False
     )
     # rating is +1 or -1 (user thumbs up/down on an answer)
-    rating: Mapped[int] = mapped_column(nullable=False)
+    rating: Mapped[int] = mapped_column(
+        CheckConstraint("rating IN (-1, 1)", name="ck_tbl_knowledge_feedback_rating"),
+        nullable=False,
+    )
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
@@ -118,9 +125,10 @@ class KnowledgeChunk(Base):
     )
     chunk_index: Mapped[int] = mapped_column(nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
-    # Embeddings are serialized via format_embedding (str(list) literal): pgvector
-    # stores the vector literal, SQLite stores the identical string (Text variant).
-    embedding: Mapped[str] = mapped_column(
+    # Embeddings are dialect-bound at ingest: native float list for pgvector's
+    # Vector(384) (the adapter rejects string literals), format_embedding string
+    # for the SQLite Text variant.
+    embedding: Mapped[str | list[float]] = mapped_column(
         Vector(384).with_variant(Text(), "sqlite"), nullable=False
     )
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)

@@ -14,6 +14,10 @@ def semantic_chunk(
     overlap: int = DEFAULT_CHUNK_OVERLAP,
 ) -> list[str]:
     """Split text into sentence groups of up to max_chunk_size sentences."""
+    if max_chunk_size < 1:
+        raise ValueError("max_chunk_size must be positive")
+    if not 0 <= overlap < max_chunk_size:
+        raise ValueError("overlap must be at least zero and less than max_chunk_size")
     text = text.strip()
     if not text:
         return []
