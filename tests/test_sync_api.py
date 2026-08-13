@@ -21,12 +21,8 @@ def _auth(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
-async def create_task(
-    client: AsyncClient, token: str, body: dict[str, Any]
-) -> dict[str, Any]:
-    response = await client.post(
-        "/api/v1/tasks/", json=body, headers=_auth(token)
-    )
+async def create_task(client: AsyncClient, token: str, body: dict[str, Any]) -> dict[str, Any]:
+    response = await client.post("/api/v1/tasks/", json=body, headers=_auth(token))
     assert response.status_code == 201, f"Task creation failed: {response.text}"
     return cast(dict[str, Any], response.json())
 
@@ -62,9 +58,7 @@ async def login_user(client: AsyncClient, user: dict[str, Any]) -> str:
     return token
 
 
-async def post_sync(
-    client: AsyncClient, token: str, body: dict[str, Any]
-) -> dict[str, Any]:
+async def post_sync(client: AsyncClient, token: str, body: dict[str, Any]) -> dict[str, Any]:
     response = await client.post("/api/v1/sync", json=body, headers=_auth(token))
     assert response.status_code == 200, f"Sync failed: {response.text}"
     return cast(dict[str, Any], response.json())
@@ -102,9 +96,7 @@ async def test_sync_round_trip_applies_changes(
     assert result["conflicts"] == []
     assert result["not_found"] == []
 
-    response = await async_client.get(
-        f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token)
-    )
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token))
     assert response.status_code == 200
     assert response.json()["title"] == "Synced Title"
     # Strict LWW: the row takes the client's timestamp, not the server's now.
@@ -114,9 +106,7 @@ async def test_sync_round_trip_applies_changes(
     assert server_ts.replace(tzinfo=UTC) == client_ts
 
 
-async def test_sync_stale_change_conflicts(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_stale_change_conflicts(async_client: AsyncClient, logged_in_token: str) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Keep Me"})
 
     result = await post_sync(
@@ -142,15 +132,11 @@ async def test_sync_stale_change_conflicts(
     # Server state returned so the client converges — title is untouched.
     assert conflict["server_state"]["title"] == "Keep Me"
 
-    response = await async_client.get(
-        f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token)
-    )
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token))
     assert response.json()["title"] == "Keep Me"
 
 
-async def test_sync_unknown_row_not_found(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_unknown_row_not_found(async_client: AsyncClient, logged_in_token: str) -> None:
     result = await post_sync(
         async_client,
         logged_in_token,
@@ -221,15 +207,11 @@ async def test_sync_other_user_isolated(
     assert len(result["not_found"]) == 1
 
     # User 2's delta never contains User 1's rows.
-    result2 = await post_sync(
-        async_client, token2, {"since": _ts(-2).isoformat(), "changes": []}
-    )
+    result2 = await post_sync(async_client, token2, {"since": _ts(-2).isoformat(), "changes": []})
     assert result2["delta"]["tasks"] == []
 
 
-async def test_sync_delete_applied(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_delete_applied(async_client: AsyncClient, logged_in_token: str) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Doomed"})
 
     result = await post_sync(
@@ -250,15 +232,11 @@ async def test_sync_delete_applied(
     assert len(result["applied"]) == 1
     assert result["applied"][0]["op"] == "delete"
 
-    response = await async_client.get(
-        f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token)
-    )
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token))
     assert response.status_code == 404
 
 
-async def test_sync_validation_bad_entity(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_validation_bad_entity(async_client: AsyncClient, logged_in_token: str) -> None:
     response = await async_client.post(
         "/api/v1/sync",
         json={
@@ -277,9 +255,7 @@ async def test_sync_validation_bad_entity(
     assert response.status_code == 422
 
 
-async def test_sync_subtask_update_applied(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_subtask_update_applied(async_client: AsyncClient, logged_in_token: str) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Parent"})
     subtask_response = await async_client.post(
         "/api/v1/tasks/subtask",
@@ -307,18 +283,14 @@ async def test_sync_subtask_update_applied(
     assert len(result["applied"]) == 1
     assert result["applied"][0]["entity"] == "subtask"
 
-    response = await async_client.get(
-        f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token)
-    )
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=_auth(logged_in_token))
     body = response.json()
     synced = next(s for s in body["subtasks"] if s["id"] == subtask["id"])
     assert synced["title"] == "Synced Child"
     assert synced["position"] == 5
 
 
-async def test_sync_project_update_applied(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_project_update_applied(async_client: AsyncClient, logged_in_token: str) -> None:
     response = await async_client.post(
         "/api/v1/projects/",
         json={"name": "Original Project"},
@@ -345,9 +317,7 @@ async def test_sync_project_update_applied(
     assert len(result["applied"]) == 1
     assert result["applied"][0]["entity"] == "project"
 
-    list_response = await async_client.get(
-        "/api/v1/projects/", headers=_auth(logged_in_token)
-    )
+    list_response = await async_client.get("/api/v1/projects/", headers=_auth(logged_in_token))
     synced = next(p for p in list_response.json() if p["id"] == project["id"])
     assert synced["name"] == "Synced Project"
     assert synced["color"] == "#ff0000"

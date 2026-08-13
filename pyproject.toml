@@ -82,6 +82,10 @@ asyncio_default_fixture_loop_scope = "session"
 
 [tool.coverage.run]
 source = ["app"]
+# SQLAlchemy async executes DBAPI calls inside greenlets and pytest-asyncio
+# runs each test in its own task; without these, async route bodies are
+# misattributed and new-code coverage under-reports to SonarCloud.
+concurrency = ["thread", "greenlet"]
 # Relative paths so the Cobertura report resolves inside the SonarCloud
 # scanner container (absolute runner paths break coverage import).
 relative_files = true

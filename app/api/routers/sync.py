@@ -72,9 +72,7 @@ async def _merge_changes(
         )
         row = result.scalar_one_or_none()
         if row is None:
-            not_found.append(
-                SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
-            )
+            not_found.append(SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op))
             continue
 
         server_ts = _ensure_aware(row.updated_at)
@@ -112,9 +110,7 @@ async def _merge_changes(
     return applied, conflicts, not_found, high_water
 
 
-async def _fetch_delta(
-    db: AsyncSession, user_id: int, high_water: datetime | None
-) -> SyncDelta:
+async def _fetch_delta(db: AsyncSession, user_id: int, high_water: datetime | None) -> SyncDelta:
     """Return every row the user changed after the high-water mark."""
     delta = SyncDelta()
     targets: dict[SyncEntity, list[dict]] = {
@@ -126,9 +122,7 @@ async def _fetch_delta(
         conditions = [model.user_id == user_id]
         if high_water is not None:
             conditions.append(model.updated_at > high_water)
-        result = await db.execute(
-            select(model).where(*conditions).order_by(model.updated_at)
-        )
+        result = await db.execute(select(model).where(*conditions).order_by(model.updated_at))
         for row in result.scalars().all():
             targets[entity].append(serialize_row(row))
             row_ts = _ensure_aware(row.updated_at)
@@ -151,9 +145,7 @@ async def sync(
     One round trip: pushes the client's offline changes and returns every row
     the user changed after the client's high-water mark.
     """
-    applied, conflicts, not_found, high_water = await _merge_changes(
-        db, current_user.id, body
-    )
+    applied, conflicts, not_found, high_water = await _merge_changes(db, current_user.id, body)
     delta = await _fetch_delta(db, current_user.id, high_water)
 
     if high_water is None:

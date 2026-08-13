@@ -10,18 +10,14 @@ from app.models.project import Project
 from app.models.task import SubTask, Task
 
 
-async def create_task(
-    client: AsyncClient, token: str, body: dict[str, Any]
-) -> dict[str, Any]:
+async def create_task(client: AsyncClient, token: str, body: dict[str, Any]) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {token}"}
     )
     return cast(dict[str, Any], response.json())
 
 
-async def create_subtask(
-    client: AsyncClient, token: str, task_id: int
-) -> dict[str, Any]:
+async def create_subtask(client: AsyncClient, token: str, task_id: int) -> dict[str, Any]:
     response = await client.post(
         "/api/v1/tasks/subtask",
         json={"title": "Child", "task_id": task_id},
@@ -30,9 +26,7 @@ async def create_subtask(
     return cast(dict[str, Any], response.json())
 
 
-async def test_task_updated_at_server_default(
-    async_client, logged_in_token
-) -> None:
+async def test_task_updated_at_server_default(async_client, logged_in_token) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Updated At Test"})
     assert task["updated_at"] is not None
     # ISO-parseable server timestamp (SQLite returns naive datetimes in tests;
@@ -40,9 +34,7 @@ async def test_task_updated_at_server_default(
     datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))
 
 
-async def test_task_updated_at_touches_on_update(
-    async_client, logged_in_token
-) -> None:
+async def test_task_updated_at_touches_on_update(async_client, logged_in_token) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Before"})
     original = datetime.fromisoformat(task["updated_at"].replace("Z", "+00:00"))
 
@@ -60,9 +52,7 @@ async def test_task_updated_at_touches_on_update(
     assert later >= original
 
 
-async def test_subtask_updated_at_present(
-    async_client, logged_in_token
-) -> None:
+async def test_subtask_updated_at_present(async_client, logged_in_token) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Parent"})
     subtask = await create_subtask(async_client, logged_in_token, task["id"])
     assert subtask["updated_at"] is not None
@@ -79,9 +69,7 @@ async def test_project_updated_at_present(async_client, logged_in_token) -> None
     assert project["updated_at"] is not None
 
 
-async def test_updated_at_not_nullable(
-    db: AsyncSession, confirmed_user: dict
-) -> None:
+async def test_updated_at_not_nullable(db: AsyncSession, confirmed_user: dict) -> None:
     task = Task(user_id=confirmed_user["id"], title="Raw Insert")
     db.add(task)
     await db.flush()
