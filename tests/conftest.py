@@ -129,6 +129,10 @@ async def db() -> AsyncGenerator:
         for table in reversed(Base.metadata.sorted_tables):
             await conn.execute(table.delete())
 
+    from app.knowledge.retrieval import UserKnowledgeIndex
+
+    UserKnowledgeIndex.clear_cache()
+
     async with TestSessionLocal() as session:
         yield session
         await session.rollback()  # Ensure nothing leaks
@@ -232,3 +236,36 @@ async def authenticated_async_client(
     yield async_client
     if "Authorization" in async_client.headers:
         del async_client.headers["Authorization"]
+
+
+@pytest.fixture(autouse=True)
+def mock_embedder(mocker: Any) -> None:
+    """Stub the local embedding model so tests never load sentence-transformers.
+
+    The fake embedder mirrors the real contract: get_embedder() returns an
+    object with .encode(texts, normalize_embeddings=True) producing a
+    deterministic 384-dim vector per text (built from text length).
+    """
+
+    import hashlib
+
+    import numpy as np  # noqa: PLC0415
+
+    class _FakeEmbedder:
+        def encode(self, texts: list[str], normalize_embeddings: bool = True) -> np.ndarray:
+            if not texts:
+                return np.empty((0, 384), dtype=np.float32)
+            # Deterministic per-content vectors: different texts get different
+            # directions (seeded by content hash), not just different lengths.
+            vectors = []
+            for text in texts:
+                seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
+                rng = np.random.default_rng(seed)
+                vectors.append(rng.standard_normal(384).astype(np.float32))
+            arr = np.array(vectors, dtype=np.float32)
+            if normalize_embeddings:
+                norms = np.linalg.norm(arr, axis=1, keepdims=True)
+                arr = np.where(norms > 0, arr / norms, arr)
+            return arr
+
+    mocker.patch("app.knowledge.embeddings.get_embedder", return_value=_FakeEmbedder())

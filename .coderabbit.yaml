@@ -1,0 +1,20 @@
+language: en
+reviews:
+  profile: assertive
+  request_changes_workflow: false
+  auto_review:
+    enabled: true
+    drafts: false
+    base_branches: [ "main" ]
+  path_instructions:
+    - path: "app/knowledge/**"
+      instructions: |
+        Verify per-user scoping on every DB query (user_id filters), the
+        embedding serialization contract (format_embedding/parse_embedding),
+        and that sync CPU work runs via asyncio.to_thread.
+    - path: "alembic/versions/**"
+      instructions: |
+        Migrations must be reversible and SQLite-safe (with_variant types,
+        dialect-guarded CREATE EXTENSION).
+chat:
+  auto_reply: true

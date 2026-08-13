@@ -1,0 +1,55 @@
+name: SonarCloud quality gate
+
+on:
+  push:
+    branches: [ "main", "develop" ]
+  pull_request:
+    branches: [ "main", "develop" ]
+
+permissions:
+  contents: read
+
+jobs:
+  sonarcloud:
+    name: SonarCloud Scan
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --only-binary :all: --upgrade pip==25.0.1
+          # NOSONAR: requirements-dev.txt is fully pinned; sdist builds are
+          # required for http-ece (no Linux wheel), so --only-binary is limited
+          # to the pip self-upgrade above.
+          pip install -r requirements-dev.txt
+      - name: Test with coverage
+        env:
+          DATABASE_URL: "sqlite+aiosqlite:///:memory:"
+          SECRET_KEY: test-secret-key-for-ci-purposes-only
+          MAIL_URL: "https://api.brevo.com/v3"
+          MAIL_API_KEY: "ci-test-key"
+          ALGORITHM: HS256
+          ACCESS_TOKEN_EXPIRE_MINUTES: 30
+          LOG_LEVEL: INFO
+        run: |
+          pytest --cov=app --cov-report=xml
+      - name: SonarCloud Scan
+        # sonarcloud-github-action is archived; the maintained replacement is
+        # sonarqube-scan-action (pinned to the v8.2.1 commit).
+        uses: SonarSource/sonarqube-scan-action@22918119ff8e1ca75a623e15c8296b6ea4fbe28f # v8.2.1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Reuses the org-level token from the secrets-scan workflow. If this
+          # token lacks SonarCloud quality-scan scope, add a dedicated
+          # SONAR_TOKEN secret and reference it here instead.
+          SONAR_TOKEN: ${{ secrets.SONARQUBE_TOKEN }}

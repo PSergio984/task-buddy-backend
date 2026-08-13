@@ -1,0 +1,73 @@
+# Snyk policy file — project-level ignores.
+version: v1.5.0
+ignore:
+  # nltk is used ONLY for PorterStemmer with a local stopwords file
+  # (app/knowledge/retrieval/tokenize.py); the vulnerable data-downloader
+  # code paths (download/verify/download URLs) are never executed.
+  SNYK-PYTHON-NLTK-17821336:
+    - "*":
+        reason: nltk data downloader not used - local stopwords.txt + PorterStemmer only
+        expires: 2027-08-13
+  SNYK-PYTHON-NLTK-18592338:
+    - "*":
+        reason: nltk data downloader not used - local stopwords.txt + PorterStemmer only
+        expires: 2027-08-13
+  # torch + transformers (transitive via sentence-transformers): no fixed
+  # version exists upstream (fixedIn=[] on all CVEs). The listed issues are
+  # pickle-deserialization/arbitrary-code-injection in MODEL LOADING and C++
+  # kernel memory bugs. Our usage loads exactly one model, pinned by repo id
+  # (EMBEDDING_MODEL), baked into the Docker image at build time — untrusted
+  # model files are never loaded at runtime, and no untrusted tensor input
+  # reaches the affected kernels (we encode text only).
+  SNYK-PYTHON-TORCH-10332643:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TORCH-10337825:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TORCH-10337826:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TORCH-10337834:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TORCH-13052969:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TORCH-15746467:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14560695:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14563374:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14564275:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14564363:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14564364:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14564365:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
+  SNYK-PYTHON-TRANSFORMERS-14564366:
+    - "*":
+        reason: no upstream fix; pinned baked model only, no untrusted model loading
+        expires: 2027-08-13
