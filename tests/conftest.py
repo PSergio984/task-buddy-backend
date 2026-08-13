@@ -247,10 +247,23 @@ def mock_embedder(mocker: Any) -> None:
     deterministic 384-dim vector per text (built from text length).
     """
 
+    import hashlib
+
     import numpy as np  # noqa: PLC0415
 
     class _FakeEmbedder:
         def encode(self, texts: list[str], normalize_embeddings: bool = True) -> np.ndarray:
-            return np.array([np.full(384, len(t) % 7) / 384 for t in texts], dtype=np.float32)
+            # Deterministic per-content vectors: different texts get different
+            # directions (seeded by content hash), not just different lengths.
+            vectors = []
+            for text in texts:
+                seed = int(hashlib.sha256(text.encode("utf-8")).hexdigest()[:8], 16)
+                rng = np.random.default_rng(seed)
+                vectors.append(rng.standard_normal(384).astype(np.float32))
+            arr = np.array(vectors, dtype=np.float32)
+            if normalize_embeddings:
+                norms = np.linalg.norm(arr, axis=1, keepdims=True)
+                arr = np.where(norms > 0, arr / norms, arr)
+            return arr
 
     mocker.patch("app.knowledge.embeddings.get_embedder", return_value=_FakeEmbedder())

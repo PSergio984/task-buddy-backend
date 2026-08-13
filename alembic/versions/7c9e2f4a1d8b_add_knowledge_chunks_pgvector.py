@@ -60,22 +60,24 @@ def upgrade() -> None:
         ),
         sa.PrimaryKeyConstraint("id", name=op.f("pk_tbl_knowledge_chunks")),
     )
-    op.create_index(
-        op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),
-        "tbl_knowledge_chunks",
-        ["embedding"],
-        unique=False,
-        postgresql_using="hnsw",
-        postgresql_ops={"embedding": "vector_cosine_ops"},
-    )
+    if op.get_bind().dialect.name == "postgresql":
+        op.create_index(
+            op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),
+            "tbl_knowledge_chunks",
+            ["embedding"],
+            unique=False,
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        )
 
 
 def downgrade() -> None:
     """Drop the HNSW index before the chunk table."""
-    op.drop_index(
-        op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),
-        table_name="tbl_knowledge_chunks",
-        postgresql_using="hnsw",
-        postgresql_ops={"embedding": "vector_cosine_ops"},
-    )
+    if op.get_bind().dialect.name == "postgresql":
+        op.drop_index(
+            op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),
+            table_name="tbl_knowledge_chunks",
+            postgresql_using="hnsw",
+            postgresql_ops={"embedding": "vector_cosine_ops"},
+        )
     op.drop_table("tbl_knowledge_chunks")
