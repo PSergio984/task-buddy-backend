@@ -1,7 +1,6 @@
 """Note source: inline text knowledge, zero extraction."""
 
 
-
 class NoteSource:
     """A text note attached to a task — content is used as-is."""
 

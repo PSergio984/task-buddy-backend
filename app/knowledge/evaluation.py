@@ -9,7 +9,9 @@ import json
 from pathlib import Path
 from typing import Callable
 
-DEFAULT_DATASET_PATH = Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "golden_knowledge.json"
+DEFAULT_DATASET_PATH = (
+    Path(__file__).resolve().parent.parent.parent / "tests" / "fixtures" / "golden_knowledge.json"
+)
 
 SearchFn = Callable[[str, int], list[int]]
 
@@ -54,18 +56,9 @@ def evaluate_search(
                 "task_id": case["task_id"],
                 "retrieved": retrieved,
                 "relevant": sorted(relevant),
-                "scores": {
-                    f"precision@{k}": precision_at_k(retrieved, relevant, k)
-                    for k in ks
-                }
-                | {
-                    f"recall@{k}": recall_at_k(retrieved, relevant, k)
-                    for k in ks
-                }
-                | {
-                    f"f1@{k}": f1_at_k(retrieved, relevant, k)
-                    for k in ks
-                },
+                "scores": {f"precision@{k}": precision_at_k(retrieved, relevant, k) for k in ks}
+                | {f"recall@{k}": recall_at_k(retrieved, relevant, k) for k in ks}
+                | {f"f1@{k}": f1_at_k(retrieved, relevant, k) for k in ks},
             }
         )
 
@@ -74,9 +67,7 @@ def evaluate_search(
     for k in ks:
         for metric in ("precision", "recall", "f1"):
             key = f"{metric}@{k}"
-            macro[key] = (
-                sum(c["scores"][key] for c in per_case) / case_count if case_count else 0.0
-            )
+            macro[key] = sum(c["scores"][key] for c in per_case) / case_count if case_count else 0.0
 
     return {"per_case": per_case, "macro": macro}
 

@@ -75,9 +75,7 @@ async def test_knowledge_create_requires_owned_task(
     confirmed_user: dict[str, Any],
 ) -> None:
     """A user cannot attach knowledge to another user's task."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "User 1 task"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "User 1 task"})
 
     user2 = await register_user(db, async_client, "user2", "user2@example.com")
     await confirm_user(db, user2)
@@ -99,9 +97,7 @@ async def test_knowledge_create_persists_fields(
     confirmed_user: dict[str, Any],
 ) -> None:
     """Creating a note persists source_type, title, content, and metadata."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "Persist task"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "Persist task"})
 
     response = await async_client.post(
         f"/api/v1/tasks/{user1_task['id']}/knowledge",
@@ -135,9 +131,7 @@ async def test_knowledge_update_ownership_denied(
     confirmed_user: dict[str, Any],
 ) -> None:
     """A user cannot update another user's knowledge row."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "Update deny task"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "Update deny task"})
     note = await create_note(
         async_client, logged_in_token, user1_task["id"], {"content": "private note"}
     )
@@ -162,9 +156,7 @@ async def test_knowledge_delete_ownership_denied(
     confirmed_user: dict[str, Any],
 ) -> None:
     """A user cannot delete another user's knowledge row."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "Delete deny task"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "Delete deny task"})
     note = await create_note(
         async_client, logged_in_token, user1_task["id"], {"content": "private note"}
     )
@@ -188,15 +180,9 @@ async def test_knowledge_list_returns_own_only(
     confirmed_user: dict[str, Any],
 ) -> None:
     """Listing knowledge returns only the current user's notes for that task."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "List task"}
-    )
-    await create_note(
-        async_client, logged_in_token, user1_task["id"], {"content": "note one"}
-    )
-    await create_note(
-        async_client, logged_in_token, user1_task["id"], {"content": "note two"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "List task"})
+    await create_note(async_client, logged_in_token, user1_task["id"], {"content": "note one"})
+    await create_note(async_client, logged_in_token, user1_task["id"], {"content": "note two"})
 
     user2 = await register_user(db, async_client, "user2", "user2@example.com")
     await confirm_user(db, user2)
@@ -222,9 +208,7 @@ async def test_knowledge_answer_and_feedback_rows_persist(
     confirmed_user: dict[str, Any],
 ) -> None:
     """KnowledgeAnswer and KnowledgeFeedback rows persist with their fields."""
-    user1_task = await create_task(
-        async_client, logged_in_token, {"title": "Answer task"}
-    )
+    user1_task = await create_task(async_client, logged_in_token, {"title": "Answer task"})
 
     answer = KnowledgeAnswer(
         user_id=confirmed_user["id"],

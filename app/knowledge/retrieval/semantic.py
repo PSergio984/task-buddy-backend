@@ -80,9 +80,7 @@ class ChunkedSemanticSearch:
         self._embeddings.pop(chunk_id, None)
         self._texts.pop(chunk_id, None)
 
-    def search_chunks(
-        self, query_embedding: np.ndarray, limit: int = 10
-    ) -> list[dict]:
+    def search_chunks(self, query_embedding: np.ndarray, limit: int = 10) -> list[dict]:
         """Rank chunks by cosine similarity to the query embedding."""
         scores: list[dict] = []
         for chunk_id, emb in self._embeddings.items():

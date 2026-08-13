@@ -48,12 +48,20 @@ def test_golden_dataset_ids_resolve_to_notes() -> None:
 def test_evaluate_search_macro_averages() -> None:
     dataset = {
         "test_cases": [
-            {"task_id": 1, "task_query": "q1", "task_title": "t1",
-             "notes": [{"knowledge_id": 10, "content": "a"}],
-             "relevant_knowledge_ids": [10]},
-            {"task_id": 2, "task_query": "q2", "task_title": "t2",
-             "notes": [{"knowledge_id": 20, "content": "b"}],
-             "relevant_knowledge_ids": [20]},
+            {
+                "task_id": 1,
+                "task_query": "q1",
+                "task_title": "t1",
+                "notes": [{"knowledge_id": 10, "content": "a"}],
+                "relevant_knowledge_ids": [10],
+            },
+            {
+                "task_id": 2,
+                "task_query": "q2",
+                "task_title": "t2",
+                "notes": [{"knowledge_id": 20, "content": "b"}],
+                "relevant_knowledge_ids": [20],
+            },
         ]
     }
 

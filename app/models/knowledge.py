@@ -54,9 +54,7 @@ class TaskKnowledge(Base):
     # Mapped attribute is extra_metadata because "metadata" is reserved by
     # SQLAlchemy's Declarative API; the DB column stays named "metadata".
     extra_metadata: Mapped[dict] = mapped_column("metadata", JsonType, nullable=False, default=dict)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
@@ -86,9 +84,7 @@ class KnowledgeAnswer(Base):
     retrieved_chunks: Mapped[list] = mapped_column(JsonType, nullable=False, default=list)
     judge_verdict: Mapped[JudgeVerdict | None] = mapped_column(SQLEnum(JudgeVerdict), nullable=True)
     judge_explanation: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class KnowledgeFeedback(Base):
@@ -104,9 +100,7 @@ class KnowledgeFeedback(Base):
     # rating is +1 or -1 (user thumbs up/down on an answer)
     rating: Mapped[int] = mapped_column(nullable=False)
     comment: Mapped[str | None] = mapped_column(Text, nullable=True)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
 
 
 class KnowledgeChunk(Base):
@@ -130,6 +124,4 @@ class KnowledgeChunk(Base):
         Vector(384).with_variant(Text(), "sqlite"), nullable=False
     )
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
-    created_at: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), server_default=func.now()
-    )
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

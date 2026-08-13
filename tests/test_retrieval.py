@@ -96,8 +96,12 @@ async def test_per_user_isolation_no_cross_retrieval(db: AsyncSession) -> None:
     db.add_all([task1, task2])
     await db.flush()
 
-    knowledge1 = TaskKnowledge(user_id=user1.id, task_id=task1.id, content="deadline project asikaso")
-    knowledge2 = TaskKnowledge(user_id=user2.id, task_id=task2.id, content="groceries shopping mall")
+    knowledge1 = TaskKnowledge(
+        user_id=user1.id, task_id=task1.id, content="deadline project asikaso"
+    )
+    knowledge2 = TaskKnowledge(
+        user_id=user2.id, task_id=task2.id, content="groceries shopping mall"
+    )
     db.add_all([knowledge1, knowledge2])
     await db.flush()
 
