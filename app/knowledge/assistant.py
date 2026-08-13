@@ -22,7 +22,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import OPENAI_API_KEY, OPENAI_MODEL
 from app.crud.knowledge import create_answer
 from app.knowledge.cost import calculate_cost
-from app.knowledge.records import LLMCallRecord, normalize_citations
+from app.knowledge.records import LLMCallRecord, citation_text, normalize_citations
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.models.knowledge import KnowledgeAnswer, KnowledgeChunk
 from app.models.task import Task
@@ -52,6 +52,10 @@ JUDGE_SYSTEM_PROMPT = (
 )
 
 
+class AssistantNotConfiguredError(RuntimeError):
+    """Raised when the OpenAI key is missing — surfaced as 503, never a 500."""
+
+
 class RelevanceVerdict(BaseModel):
     """Structured judge output: a label plus the reasoning."""
 
@@ -62,20 +66,16 @@ class RelevanceVerdict(BaseModel):
 def _openai_client() -> OpenAI:
     """Lazily build the OpenAI client; fail fast when no key is configured."""
     if not OPENAI_API_KEY:
-        raise RuntimeError("OPENAI_API_KEY is not configured")
+        raise AssistantNotConfiguredError("OPENAI_API_KEY is not configured")
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
-def _call_generation(model: str, messages: list[Any]):
+def _call_completion(model: str, messages: list[Any], response_format: Optional[dict] = None):
     """Sync wrapper: run one chat completion in a worker thread."""
-    return _openai_client().chat.completions.create(model=model, messages=messages)
-
-
-def _call_judge(model: str, messages: list[Any]):
-    """Sync wrapper: run one structured judge completion in a worker thread."""
-    return _openai_client().chat.completions.create(
-        model=model, messages=messages, response_format={"type": "json_object"}
-    )
+    kwargs: dict[str, Any] = {"model": model, "messages": messages}
+    if response_format is not None:
+        kwargs["response_format"] = response_format
+    return _openai_client().chat.completions.create(**kwargs)
 
 
 def _build_generation_prompt(
@@ -88,7 +88,7 @@ def _build_generation_prompt(
     """
     context_parts = []
     for chunk in retrieved_chunks[:MAX_RETRIEVED_CHUNKS]:
-        text = (chunk.get("text") or chunk.get("chunk_text") or "").strip()
+        text = citation_text(chunk)
         if not text:
             continue
         if len(text) > CHUNK_TEXT_LIMIT:
@@ -114,7 +114,7 @@ async def generate_answer(
     prompt = _build_generation_prompt(task_title, task_description, retrieved_chunks)
     start = time.monotonic()
     response = await asyncio.to_thread(
-        _call_generation,
+        _call_completion,
         OPENAI_MODEL,
         [
             {"role": "system", "content": ASSISTANT_SYSTEM_PROMPT},
@@ -161,7 +161,7 @@ async def evaluate_relevance(question: str, answer: str, citations: list[dict]) 
     )
     try:
         response = await asyncio.to_thread(
-            _call_judge,
+            _call_completion,
             OPENAI_MODEL,
             [
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},

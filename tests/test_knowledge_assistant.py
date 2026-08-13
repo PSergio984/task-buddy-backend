@@ -1,6 +1,6 @@
 """Tests for the instrumented knowledge assistant (generate + judge + ask/feedback).
 
-All LLM calls are mocked (offline mode) — the suite passes with no
+All LLM calls are mocked (offline mode) â€” the suite passes with no
 OPENAI_API_KEY set. The key-check lives in ``_openai_client`` and is bypassed
 by mocking either that function or ``generate_answer``/``evaluate_relevance``.
 """
@@ -125,7 +125,7 @@ def make_fake_record(answer: str) -> LLMCallRecord:
 
 
 def test_llm_call_record_fields() -> None:
-    """LLMCallRecord replicates the RESEARCH §6 field list with a default timestamp."""
+    """LLMCallRecord replicates the RESEARCH Â§6 field list with a default timestamp."""
     record = LLMCallRecord(
         model="gpt-4o-mini",
         prompt="p",
@@ -142,7 +142,7 @@ def test_llm_call_record_fields() -> None:
 
 
 def test_calculate_cost_pricing_map() -> None:
-    """calculate_cost prices per the config-driven gpt-4o-mini map (RESEARCH §8)."""
+    """calculate_cost prices per the config-driven gpt-4o-mini map (RESEARCH Â§8)."""
     assert calculate_cost(3000, 200) == 0.00057
     assert calculate_cost(0, 0) == 0.0
 
@@ -567,3 +567,63 @@ def test_generation_prompt_truncates_chunk_to_1500() -> None:
     )
     chunk_line = next(line for line in prompt.splitlines() if line.startswith("[1] "))
     assert len(chunk_line) - len("[1] ") <= CHUNK_TEXT_LIMIT
+
+
+@pytest.mark.anyio
+async def test_ask_endpoint_503_when_not_configured(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """Missing key surfaces as 503 'not configured' - no key-presence leak."""
+    from app.knowledge.assistant import AssistantNotConfiguredError
+
+    task = await create_task(async_client, logged_in_token, {"title": "Config task"})
+    mocker.patch(
+        "app.knowledge.assistant._openai_client",
+        side_effect=AssistantNotConfiguredError("OPENAI_API_KEY is not configured"),
+    )
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 503
+    assert "not configured" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_ask_endpoint_503_on_openai_api_error(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """Provider failure (401/429/network) surfaces as 503, never a 500."""
+    import openai
+
+    task = await create_task(async_client, logged_in_token, {"title": "API error task"})
+    mocker.patch(
+        "app.knowledge.assistant._openai_client",
+        side_effect=openai.APIError("provider boom", request=None, body=None),
+    )
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 503
+    assert "unavailable" in response.json()["detail"]
+
+
+def test_normalize_citation_drops_chunk_without_text() -> None:
+    """A knowledge_id without any text is dropped, not stored as an empty excerpt."""
+    from app.knowledge.records import normalize_citation
+
+    assert normalize_citation({"knowledge_id": 7, "rrf_score": 0.5}) is None
+    assert normalize_citation({"knowledge_id": 7, "chunk_text": "", "rrf_score": 0.5}) is None

@@ -3,6 +3,7 @@
 import logging
 from typing import Annotated
 
+import openai
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,7 +19,7 @@ from app.config import (
 from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.knowledge.assistant import KnowledgeAssistant
+from app.knowledge.assistant import AssistantNotConfiguredError, KnowledgeAssistant
 from app.knowledge.ingest import ingest_knowledge
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
@@ -43,6 +44,7 @@ KNOWLEDGE_NOT_FOUND = "Knowledge not found"
 ANSWER_NOT_FOUND = "Answer not found"
 NO_FIELDS_TO_UPDATE = "No fields to update"
 AI_NOT_CONFIGURED = "AI assistant not configured"
+AI_UNAVAILABLE = "AI assistant unavailable"
 
 router = APIRouter(
     tags=[ROUTER_TAG],
@@ -285,9 +287,14 @@ async def ask_knowledge(
     assistant = KnowledgeAssistant()
     try:
         answer_row = await assistant.ask(db, db_task, ask_in.query)
-    except RuntimeError as exc:
-        logger.warning("knowledge ask unavailable for task=%s: %s", task_id, exc)
+    except AssistantNotConfiguredError as exc:
+        logger.warning("knowledge ask not configured for task=%s: %s", task_id, exc)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except openai.APIError as exc:
+        # Key set but the provider failed (401/429/network) — still a 503,
+        # never a 500; no provider internals leak into the response.
+        logger.warning("knowledge ask unavailable for task=%s: %s", task_id, exc)
+        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
 
     await db.commit()
     await db.refresh(answer_row)

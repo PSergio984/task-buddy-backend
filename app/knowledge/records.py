@@ -30,20 +30,31 @@ class LLMCallRecord:
     timestamp: datetime = field(default_factory=datetime.now)
 
 
+def citation_text(chunk: dict[str, Any]) -> str:
+    """Canonical chunk text extraction: ``chunk_text`` then ``text``.
+
+    Single precedence shared by the prompt builder and the citation
+    normalizer, so the two consumers can never diverge on the key order.
+    """
+    return str(chunk.get("chunk_text") or chunk.get("text") or "").strip()
+
+
 def normalize_citation(chunk: dict[str, Any]) -> dict[str, Any] | None:
     """Reduce an already-resolved chunk to the canonical citation shape.
 
     Accepts a dict carrying an explicit ``knowledge_id`` (raw search chunks
-    with only a ``chunk_id`` do NOT qualify — a chunk id is not a knowledge
+    with only a ``chunk_id`` do NOT qualify - a chunk id is not a knowledge
     id, RESEARCH §7) and emits ``{knowledge_id, chunk_text, rrf_score}``.
-    Unresolvable chunks return ``None`` rather than minting a fabricated id.
+    Unresolvable chunks - missing knowledge_id OR missing text - return
+    ``None`` rather than fabricating an id or an empty excerpt.
     """
     knowledge_id = chunk.get("knowledge_id")
-    if knowledge_id is None:
+    text = citation_text(chunk)
+    if knowledge_id is None or not text:
         return None
     return {
         "knowledge_id": knowledge_id,
-        "chunk_text": chunk.get("chunk_text") or chunk.get("text") or "",
+        "chunk_text": text,
         "rrf_score": float(chunk.get("rrf_score") or 0.0),
     }
 
