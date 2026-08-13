@@ -39,3 +39,11 @@ def test_unknown_env_state_unset_raises():
 def test_unknown_env_state_with_dev_key_raises():
     with pytest.raises(RuntimeError, match="SECRET_KEY"):
         _resolve_secret_key(DEV_SECRET_KEY, "staging")
+
+
+def test_knowledge_feedback_rate_limit_matches_spec():
+    """RATE_LIMIT_KNOWLEDGE_FEEDBACK is 30/minute in TestConfig AND re-export."""
+    from app.config import RATE_LIMIT_KNOWLEDGE_FEEDBACK, TestConfig
+
+    assert TestConfig().RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
+    assert RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"

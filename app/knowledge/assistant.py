@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 MAX_RETRIEVED_CHUNKS = 4
 CHUNK_TEXT_LIMIT = 1500
+ELLIPSIS = "..."
 
 ASSISTANT_SYSTEM_PROMPT = (
     "You are a helpful assistant that answers the question: 'what do I need "
@@ -91,7 +92,7 @@ def _build_generation_prompt(
         if not text:
             continue
         if len(text) > CHUNK_TEXT_LIMIT:
-            text = text[: CHUNK_TEXT_LIMIT - 3] + "..."
+            text = text[: CHUNK_TEXT_LIMIT - len(ELLIPSIS)] + ELLIPSIS
         context_parts.append(f"[{chunk.get('chunk_id')}] {text}")
 
     description = (task_description or "").strip()

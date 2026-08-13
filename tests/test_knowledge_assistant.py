@@ -495,6 +495,25 @@ def test_build_citations_drops_orphan_chunks() -> None:
     ]
 
 
+def test_normalize_citation_returns_none_not_empty_dict() -> None:
+    """Unresolvable chunks yield None (the conventional no-result sentinel)."""
+    from app.knowledge.records import normalize_citation
+
+    assert normalize_citation({"chunk_id": 999, "text": "ghost", "rrf_score": 0.1}) is None
+
+
+def test_normalize_citation_none_rrf_score_coerces_to_zero() -> None:
+    """An explicit None rrf_score must not raise (coerces to 0.0)."""
+    from app.knowledge.records import normalize_citation
+
+    chunk = {"knowledge_id": 7, "chunk_text": "x", "rrf_score": None}
+    assert normalize_citation(chunk) == {
+        "knowledge_id": 7,
+        "chunk_text": "x",
+        "rrf_score": 0.0,
+    }
+
+
 @pytest.mark.anyio
 async def test_build_citations_maps_only_resolved_chunks(
     db: AsyncSession,
@@ -548,11 +567,3 @@ def test_generation_prompt_truncates_chunk_to_1500() -> None:
     )
     chunk_line = next(line for line in prompt.splitlines() if line.startswith("[1] "))
     assert len(chunk_line) - len("[1] ") <= CHUNK_TEXT_LIMIT
-
-
-def test_testconfig_feedback_rate_limit_matches_spec() -> None:
-    """TestConfig RATE_LIMIT_KNOWLEDGE_FEEDBACK matches the spec (30/minute)."""
-    from app.config import RATE_LIMIT_KNOWLEDGE_FEEDBACK, TestConfig
-
-    assert TestConfig().RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
-    assert RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
