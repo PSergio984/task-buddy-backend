@@ -31,17 +31,16 @@ if config.SENTRY_DSN:
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    """Run startup and shutdown logic for the application."""
-    configure_logging()
-    # Pre-warm the local embedding model so the first query is not the slow one.
-    # Boot must never crash if the model is missing — graceful degradation.
-    try:
-        from app.knowledge.embeddings import get_embedder
+    """Run startup and shutdown logic for the application.
 
-        get_embedder()
-        logger.info("Embedder pre-warmed")
-    except Exception as exc:
-        logger.warning("embedder pre-warm failed: %s", exc)
+    The embedding model is deliberately NOT pre-warmed here: on Render's
+    512MB free tier, loading the ~470MB model at boot OOMs the container
+    alongside FastAPI + uvicorn + Celery. get_embedder() stays lazy — the
+    model loads on first knowledge query only (slow first call, boot stays
+    cheap). Graceful degradation is unchanged: if the model cannot load,
+    the ask endpoint degrades instead of crashing.
+    """
+    configure_logging()
     yield
 
 
