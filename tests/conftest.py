@@ -253,6 +253,8 @@ def mock_embedder(mocker: Any) -> None:
 
     class _FakeEmbedder:
         def encode(self, texts: list[str], normalize_embeddings: bool = True) -> np.ndarray:
+            if not texts:
+                return np.empty((0, 384), dtype=np.float32)
             # Deterministic per-content vectors: different texts get different
             # directions (seeded by content hash), not just different lengths.
             vectors = []
