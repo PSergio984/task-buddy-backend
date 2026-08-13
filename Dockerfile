@@ -14,8 +14,8 @@ WORKDIR /app
 COPY requirements.txt .
 # CPU-only torch first (avoids the ~2.5 GB CUDA download that the lock file's
 # torch dependency would otherwise pull via sentence-transformers).
-RUN pip install --no-cache-dir --index-url https://download.pytorch.org/whl/cpu torch
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --only-binary :all: --index-url https://download.pytorch.org/whl/cpu torch
+RUN pip install --no-cache-dir --only-binary :all: -r requirements.txt
 
 # Bake the local embedding model weights into the image so the container starts
 # cold-ready with no HuggingFace dependency at runtime.
