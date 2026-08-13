@@ -1,6 +1,17 @@
 #!/bin/bash
 set -e
 
+# Materialize the Supabase signing key from a Render secret (never committed;
+# supabase_signing_key.json is gitignored). ProdConfig fails fast at import if
+# the file is missing, and migrations import app.config — so this must run
+# before anything else. SUPABASE_SIGNING_KEY_JSON is the raw JWK document
+# (kty/crv/alg/d/x/y/kid) pasted into the Render env.
+if [ -n "$SUPABASE_SIGNING_KEY_JSON" ]; then
+  KEY_FILE="${SUPABASE_SIGNING_KEY_FILE:-supabase_signing_key.json}"
+  echo "$SUPABASE_SIGNING_KEY_JSON" > "$KEY_FILE"
+  echo "Materialized Supabase signing key to $KEY_FILE"
+fi
+
 echo "Starting migration process..."
 
 # Pre-flight: detect any partially-created or fully-missing schema.

@@ -49,6 +49,10 @@ services:
         sync: false
       - key: SUPABASE_SIGNING_KEY_FILE
         sync: false
+      # Raw JWK document (kty/crv/alg/d/x/y/kid) written to the key file at
+      # boot by start.sh — never commit the key itself.
+      - key: SUPABASE_SIGNING_KEY_JSON
+        sync: false
       - key: WEB_CONCURRENCY
         value: "1"
       - key: CELERY_CONCURRENCY
