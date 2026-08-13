@@ -114,6 +114,16 @@ class GlobalConfig(BaseConfig):
     # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
+    # OpenAI LLM settings (generation + judge). The key comes from env only —
+    # never hardcoded. Rates are USD per 1M tokens for OPENAI_MODEL
+    # (gpt-4o-mini). gpt-4.1-mini upgrade path = change OPENAI_MODEL + these two
+    # rates only.
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    OPENAI_INPUT_RATE_PER_1M: float = 0.15
+    OPENAI_OUTPUT_RATE_PER_1M: float = 0.60
+    RATE_LIMIT_KNOWLEDGE_ASK: str = "10/minute"
+    RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 120
     ALGORITHM: str = "HS256"
     CONFIRM_TOKEN_EXPIRE_MINUTES: int = 1440
@@ -266,6 +276,8 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_KNOWLEDGE_LIST: str = "30/minute"
     RATE_LIMIT_KNOWLEDGE_UPDATE: str = "20/minute"
     RATE_LIMIT_KNOWLEDGE_DELETE: str = "20/minute"
+    RATE_LIMIT_KNOWLEDGE_ASK: str = "10/minute"
+    RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
     RATE_LIMIT_TAG_CREATE: str = "20/minute"
     RATE_LIMIT_TAG_UPDATE: str = "20/minute"
     RATE_LIMIT_TAG_DELETE: str = "20/minute"
@@ -376,5 +388,11 @@ RATE_LIMIT_NOTIFICATION_LIST = config.RATE_LIMIT_NOTIFICATION_LIST
 RATE_LIMIT_NOTIFICATION_READ = config.RATE_LIMIT_NOTIFICATION_READ
 RATE_LIMIT_NOTIFICATION_READ_ALL = config.RATE_LIMIT_NOTIFICATION_READ_ALL
 RATE_LIMIT_PUSH_SUBSCRIBE = config.RATE_LIMIT_PUSH_SUBSCRIBE
+RATE_LIMIT_KNOWLEDGE_ASK = config.RATE_LIMIT_KNOWLEDGE_ASK
+RATE_LIMIT_KNOWLEDGE_FEEDBACK = config.RATE_LIMIT_KNOWLEDGE_FEEDBACK
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
+OPENAI_API_KEY = config.OPENAI_API_KEY
+OPENAI_MODEL = config.OPENAI_MODEL
+OPENAI_INPUT_RATE_PER_1M = config.OPENAI_INPUT_RATE_PER_1M
+OPENAI_OUTPUT_RATE_PER_1M = config.OPENAI_OUTPUT_RATE_PER_1M

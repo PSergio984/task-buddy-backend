@@ -11,3 +11,17 @@ Every time work reaches a "done" state — a phase/plan execution completes with
 This complements the two-axis `/code-review` skill (Standards + Spec), which runs BEFORE commit on uncommitted work.
 
 Notes: sonar-scanner is not installed on the dev host; first SonarCloud run needs a `SONAR_TOKEN` (HITL). CodeRabbit needs the app installed on the repo.
+
+## Agent skills
+
+### Issue tracker
+
+Issues live in this repo's GitHub Issues (`gh` CLI). See `docs/agents/issue-tracker.md`.
+
+### Triage labels
+
+The five canonical triage roles use their default label strings. See `docs/agents/triage-labels.md`.
+
+### Domain docs
+
+Single-context: one `CONTEXT.md` at the repo root plus `docs/adr/`. See `docs/agents/domain.md`.
