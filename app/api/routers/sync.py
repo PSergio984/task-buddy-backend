@@ -16,6 +16,7 @@ from app.models.task import SubTask, Task
 from app.models.user import User
 from app.schemas.sync import (
     SyncAppliedItem,
+    SyncChange,
     SyncConflictItem,
     SyncDelta,
     SyncEntity,
@@ -82,6 +83,42 @@ async def _load_row(db: AsyncSession, model: type[Any], row_id: int, user_id: in
     return result.scalar_one_or_none()
 
 
+def _record_applied(applied: list[SyncAppliedItem], change: SyncChange) -> None:
+    """Record a change the conditional write applied."""
+    applied.append(
+        SyncAppliedItem(
+            entity=change.entity,
+            id=change.id,
+            op=change.op,
+            server_updated_at=change.client_updated_at,
+        )
+    )
+
+
+async def _record_unapplied(
+    db: AsyncSession,
+    model: type[Any],
+    change: SyncChange,
+    user_id: int,
+    not_found: list[SyncNotFoundItem],
+    conflicts: list[SyncConflictItem],
+) -> None:
+    """Record a rejected change: not_found if the row is gone, else a
+    conflict carrying the current server state (the client converges)."""
+    row = await _load_row(db, model, change.id, user_id)
+    if row is None:
+        not_found.append(SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op))
+    else:
+        conflicts.append(
+            SyncConflictItem(
+                entity=change.entity,
+                id=change.id,
+                op=change.op,
+                server_state=serialize_row(row),
+            )
+        )
+
+
 async def _merge_changes(
     db: AsyncSession, user_id: int, body: SyncRequest
 ) -> tuple[list[SyncAppliedItem], list[SyncConflictItem], list[SyncNotFoundItem], datetime | None]:
@@ -109,48 +146,15 @@ async def _merge_changes(
                 )
             )
             if delete_result.rowcount == 0:
-                row = await _load_row(db, model, change.id, user_id)
-                if row is None:
-                    not_found.append(
-                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
-                    )
-                else:
-                    conflicts.append(
-                        SyncConflictItem(
-                            entity=change.entity,
-                            id=change.id,
-                            op=change.op,
-                            server_state=serialize_row(row),
-                        )
-                    )
+                await _record_unapplied(db, model, change, user_id, not_found, conflicts)
                 continue
-            applied.append(
-                SyncAppliedItem(
-                    entity=change.entity,
-                    id=change.id,
-                    op=change.op,
-                    server_updated_at=change.client_updated_at,
-                )
-            )
+            _record_applied(applied, change)
         else:
             merged = merge_payload(change.payload, MODEL_WHITELISTS[change.entity])
             if not await _fk_target_owned(db, change.entity, merged, user_id):
                 # Reject the whole change (server state returned) rather than
                 # partially applying or crashing with an unhandled IntegrityError.
-                row = await _load_row(db, model, change.id, user_id)
-                if row is None:
-                    not_found.append(
-                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
-                    )
-                else:
-                    conflicts.append(
-                        SyncConflictItem(
-                            entity=change.entity,
-                            id=change.id,
-                            op=change.op,
-                            server_state=serialize_row(row),
-                        )
-                    )
+                await _record_unapplied(db, model, change, user_id, not_found, conflicts)
                 continue
             update_result: CursorResult = await db.execute(  # type: ignore[assignment]
                 update(model)
@@ -162,29 +166,9 @@ async def _merge_changes(
                 .values(**merged, updated_at=change.client_updated_at)
             )
             if update_result.rowcount == 0:
-                row = await _load_row(db, model, change.id, user_id)
-                if row is None:
-                    not_found.append(
-                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
-                    )
-                else:
-                    conflicts.append(
-                        SyncConflictItem(
-                            entity=change.entity,
-                            id=change.id,
-                            op=change.op,
-                            server_state=serialize_row(row),
-                        )
-                    )
+                await _record_unapplied(db, model, change, user_id, not_found, conflicts)
                 continue
-            applied.append(
-                SyncAppliedItem(
-                    entity=change.entity,
-                    id=change.id,
-                    op=change.op,
-                    server_updated_at=change.client_updated_at,
-                )
-            )
+            _record_applied(applied, change)
 
         if high_water is None or change.client_updated_at > high_water:
             high_water = change.client_updated_at
