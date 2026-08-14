@@ -430,9 +430,7 @@ async def test_sync_delete_missing_not_found(
     assert len(result["not_found"]) == 1
 
 
-async def test_sync_stale_delete_conflicts(
-    async_client: AsyncClient, logged_in_token: str
-) -> None:
+async def test_sync_stale_delete_conflicts(async_client: AsyncClient, logged_in_token: str) -> None:
     task = await create_task(async_client, logged_in_token, {"title": "Keep"})
 
     result = await post_sync(
@@ -454,9 +452,7 @@ async def test_sync_stale_delete_conflicts(
     assert len(result["conflicts"]) == 1
     assert result["conflicts"][0]["server_state"]["title"] == "Keep"
 
-    response = await async_client.get(
-        f"/api/v1/tasks/{task['id']}", headers=auth(logged_in_token)
-    )
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=auth(logged_in_token))
     assert response.status_code == 200
 
 
