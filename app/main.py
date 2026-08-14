@@ -18,6 +18,7 @@ from app.api.routers import (
     knowledge,
     memory,
     notifications,
+    plan,
     project,
     realtime,
     stats,
@@ -118,6 +119,7 @@ app.add_middleware(SlowAPIMiddleware)
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(knowledge.router, prefix="/api/v1/tasks")
 app.include_router(memory.router, prefix="/api/v1/tasks")
+app.include_router(plan.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")

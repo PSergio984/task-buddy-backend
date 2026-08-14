@@ -7,6 +7,7 @@ from app.planner.connector import (
     available_minutes,
 )
 from app.planner.deadline import propose_deadline
+from app.planner.service import create_plan
 
 __all__ = [
     "propose_deadline",
@@ -14,4 +15,5 @@ __all__ = [
     "CalendarEvent",
     "SyntheticCalendarConnector",
     "available_minutes",
+    "create_plan",
 ]

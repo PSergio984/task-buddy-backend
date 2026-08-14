@@ -11,6 +11,7 @@ from app.models.knowledge import (
     TaskKnowledge,
 )
 from app.models.notification import Notification, NotificationType, PushSubscription
+from app.models.plan import PlanAnswer
 from app.models.project import Project
 from app.models.tag import Tag
 from app.models.task import SubTask, Task
@@ -33,4 +34,5 @@ __all__ = [
     "KnowledgeChunk",
     "SourceType",
     "JudgeVerdict",
+    "PlanAnswer",
 ]
