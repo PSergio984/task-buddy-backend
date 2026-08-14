@@ -1,5 +1,6 @@
 """FastAPI application entrypoint: app factory, middleware, and exception handlers."""
 
+import asyncio
 import logging
 from contextlib import asynccontextmanager
 
@@ -59,6 +60,12 @@ async def lifespan(app: FastAPI):
             logger.info("Embedder pre-warmed")
         except Exception as exc:
             logger.warning("embedder pre-warm failed: %s", exc)
+    try:
+        from app.knowledge.history import _history_backfill_sweep
+
+        asyncio.create_task(_history_backfill_sweep())
+    except Exception:
+        logger.exception("history backfill sweep failed to start")
     yield
 
 

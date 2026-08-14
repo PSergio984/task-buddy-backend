@@ -3,7 +3,7 @@
 import logging
 from typing import Annotated, Any, cast
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query, Request, Response
 from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -27,6 +27,7 @@ from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
+from app.knowledge.history import delete_history_knowledge, ingest_history_task
 from app.libs.cache import get_cache_key, get_cached_data, set_cached_data
 from app.limiter import limiter
 from app.models.tag import Tag
@@ -256,6 +257,7 @@ async def update_task(
     task_update: TaskUpdateRequest,
     request: Request,
     response: Response,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> Task:
@@ -263,6 +265,7 @@ async def update_task(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+    was_completed = db_task.completed
 
     # Enforce tag count limit per user if tags are passed
     await _validate_tags_limit(db, task_update.tags, current_user.id)
@@ -287,6 +290,19 @@ async def update_task(
     # Ensure tags and subtasks are loaded for serialization
     await db_task.awaitable_attrs.tags
     await db_task.awaitable_attrs.subtasks
+
+    completed_now = db_task.completed
+    if not was_completed and completed_now:
+        # D-05: schedule ingestion — fire-and-forget, never inline.
+        background_tasks.add_task(ingest_history_task, db_task.id, current_user.id)
+    elif was_completed and not completed_now:
+        # D-11: un-complete deletes the history row + chunks.
+        try:
+            await delete_history_knowledge(db, task_id=db_task.id, user_id=current_user.id)
+            await db.commit()
+        except Exception as exc:
+            await db.rollback()
+            logger.warning("history cleanup failed for task=%s: %s", db_task.id, exc)
 
     logger.info("PUT /%s - task updated", task_id)
 

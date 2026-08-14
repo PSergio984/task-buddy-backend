@@ -78,3 +78,60 @@ async def delete_history_knowledge(
     await UserKnowledgeIndex().remove_knowledge_chunks(db, user_id, row.id)
     await db.delete(row)
     return True
+
+
+async def ingest_history_task(task_id: int, user_id: int) -> None:
+    """Fire-and-forget history ingest for a just-completed task (D-05).
+
+    Opens its own session because the request-scoped session is not safe for
+    the slow lazy embedder; re-fetches the task scoped by user_id so the
+    callable can never read another user's task.
+    """
+    from app.crud import task as task_crud
+    from app.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            task = await task_crud.get_task(session, task_id=task_id, user_id=user_id)
+            if task:
+                await create_history_knowledge(session, task)
+    except Exception:
+        logger.exception(
+            "history ingest background task failed for task=%s user=%s",
+            task_id,
+            user_id,
+        )
+
+
+async def backfill_history_corpus(db: AsyncSession) -> int:
+    """Ingest every completed task lacking a history row (D-06, idempotent)."""
+    from sqlalchemy import select
+
+    from app.models.task import Task as TaskModel
+
+    result = await db.execute(
+        select(TaskModel)
+        .where(TaskModel.completed.is_(True))
+        .order_by(TaskModel.id)
+    )
+    tasks = result.scalars().all()
+    count = 0
+    for task in tasks:
+        if await get_history_knowledge_for_task(db, task.id, task.user_id):
+            continue
+        row = await create_history_knowledge(db, task)
+        if row is not None:
+            count += 1
+    logger.info("history backfill: %s/%s tasks ingested", count, len(tasks))
+    return count
+
+
+async def _history_backfill_sweep() -> None:
+    """Detached startup sweep with its own session (D-06)."""
+    from app.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await backfill_history_corpus(session)
+    except Exception:
+        logger.exception("history backfill sweep failed")
