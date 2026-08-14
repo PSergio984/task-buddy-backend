@@ -28,10 +28,7 @@ def test_task_model_has_estimated_effort_minutes_column() -> None:
 
 def test_create_request_accepts_estimated_effort_minutes() -> None:
     assert TaskCreateRequest(title="x").estimated_effort_minutes is None
-    assert (
-        TaskCreateRequest(title="x", estimated_effort_minutes=60).estimated_effort_minutes
-        == 60
-    )
+    assert TaskCreateRequest(title="x", estimated_effort_minutes=60).estimated_effort_minutes == 60
     with pytest.raises(ValidationError):
         TaskCreateRequest(title="x", estimated_effort_minutes=0)
     with pytest.raises(ValidationError):

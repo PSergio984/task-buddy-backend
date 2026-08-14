@@ -59,9 +59,15 @@ NOW = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 
 def test_propose_deadline_priority_scaling() -> None:
-    high = propose_deadline(__import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.HIGH, now=NOW)
-    medium = propose_deadline(__import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.MEDIUM, now=NOW)
-    low = propose_deadline(__import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.LOW, now=NOW)
+    high = propose_deadline(
+        __import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.HIGH, now=NOW
+    )
+    medium = propose_deadline(
+        __import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.MEDIUM, now=NOW
+    )
+    low = propose_deadline(
+        __import__("app.models.task", fromlist=["TaskPriority"]).TaskPriority.LOW, now=NOW
+    )
     assert (medium - NOW).days == 4
     assert (high - NOW).days == 2
     assert (low - NOW).days == 7
@@ -100,17 +106,13 @@ async def test_create_without_due_date_proposes_soft_never_persisted(
     await confirm_user(db, user)
     token = await login_user(async_client, user)
 
-    body = await create_task_via_api(
-        async_client, token, {"title": "t1", "priority": "MEDIUM"}
-    )
+    body = await create_task_via_api(async_client, token, {"title": "t1", "priority": "MEDIUM"})
 
     assert body["deadline_type"] == "soft"
     assert body["proposed_deadline"] is not None
     datetime.fromisoformat(body["proposed_deadline"].replace("Z", "+00:00"))
 
-    row = (
-        await db.execute(select(Task).where(Task.title == "t1"))
-    ).scalar_one()
+    row = (await db.execute(select(Task).where(Task.title == "t1"))).scalar_one()
     assert row.due_date is None
     assert row.deadline_type is None
 
@@ -130,9 +132,7 @@ async def test_create_with_due_date_marks_hard(
     )
 
     assert body["deadline_type"] == "hard"
-    row = (
-        await db.execute(select(Task).where(Task.title == "t2"))
-    ).scalar_one()
+    row = (await db.execute(select(Task).where(Task.title == "t2"))).scalar_one()
     assert row.deadline_type == DeadlineType.HARD
     assert row.due_date is not None
 
@@ -156,9 +156,7 @@ async def test_confirm_proposal_via_put_sets_soft_deadline(
     assert response.status_code == 200, response.text
     assert response.json()["deadline_type"] == "soft"
 
-    row = (
-        await db.execute(select(Task).where(Task.title == "t3"))
-    ).scalar_one()
+    row = (await db.execute(select(Task).where(Task.title == "t3"))).scalar_one()
     assert row.due_date is not None
     assert row.deadline_type == DeadlineType.SOFT
 

@@ -36,9 +36,7 @@ def build_history_content(title: str, description: str | None) -> str:
     return title
 
 
-async def create_history_knowledge(
-    db: AsyncSession, task: Task
-) -> Optional[TaskKnowledge]:
+async def create_history_knowledge(db: AsyncSession, task: Task) -> Optional[TaskKnowledge]:
     """Build and ingest a completed task's history row (D-07 guard first).
 
     Flush-not-commit (repo convention): the caller owns the transaction.
@@ -69,9 +67,7 @@ async def create_history_knowledge(
     return row
 
 
-async def delete_history_knowledge(
-    db: AsyncSession, task_id: int, user_id: int
-) -> bool:
+async def delete_history_knowledge(db: AsyncSession, task_id: int, user_id: int) -> bool:
     """Remove a task's history row and its chunks (flush-not-commit)."""
     row = await get_history_knowledge_for_task(db, task_id, user_id)
     if not row:
@@ -112,11 +108,7 @@ async def ingest_history_task(task_id: int, user_id: int) -> None:
 
 async def backfill_history_corpus(db: AsyncSession) -> int:
     """Ingest every completed task lacking a history row (D-06, idempotent)."""
-    result = await db.execute(
-        select(Task)
-        .where(Task.completed.is_(True))
-        .order_by(Task.id)
-    )
+    result = await db.execute(select(Task).where(Task.completed.is_(True)).order_by(Task.id))
     tasks = result.scalars().all()
     count = 0
     for task in tasks:

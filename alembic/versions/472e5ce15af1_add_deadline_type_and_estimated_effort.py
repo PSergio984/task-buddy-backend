@@ -5,6 +5,7 @@ Revises: 742fdcbd5779
 Create Date: 2026-08-14 15:25:46.005892
 
 """
+
 from collections.abc import Sequence
 from typing import Union
 
@@ -13,8 +14,8 @@ import sqlalchemy as sa
 from alembic import op
 
 # revision identifiers, used by Alembic.
-revision: str = '472e5ce15af1'
-down_revision: Union[str, Sequence[str], None] = '742fdcbd5779'
+revision: str = "472e5ce15af1"
+down_revision: Union[str, Sequence[str], None] = "742fdcbd5779"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
@@ -24,9 +25,7 @@ def upgrade() -> None:
     if op.get_bind().dialect.name == "postgresql":
         op.execute("CREATE TYPE deadlinetype AS ENUM ('soft','hard')")
     with op.batch_alter_table("tbl_tasks") as batch_op:
-        batch_op.add_column(
-            sa.Column("estimated_effort_minutes", sa.Integer(), nullable=True)
-        )
+        batch_op.add_column(sa.Column("estimated_effort_minutes", sa.Integer(), nullable=True))
         batch_op.add_column(
             sa.Column(
                 "deadline_type",

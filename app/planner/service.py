@@ -77,9 +77,7 @@ async def build_pool(db: AsyncSession, user_id: int) -> list[Task]:
     return list(result.scalars().all())
 
 
-async def _memory_hint_minutes(
-    db: AsyncSession, user_id: int, task: Task
-) -> Optional[float]:
+async def _memory_hint_minutes(db: AsyncSession, user_id: int, task: Task) -> Optional[float]:
     """Duration of the most similar completed task (D-01 fallback, graceful)."""
     query = build_history_content(task.title, task.description)
     chunks = await UserKnowledgeIndex().search(db, user_id, query, limit=HINT_SEARCH_LIMIT)
@@ -109,17 +107,13 @@ async def _memory_hint_minutes(
         if knowledge.task_id in seen_task_ids:
             continue
         seen_task_ids.add(knowledge.task_id)
-        duration = float(
-            (knowledge.extra_metadata or {}).get("duration_minutes", 0) or 0
-        )
+        duration = float((knowledge.extra_metadata or {}).get("duration_minutes", 0) or 0)
         if duration > 0:
             return duration
     return None
 
 
-async def resolve_effort_minutes(
-    db: AsyncSession, user_id: int, task: Task
-) -> Optional[int]:
+async def resolve_effort_minutes(db: AsyncSession, user_id: int, task: Task) -> Optional[int]:
     """D-01: user estimate wins; Memory hint otherwise; None when neither."""
     if task.estimated_effort_minutes is not None:
         return task.estimated_effort_minutes
@@ -159,9 +153,7 @@ async def _persist_guarded(
     failure the rollback expires the session; the caller must not re-query.
     """
     try:
-        row = await create_plan_answer(
-            db, user_id, answer_text, record, pool_size, minutes
-        )
+        row = await create_plan_answer(db, user_id, answer_text, record, pool_size, minutes)
         return row.id
     except Exception as exc:
         await db.rollback()
@@ -191,9 +183,7 @@ async def _short_circuit(
     )
 
 
-def _truncate_buckets(
-    buckets: list[PlanBucket], limit: int
-) -> list[PlanBucket]:
+def _truncate_buckets(buckets: list[PlanBucket], limit: int) -> list[PlanBucket]:
     """Cap total tasks across buckets to `limit`, preserving bucket order."""
     flattened: list[tuple[Literal["tonight", "tomorrow", "later"], PlanTaskRow]] = []
     for bucket in buckets:
@@ -231,9 +221,7 @@ def _whitelist_verdict(
     return buckets
 
 
-async def _build_rows(
-    db: AsyncSession, user_id: int, pool: list[Task]
-) -> list[PlanTaskInput]:
+async def _build_rows(db: AsyncSession, user_id: int, pool: list[Task]) -> list[PlanTaskInput]:
     """Pool rows for the LLM prompt: estimates + Memory hints (D-01)."""
     hint_tasks = [t for t in pool if t.estimated_effort_minutes is None][:HINT_LIMIT]
     hint_by_task: dict[int, Optional[int]] = {}

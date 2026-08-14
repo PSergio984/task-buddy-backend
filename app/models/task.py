@@ -65,9 +65,7 @@ class Task(AsyncAttrs, Base):
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     estimated_effort_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
     deadline_type: Mapped[DeadlineType | None] = mapped_column(
-        SQLEnum(
-            DeadlineType, values_callable=lambda members: [m.value for m in members]
-        ),
+        SQLEnum(DeadlineType, values_callable=lambda members: [m.value for m in members]),
         nullable=True,
     )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

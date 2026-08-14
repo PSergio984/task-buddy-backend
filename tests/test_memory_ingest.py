@@ -61,9 +61,7 @@ async def login_user(client: AsyncClient, user: dict[str, Any]) -> str:
 async def history_row_count(db: AsyncSession, task_id: int) -> int:
     return (
         await db.execute(
-            select(func.count())
-            .select_from(TaskKnowledge)
-            .where(TaskKnowledge.task_id == task_id)
+            select(func.count()).select_from(TaskKnowledge).where(TaskKnowledge.task_id == task_id)
         )
     ).scalar_one()
 
@@ -71,17 +69,15 @@ async def history_row_count(db: AsyncSession, task_id: int) -> int:
 async def chunk_count_for_task(db: AsyncSession, task_id: int) -> int:
     return (
         await db.execute(
-            select(func.count()).select_from(KnowledgeChunk).where(
-                KnowledgeChunk.task_id == task_id
-            )
+            select(func.count())
+            .select_from(KnowledgeChunk)
+            .where(KnowledgeChunk.task_id == task_id)
         )
     ).scalar_one()
 
 
 @pytest.mark.anyio
-async def test_history_dedupe_guard_skips_existing_row(
-    db: AsyncSession, mocker: object
-) -> None:
+async def test_history_dedupe_guard_skips_existing_row(db: AsyncSession, mocker: object) -> None:
     user = User(username="hist_dedupe", email="hist_dedupe@example.com", password="x")
     db.add(user)
     await db.flush()
@@ -130,18 +126,14 @@ async def test_complete_task_ingests_history_row(
 
     assert await history_row_count(db, task["id"]) == 1
     row = (
-        await db.execute(
-            select(TaskKnowledge).where(TaskKnowledge.task_id == task["id"])
-        )
+        await db.execute(select(TaskKnowledge).where(TaskKnowledge.task_id == task["id"]))
     ).scalar_one()
     assert row.source_type == SourceType.HISTORY
     assert row.title == "Write report"
     assert row.content.startswith("Write report")
     assert await chunk_count_for_task(db, task["id"]) >= 1
 
-    db_task = (
-        await db.execute(select(Task).where(Task.id == task["id"]))
-    ).scalar_one()
+    db_task = (await db.execute(select(Task).where(Task.id == task["id"]))).scalar_one()
     expected = max(
         0.0,
         round((db_task.updated_at - db_task.created_at).total_seconds() / 60, 2),
@@ -163,9 +155,7 @@ async def test_completion_hook_scoped_to_owner(
     await confirm_user(db, intruder)
     intruder_token = await login_user(async_client, intruder)
 
-    task = await create_task(
-        async_client, owner_token, {"title": "Private report"}
-    )
+    task = await create_task(async_client, owner_token, {"title": "Private report"})
     response = await async_client.put(
         f"/api/v1/tasks/{task['id']}",
         json={"completed": True},
@@ -277,9 +267,7 @@ async def test_edit_completed_task_keeps_snapshot(
 
     assert await history_row_count(db, task["id"]) == 1
     row = (
-        await db.execute(
-            select(TaskKnowledge).where(TaskKnowledge.task_id == task["id"])
-        )
+        await db.execute(select(TaskKnowledge).where(TaskKnowledge.task_id == task["id"]))
     ).scalar_one()
     assert row.title == "Original title"
 
@@ -314,9 +302,7 @@ async def test_delete_task_cascades_history_rows_and_chunks(
 
 
 @pytest.mark.anyio
-async def test_startup_sweep_backfills_completed_tasks(
-    db: AsyncSession, mocker: object
-) -> None:
+async def test_startup_sweep_backfills_completed_tasks(db: AsyncSession, mocker: object) -> None:
     user = User(username="hist_sweep", email="hist_sweep@example.com", password="x")
     db.add(user)
     await db.flush()
@@ -341,9 +327,7 @@ async def test_startup_sweep_backfills_completed_tasks(
 
 
 @pytest.mark.anyio
-async def test_startup_sweep_idempotent(
-    db: AsyncSession, mocker: object
-) -> None:
+async def test_startup_sweep_idempotent(db: AsyncSession, mocker: object) -> None:
     user = User(username="hist_sweep2", email="hist_sweep2@example.com", password="x")
     db.add(user)
     await db.flush()
@@ -369,9 +353,7 @@ async def test_startup_sweep_idempotent(
 
 
 @pytest.mark.anyio
-async def test_ingest_history_task_callable(
-    db: AsyncSession, mocker: object
-) -> None:
+async def test_ingest_history_task_callable(db: AsyncSession, mocker: object) -> None:
     user = User(username="hist_callable", email="hist_callable@example.com", password="x")
     db.add(user)
     await db.flush()
@@ -395,9 +377,7 @@ async def test_ingest_history_task_callable(
 
 
 @pytest.mark.anyio
-async def test_ingest_history_task_skips_uncompleted_task(
-    db: AsyncSession, mocker: object
-) -> None:
+async def test_ingest_history_task_skips_uncompleted_task(db: AsyncSession, mocker: object) -> None:
     """D-11 race: an un-complete landing before the callable runs must not
     create a stale history row (the D-07 guard would otherwise swallow a
     later re-complete)."""

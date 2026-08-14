@@ -20,9 +20,7 @@ async def create_task(client: AsyncClient, token: str, body: dict[str, Any]) -> 
     return cast(dict[str, Any], response.json())
 
 
-async def complete_task(
-    client: AsyncClient, token: str, task_id: int
-) -> None:
+async def complete_task(client: AsyncClient, token: str, task_id: int) -> None:
     response = await client.put(
         f"/api/v1/tasks/{task_id}",
         json={"completed": True},
@@ -110,12 +108,8 @@ async def test_memory_similar_returns_history_only(
     await confirm_user(db, user)
     token = await login_user(async_client, user)
 
-    hist1 = await seed_history_task(
-        async_client, token, "Write SQL migration for auth"
-    )
-    hist2 = await seed_history_task(
-        async_client, token, "Write SQL migration for audit"
-    )
+    hist1 = await seed_history_task(async_client, token, "Write SQL migration for auth")
+    hist2 = await seed_history_task(async_client, token, "Write SQL migration for audit")
     note_task = await create_task(async_client, token, {"title": "Note holder"})
     response = await async_client.post(
         f"/api/v1/tasks/{note_task['id']}/knowledge",
@@ -158,9 +152,7 @@ async def test_memory_similar_duration_minutes_present(
     assert response.status_code == 200
     body = response.json()
 
-    db_task = (
-        await db.execute(select(Task).where(Task.id == task["id"]))
-    ).scalar_one()
+    db_task = (await db.execute(select(Task).where(Task.id == task["id"]))).scalar_one()
     expected = max(
         0.0,
         round((db_task.updated_at - db_task.created_at).total_seconds() / 60, 2),
@@ -214,9 +206,7 @@ async def test_memory_similar_task_level_dedupe(
         async_client, token, "Quarterly report generation", long_description
     )
 
-    query_task = await create_task(
-        async_client, token, {"title": "Quarterly report generation"}
-    )
+    query_task = await create_task(async_client, token, {"title": "Quarterly report generation"})
     response = await async_client.post(
         f"/api/v1/tasks/{query_task['id']}/memory/similar",
         headers={"Authorization": f"Bearer {token}"},

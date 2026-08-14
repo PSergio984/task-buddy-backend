@@ -28,7 +28,9 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
-@router.post("/plan", response_model=PlanResponse, responses={503: {"description": AI_NOT_CONFIGURED}})
+@router.post(
+    "/plan", response_model=PlanResponse, responses={503: {"description": AI_NOT_CONFIGURED}}
+)
 @limiter.limit(RATE_LIMIT_PLAN)
 async def plan(
     plan_in: PlanRequest,

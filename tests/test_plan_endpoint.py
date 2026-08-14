@@ -96,9 +96,7 @@ async def create_task_via_api(
 
 
 async def plan_row_count(db: AsyncSession) -> int:
-    return (
-        await db.execute(select(func.count()).select_from(PlanAnswer))
-    ).scalar_one()
+    return (await db.execute(select(func.count()).select_from(PlanAnswer))).scalar_one()
 
 
 def captured_prompt(fake_client: Any) -> dict[str, Any]:
@@ -302,9 +300,7 @@ async def test_plan_limit_caps_returned_tasks(
             },
             {
                 "period": "tomorrow",
-                "tasks": [
-                    {"task_id": tasks[2]["id"], "reason": "c", "effort_minutes": 10}
-                ],
+                "tasks": [{"task_id": tasks[2]["id"], "reason": "c", "effort_minutes": 10}],
             },
         ]
     }
@@ -666,9 +662,7 @@ async def test_plan_memory_hint_used_when_estimate_missing(
 
 
 @pytest.mark.anyio
-async def test_pool_builder_urgency_ordering_and_cap(
-    db: AsyncSession, mocker: Any
-) -> None:
+async def test_pool_builder_urgency_ordering_and_cap(db: AsyncSession, mocker: Any) -> None:
     user = User(username="pl_pool", email="pl_pool@example.com", password="x")
     db.add(user)
     await db.flush()

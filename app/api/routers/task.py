@@ -244,9 +244,7 @@ async def create_task(
 
     if task.due_date is None:
         # D-02/D-05: transient SOFT proposal — response-only, never persisted.
-        db_task.proposed_deadline = propose_deadline(
-            task.priority, task.estimated_effort_minutes
-        )
+        db_task.proposed_deadline = propose_deadline(task.priority, task.estimated_effort_minutes)
         db_task.deadline_type = DeadlineType.SOFT
 
     logger.info("POST / - created task id=%s", db_task.id)

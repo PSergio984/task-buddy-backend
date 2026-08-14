@@ -11,9 +11,7 @@ from app.planner.connector import (
 WED = date(2026, 8, 19)  # a Wednesday
 
 
-def mk_event(
-    title: str, start_h: int, start_m: int, end_h: int, end_m: int
-) -> CalendarEvent:
+def mk_event(title: str, start_h: int, start_m: int, end_h: int, end_m: int) -> CalendarEvent:
     return CalendarEvent(
         title=title,
         start=datetime.combine(WED, time(start_h, start_m), tzinfo=timezone.utc),
