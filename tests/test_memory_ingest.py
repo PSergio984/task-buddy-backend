@@ -10,6 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.knowledge.history import (
     backfill_history_corpus,
+    create_history_knowledge,
     ingest_history_task,
 )
 from app.models.knowledge import KnowledgeChunk, SourceType, TaskKnowledge
@@ -75,6 +76,36 @@ async def chunk_count_for_task(db: AsyncSession, task_id: int) -> int:
             )
         )
     ).scalar_one()
+
+
+@pytest.mark.anyio
+async def test_history_dedupe_guard_skips_existing_row(
+    db: AsyncSession, mocker: object
+) -> None:
+    user = User(username="hist_dedupe", email="hist_dedupe@example.com", password="x")
+    db.add(user)
+    await db.flush()
+
+    created = datetime(2026, 1, 1, 10, 0)
+    updated = created + timedelta(minutes=90)
+    task = Task(
+        title="Dedupe me",
+        completed=True,
+        created_at=created,
+        updated_at=updated,
+        user_id=user.id,
+    )
+    db.add(task)
+    await db.flush()
+
+    first = await create_history_knowledge(db, task)
+    second = await create_history_knowledge(db, task)
+
+    assert first is not None
+    assert first.source_type == SourceType.HISTORY
+    assert first.extra_metadata["duration_minutes"] == 90.0
+    assert second is None
+    assert await history_row_count(db, task.id) == 1
 
 
 @pytest.mark.anyio

@@ -16,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.routers import (
     audit,
     knowledge,
+    memory,
     notifications,
     project,
     realtime,
@@ -110,6 +111,7 @@ app.add_middleware(SlowAPIMiddleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(knowledge.router, prefix="/api/v1/tasks")
+app.include_router(memory.router, prefix="/api/v1/tasks")
 app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")
