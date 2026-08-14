@@ -56,6 +56,26 @@ def _ensure_aware(value: datetime) -> datetime:
     return value
 
 
+async def _fk_target_owned(
+    db: AsyncSession, entity: SyncEntity, merged: dict, user_id: int
+) -> bool:
+    """Merged foreign keys must point at the user's own rows (and exist).
+
+    Without this, a client could attach an owned task to another user's
+    project (or to a dangling id -> IntegrityError -> 500).
+    """
+    checks: list[tuple[type[Any], int]] = []
+    if entity == SyncEntity.TASK and merged.get("project_id") is not None:
+        checks.append((Project, merged["project_id"]))
+    elif entity == SyncEntity.SUBTASK and merged.get("task_id") is not None:
+        checks.append((Task, merged["task_id"]))
+    for model, fk_id in checks:
+        result = await db.execute(select(model).where(model.id == fk_id, model.user_id == user_id))
+        if result.scalar_one_or_none() is None:
+            return False
+    return True
+
+
 async def _merge_changes(
     db: AsyncSession, user_id: int, body: SyncRequest
 ) -> tuple[list[SyncAppliedItem], list[SyncConflictItem], list[SyncNotFoundItem], datetime | None]:
@@ -90,9 +110,20 @@ async def _merge_changes(
         if change.op == SyncOp.DELETE:
             await db.delete(row)
         else:
-            for key, value in merge_payload(
-                change.payload, MODEL_WHITELISTS[change.entity]
-            ).items():
+            merged = merge_payload(change.payload, MODEL_WHITELISTS[change.entity])
+            if not await _fk_target_owned(db, change.entity, merged, user_id):
+                # Reject the whole change (server state returned) rather than
+                # partially applying or crashing with an unhandled IntegrityError.
+                conflicts.append(
+                    SyncConflictItem(
+                        entity=change.entity,
+                        id=change.id,
+                        op=change.op,
+                        server_state=serialize_row(row),
+                    )
+                )
+                continue
+            for key, value in merged.items():
                 setattr(row, key, value)
             row.updated_at = change.client_updated_at
 
@@ -144,6 +175,12 @@ async def sync(
 
     One round trip: pushes the client's offline changes and returns every row
     the user changed after the client's high-water mark.
+
+    A `conflicts` entry means the change was NOT applied and `server_state`
+    is the current row, for two causes: the change is stale (server row is
+    newer — strict LWW) or it targets a foreign key the user doesn't own
+    (validity rejection). In both cases the client converges on server state;
+    there is no 409/manual-resolution UX.
     """
     applied, conflicts, not_found, high_water = await _merge_changes(db, current_user.id, body)
     delta = await _fetch_delta(db, current_user.id, high_water)

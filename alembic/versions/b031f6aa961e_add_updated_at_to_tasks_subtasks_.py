@@ -22,37 +22,20 @@ depends_on: Union[str, Sequence[str], None] = None
 
 def upgrade() -> None:
     """Upgrade schema."""
-    op.add_column(
-        "tbl_tasks",
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "tbl_subtasks",
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-    )
-    op.add_column(
-        "tbl_projects",
-        sa.Column(
-            "updated_at",
-            sa.DateTime(timezone=True),
-            server_default=sa.text("(CURRENT_TIMESTAMP)"),
-            nullable=False,
-        ),
-    )
+    for table in ("tbl_tasks", "tbl_subtasks", "tbl_projects"):
+        with op.batch_alter_table(table) as batch_op:
+            batch_op.add_column(
+                sa.Column(
+                    "updated_at",
+                    sa.DateTime(timezone=True),
+                    server_default=sa.text("(CURRENT_TIMESTAMP)"),
+                    nullable=False,
+                )
+            )
 
 
 def downgrade() -> None:
     """Downgrade schema."""
-    op.drop_column("tbl_projects", "updated_at")
-    op.drop_column("tbl_subtasks", "updated_at")
-    op.drop_column("tbl_tasks", "updated_at")
+    for table in ("tbl_projects", "tbl_subtasks", "tbl_tasks"):
+        with op.batch_alter_table(table) as batch_op:
+            batch_op.drop_column("updated_at")

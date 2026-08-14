@@ -1,29 +1,12 @@
 """Schema contract tests for Phase 5 sync: updated_at on tasks/subtasks/projects."""
 
 from datetime import datetime
-from typing import Any, cast
 
-from httpx import AsyncClient
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.project import Project
 from app.models.task import SubTask, Task
-
-
-async def create_task(client: AsyncClient, token: str, body: dict[str, Any]) -> dict[str, Any]:
-    response = await client.post(
-        "/api/v1/tasks/", json=body, headers={"Authorization": f"Bearer {token}"}
-    )
-    return cast(dict[str, Any], response.json())
-
-
-async def create_subtask(client: AsyncClient, token: str, task_id: int) -> dict[str, Any]:
-    response = await client.post(
-        "/api/v1/tasks/subtask",
-        json={"title": "Child", "task_id": task_id},
-        headers={"Authorization": f"Bearer {token}"},
-    )
-    return cast(dict[str, Any], response.json())
+from tests.sync_helpers import create_subtask, create_task
 
 
 async def test_task_updated_at_server_default(async_client, logged_in_token) -> None:
