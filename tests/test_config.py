@@ -47,3 +47,33 @@ def test_knowledge_feedback_rate_limit_matches_spec():
 
     assert TestConfig().RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
     assert RATE_LIMIT_KNOWLEDGE_FEEDBACK == "30/minute"
+
+
+def test_rate_limit_plan_matches_spec():
+    """RATE_LIMIT_PLAN is 10/minute in TestConfig AND re-export."""
+    from app.config import RATE_LIMIT_PLAN, TestConfig
+
+    assert TestConfig().RATE_LIMIT_PLAN == "10/minute"
+    assert RATE_LIMIT_PLAN == "10/minute"
+
+
+def test_synthetic_calendar_enabled_default_true():
+    from app.config import SYNTHETIC_CALENDAR_ENABLED
+
+    assert SYNTHETIC_CALENDAR_ENABLED is True
+
+
+def test_planner_working_window_defaults():
+    from app.config import (
+        PLANNER_WORKING_WINDOW_END_HOUR,
+        PLANNER_WORKING_WINDOW_START_HOUR,
+    )
+
+    assert PLANNER_WORKING_WINDOW_START_HOUR == 18
+    assert PLANNER_WORKING_WINDOW_END_HOUR == 22
+
+
+def test_planner_default_available_minutes():
+    from app.config import PLANNER_DEFAULT_AVAILABLE_MINUTES
+
+    assert PLANNER_DEFAULT_AVAILABLE_MINUTES == 120
