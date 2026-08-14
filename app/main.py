@@ -33,6 +33,10 @@ from app.middleware.idempotency import IdempotencyMiddleware
 
 logger = logging.getLogger(__name__)
 
+# Keep a reference to the detached sweep task so it is never garbage-collected
+# mid-execution (asyncio.create_task discards are a documented GC hazard).
+_background_tasks: set[asyncio.Task[None]] = set()
+
 if config.SENTRY_DSN:
     sentry_sdk.init(
         dsn=config.SENTRY_DSN,
@@ -62,9 +66,11 @@ async def lifespan(app: FastAPI):
         except Exception as exc:
             logger.warning("embedder pre-warm failed: %s", exc)
     try:
-        from app.knowledge.history import _history_backfill_sweep
+        from app.knowledge.history import history_backfill_sweep
 
-        asyncio.create_task(_history_backfill_sweep())
+        sweep_task = asyncio.create_task(history_backfill_sweep())
+        _background_tasks.add(sweep_task)
+        sweep_task.add_done_callback(_background_tasks.discard)
     except Exception:
         logger.exception("history backfill sweep failed to start")
     yield

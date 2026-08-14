@@ -392,3 +392,32 @@ async def test_ingest_history_task_callable(
 
     assert await history_row_count(db, task.id) == 1
     assert await chunk_count_for_task(db, task.id) >= 1
+
+
+@pytest.mark.anyio
+async def test_ingest_history_task_skips_uncompleted_task(
+    db: AsyncSession, mocker: object
+) -> None:
+    """D-11 race: an un-complete landing before the callable runs must not
+    create a stale history row (the D-07 guard would otherwise swallow a
+    later re-complete)."""
+    user = User(username="hist_race", email="hist_race@example.com", password="x")
+    db.add(user)
+    await db.flush()
+
+    created = datetime(2026, 1, 1, 10, 0)
+    updated = created + timedelta(minutes=20)
+    task = Task(
+        title="Racy task",
+        completed=False,  # un-completed before the background task executes
+        created_at=created,
+        updated_at=updated,
+        user_id=user.id,
+    )
+    db.add(task)
+    await db.commit()
+
+    await ingest_history_task(task.id, task.user_id)
+
+    assert await history_row_count(db, task.id) == 0
+    assert await chunk_count_for_task(db, task.id) == 0

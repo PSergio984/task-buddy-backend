@@ -8,10 +8,12 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routers.task import TASK_NOT_FOUND
 from app.config import RATE_LIMIT_MEMORY_SIMILAR
 from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
+from app.knowledge.history import build_history_content
 from app.knowledge.records import LLMCallRecord, citation_text, normalize_citations
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
@@ -21,7 +23,6 @@ from app.schemas.memory import MemorySimilarResponse, SimilarTaskRow
 from app.security import get_confirmed_user
 
 ROUTER_TAG = "memory"
-TASK_NOT_FOUND = "Task not found"
 TOP_K = 5
 SEARCH_LIMIT = 25
 
@@ -56,7 +57,9 @@ async def similar_memory_tasks(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    query = f"{db_task.title} {db_task.description or ''}".strip()
+    # Same join the corpus indexes with (build_history_content) so the query
+    # text mirrors the indexed text (D-08).
+    query = build_history_content(db_task.title, db_task.description)
 
     start = time.monotonic()
     chunks = await UserKnowledgeIndex().search(db, current_user.id, query, limit=SEARCH_LIMIT)
@@ -66,13 +69,7 @@ async def similar_memory_tasks(
     if chunks:
         chunk_ids = [c["chunk_id"] for c in chunks]
         result = await db.execute(
-            select(
-                KnowledgeChunk.id,
-                TaskKnowledge.id,
-                TaskKnowledge.title,
-                TaskKnowledge.extra_metadata,
-                TaskKnowledge.task_id,
-            )
+            select(KnowledgeChunk.id, TaskKnowledge)
             .join(TaskKnowledge, KnowledgeChunk.knowledge_id == TaskKnowledge.id)
             .where(
                 KnowledgeChunk.id.in_(chunk_ids),
@@ -80,29 +77,27 @@ async def similar_memory_tasks(
                 TaskKnowledge.user_id == current_user.id,
             )
         )
-        history_by_chunk: dict[int, tuple[int, str | None, dict | None, int]] = {}
+        history_by_chunk: dict[int, TaskKnowledge] = {}
         for row in result.all():
-            # (knowledge_id, title, extra_metadata, task_id) keyed by chunk_id
-            history_by_chunk[row[0]] = (row[1], row[2], row[3], row[4])
+            history_by_chunk[row[0]] = row[1]
 
         seen_task_ids: set[int] = set()
         for chunk in chunks:
-            joined = history_by_chunk.get(chunk["chunk_id"])
-            if joined is None:
+            knowledge = history_by_chunk.get(chunk["chunk_id"])
+            if knowledge is None:
                 continue  # stale in-memory index entry — drop, never 5xx
-            (_knowledge_id, title, extra_metadata, task_id_of_row) = joined
-            if task_id_of_row == task_id:
+            if knowledge.task_id == task_id:
                 continue  # exclude the query task itself
-            if task_id_of_row in seen_task_ids:
+            if knowledge.task_id in seen_task_ids:
                 continue  # task-level dedupe: keep best rrf_score (search order)
-            seen_task_ids.add(task_id_of_row)
+            seen_task_ids.add(knowledge.task_id)
             deduped.append(
                 {
-                    "task_id": task_id_of_row,
-                    "knowledge_id": _knowledge_id,
-                    "title": title or "",
+                    "task_id": knowledge.task_id,
+                    "knowledge_id": knowledge.id,
+                    "title": knowledge.title or "",
                     "duration_minutes": float(
-                        (extra_metadata or {}).get("duration_minutes", 0) or 0
+                        (knowledge.extra_metadata or {}).get("duration_minutes", 0) or 0
                     ),
                     "rrf_score": chunk["rrf_score"],
                     "chunk_text": citation_text(chunk),

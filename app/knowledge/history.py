@@ -38,8 +38,9 @@ def build_history_content(title: str, description: str | None) -> str:
 async def create_history_knowledge(
     db: AsyncSession, task: Task
 ) -> Optional[TaskKnowledge]:
-    """Ingest a completed task into the history corpus (D-07 guard first).
+    """Build and ingest a completed task's history row (D-07 guard first).
 
+    Flush-not-commit (repo convention): the caller owns the transaction.
     Returns None when a history row already exists for the task (dedupe) or
     when ingest fails (whole operation rolls back — a row without chunks would
     be a silent retrieval gap; the startup sweep self-heals, D-06).
@@ -60,7 +61,6 @@ async def create_history_knowledge(
     await db.flush()
     try:
         await ingest_knowledge(db, row)
-        await db.commit()
     except Exception as exc:
         await db.rollback()
         logger.warning("history ingest failed for task=%s: %s", task.id, exc)
@@ -93,8 +93,14 @@ async def ingest_history_task(task_id: int, user_id: int) -> None:
     try:
         async with AsyncSessionLocal() as session:
             task = await task_crud.get_task(session, task_id=task_id, user_id=user_id)
-            if task:
-                await create_history_knowledge(session, task)
+            if task and task.completed:
+                # Re-check completed: an un-complete landing between the hook
+                # and this callable's execution must not create a stale row
+                # (D-11 corpus purity). The D-07 guard would otherwise swallow
+                # a later re-complete.
+                row = await create_history_knowledge(session, task)
+                if row is not None:
+                    await session.commit()
     except Exception:
         logger.exception(
             "history ingest background task failed for task=%s user=%s",
@@ -121,12 +127,15 @@ async def backfill_history_corpus(db: AsyncSession) -> int:
             continue
         row = await create_history_knowledge(db, task)
         if row is not None:
+            # Per-task commit: one failing task rolls back only itself
+            # (create_history_knowledge) and never the sweep's earlier wins.
+            await db.commit()
             count += 1
     logger.info("history backfill: %s/%s tasks ingested", count, len(tasks))
     return count
 
 
-async def _history_backfill_sweep() -> None:
+async def history_backfill_sweep() -> None:
     """Detached startup sweep with its own session (D-06)."""
     from app.database import AsyncSessionLocal
 
