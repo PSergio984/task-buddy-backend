@@ -9,6 +9,7 @@ import logging
 from datetime import datetime
 from typing import Optional
 
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud.knowledge import get_history_knowledge_for_task
@@ -111,14 +112,10 @@ async def ingest_history_task(task_id: int, user_id: int) -> None:
 
 async def backfill_history_corpus(db: AsyncSession) -> int:
     """Ingest every completed task lacking a history row (D-06, idempotent)."""
-    from sqlalchemy import select
-
-    from app.models.task import Task as TaskModel
-
     result = await db.execute(
-        select(TaskModel)
-        .where(TaskModel.completed.is_(True))
-        .order_by(TaskModel.id)
+        select(Task)
+        .where(Task.completed.is_(True))
+        .order_by(Task.id)
     )
     tasks = result.scalars().all()
     count = 0

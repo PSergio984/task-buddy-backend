@@ -78,8 +78,8 @@ async def similar_memory_tasks(
             )
         )
         history_by_chunk: dict[int, TaskKnowledge] = {}
-        for row in result.all():
-            history_by_chunk[row[0]] = row[1]
+        for chunk_id, knowledge in result.all():
+            history_by_chunk[chunk_id] = knowledge
 
         seen_task_ids: set[int] = set()
         for chunk in chunks:
