@@ -7,6 +7,7 @@ import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
 from app.config import RATE_LIMIT_PLAN, SYNTHETIC_CALENDAR_ENABLED
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError
@@ -18,8 +19,6 @@ from app.schemas.plan import PlanRequest, PlanResponse
 from app.security import get_confirmed_user
 
 ROUTER_TAG = "plan"
-AI_NOT_CONFIGURED = "AI assistant not configured"
-AI_UNAVAILABLE = "AI assistant unavailable"
 
 router = APIRouter(
     tags=[ROUTER_TAG],

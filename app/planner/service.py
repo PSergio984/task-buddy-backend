@@ -9,8 +9,9 @@ import asyncio
 import json
 import logging
 import time
+from dataclasses import dataclass
 from datetime import date
-from typing import Any, Literal, Optional
+from typing import Literal, Optional
 
 from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -30,7 +31,13 @@ from app.knowledge.retrieval import UserKnowledgeIndex
 from app.models.knowledge import KnowledgeChunk, SourceType, TaskKnowledge
 from app.models.task import Task, TaskPriority
 from app.planner.connector import CalendarConnector, available_minutes
-from app.schemas.plan import PlanBucket, PlanResponse, PlanTaskRow, PlanVerdict
+from app.schemas.plan import (
+    PlanBucket,
+    PlanResponse,
+    PlanTaskInput,
+    PlanTaskRow,
+    PlanVerdict,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -162,21 +169,6 @@ async def _persist_guarded(
         return None
 
 
-async def _zeroed_rule_record(elapsed: float) -> LLMCallRecord:
-    """A zeroed instrumentation record for the D-08 short-circuits."""
-    return LLMCallRecord(
-        model="rule",
-        prompt="",
-        instructions="",
-        answer="",
-        prompt_tokens=0,
-        completion_tokens=0,
-        total_tokens=0,
-        response_time=elapsed,
-        cost=0,
-    )
-
-
 async def _short_circuit(
     db: AsyncSession,
     user_id: int,
@@ -186,7 +178,7 @@ async def _short_circuit(
     minutes: int,
 ) -> PlanResponse:
     """D-08: 200 empty buckets + reason, zeroed row, no LLM call."""
-    record = await _zeroed_rule_record(elapsed)
+    record = LLMCallRecord.zeroed(model="rule", response_time=elapsed)
     plan_id = await _persist_guarded(db, user_id, "", record, pool_size, minutes)
     return PlanResponse(
         buckets=[],
@@ -197,31 +189,6 @@ async def _short_circuit(
         pool_size=pool_size,
         available_minutes=minutes,
     )
-
-
-async def _build_rows(
-    db: AsyncSession, user_id: int, pool: list[Task]
-) -> list[dict[str, Any]]:
-    """Pool rows for the LLM prompt: estimates + Memory hints (D-01)."""
-    hint_tasks = [t for t in pool if t.estimated_effort_minutes is None][:HINT_LIMIT]
-    hint_by_task: dict[int, Optional[int]] = {}
-    for task in hint_tasks:
-        hint_by_task[task.id] = await resolve_effort_minutes(db, user_id, task)
-
-    rows: list[dict[str, Any]] = []
-    for task in pool:
-        rows.append(
-            {
-                "task_id": task.id,
-                "title": task.title,
-                "description": task.description,
-                "due_date": task.due_date.isoformat() if task.due_date else None,
-                "priority": task.priority.value,
-                "estimated_effort_minutes": task.estimated_effort_minutes,
-                "memory_hint_minutes": hint_by_task.get(task.id),
-            }
-        )
-    return rows
 
 
 def _truncate_buckets(
@@ -264,18 +231,50 @@ def _whitelist_verdict(
     return buckets
 
 
+async def _build_rows(
+    db: AsyncSession, user_id: int, pool: list[Task]
+) -> list[PlanTaskInput]:
+    """Pool rows for the LLM prompt: estimates + Memory hints (D-01)."""
+    hint_tasks = [t for t in pool if t.estimated_effort_minutes is None][:HINT_LIMIT]
+    hint_by_task: dict[int, Optional[int]] = {}
+    for task in hint_tasks:
+        hint_by_task[task.id] = await resolve_effort_minutes(db, user_id, task)
+
+    rows: list[PlanTaskInput] = []
+    for task in pool:
+        rows.append(
+            PlanTaskInput(
+                task_id=task.id,
+                title=task.title,
+                description=task.description,
+                due_date=task.due_date.isoformat() if task.due_date else None,
+                priority=task.priority.value,
+                estimated_effort_minutes=task.estimated_effort_minutes,
+                memory_hint_minutes=hint_by_task.get(task.id),
+            )
+        )
+    return rows
+
+
+@dataclass
+class _LLMPlanResult:
+    """Outcome of one plan LLM call (parse-degraded or not)."""
+
+    buckets: list[PlanBucket]
+    reason: Optional[str]
+    record: LLMCallRecord
+    answer_text: str
+
+
 async def _llm_plan(
-    db: AsyncSession,
-    user_id: int,
     pool: list[Task],
-    rows: list[dict[str, Any]],
+    rows: list[PlanTaskInput],
     minutes: int,
     limit: Optional[int],
-    start: float,
-) -> tuple[list[PlanBucket], Optional[str], LLMCallRecord, str]:
+) -> _LLMPlanResult:
     """One structured LLM call: parse-with-degrade, whitelist, dedupe, cap."""
     payload = {
-        "tasks": rows,
+        "tasks": [row.model_dump() for row in rows],
         "available_minutes": minutes,
         "today": date.today().isoformat(),
     }
@@ -318,7 +317,7 @@ async def _llm_plan(
         verdict = PlanVerdict(buckets=[])
 
     buckets = _whitelist_verdict(verdict, {t.id for t in pool}, limit)
-    return buckets, reason, record, answer_text
+    return _LLMPlanResult(buckets=buckets, reason=reason, record=record, answer_text=answer_text)
 
 
 async def create_plan(
@@ -350,23 +349,21 @@ async def create_plan(
         )
 
     rows = await _build_rows(db, user_id, pool)
-    buckets, reason, record, answer_text = await _llm_plan(
-        db, user_id, pool, rows, minutes, limit, start
-    )
+    result = await _llm_plan(pool, rows, minutes, limit)
 
     plan_id = await _persist_guarded(
-        db, user_id, answer_text, record, pool_size, minutes
+        db, user_id, result.answer_text, result.record, pool_size, minutes
     )
 
     return PlanResponse(
-        buckets=buckets,
-        reason=reason,
+        buckets=result.buckets,
+        reason=result.reason,
         plan_id=plan_id,
-        model=record.model,
-        prompt_tokens=record.prompt_tokens,
-        completion_tokens=record.completion_tokens,
-        total_tokens=record.total_tokens,
-        cost_usd=float(record.cost),
+        model=result.record.model,
+        prompt_tokens=result.record.prompt_tokens,
+        completion_tokens=result.record.completion_tokens,
+        total_tokens=result.record.total_tokens,
+        cost_usd=float(result.record.cost),
         response_time_ms=round((time.monotonic() - start) * 1000, 2),
         pool_size=pool_size,
         available_minutes=minutes,

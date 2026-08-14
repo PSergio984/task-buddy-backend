@@ -76,15 +76,17 @@ class Task(AsyncAttrs, Base):
     )
 
     # Transient (D-02): soft-deadline proposal — response-only, never
-    # persisted. Backed by __dict__ so SQLAlchemy never maps it to a column
-    # and instance assignment is legal for both mypy and ruff.
+    # persisted. Unannotated so SQLAlchemy never maps it to a column; the
+    # property exposes it for pydantic from_attributes.
+    _proposed_deadline = None
+
     @property
     def proposed_deadline(self) -> datetime | None:
-        return self.__dict__.get("_proposed_deadline")
+        return self._proposed_deadline
 
     @proposed_deadline.setter
     def proposed_deadline(self, value: datetime | None) -> None:
-        self.__dict__["_proposed_deadline"] = value
+        self._proposed_deadline = value
 
     # Relationships
     user: Mapped[User] = relationship(back_populates="tasks")

@@ -76,13 +76,19 @@ def available_minutes(
         if event.start >= event.end:
             logger.warning("skipping malformed calendar event: %s", event.title)
             continue
-        start_ts = event.start.timestamp()
-        end_ts = event.end.timestamp()
+        start_dt = event.start
+        end_dt = event.end
+        if start_dt.tzinfo is None or end_dt.tzinfo is None:
+            # A future real connector may deliver naive datetimes; assume UTC.
+            start_dt = start_dt.replace(tzinfo=timezone.utc)
+            end_dt = end_dt.replace(tzinfo=timezone.utc)
+        start_ts = start_dt.timestamp()
+        end_ts = end_dt.timestamp()
         window_start = datetime.combine(
-            event.start.date(), time(start_hour), tzinfo=event.start.tzinfo
+            start_dt.date(), time(start_hour), tzinfo=start_dt.tzinfo
         ).timestamp()
         window_end = datetime.combine(
-            event.start.date(), time(end_hour), tzinfo=event.start.tzinfo
+            start_dt.date(), time(end_hour), tzinfo=start_dt.tzinfo
         ).timestamp()
         clipped_start = max(start_ts, window_start)
         clipped_end = min(end_ts, window_end)

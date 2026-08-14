@@ -20,6 +20,18 @@ class PlanTaskRow(BaseModel):
     effort_minutes: Optional[int] = None
 
 
+class PlanTaskInput(BaseModel):
+    """One pool task as presented to the LLM (estimate + Memory hint, D-01)."""
+
+    task_id: int
+    title: str
+    description: Optional[str] = None
+    due_date: Optional[str] = None
+    priority: str
+    estimated_effort_minutes: Optional[int] = None
+    memory_hint_minutes: Optional[int] = None
+
+
 class PlanBucket(BaseModel):
     """One time period of the plan."""
 

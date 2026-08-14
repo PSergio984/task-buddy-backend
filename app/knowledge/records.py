@@ -29,6 +29,21 @@ class LLMCallRecord:
     cost: float
     timestamp: datetime = field(default_factory=datetime.now)
 
+    @classmethod
+    def zeroed(cls, model: str, response_time: float = 0.0) -> "LLMCallRecord":
+        """A no-LLM record (short-circuits, rule paths): zero tokens and cost."""
+        return cls(
+            model=model,
+            prompt="",
+            instructions="",
+            answer="",
+            prompt_tokens=0,
+            completion_tokens=0,
+            total_tokens=0,
+            response_time=response_time,
+            cost=0,
+        )
+
 
 def citation_text(chunk: dict[str, Any]) -> str:
     """Canonical chunk text extraction: ``chunk_text`` then ``text``.
