@@ -4,7 +4,7 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Boolean, Column, DateTime, ForeignKey, String, Table, func
+from sqlalchemy import Boolean, Column, DateTime, ForeignKey, Integer, String, Table, func
 from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.ext.asyncio import AsyncAttrs
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -23,6 +23,17 @@ class TaskPriority(str, enum.Enum):
     LOW = "LOW"
     MEDIUM = "MEDIUM"
     HIGH = "HIGH"
+
+
+class DeadlineType(str, enum.Enum):
+    """Deadline kind: soft (auto-proposed) or hard (user-set).
+
+    Wire format uses values ("soft"/"hard"), not member names — the migration
+    enum and API wire format both use values (SourceType precedent).
+    """
+
+    SOFT = "soft"
+    HARD = "hard"
 
 
 # Association table for Task <-> Tag
@@ -52,6 +63,13 @@ class Task(AsyncAttrs, Base):
         SQLEnum(TaskPriority), default=TaskPriority.MEDIUM, nullable=False
     )
     due_date: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    estimated_effort_minutes: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    deadline_type: Mapped[DeadlineType | None] = mapped_column(
+        SQLEnum(
+            DeadlineType, values_callable=lambda members: [m.value for m in members]
+        ),
+        nullable=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

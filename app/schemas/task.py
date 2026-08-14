@@ -3,7 +3,7 @@ from typing import Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
-from app.models.task import TaskPriority
+from app.models.task import DeadlineType, TaskPriority
 from app.schemas.tag import TagResponse
 
 
@@ -19,6 +19,7 @@ class TaskCreateRequest(BaseModel):
     title: str = Field(..., min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=2000)
     due_date: Optional[datetime] = None
+    estimated_effort_minutes: Optional[int] = Field(None, ge=1, le=10080)
     completed: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
     project_id: Optional[int] = None
@@ -60,6 +61,8 @@ class TaskCreateResponse(BaseModel):
     title: str
     description: Optional[str] = None
     due_date: Optional[datetime] = None
+    proposed_deadline: Optional[datetime] = None
+    deadline_type: Optional[str] = None
     completed: bool = False
     priority: TaskPriority
     project_id: Optional[int] = None
@@ -82,6 +85,7 @@ class TaskUpdateRequest(BaseModel):
     title: Optional[str] = Field(None, min_length=1, max_length=100)
     description: Optional[str] = Field(None, max_length=2000)
     due_date: Optional[datetime] = None
+    deadline_type: Optional[DeadlineType] = None
     completed: Optional[bool] = None
     priority: Optional[TaskPriority] = None
     project_id: Optional[int] = None
