@@ -119,13 +119,21 @@ async def test_create_task_expired_token(
 async def test_get_all_tasks(
     async_client: AsyncClient, created_task: dict[str, Any], logged_in_token: str
 ) -> None:
-    """Verify a user can list their tasks."""
+    """Verify a user can list their tasks.
+
+    The create response carries a transient soft-deadline proposal (D-02);
+    the DB row never persists it, so list responses show the proposal fields
+    as None. Asserting that normalization proves "propose, never auto-apply".
+    """
     response = await async_client.get(
         "/api/v1/tasks/", headers={"Authorization": f"Bearer {logged_in_token}"}
     )
 
     assert response.status_code == 200
-    assert response.json() == [created_task]
+    expected = dict(created_task)
+    expected["proposed_deadline"] = None
+    expected["deadline_type"] = None
+    assert response.json() == [expected]
 
 
 @pytest.mark.anyio
@@ -189,13 +197,19 @@ async def test_get_task_with_subtasks(
     created_subtask: dict[str, Any],
     logged_in_token: str,
 ) -> None:
-    """Verify a task response includes its subtasks."""
+    """Verify a task response includes its subtasks.
+
+    Same transient-proposal normalization as test_get_all_tasks (D-02:
+    proposals are create-response-only, never persisted).
+    """
     response = await async_client.get(
         f"/api/v1/tasks/{created_task['id']}/subtasks",
         headers={"Authorization": f"Bearer {logged_in_token}"},
     )
 
     expected_task = created_task.copy()
+    expected_task["proposed_deadline"] = None
+    expected_task["deadline_type"] = None
     expected_task["subtasks"] = [created_subtask]
 
     assert response.json() == {

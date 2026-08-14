@@ -31,8 +31,9 @@ from app.knowledge.history import delete_history_knowledge, ingest_history_task
 from app.libs.cache import get_cache_key, get_cached_data, set_cached_data
 from app.limiter import limiter
 from app.models.tag import Tag
-from app.models.task import SubTask, Task
+from app.models.task import DeadlineType, SubTask, Task
 from app.models.user import User
+from app.planner.deadline import propose_deadline
 from app.schemas.tag import TagCreate, TagResponse, TagUpdate
 from app.schemas.task import (
     SubTaskCreateRequest,
@@ -228,6 +229,8 @@ async def create_task(
 
     try:
         db_task: Task = await task_crud.create_task(db, user_id=current_user.id, task_in=task)
+        if task.due_date is not None:
+            db_task.deadline_type = DeadlineType.HARD
         await db.commit()
         await db.refresh(db_task)
     except IntegrityError as e:
@@ -238,6 +241,13 @@ async def create_task(
     # Ensure tags and subtasks are loaded for serialization
     await db_task.awaitable_attrs.tags
     await db_task.awaitable_attrs.subtasks
+
+    if task.due_date is None:
+        # D-02/D-05: transient SOFT proposal — response-only, never persisted.
+        db_task.proposed_deadline = propose_deadline(
+            task.priority, task.estimated_effort_minutes
+        )
+        db_task.deadline_type = DeadlineType.SOFT
 
     logger.info("POST / - created task id=%s", db_task.id)
 
