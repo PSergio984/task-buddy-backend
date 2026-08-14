@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Request, Response
-from sqlalchemy import select
+from sqlalchemy import CursorResult, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_SYNC
@@ -25,7 +25,7 @@ from app.schemas.sync import (
     SyncResponse,
 )
 from app.security import get_confirmed_user
-from app.sync.lww import MODEL_WHITELISTS, decide_apply, merge_payload, serialize_row
+from app.sync.lww import MODEL_WHITELISTS, merge_payload, serialize_row
 
 ROUTER_TAG = "sync"
 
@@ -76,10 +76,22 @@ async def _fk_target_owned(
     return True
 
 
+async def _load_row(db: AsyncSession, model: type[Any], row_id: int, user_id: int):
+    """Load a single owned row, or None."""
+    result = await db.execute(select(model).where(model.id == row_id, model.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
 async def _merge_changes(
     db: AsyncSession, user_id: int, body: SyncRequest
 ) -> tuple[list[SyncAppliedItem], list[SyncConflictItem], list[SyncNotFoundItem], datetime | None]:
-    """Apply each change under strict LWW; return results and the new high-water."""
+    """Apply each change under strict LWW; return results and the new high-water.
+
+    The LWW decision and the write are one atomic conditional UPDATE/DELETE
+    (``updated_at < client_updated_at``), so two concurrent syncs can never
+    interleave a check-then-write race; the rowcount-0 outcome (stale change)
+    is reported as a conflict carrying the current server state.
+    """
     applied: list[SyncAppliedItem] = []
     conflicts: list[SyncConflictItem] = []
     not_found: list[SyncNotFoundItem] = []
@@ -87,54 +99,93 @@ async def _merge_changes(
 
     for change in body.changes:
         model = _ENTITY_MODELS[change.entity]
-        result = await db.execute(
-            select(model).where(model.id == change.id, model.user_id == user_id)
-        )
-        row = result.scalar_one_or_none()
-        if row is None:
-            not_found.append(SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op))
-            continue
 
-        server_ts = _ensure_aware(row.updated_at)
-        if not decide_apply(change.client_updated_at, server_ts):
-            conflicts.append(
-                SyncConflictItem(
+        if change.op == SyncOp.DELETE:
+            delete_result: CursorResult = await db.execute(  # type: ignore[assignment]
+                delete(model).where(
+                    model.id == change.id,
+                    model.user_id == user_id,
+                    model.updated_at < change.client_updated_at,
+                )
+            )
+            if delete_result.rowcount == 0:
+                row = await _load_row(db, model, change.id, user_id)
+                if row is None:
+                    not_found.append(
+                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
+                    )
+                else:
+                    conflicts.append(
+                        SyncConflictItem(
+                            entity=change.entity,
+                            id=change.id,
+                            op=change.op,
+                            server_state=serialize_row(row),
+                        )
+                    )
+                continue
+            applied.append(
+                SyncAppliedItem(
                     entity=change.entity,
                     id=change.id,
                     op=change.op,
-                    server_state=serialize_row(row),
+                    server_updated_at=change.client_updated_at,
                 )
             )
-            continue
-
-        if change.op == SyncOp.DELETE:
-            await db.delete(row)
         else:
             merged = merge_payload(change.payload, MODEL_WHITELISTS[change.entity])
             if not await _fk_target_owned(db, change.entity, merged, user_id):
                 # Reject the whole change (server state returned) rather than
                 # partially applying or crashing with an unhandled IntegrityError.
-                conflicts.append(
-                    SyncConflictItem(
-                        entity=change.entity,
-                        id=change.id,
-                        op=change.op,
-                        server_state=serialize_row(row),
+                row = await _load_row(db, model, change.id, user_id)
+                if row is None:
+                    not_found.append(
+                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
                     )
-                )
+                else:
+                    conflicts.append(
+                        SyncConflictItem(
+                            entity=change.entity,
+                            id=change.id,
+                            op=change.op,
+                            server_state=serialize_row(row),
+                        )
+                    )
                 continue
-            for key, value in merged.items():
-                setattr(row, key, value)
-            row.updated_at = change.client_updated_at
-
-        applied.append(
-            SyncAppliedItem(
-                entity=change.entity,
-                id=change.id,
-                op=change.op,
-                server_updated_at=change.client_updated_at,
+            update_result: CursorResult = await db.execute(  # type: ignore[assignment]
+                update(model)
+                .where(
+                    model.id == change.id,
+                    model.user_id == user_id,
+                    model.updated_at < change.client_updated_at,
+                )
+                .values(**merged, updated_at=change.client_updated_at)
             )
-        )
+            if update_result.rowcount == 0:
+                row = await _load_row(db, model, change.id, user_id)
+                if row is None:
+                    not_found.append(
+                        SyncNotFoundItem(entity=change.entity, id=change.id, op=change.op)
+                    )
+                else:
+                    conflicts.append(
+                        SyncConflictItem(
+                            entity=change.entity,
+                            id=change.id,
+                            op=change.op,
+                            server_state=serialize_row(row),
+                        )
+                    )
+                continue
+            applied.append(
+                SyncAppliedItem(
+                    entity=change.entity,
+                    id=change.id,
+                    op=change.op,
+                    server_updated_at=change.client_updated_at,
+                )
+            )
+
         if high_water is None or change.client_updated_at > high_water:
             high_water = change.client_updated_at
 
@@ -178,7 +229,7 @@ async def sync(
 
     A `conflicts` entry means the change was NOT applied and `server_state`
     is the current row, for two causes: the change is stale (server row is
-    newer — strict LWW) or it targets a foreign key the user doesn't own
+    newer â€” strict LWW) or it targets a foreign key the user doesn't own
     (validity rejection). In both cases the client converges on server state;
     there is no 409/manual-resolution UX.
     """

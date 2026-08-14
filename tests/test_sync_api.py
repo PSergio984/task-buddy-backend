@@ -372,6 +372,8 @@ async def test_sync_fk_target_must_be_owned(
     )
     assert result2["applied"] == []
     assert len(result2["conflicts"]) == 1
+    response = await async_client.get(f"/api/v1/tasks/{task['id']}", headers=auth(token1))
+    assert response.json()["project_id"] is None
 
     # 3. Subtask task_id pointing at another user's task -> rejected.
     subtask_resp = await async_client.post(
