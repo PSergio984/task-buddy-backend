@@ -12,6 +12,7 @@ from app.models.knowledge import (
     JudgeVerdict,
     KnowledgeAnswer,
     KnowledgeFeedback,
+    SourceType,
     TaskKnowledge,
 )
 from app.schemas.enums import AuditAction
@@ -23,6 +24,19 @@ async def get_knowledge(
 ) -> Optional[TaskKnowledge]:
     query = select(TaskKnowledge).where(
         TaskKnowledge.id == knowledge_id, TaskKnowledge.user_id == user_id
+    )
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def get_history_knowledge_for_task(
+    db: AsyncSession, task_id: int, user_id: int
+) -> Optional[TaskKnowledge]:
+    """Fetch the history corpus row for a task (D-07 dedupe guard query)."""
+    query = select(TaskKnowledge).where(
+        TaskKnowledge.task_id == task_id,
+        TaskKnowledge.source_type == SourceType.HISTORY,
+        TaskKnowledge.user_id == user_id,
     )
     result = await db.execute(query)
     return result.scalar_one_or_none()

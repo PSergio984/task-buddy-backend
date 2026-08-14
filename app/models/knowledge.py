@@ -24,6 +24,7 @@ class SourceType(str, enum.Enum):
     NOTE = "note"
     FILE = "file"
     URL = "url"
+    HISTORY = "history"
 
 
 class JudgeVerdict(str, enum.Enum):
