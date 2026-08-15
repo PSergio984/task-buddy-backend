@@ -4,10 +4,12 @@ import logging
 import time
 from typing import Annotated, Any
 
+import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
 from app.api.routers.task import TASK_NOT_FOUND
 from app.config import RATE_LIMIT_MEMORY_SIMILAR
 from app.crud import knowledge as knowledge_crud
@@ -37,10 +39,29 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
+async def _search_user_index(
+    db: AsyncSession, user_id: int, query: str, limit: int, task_id: int
+) -> list[dict[str, Any]]:
+    """Search the user's corpus, mapping AI-provider failures to 503s.
+
+    The embedding path raises RuntimeError when the OpenAI key is missing
+    (config-level) and openai.APIError when the key is set but the provider
+    fails (401/429/network) — both surface as 503 like ask/plan, never a 500.
+    """
+    try:
+        return await UserKnowledgeIndex().search(db, user_id, query, limit=limit)
+    except RuntimeError as exc:
+        logger.warning("memory similar not configured task=%s: %s", task_id, exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except openai.APIError as exc:
+        logger.warning("memory similar unavailable task=%s: %s", task_id, exc)
+        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+
+
 @router.post(
     "/{task_id}/memory/similar",
     response_model=MemorySimilarResponse,
-    responses={404: {"description": TASK_NOT_FOUND}},
+    responses={404: {"description": TASK_NOT_FOUND}, 503: {"description": AI_NOT_CONFIGURED}},
 )
 @limiter.limit(RATE_LIMIT_MEMORY_SIMILAR)
 async def similar_memory_tasks(
@@ -62,7 +83,7 @@ async def similar_memory_tasks(
     query = build_history_content(db_task.title, db_task.description)
 
     start = time.monotonic()
-    chunks = await UserKnowledgeIndex().search(db, current_user.id, query, limit=SEARCH_LIMIT)
+    chunks = await _search_user_index(db, current_user.id, query, SEARCH_LIMIT, task_id)
     response_time = time.monotonic() - start
 
     deduped: list[dict[str, Any]] = []

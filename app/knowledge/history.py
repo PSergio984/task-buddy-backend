@@ -130,18 +130,45 @@ async def delete_history_knowledge_task(task_id: int, user_id: int) -> None:
 
 
 async def backfill_history_corpus(db: AsyncSession) -> int:
-    """Ingest every completed task lacking a history row (D-06, idempotent)."""
-    result = await db.execute(select(Task).where(Task.completed.is_(True)).order_by(Task.id))
-    tasks = result.scalars().all()
+    """Ingest every completed task lacking a history row (D-06, idempotent).
+
+    Reads a scalar projection instead of session-registered ORM instances: a
+    failed ingest rolls back inside create_history_knowledge, which expires
+    every instance in the session's identity map — reading attributes from the
+    still-registered Task objects afterwards raises MissingGreenlet and aborts
+    the whole sweep (observed in prod: one missing OpenAI key left the corpus
+    permanently empty because every boot crashed identically). Scalars and the
+    per-row transient Task survive rollbacks untouched, so a failing task only
+    skips itself and the next boot retries.
+    """
+    result = await db.execute(
+        select(
+            Task.id,
+            Task.user_id,
+            Task.title,
+            Task.description,
+            Task.created_at,
+            Task.updated_at,
+        )
+        .where(Task.completed.is_(True))
+        .order_by(Task.id)
+    )
+    tasks = result.all()
     count = 0
-    for task in tasks:
-        # Capture ids before any ingest call: a failed ingest rolls back the
-        # session, expiring ORM instances (subsequent task.id access would
-        # raise MissingGreenlet and abort the whole sweep).
-        task_id = task.id
-        user_id = task.user_id
+    for task_id, user_id, title, description, created_at, updated_at in tasks:
         if await get_history_knowledge_for_task(db, task_id, user_id):
             continue
+        # Transient value object: never added to the session, so a rollback
+        # inside create_history_knowledge cannot expire it.
+        task = Task(
+            id=task_id,
+            user_id=user_id,
+            title=title,
+            description=description,
+            created_at=created_at,
+            updated_at=updated_at,
+            completed=True,
+        )
         row = await create_history_knowledge(db, task)
         if row is not None:
             # Per-task commit: one failing task rolls back only itself

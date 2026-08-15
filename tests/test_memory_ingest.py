@@ -353,6 +353,48 @@ async def test_startup_sweep_idempotent(db: AsyncSession, mocker: object) -> Non
 
 
 @pytest.mark.anyio
+async def test_startup_sweep_survives_embed_failure(db: AsyncSession, mocker: object) -> None:
+    """A failing embed (e.g. missing OpenAI key) must not abort the sweep.
+
+    The failed ingest rolls back inside create_history_knowledge, which expires
+    every session-registered ORM instance; reading the next task's attributes
+    used to raise MissingGreenlet and kill the whole sweep with zero rows.
+    """
+    user = User(username="hist_embedfail", email="hist_embedfail@example.com", password="x")
+    db.add(user)
+    await db.flush()
+
+    for i in range(3):
+        db.add(
+            Task(
+                title=f"Fragile {i}",
+                completed=True,
+                created_at=datetime(2026, 1, 1, 10, 0),
+                updated_at=datetime(2026, 1, 1, 10, 30),
+                user_id=user.id,
+            )
+        )
+    await db.commit()
+
+    def boom(*args: object, **kwargs: object) -> None:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    mocker.patch("app.knowledge.embeddings.get_embedder", side_effect=boom)
+
+    # Capture before the sweep: its rollbacks expire every session-registered
+    # instance, so reading user.id afterwards would raise MissingGreenlet.
+    user_id = user.id
+
+    count = await backfill_history_corpus(db)
+
+    assert count == 0
+    result = await db.execute(
+        select(func.count()).select_from(TaskKnowledge).where(TaskKnowledge.user_id == user_id)
+    )
+    assert result.scalar_one() == 0
+
+
+@pytest.mark.anyio
 async def test_ingest_history_task_callable(db: AsyncSession, mocker: object) -> None:
     user = User(username="hist_callable", email="hist_callable@example.com", password="x")
     db.add(user)

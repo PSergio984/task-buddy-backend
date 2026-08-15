@@ -275,3 +275,34 @@ async def test_memory_similar_persists_zeroed_answer_row(
         assert "knowledge_id" in citation
         assert "chunk_text" in citation
         assert "rrf_score" in citation
+
+
+@pytest.mark.anyio
+async def test_memory_similar_missing_key_is_503_not_500(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    authenticated_async_client: AsyncClient,
+    mocker: object,
+) -> None:
+    """Missing OpenAI key must surface as 503 (like ask/plan), never a 500.
+
+    The embedding path raises RuntimeError when the key is unset; memory/similar
+    used to let it escape as a 500 (observed live 2026-08-15 during dogfood).
+    """
+    user = await register_user(db, async_client, "mem_g", "mem_g@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+
+    query_task = await create_task(async_client, token, {"title": "503 probe task"})
+
+    async def boom(texts: list[str]) -> Any:
+        raise RuntimeError("OPENAI_API_KEY is not configured")
+
+    mocker.patch("app.knowledge.retrieval.aembed_texts", side_effect=boom)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{query_task['id']}/memory/similar",
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 503
+    assert response.json()["detail"] == "AI assistant not configured"
