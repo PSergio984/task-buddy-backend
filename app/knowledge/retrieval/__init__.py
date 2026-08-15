@@ -112,7 +112,7 @@ class UserKnowledgeIndex:
         """Persist chunk rows (flush-not-commit) and return their ids.
 
         Embeddings are bound dialect-natively: a float list for pgvector's
-        Vector(384) (its adapter rejects string literals), the format_embedding
+        Vector(EMBEDDING_DIM) (its adapter rejects string literals), the format_embedding
         string for the SQLite Text variant.
         """
         is_postgres = db.bind is not None and db.bind.dialect.name == "postgresql"

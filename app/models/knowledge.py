@@ -12,6 +12,7 @@ from sqlalchemy import Enum as SQLEnum
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import Mapped, mapped_column
 
+from app.config import EMBEDDING_DIM
 from app.models.base import Base
 
 # JSONB on Postgres, plain JSON everywhere else (SQLite test DB cannot compile JSONB).
@@ -127,10 +128,11 @@ class KnowledgeChunk(Base):
     chunk_index: Mapped[int] = mapped_column(nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
     # Embeddings are dialect-bound at ingest: native float list for pgvector's
-    # Vector(384) (the adapter rejects string literals), format_embedding string
-    # for the SQLite Text variant.
+    # Vector(EMBEDDING_DIM) (the adapter rejects string literals),
+    # format_embedding string for the SQLite Text variant. The dimension is
+    # provider-bound (384 local / 1536 openai), see app/config.py.
     embedding: Mapped[str | list[float]] = mapped_column(
-        Vector(384).with_variant(Text(), "sqlite"), nullable=False
+        Vector(EMBEDDING_DIM).with_variant(Text(), "sqlite"), nullable=False
     )
     content_hash: Mapped[str] = mapped_column(String(64), nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -111,10 +111,16 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     RATE_LIMIT_SYNC: str = "60/minute"
+    # Embedding provider: "local" (sentence-transformers, zero per-query cost,
+    # offline) or "openai" (text-embedding-3-small, ~$0.02/1M tokens).
+    # Production uses openai: the ~470MB local model OOMs Render's 512MB tier
+    # on first knowledge call (verified 2026-08-15 during dogfood probing).
+    EMBEDDING_PROVIDER: str = "local"
     # Local embedding model (zero per-query cost, offline-capable). Multilingual
     # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
+    OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
     # Pre-warm the embedding model at boot. Dev/test warm it (fast first
     # query); prod overrides to False so the ~470MB model never loads into
     # Render's 512MB free tier at startup (get_embedder() stays lazy there).
@@ -199,7 +205,11 @@ class ProdConfig(GlobalConfig):
     DEBUG: bool = False
     COOKIE_SECURE: bool = True
     COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "none"
-    # 512MB free tier cannot hold the ~470MB embedding model at boot.
+    # OpenAI embeddings (text-embedding-3-small, 1536-dim): the ~470MB local
+    # model OOMs the 512MB free tier on first knowledge call, taking the whole
+    # service down mid-request. The migration 1e2f3a4b5c6d alters the column.
+    EMBEDDING_PROVIDER: str = "openai"
+    EMBEDDING_DIM: int = 1536
     EMBEDDER_PREWARM: bool = False
     model_config = SettingsConfigDict(env_prefix="PROD_", env_file=".env", extra="ignore")
 
@@ -413,6 +423,8 @@ RATE_LIMIT_KNOWLEDGE_FEEDBACK = config.RATE_LIMIT_KNOWLEDGE_FEEDBACK
 RATE_LIMIT_PLAN = config.RATE_LIMIT_PLAN
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
+EMBEDDING_PROVIDER = config.EMBEDDING_PROVIDER
+OPENAI_EMBEDDING_MODEL = config.OPENAI_EMBEDDING_MODEL
 SYNTHETIC_CALENDAR_ENABLED = config.SYNTHETIC_CALENDAR_ENABLED
 PLANNER_WORKING_WINDOW_START_HOUR = config.PLANNER_WORKING_WINDOW_START_HOUR
 PLANNER_WORKING_WINDOW_END_HOUR = config.PLANNER_WORKING_WINDOW_END_HOUR

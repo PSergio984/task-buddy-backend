@@ -67,11 +67,11 @@ async def lifespan(app: FastAPI):
             logger.info("Embedder pre-warmed")
         except Exception as exc:
             logger.warning("embedder pre-warm failed: %s", exc)
-    if config.EMBEDDER_PREWARM:
-        # The sweep embeds every completed task lacking a history row, which
-        # loads the ~470MB model; gating it on EMBEDDER_PREWARM keeps that off
-        # prod's boot path (512MB tier). Prod backfills via per-completion
-        # hooks; a manual sweep run re-enables it by toggling EMBEDDER_PREWARM.
+    if config.EMBEDDER_PREWARM or config.EMBEDDING_PROVIDER == "openai":
+        # The sweep embeds every completed task lacking a history row. With the
+        # local provider this loads the ~470MB model, so it is gated on
+        # EMBEDDER_PREWARM (prod keeps the model off boot). The openai provider
+        # has no local model — the sweep is cheap and keeps the corpus warm.
         try:
             from app.knowledge.history import history_backfill_sweep
 
