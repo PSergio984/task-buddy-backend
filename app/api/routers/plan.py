@@ -57,6 +57,10 @@ async def plan(
     except openai.APIError as exc:
         logger.warning("plan unavailable for user=%s: %s", current_user.id, exc)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except RuntimeError as exc:
+        # Embedding path raises RuntimeError when the OpenAI key is missing.
+        logger.warning("plan not configured (embeddings) user=%s: %s", current_user.id, exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
     await db.commit()
     return result

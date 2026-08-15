@@ -295,6 +295,11 @@ async def ask_knowledge(
         # never a 500; no provider internals leak into the response.
         logger.warning("knowledge ask unavailable for task=%s: %s", task_id, exc)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except RuntimeError as exc:
+        # Embedding path raises RuntimeError when the OpenAI key is missing
+        # (config-level); surface the same 503 as the completion path.
+        logger.warning("knowledge ask not configured (embeddings) task=%s: %s", task_id, exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
     await db.commit()
     await db.refresh(answer_row)
