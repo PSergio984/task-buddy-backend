@@ -19,7 +19,13 @@ from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import OPENAI_API_KEY, OPENAI_MODEL
+from app.config import (
+    GROQ_API_KEY,
+    GROQ_MODEL,
+    LLM_PROVIDER,
+    OPENAI_API_KEY,
+    OPENAI_MODEL,
+)
 from app.crud.knowledge import create_answer
 from app.knowledge.cost import calculate_cost
 from app.knowledge.records import LLMCallRecord, citation_text, normalize_citations
@@ -63,8 +69,18 @@ class RelevanceVerdict(BaseModel):
     explanation: str
 
 
+def _llm_model() -> str:
+    """The chat model for the configured provider (groq | openai)."""
+    return GROQ_MODEL if LLM_PROVIDER == "groq" else OPENAI_MODEL
+
+
 def _openai_client() -> OpenAI:
-    """Lazily build the OpenAI client; fail fast when no key is configured."""
+    """Lazily build the LLM client (openai, or groq via its OpenAI-compatible
+    endpoint); fail fast when no key is configured."""
+    if LLM_PROVIDER == "groq":
+        if not GROQ_API_KEY:
+            raise AssistantNotConfiguredError("GROQ_API_KEY is not configured")
+        return OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")
     if not OPENAI_API_KEY:
         raise AssistantNotConfiguredError("OPENAI_API_KEY is not configured")
     return OpenAI(api_key=OPENAI_API_KEY)
@@ -115,7 +131,7 @@ async def generate_answer(
     start = time.monotonic()
     response = await asyncio.to_thread(
         _call_completion,
-        OPENAI_MODEL,
+        _llm_model(),
         [
             {"role": "system", "content": ASSISTANT_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
@@ -129,7 +145,7 @@ async def generate_answer(
     completion_tokens = getattr(usage, "completion_tokens", 0)
     total_tokens = getattr(usage, "total_tokens", 0)
     record = LLMCallRecord(
-        model=OPENAI_MODEL,
+        model=_llm_model(),
         prompt=prompt,
         instructions=ASSISTANT_SYSTEM_PROMPT,
         answer=answer_text,
@@ -162,7 +178,7 @@ async def evaluate_relevance(question: str, answer: str, citations: list[dict]) 
     try:
         response = await asyncio.to_thread(
             _call_completion,
-            OPENAI_MODEL,
+            _llm_model(),
             [
                 {"role": "system", "content": JUDGE_SYSTEM_PROMPT},
                 {"role": "user", "content": user_prompt},

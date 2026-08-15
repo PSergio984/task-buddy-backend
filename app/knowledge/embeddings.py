@@ -2,7 +2,9 @@
 
 ``local``  (sentence-transformers, zero per-query cost, offline-capable)
 ``openai`` (text-embedding-3-small via the API; used in production because the
-            ~470MB local model OOMs Render's 512MB tier on first use).
+            ~470MB local model OOMs Render's 512MB tier on first use)
+``jina``   (jina-embeddings-v3 via Jina's OpenAI-compatible API; free tier —
+            production pairs it with the Groq LLM, which has no embed API)
 
 The local path imports sentence_transformers lazily inside get_embedder() so
 app boot stays fast and import-safe; tests stub get_embedder() directly.
@@ -17,6 +19,8 @@ from app.config import (
     EMBEDDING_DIM,
     EMBEDDING_MODEL,
     EMBEDDING_PROVIDER,
+    JINA_API_KEY,
+    JINA_EMBEDDING_MODEL,
     OPENAI_API_KEY,
     OPENAI_EMBEDDING_MODEL,
 )
@@ -33,12 +37,34 @@ def _openai_client():
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
+def _jina_client():
+    """Lazily-built Jina client (OpenAI-compatible embeddings API)."""
+    from openai import OpenAI
+
+    if not JINA_API_KEY:
+        raise RuntimeError("JINA_API_KEY is not configured")
+    return OpenAI(api_key=JINA_API_KEY, base_url="https://api.jina.ai/v1")
+
+
 def _embed_openai(texts: list[str]) -> np.ndarray:
     """Embed via text-embedding-3-small; returns L2-normalized vectors."""
     if not texts:
         return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
     client = _openai_client()
     response = client.embeddings.create(model=OPENAI_EMBEDDING_MODEL, input=texts)
+    vectors = np.asarray([item.embedding for item in response.data], dtype=np.float32)
+    if vectors.size == 0:
+        return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
+    norms = np.linalg.norm(vectors, axis=1, keepdims=True)
+    return np.where(norms > 0, vectors / norms, vectors)
+
+
+def _embed_jina(texts: list[str]) -> np.ndarray:
+    """Embed via jina-embeddings-v3; returns L2-normalized vectors."""
+    if not texts:
+        return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
+    client = _jina_client()
+    response = client.embeddings.create(model=JINA_EMBEDDING_MODEL, input=texts)
     vectors = np.asarray([item.embedding for item in response.data], dtype=np.float32)
     if vectors.size == 0:
         return np.empty((0, EMBEDDING_DIM), dtype=np.float32)
@@ -63,6 +89,8 @@ def embed_texts(texts: list[str]) -> np.ndarray:
     """Embed a list of texts with normalized vectors (cosine == dot product)."""
     if EMBEDDING_PROVIDER == "openai":
         return _embed_openai(texts)
+    if EMBEDDING_PROVIDER == "jina":
+        return _embed_jina(texts)
     embedder = get_embedder()
     embeddings = embedder.encode(texts, normalize_embeddings=True)  # type: ignore[attr-defined]
     return np.asarray(embeddings, dtype=np.float32)

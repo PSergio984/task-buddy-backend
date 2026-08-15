@@ -116,15 +116,19 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     RATE_LIMIT_SYNC: str = "60/minute"
     # Embedding provider: "local" (sentence-transformers, zero per-query cost,
-    # offline) or "openai" (text-embedding-3-small, ~$0.02/1M tokens).
-    # Production uses openai: the ~470MB local model OOMs Render's 512MB tier
-    # on first knowledge call (verified 2026-08-15 during dogfood probing).
+    # offline) | "openai" (text-embedding-3-small, ~$0.02/1M tokens) | "jina"
+    # (jina-embeddings-v3, free tier 10M tokens/month). Production uses jina:
+    # the ~470MB local model OOMs Render's 512MB tier and Groq has no
+    # embedding API, so LLM (Groq, free tier) and embeddings are split.
     EMBEDDING_PROVIDER: str = "local"
     # Local embedding model (zero per-query cost, offline-capable). Multilingual
     # per user decision 2026-08-12 — real task notes are mixed English/Tagalog.
     EMBEDDING_MODEL: str = "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2"
     EMBEDDING_DIM: int = 384
     OPENAI_EMBEDDING_MODEL: str = "text-embedding-3-small"
+    # Jina embeddings (OpenAI-compatible API, multilingual 1024-dim).
+    JINA_EMBEDDING_MODEL: str = "jina-embeddings-v3"
+    JINA_API_KEY: Optional[str] = None
     # Pre-warm the embedding model at boot. Dev/test warm it (fast first
     # query); prod overrides to False so the ~470MB model never loads into
     # Render's 512MB free tier at startup (get_embedder() stays lazy there).
@@ -137,6 +141,14 @@ class GlobalConfig(BaseConfig):
     OPENAI_MODEL: str = "gpt-4o-mini"
     OPENAI_INPUT_RATE_PER_1M: float = 0.15
     OPENAI_OUTPUT_RATE_PER_1M: float = 0.60
+    # LLM provider switch: "openai" | "groq". Groq serves llama-3.3-70b on a
+    # free tier (rate-limited); the client stays OpenAI-SDK compatible via
+    # base_url. Rates are USD per 1M tokens for GROQ_MODEL (2026-08 pricing).
+    LLM_PROVIDER: str = "openai"
+    GROQ_API_KEY: Optional[str] = None
+    GROQ_MODEL: str = "llama-3.3-70b-versatile"
+    GROQ_INPUT_RATE_PER_1M: float = 0.59
+    GROQ_OUTPUT_RATE_PER_1M: float = 0.79
     RATE_LIMIT_KNOWLEDGE_ASK: str = "10/minute"
     RATE_LIMIT_MEMORY_SIMILAR: str = "10/minute"
     RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
@@ -209,11 +221,13 @@ class ProdConfig(GlobalConfig):
     DEBUG: bool = False
     COOKIE_SECURE: bool = True
     COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "none"
-    # OpenAI embeddings (text-embedding-3-small, 1536-dim): the ~470MB local
-    # model OOMs the 512MB free tier on first knowledge call, taking the whole
-    # service down mid-request. The migration 1e2f3a4b5c6d alters the column.
-    EMBEDDING_PROVIDER: str = "openai"
-    EMBEDDING_DIM: int = 1536
+    # Jina embeddings (jina-embeddings-v3, 1024-dim, free tier): the ~470MB
+    # local model OOMs the 512MB free tier and Groq has no embedding API.
+    # Migration 2d4e6f8a0b1c alters the column from vector(1536).
+    EMBEDDING_PROVIDER: str = "jina"
+    EMBEDDING_DIM: int = 1024
+    # Groq (free tier) serves the LLM: llama-3.3-70b-versatile.
+    LLM_PROVIDER: str = "groq"
     EMBEDDER_PREWARM: bool = False
     model_config = SettingsConfigDict(env_prefix="PROD_", env_file=".env", extra="ignore")
 
@@ -429,6 +443,8 @@ EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
 EMBEDDING_PROVIDER = config.EMBEDDING_PROVIDER
 OPENAI_EMBEDDING_MODEL = config.OPENAI_EMBEDDING_MODEL
+JINA_EMBEDDING_MODEL = config.JINA_EMBEDDING_MODEL
+JINA_API_KEY = config.JINA_API_KEY
 SYNTHETIC_CALENDAR_ENABLED = config.SYNTHETIC_CALENDAR_ENABLED
 PLANNER_WORKING_WINDOW_START_HOUR = config.PLANNER_WORKING_WINDOW_START_HOUR
 PLANNER_WORKING_WINDOW_END_HOUR = config.PLANNER_WORKING_WINDOW_END_HOUR
@@ -437,3 +453,8 @@ OPENAI_API_KEY = config.OPENAI_API_KEY
 OPENAI_MODEL = config.OPENAI_MODEL
 OPENAI_INPUT_RATE_PER_1M = config.OPENAI_INPUT_RATE_PER_1M
 OPENAI_OUTPUT_RATE_PER_1M = config.OPENAI_OUTPUT_RATE_PER_1M
+LLM_PROVIDER = config.LLM_PROVIDER
+GROQ_API_KEY = config.GROQ_API_KEY
+GROQ_MODEL = config.GROQ_MODEL
+GROQ_INPUT_RATE_PER_1M = config.GROQ_INPUT_RATE_PER_1M
+GROQ_OUTPUT_RATE_PER_1M = config.GROQ_OUTPUT_RATE_PER_1M

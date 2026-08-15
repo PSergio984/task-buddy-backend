@@ -17,13 +17,12 @@ from sqlalchemy import case, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import (
-    OPENAI_MODEL,
     PLANNER_DEFAULT_AVAILABLE_MINUTES,
     PLANNER_WORKING_WINDOW_END_HOUR,
     PLANNER_WORKING_WINDOW_START_HOUR,
 )
 from app.crud.plan import create_plan_answer
-from app.knowledge.assistant import _call_completion
+from app.knowledge.assistant import _call_completion, _llm_model
 from app.knowledge.cost import calculate_cost
 from app.knowledge.history import build_history_content
 from app.knowledge.records import LLMCallRecord
@@ -270,7 +269,7 @@ async def _llm_plan(
     call_start = time.monotonic()
     response = await asyncio.to_thread(
         _call_completion,
-        OPENAI_MODEL,
+        _llm_model(),
         [
             {"role": "system", "content": PLANNER_SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
@@ -285,7 +284,7 @@ async def _llm_plan(
     completion_tokens = getattr(usage, "completion_tokens", 0)
     total_tokens = getattr(usage, "total_tokens", 0)
     record = LLMCallRecord(
-        model=OPENAI_MODEL,
+        model=_llm_model(),
         prompt=prompt,
         instructions=PLANNER_SYSTEM_PROMPT,
         answer=answer_text,
