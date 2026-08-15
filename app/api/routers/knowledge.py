@@ -293,7 +293,12 @@ async def ask_knowledge(
     except openai.APIError as exc:
         # Key set but the provider failed (401/429/network) — still a 503,
         # never a 500; no provider internals leak into the response.
-        logger.warning("knowledge ask unavailable for task=%s: %s", task_id, exc)
+        logger.warning(
+            "knowledge ask unavailable for task=%s: %s (cause: %r)",
+            task_id,
+            exc,
+            exc.__cause__,
+        )
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except RuntimeError as exc:
         # Embedding path raises RuntimeError when the OpenAI key is missing

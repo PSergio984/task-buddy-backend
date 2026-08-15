@@ -51,10 +51,14 @@ async def _search_user_index(
     try:
         return await UserKnowledgeIndex().search(db, user_id, query, limit=limit)
     except RuntimeError as exc:
-        logger.warning("memory similar not configured task=%s: %s", task_id, exc)
+        logger.warning(
+            "memory similar not configured task=%s: %s (cause: %r)", task_id, exc, exc.__cause__
+        )
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
-        logger.warning("memory similar unavailable task=%s: %s", task_id, exc)
+        logger.warning(
+            "memory similar unavailable task=%s: %s (cause: %r)", task_id, exc, exc.__cause__
+        )
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
 
 

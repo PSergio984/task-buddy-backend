@@ -65,7 +65,14 @@ async def create_history_knowledge(db: AsyncSession, task: Task) -> Optional[Tas
         await db.rollback()
         # task_id captured before the rollback: the ORM instance is expired
         # after it, so accessing task.id here would raise MissingGreenlet.
-        logger.warning("history ingest failed for task=%s: %s", task_id, exc)
+        # __cause__ carries the network-level detail (DNS/refused/reset) for
+        # provider outages — the bare str is just "Connection error."
+        logger.warning(
+            "history ingest failed for task=%s: %s (cause: %r)",
+            task_id,
+            exc,
+            exc.__cause__,
+        )
         return None
     return row
 
