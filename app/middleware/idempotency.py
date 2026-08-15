@@ -205,8 +205,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         Uses SET NX to ensure only one request can acquire the lock.
         """
         try:
-            # nx=True makes the set atomic: only succeeds if key doesn't exist
-            success = await redis_client.set(cache_key, json.dumps("IN_PROGRESS"), ex=30, nx=True)
+            # nx=True makes the set atomic: only succeeds if key doesn't exist.
+            # 120s TTL: LLM-backed endpoints routinely exceed 30s; a lock that
+            # expires mid-request lets a duplicate request double-spend.
+            success = await redis_client.set(cache_key, json.dumps("IN_PROGRESS"), ex=120, nx=True)
             return bool(success)
         except Exception:
             logger.exception("Error setting idempotency lock")
@@ -219,8 +221,9 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         """
         Finalize the response handling: cache successful responses and clean up locks for errors.
         """
-        # Don't cache server errors or rate limit responses
-        if response.status_code >= 500 or response.status_code == 429:
+        # Cache only successful responses: server errors, rate limits, and
+        # client errors (401/404/409) must be retryable, not replayed.
+        if response.status_code < 200 or response.status_code >= 300:
             await redis_client.delete(cache_key)
             return response
 

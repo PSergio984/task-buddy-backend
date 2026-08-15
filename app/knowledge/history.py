@@ -44,11 +44,12 @@ async def create_history_knowledge(db: AsyncSession, task: Task) -> Optional[Tas
     when ingest fails (whole operation rolls back — a row without chunks would
     be a silent retrieval gap; the startup sweep self-heals, D-06).
     """
-    if await get_history_knowledge_for_task(db, task.id, task.user_id):
+    task_id = task.id
+    if await get_history_knowledge_for_task(db, task_id, task.user_id):
         return None
     row = TaskKnowledge(
         user_id=task.user_id,
-        task_id=task.id,
+        task_id=task_id,
         source_type=SourceType.HISTORY,
         title=task.title,
         content=build_history_content(task.title, task.description),
@@ -62,7 +63,9 @@ async def create_history_knowledge(db: AsyncSession, task: Task) -> Optional[Tas
         await ingest_knowledge(db, row)
     except Exception as exc:
         await db.rollback()
-        logger.warning("history ingest failed for task=%s: %s", task.id, exc)
+        # task_id captured before the rollback: the ORM instance is expired
+        # after it, so accessing task.id here would raise MissingGreenlet.
+        logger.warning("history ingest failed for task=%s: %s", task_id, exc)
         return None
     return row
 
@@ -106,13 +109,38 @@ async def ingest_history_task(task_id: int, user_id: int) -> None:
         )
 
 
+async def delete_history_knowledge_task(task_id: int, user_id: int) -> None:
+    """Fire-and-forget history-row removal for a sync un-complete (D-11 parity).
+
+    The sync router cannot reuse the request-scoped session after commit, so
+    this opens its own session like ingest_history_task.
+    """
+    from app.database import AsyncSessionLocal
+
+    try:
+        async with AsyncSessionLocal() as session:
+            await delete_history_knowledge(session, task_id=task_id, user_id=user_id)
+            await session.commit()
+    except Exception:
+        logger.exception(
+            "history delete background task failed for task=%s user=%s",
+            task_id,
+            user_id,
+        )
+
+
 async def backfill_history_corpus(db: AsyncSession) -> int:
     """Ingest every completed task lacking a history row (D-06, idempotent)."""
     result = await db.execute(select(Task).where(Task.completed.is_(True)).order_by(Task.id))
     tasks = result.scalars().all()
     count = 0
     for task in tasks:
-        if await get_history_knowledge_for_task(db, task.id, task.user_id):
+        # Capture ids before any ingest call: a failed ingest rolls back the
+        # session, expiring ORM instances (subsequent task.id access would
+        # raise MissingGreenlet and abort the whole sweep).
+        task_id = task.id
+        user_id = task.user_id
+        if await get_history_knowledge_for_task(db, task_id, user_id):
             continue
         row = await create_history_knowledge(db, task)
         if row is not None:

@@ -27,6 +27,13 @@ logger = logging.getLogger(__name__)
 
 pwd_context = CryptContext(schemes=["argon2", "pbkdf2_sha256"], deprecated="auto")
 
+
+def _obfuscate_email(email: str) -> str:
+    """PII-safe email for logs: keep the local prefix short, mask the rest."""
+    local, _, domain = email.partition("@")
+    return f"{local[:2]}***@{domain}" if local else email
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=False)
 
 # Lazy Redis client initialization to handle event loop changes (especially in tests)
@@ -258,7 +265,7 @@ async def authenticate_user(db: AsyncSession, email: str, password: str) -> User
     Verify user credentials and return the user object if successful.
     Performs automatic password re-hashing to the latest scheme (Argon2) if needed.
     """
-    logger.info("Authenticating user: %s", email)
+    logger.info("Authenticating user: %s", _obfuscate_email(email))
     user = await get_user_by_email(db, email)
     if not user:
         raise create_credentials_exception("Invalid credentials")

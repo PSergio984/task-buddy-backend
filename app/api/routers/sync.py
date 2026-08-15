@@ -4,12 +4,13 @@ import logging
 from datetime import datetime, timezone
 from typing import Annotated, Any
 
-from fastapi import APIRouter, Depends, Request, Response
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Request, Response
 from sqlalchemy import CursorResult, delete, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_SYNC
 from app.dependencies import get_db
+from app.knowledge.history import delete_history_knowledge_task, ingest_history_task
 from app.limiter import limiter
 from app.models.project import Project
 from app.models.task import SubTask, Task
@@ -26,7 +27,7 @@ from app.schemas.sync import (
     SyncResponse,
 )
 from app.security import get_confirmed_user
-from app.sync.lww import MODEL_WHITELISTS, merge_payload, serialize_row
+from app.sync.lww import MODEL_WHITELISTS, merge_payload, serialize_row, validate_payload
 
 ROUTER_TAG = "sync"
 
@@ -121,17 +122,28 @@ async def _record_unapplied(
 
 async def _merge_changes(
     db: AsyncSession, user_id: int, body: SyncRequest
-) -> tuple[list[SyncAppliedItem], list[SyncConflictItem], list[SyncNotFoundItem], datetime | None]:
+) -> tuple[
+    list[SyncAppliedItem],
+    list[SyncConflictItem],
+    list[SyncNotFoundItem],
+    datetime | None,
+    list[tuple[int, bool]],
+]:
     """Apply each change under strict LWW; return results and the new high-water.
 
     The LWW decision and the write are one atomic conditional UPDATE/DELETE
     (``updated_at < client_updated_at``), so two concurrent syncs can never
     interleave a check-then-write race; the rowcount-0 outcome (stale change)
     is reported as a conflict carrying the current server state.
+
+    The final return value lists applied TASK completion flips as
+    ``(task_id, completed)`` — the caller schedules history ingest/delete
+    (REST parity, D-05/D-11) off the request path.
     """
     applied: list[SyncAppliedItem] = []
     conflicts: list[SyncConflictItem] = []
     not_found: list[SyncNotFoundItem] = []
+    completion_flips: list[tuple[int, bool]] = []
     high_water = body.since
 
     for change in body.changes:
@@ -169,11 +181,13 @@ async def _merge_changes(
                 await _record_unapplied(db, model, change, user_id, not_found, conflicts)
                 continue
             _record_applied(applied, change)
+            if change.entity == SyncEntity.TASK and "completed" in merged:
+                completion_flips.append((change.id, bool(merged["completed"])))
 
         if high_water is None or change.client_updated_at > high_water:
             high_water = change.client_updated_at
 
-    return applied, conflicts, not_found, high_water
+    return applied, conflicts, not_found, high_water, completion_flips
 
 
 async def _fetch_delta(db: AsyncSession, user_id: int, high_water: datetime | None) -> SyncDelta:
@@ -203,6 +217,7 @@ async def sync(
     request: Request,
     response: Response,
     body: SyncRequest,
+    background_tasks: BackgroundTasks,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SyncResponse:
@@ -213,17 +228,33 @@ async def sync(
 
     A `conflicts` entry means the change was NOT applied and `server_state`
     is the current row, for two causes: the change is stale (server row is
-    newer â€” strict LWW) or it targets a foreign key the user doesn't own
+    newer — strict LWW) or it targets a foreign key the user doesn't own
     (validity rejection). In both cases the client converges on server state;
     there is no 409/manual-resolution UX.
     """
-    applied, conflicts, not_found, high_water = await _merge_changes(db, current_user.id, body)
+    for change in body.changes:
+        try:
+            validate_payload(change.payload, change.entity)
+        except ValueError as exc:
+            raise HTTPException(status_code=422, detail=str(exc)) from exc
+
+    applied, conflicts, not_found, high_water, completion_flips = await _merge_changes(
+        db, current_user.id, body
+    )
     delta = await _fetch_delta(db, current_user.id, high_water)
 
     if high_water is None:
         high_water = datetime.now(timezone.utc)
 
     await db.commit()
+
+    for task_id, completed in completion_flips:
+        # D-05/D-11 REST parity: sync-driven completion flips feed the history
+        # corpus too. Fire-and-forget helpers open their own session.
+        if completed:
+            background_tasks.add_task(ingest_history_task, task_id, current_user.id)
+        else:
+            background_tasks.add_task(delete_history_knowledge_task, task_id, current_user.id)
 
     logger.info(
         "POST /sync - user %s, %d changes (%d applied, %d conflicts, %d not_found), delta %d/%d/%d",

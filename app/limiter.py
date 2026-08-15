@@ -6,12 +6,19 @@ from app.config import config
 
 def get_real_ip(request: Request) -> str:
     """
-    Returns the real client IP, respecting X-Forwarded-For if present.
+    Returns the real client IP for rate limiting.
+
+    Behind a trusted proxy (Render), X-Forwarded-For is client-supplied
+    values followed by the proxy-appended peer IP, so the LAST entry is the
+    untrusted-client-safe one. Taking the first entry would let a caller
+    rotate a spoofed header per request and bypass every limiter (login
+    brute-force, LLM spend gates).
     """
     forwarded = request.headers.get("X-Forwarded-For")
     if forwarded:
-        # X-Forwarded-For: client, proxy1, proxy2
-        return forwarded.split(",")[0].strip()
+        entries = [entry.strip() for entry in forwarded.split(",") if entry.strip()]
+        if entries:
+            return entries[-1]
     return request.client.host if request.client else "127.0.0.1"
 
 

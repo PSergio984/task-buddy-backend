@@ -512,3 +512,52 @@ async def test_sync_429_carries_retry_after(
         assert response.status_code == 429, "rate limit never tripped in 2 bursts"
     finally:
         app.state.limiter.reset()
+
+
+async def test_sync_rejects_garbage_payload(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """Unvalidated sync payloads used to 500 on Postgres / silently store on
+    SQLite; now the whole batch is rejected with 422 before any write."""
+    response = await async_client.post(
+        "/api/v1/sync",
+        json={
+            "changes": [
+                {
+                    "entity": "task",
+                    "id": 1,
+                    "op": "update",
+                    "payload": {"due_date": "garbage"},
+                    "client_updated_at": ts_ahead(1).isoformat(),
+                }
+            ]
+        },
+        headers=auth(logged_in_token),
+    )
+    assert response.status_code == 422
+    assert "invalid ISO-8601" in response.json()["detail"]
+
+
+async def test_sync_rejects_future_timestamp(
+    async_client: AsyncClient, logged_in_token: str
+) -> None:
+    """A year-9999 client clock would poison every later LWW comparison."""
+    from datetime import timedelta
+
+    response = await async_client.post(
+        "/api/v1/sync",
+        json={
+            "changes": [
+                {
+                    "entity": "task",
+                    "id": 1,
+                    "op": "update",
+                    "payload": {"title": "x"},
+                    "client_updated_at": (datetime.now(UTC) + timedelta(days=36500)).isoformat(),
+                }
+            ]
+        },
+        headers=auth(logged_in_token),
+    )
+    assert response.status_code == 422
+    assert "future" in response.json()["detail"]

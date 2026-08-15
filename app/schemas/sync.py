@@ -1,10 +1,15 @@
 """Request/response schemas for the sync API (POST /api/v1/sync)."""
 
 import enum
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 from pydantic import BaseModel, Field, field_validator
+
+# Sync poisoning guard: a client clock far in the future (e.g. year 9999)
+# would make every later legitimate change lose the LWW comparison forever.
+# 24h tolerates realistic client clock skew while rejecting absurd stamps.
+_MAX_FUTURE_SKEW = timedelta(hours=24)
 
 
 class SyncEntity(str, enum.Enum):
@@ -34,7 +39,10 @@ class SyncChange(BaseModel):
     @field_validator("client_updated_at")
     @classmethod
     def validate_client_updated_at(cls, v: datetime) -> datetime:
-        return _require_tz_aware(v)
+        _require_tz_aware(v)
+        if v > datetime.now(timezone.utc) + _MAX_FUTURE_SKEW:
+            raise ValueError("client_updated_at cannot be more than 24 hours in the future")
+        return v
 
 
 class SyncRequest(BaseModel):

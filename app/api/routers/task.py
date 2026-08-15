@@ -286,6 +286,12 @@ async def update_task(
     if "project_id" in update_data:
         await verify_project_ownership(db, task_update.project_id, current_user.id)
 
+    if update_data.get("due_date") is not None:
+        # D-10 parity: a persisted due date is a hard deadline. The create
+        # path already promotes; the update path was missing it, so a task
+        # could persist soft deadline_type contradicting its due date.
+        db_task.deadline_type = DeadlineType.HARD
+
     try:
         await task_crud.update_task(db, db_task=db_task, task_in=task_update)
         await db.commit()

@@ -30,6 +30,7 @@ from app.config import DevConfig, config
 from app.libs.supabase_signing import SigningKeyCache
 from app.limiter import limiter
 from app.logging_conf import configure_logging
+from app.middleware.csrf import origin_check_middleware
 from app.middleware.idempotency import IdempotencyMiddleware
 
 logger = logging.getLogger(__name__)
@@ -66,14 +67,19 @@ async def lifespan(app: FastAPI):
             logger.info("Embedder pre-warmed")
         except Exception as exc:
             logger.warning("embedder pre-warm failed: %s", exc)
-    try:
-        from app.knowledge.history import history_backfill_sweep
+    if config.EMBEDDER_PREWARM:
+        # The sweep embeds every completed task lacking a history row, which
+        # loads the ~470MB model; gating it on EMBEDDER_PREWARM keeps that off
+        # prod's boot path (512MB tier). Prod backfills via per-completion
+        # hooks; a manual sweep run re-enables it by toggling EMBEDDER_PREWARM.
+        try:
+            from app.knowledge.history import history_backfill_sweep
 
-        sweep_task = asyncio.create_task(history_backfill_sweep())
-        _background_tasks.add(sweep_task)
-        sweep_task.add_done_callback(_background_tasks.discard)
-    except Exception:
-        logger.exception("history backfill sweep failed to start")
+            sweep_task = asyncio.create_task(history_backfill_sweep())
+            _background_tasks.add(sweep_task)
+            sweep_task.add_done_callback(_background_tasks.discard)
+        except Exception:
+            logger.exception("history backfill sweep failed to start")
     yield
 
 
@@ -115,6 +121,12 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
 app.add_middleware(IdempotencyMiddleware)
 app.add_middleware(CorrelationIdMiddleware)
 app.add_middleware(SlowAPIMiddleware)
+
+# Order matters: this runs inside the security-headers middleware below, so it
+# sees the request before CORS header processing — Origin checks must not rely
+# on preflight (browser already rejected cross-origin JSON; this covers the
+# form/bodyless POSTs preflight never sees).
+app.middleware("http")(origin_check_middleware)
 
 app.include_router(task.router, prefix="/api/v1/tasks")
 app.include_router(knowledge.router, prefix="/api/v1/tasks")

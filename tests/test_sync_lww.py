@@ -4,7 +4,8 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app.sync.lww import decide_apply, merge_payload
+from app.schemas.sync import SyncEntity
+from app.sync.lww import decide_apply, merge_payload, validate_payload
 
 UTC = timezone.utc
 
@@ -42,6 +43,60 @@ def test_merge_payload_whitelist():
     # non-whitelisted keys dropped silently; unknown keys never raise
     assert "user_id" not in merged
     assert "unknown_key" not in merged
+
+
+def test_merge_payload_keeps_explicit_null():
+    # Explicit None passes through so a client can clear a nullable field
+    # (REST parity — previously dropped, making "clear due date" impossible).
+    merged = merge_payload({"due_date": None, "title": "x"}, {"due_date", "title"})
+    assert merged == {"due_date": None, "title": "x"}
+
+
+def test_validate_payload_accepts_valid_task():
+    validate_payload(
+        {
+            "title": "Plan trip",
+            "completed": True,
+            "priority": "HIGH",
+            "due_date": "2026-08-20T10:00:00+00:00",
+            "project_id": 3,
+            "description": None,
+        },
+        SyncEntity.TASK,
+    )
+
+
+def test_validate_payload_rejects_garbage_due_date():
+    with pytest.raises(ValueError, match="invalid ISO-8601"):
+        validate_payload({"due_date": "garbage"}, SyncEntity.TASK)
+
+
+def test_validate_payload_rejects_wrong_type():
+    with pytest.raises(ValueError, match="expected int"):
+        validate_payload({"project_id": "abc"}, SyncEntity.TASK)
+    with pytest.raises(ValueError, match="expected bool"):
+        validate_payload({"completed": "yes"}, SyncEntity.TASK)
+
+
+def test_validate_payload_rejects_unknown_priority():
+    with pytest.raises(ValueError, match="priority"):
+        validate_payload({"priority": "NUCLEAR"}, SyncEntity.TASK)
+
+
+def test_validate_payload_rejects_null_non_nullable():
+    with pytest.raises(ValueError, match="must not be null"):
+        validate_payload({"completed": None}, SyncEntity.TASK)
+    # nullable fields accept None
+    validate_payload({"due_date": None}, SyncEntity.TASK)
+
+
+def test_validate_payload_rejects_oversized_string():
+    with pytest.raises(ValueError, match="exceeds"):
+        validate_payload({"title": "x" * 300}, SyncEntity.TASK)
+
+
+def test_validate_payload_ignores_unknown_keys():
+    validate_payload({"user_id": 999, "nonsense": [1, 2]}, SyncEntity.TASK)
 
 
 def test_delete_wins_when_newer():

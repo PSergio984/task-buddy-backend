@@ -32,6 +32,43 @@ MODEL_WHITELISTS: dict[SyncEntity, set[str]] = {
     SyncEntity.PROJECT: {"name", "color", "icon", "position"},
 }
 
+# Nullable mergeable fields: an explicit None clears the column (REST parity).
+# Everything else must carry a value (validation rejects None).
+_NULLABLE: dict[SyncEntity, set[str]] = {
+    SyncEntity.TASK: {"project_id", "description", "due_date"},
+    SyncEntity.SUBTASK: {"description", "due_date"},
+    SyncEntity.PROJECT: set(),
+}
+
+# Expected Python types per mergeable field (payloads arrive as raw JSON).
+_FIELD_TYPES: dict[SyncEntity, dict[str, tuple[type, ...]]] = {
+    SyncEntity.TASK: {
+        "project_id": (int,),
+        "title": (str,),
+        "description": (str,),
+        "completed": (bool,),
+        "priority": (str,),
+        "due_date": (str,),
+    },
+    SyncEntity.SUBTASK: {
+        "task_id": (int,),
+        "title": (str,),
+        "description": (str,),
+        "completed": (bool,),
+        "due_date": (str,),
+        "position": (int,),
+    },
+    SyncEntity.PROJECT: {"name": (str,), "color": (str,), "icon": (str,), "position": (int,)},
+}
+
+_STRING_LIMITS: dict[SyncEntity, dict[str, int]] = {
+    SyncEntity.TASK: {"title": 255, "description": 10000, "priority": 16},
+    SyncEntity.SUBTASK: {"title": 255, "description": 10000},
+    SyncEntity.PROJECT: {"name": 100, "color": 50, "icon": 50},
+}
+
+_PRIORITIES = {"LOW", "MEDIUM", "HIGH"}
+
 _TIEBREAK_NOTE = (
     "Equal timestamps resolve server-wins (change reported as conflict) so a "
     "client replay can never double-apply; the client converges on server state."
@@ -59,8 +96,55 @@ def decide_apply(client_ts: datetime, server_ts: datetime | None) -> bool:
 
 
 def merge_payload(payload: dict, whitelist: set[str]) -> dict:
-    """Return only whitelisted, non-None payload keys. Never raises."""
-    return {k: v for k, v in payload.items() if k in whitelist and v is not None}
+    """Return only whitelisted payload keys.
+
+    Explicit None values pass through so a client can clear a nullable field
+    (e.g. due_date: null); non-nullable None was already rejected by
+    validate_payload. Never raises.
+    """
+    return {k: v for k, v in payload.items() if k in whitelist}
+
+
+def _validate_field(entity: SyncEntity, key: str, value: object) -> None:
+    """Validate one mergeable field's value; raise ValueError when invalid."""
+    if value is None:
+        if key not in _NULLABLE[entity]:
+            raise ValueError(f"{entity.value}.{key}: must not be null")
+        return
+    expected = _FIELD_TYPES[entity][key]
+    if not isinstance(value, expected):
+        raise ValueError(
+            f"{entity.value}.{key}: expected {expected[0].__name__}, got {type(value).__name__}"
+        )
+    if isinstance(value, str):
+        _validate_string_field(entity, key, value)
+
+
+def _validate_string_field(entity: SyncEntity, key: str, value: str) -> None:
+    """Validate length and format constraints for string fields."""
+    limit = _STRING_LIMITS[entity].get(key)
+    if limit is not None and len(value) > limit:
+        raise ValueError(f"{entity.value}.{key}: exceeds {limit} chars")
+    if key == "due_date":
+        try:
+            datetime.fromisoformat(value.replace("Z", "+00:00"))
+        except ValueError as exc:
+            raise ValueError(f"{entity.value}.{key}: invalid ISO-8601 datetime") from exc
+    if key == "priority" and value not in _PRIORITIES:
+        raise ValueError(f"{entity.value}.{key}: must be one of {sorted(_PRIORITIES)}")
+
+
+def validate_payload(payload: dict, entity: SyncEntity) -> None:
+    """Raise ValueError on the first invalid mergeable field.
+
+    Sync payloads bypass the REST pydantic schemas; without this gate a
+    garbage value (e.g. ``due_date: "nonsense"``) either 500s on the Postgres
+    bind or is silently stored on SQLite — divergent prod-vs-test behavior.
+    Only whitelisted fields are checked; unknown keys are ignored by the merge.
+    """
+    for key, value in payload.items():
+        if key in MODEL_WHITELISTS[entity]:
+            _validate_field(entity, key, value)
 
 
 def serialize_row(row) -> dict:

@@ -32,14 +32,19 @@ async def get_knowledge(
 async def get_history_knowledge_for_task(
     db: AsyncSession, task_id: int, user_id: int
 ) -> Optional[TaskKnowledge]:
-    """Fetch the history corpus row for a task (D-07 dedupe guard query)."""
+    """Fetch the history corpus row for a task (D-07 dedupe guard query).
+
+    Uses ``first()`` (LIMIT 1) rather than ``scalar_one_or_none`` so a
+    pre-existing duplicate (ingest race before the unique index landed) reads
+    the oldest row instead of raising MultipleResultsFound.
+    """
     query = select(TaskKnowledge).where(
         TaskKnowledge.task_id == task_id,
         TaskKnowledge.source_type == SourceType.HISTORY,
         TaskKnowledge.user_id == user_id,
     )
     result = await db.execute(query)
-    return result.scalar_one_or_none()
+    return result.scalars().first()
 
 
 async def list_knowledge_for_task(

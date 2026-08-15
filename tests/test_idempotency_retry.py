@@ -9,12 +9,13 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a lost SET NX race returns 409 without executing the handler,
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
 - a 429 rate-limit response clears the lock and is never cached,
-- deterministic 4xx responses are cached and replayed without re-execution,
+- 4xx responses clear the lock and are never cached — a retry re-executes,
 - a changed body under the same key still replays the original response,
 - once the 1h cached response expires, the same key re-executes — with a fresh payload
   it succeeds, with the original body it hits the app's unique-name domain guard,
 - independent keys are independent (no accidental cross-key de-duplication),
-- the lock is atomic (SET NX), has a 30s TTL, and is replaced by the 1h cached response on success.
+- the lock is atomic (SET NX), has a 120s TTL (LLM endpoints routinely exceed 30s),
+  and is replaced by the 1h cached response on success.
 """
 
 import json
@@ -31,7 +32,7 @@ from app.main import app
 from app.models.project import Project
 
 IN_PROGRESS_MARKER = json.dumps("IN_PROGRESS")
-LOCK_TTL = 30
+LOCK_TTL = 120
 CACHE_TTL = 3600
 
 
@@ -182,11 +183,11 @@ async def test_same_key_executes_handler_once(
     assert _replayed_headers(second.headers) == _replayed_headers(first.headers)
     assert await _project_count(db) == 1, "Handler executed more than once for the same key"
 
-    # The lock write is atomic (SET NX) with a 30s TTL; the cached response uses the 1h TTL
+    # The lock write is atomic (SET NX) with a 120s TTL; the cached response uses the 1h TTL
     lock_sets = _lock_calls(fake)
     assert lock_sets, "Expected an IN_PROGRESS lock write"
     lock = lock_sets[-1]
-    assert lock.ex == LOCK_TTL, "Lock TTL must be 30s"
+    assert lock.ex == LOCK_TTL, "Lock TTL must be 120s"
     assert lock.nx is True, "Lock must be acquired with SET NX"
 
     cache_sets = _cached_response_calls(fake)
@@ -310,13 +311,10 @@ async def test_same_payload_retry_after_expiry_hits_domain_guard(
     assert "already exists" in retried.text
     assert await _project_count(db) == 1, "No duplicate row — the domain guard held"
 
-    # The deterministic 400 is cached for the 1h window
-    assert len(fake.store) == 1
-    cached = json.loads(fake.store[cache_key])
-    assert cached["status_code"] == 400
-    cache_sets = _cached_response_calls(fake)
-    assert cache_sets, "Expected a cached response write"
-    assert cache_sets[-1].ex == CACHE_TTL, "The 400 must be cached with the 1h TTL"
+    # A 4xx clears the lock and is never cached — a retry re-executes
+    # (caching client errors for an hour would replay a stale rejection).
+    assert not fake.store, "4xx responses must not be cached"
+    assert fake.deleted == [cache_key], "The lock must be cleared on a 4xx"
 
 
 @pytest.mark.anyio
@@ -495,22 +493,26 @@ async def test_ratelimit_429_clears_lock_and_is_not_cached(
 
 
 @pytest.mark.anyio
-async def test_validation_error_cached_and_replayed(
+async def test_validation_error_clears_lock_and_not_cached(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any
 ) -> None:
-    """A deterministic 4xx response is cached and replayed without re-execution."""
+    """A 4xx response clears the lock and is never cached — the key stays retryable."""
     fake, _, headers = _scenario(mocker)
 
     first = await authenticated_async_client.post("/api/v1/projects/", json={}, headers=headers)
     assert first.status_code == 422
 
+    lock_sets = _lock_calls(fake)
+    assert lock_sets, "Expected an IN_PROGRESS lock write"
+    lock_key = lock_sets[-1].key
+
     second = await authenticated_async_client.post("/api/v1/projects/", json={}, headers=headers)
     assert second.status_code == 422
     assert second.json() == first.json()
-    assert _replayed_headers(second.headers) == _replayed_headers(first.headers)
 
-    # One cached payload — the handler never ran for the replay
-    assert len(fake.store) == 1
+    # Nothing cached, lock cleared — the handler re-runs for every retry
+    assert not fake.store
+    assert fake.deleted == [lock_key, lock_key], "Each 4xx must clear its own lock"
     assert await _project_count(db) == 0
 
 

@@ -17,6 +17,7 @@ from fastapi import (
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
 from jose import jwt
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import tasks
@@ -65,6 +66,13 @@ from app.security import (
 
 logger = logging.getLogger(__name__)
 
+
+def _obfuscate_email(email: str) -> str:
+    """PII-safe email for logs: keep the local prefix short, mask the rest."""
+    local, _, domain = email.partition("@")
+    return f"{local[:2]}***@{domain}" if local else email
+
+
 # Constants to avoid duplicated literals and improve OpenAPI docs
 ROUTER_TAG = "users"
 REGISTER_PATH = "/register"
@@ -93,18 +101,30 @@ async def register_user(
     response: Response,
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
-    logger.debug("Attempting to register user with email: %s", user.email)
+    logger.debug("Attempting to register user with email: %s", _obfuscate_email(user.email))
     existing_user = await user_crud.get_user_by_email(db, user.email)
     if existing_user:
-        logger.warning("Registration failed: email %s already registered", user.email)
+        logger.warning(
+            "Registration failed: email %s already registered", _obfuscate_email(user.email)
+        )
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=EMAIL_ALREADY_REGISTERED,
         )
 
     hashed_password = get_password_hash(user.password)
-    db_user = await user_crud.create_user(db, user_in=user, hashed_password=hashed_password)
-    await db.commit()
+    try:
+        db_user = await user_crud.create_user(db, user_in=user, hashed_password=hashed_password)
+        await db.commit()
+    except IntegrityError as e:
+        # Check-then-insert race: a concurrent registration with the same
+        # email must surface as 400, not 500.
+        await db.rollback()
+        logger.warning("Registration failed (race): email already registered")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=EMAIL_ALREADY_REGISTERED,
+        ) from e
     await db.refresh(db_user)
 
     confirmation_token = create_confirm_token(db_user.id)
@@ -157,7 +177,7 @@ async def resend_confirmation(
         )
 
     confirmation_token = create_confirm_token(user.id)
-    confirmation_url = f"/api/v1/users/confirm/{confirmation_token}"
+    confirmation_url = str(request.url_for("confirm_email", token=confirmation_token))
     tasks.send_confirmation_email.delay(
         email,
         confirmation_url=confirmation_url,
