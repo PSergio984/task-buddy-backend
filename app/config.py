@@ -65,8 +65,12 @@ class GlobalConfig(BaseConfig):
     MAIL_SMTP_USERNAME: Optional[str] = None
     MAIL_SMTP_PASSWORD: Optional[str] = None
     MAIL_SMTP_USE_TLS: bool = True
-    DB_POOL_SIZE: int = 10
-    DB_MAX_OVERFLOW: int = 20
+    # Pool sized under Supabase's pooler cap (15 clients, session mode).
+    # LLM endpoints hold a connection for 20-60s, so the app pool plus boot
+    # alembic/background-task connections must never approach the cap
+    # (verified 2026-08-15: EMAXCONNSESSION during the auth-refresh storm).
+    DB_POOL_SIZE: int = 5
+    DB_MAX_OVERFLOW: int = 3
     DB_POOL_TIMEOUT: int = 30
     DB_POOL_RECYCLE: int = 1800
     B2_KEY_ID: Optional[str] = None
