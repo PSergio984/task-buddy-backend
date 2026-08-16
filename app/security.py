@@ -3,9 +3,10 @@ import hashlib
 import logging
 from typing import Annotated, Any, Literal, Optional, cast
 
+import jwt
 from fastapi import Depends, HTTPException, Request, status
 from fastapi.security import OAuth2PasswordBearer
-from jose import ExpiredSignatureError, JWTError, jwt
+from jwt import ExpiredSignatureError, InvalidTokenError
 from passlib.context import CryptContext
 from passlib.exc import UnknownHashError
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -266,8 +267,10 @@ def get_subject_for_token_type(
     token: str, expected_type: Literal["access", "confirm", "reset"]
 ) -> str:
     try:
-        payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
-    except JWTError as e:
+        payload = jwt.decode(
+            token, SECRET_KEY, algorithms=[ALGORITHM], options={"verify_sub": False}
+        )
+    except InvalidTokenError as e:
         if isinstance(e, ExpiredSignatureError):
             raise create_credentials_exception("Token has expired") from e
         logger.debug("JWT decode error: %s", str(e))

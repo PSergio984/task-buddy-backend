@@ -4,6 +4,7 @@ import datetime
 import logging
 from typing import Annotated
 
+import jwt
 from fastapi import (
     APIRouter,
     BackgroundTasks,
@@ -16,7 +17,6 @@ from fastapi import (
 )
 from fastapi.responses import HTMLResponse
 from fastapi.security import OAuth2PasswordRequestForm
-from jose import jwt
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 

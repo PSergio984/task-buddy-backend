@@ -2,8 +2,8 @@ import datetime
 import logging
 from typing import Annotated
 
+import jwt
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from jose import jwt
 
 from app.config import config
 from app.limiter import limiter

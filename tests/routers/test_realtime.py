@@ -1,27 +1,40 @@
 """Tests for the Supabase Realtime token endpoint and signing-key cache."""
 
+import base64
 import datetime
 import json
 import uuid
 from pathlib import Path
 from typing import Any
 
+import jwt
 import pytest
 from cryptography.hazmat.primitives.asymmetric import ec
 from httpx import AsyncClient
-from jose import jwk as jose_jwk
-from jose import jwt as jose_jwt
 
 from app.libs.supabase_signing import b64u_decode
+
+
+def _b64u(data: bytes) -> str:
+    """Base64url without padding (JWK component encoding)."""
+    return base64.urlsafe_b64encode(data).rstrip(b"=").decode()
 
 
 def _make_test_jwk() -> dict[str, Any]:
     """Generate a fresh ES256 keypair JWK at runtime (never commit private keys)."""
     private_key = ec.generate_private_key(ec.SECP256R1())
-    jwk_data = jose_jwk.construct(private_key, "ES256").to_dict()
-    jwk_data["kid"] = str(uuid.uuid4())
-    jwk_data["alg"] = "ES256"
-    jwk_data["use"] = "sig"
+    public = private_key.public_key().public_numbers()
+    private = private_key.private_numbers()
+    jwk_data = {
+        "kty": "EC",
+        "crv": "P-256",
+        "x": _b64u(public.x.to_bytes(32, "big")),
+        "y": _b64u(public.y.to_bytes(32, "big")),
+        "d": _b64u(private.private_value.to_bytes(32, "big")),
+        "kid": str(uuid.uuid4()),
+        "alg": "ES256",
+        "use": "sig",
+    }
     return jwk_data
 
 
@@ -69,7 +82,7 @@ async def test_realtime_token_authorized(
     assert "token" in payload
     assert payload["expires_in"] == realtime.config.SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS
 
-    decoded = jose_jwt.decode(payload["token"], _public_key_for(jwk_data), algorithms=["ES256"])
+    decoded = jwt.decode(payload["token"], _public_key_for(jwk_data), algorithms=["ES256"])
     assert decoded["role"] == "authenticated"
     assert decoded["sub"] == str(confirmed_user["id"])
     exp = datetime.datetime.fromtimestamp(decoded["exp"], tz=datetime.timezone.utc)
@@ -78,7 +91,7 @@ async def test_realtime_token_authorized(
         seconds=realtime.config.SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS
     )
 
-    header = jose_jwt.get_unverified_header(payload["token"])
+    header = jwt.get_unverified_header(payload["token"])
     assert header["alg"] == "ES256"
     assert header["kid"] == jwk_data["kid"]
 

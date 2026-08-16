@@ -3,8 +3,8 @@
 import datetime
 from typing import Any
 
+import jwt
 import pytest
-from jose import jwt
 from passlib.context import CryptContext
 from sqlalchemy.ext.asyncio import AsyncSession
 

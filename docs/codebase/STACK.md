@@ -28,7 +28,7 @@ The capstone is two deployments in one workspace: a Python/FastAPI backend and a
 | alembic | >=1.12 | DB migrations (15 versions) | pyproject.toml, `alembic/versions/` |
 | pydantic v2 + pydantic-settings | >=2.0 | Schemas (`app/schemas/`) + config (`app/config.py`) | pyproject.toml |
 | asyncpg / psycopg2-binary / aiosqlite | — | Postgres async driver / Alembic sync driver / dev SQLite | pyproject.toml |
-| python-jose + passlib[argon2] + argon2-cffi | — | JWT auth + Argon2 password hashing | pyproject.toml |
+| PyJWT + passlib[argon2] + argon2-cffi | — | JWT auth (HS256 + ES256 realtime tokens) + Argon2 password hashing | pyproject.toml, `app/security.py` |
 | slowapi | >=0.1.9 | Rate limiting (memory default; Redis optional) | pyproject.toml, `app/limiter.py`, `app/config.py` |
 | redis | >=5.0 | Cache + optional rate-limit storage (bounded pools after audit #30-era fix) | pyproject.toml, `app/config.py` |
 | openai | >=1.30 | SDK used for **all three providers** (OpenAI API, Groq via OpenAI-compatible `base_url`, Jina embeddings via OpenAI-compatible API) | `app/knowledge/assistant.py`, `app/knowledge/embeddings.py` |
@@ -41,7 +41,7 @@ The capstone is two deployments in one workspace: a Python/FastAPI backend and a
 | sentry-sdk | >=1.30 | Error monitoring | pyproject.toml, `app/config.py` |
 | python-json-logger + asgi-correlation-id | — | Structured JSON logging + correlation IDs | pyproject.toml, `app/logging_conf.py` |
 
-> Drift note: `celery` and `pgvector` remain listed in pyproject.toml but are **not** used at runtime — celery was dropped (commit `ee84a2f` "refactor: drop celery, run background work in-process"); embeddings are stored as a `Vector(1024)` column served by Supabase's built-in pgvector, not the `pgvector` package directly. Treat pyproject.toml as aspirational, `requirements.txt` + code as truth.
+> Drift note: `celery` remains mentioned in `app/main.py` comments only — it was dropped (commit `ee84a2f`); embeddings use the `pgvector` package's `Vector` type against Supabase's built-in pgvector extension.
 
 **Frontend** (`task-buddy-frontend/package.json`):
 

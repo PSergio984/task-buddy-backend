@@ -5,8 +5,8 @@ import uuid
 from collections.abc import Awaitable, Callable
 from typing import Any, Optional
 
+import jwt
 from fastapi import Request, Response
-from jose import JWTError, jwt
 from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.responses import JSONResponse
 
@@ -160,7 +160,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 user_id = payload.get("sub")
                 if user_id:
                     return str(user_id)
-            except JWTError:
+            except jwt.InvalidTokenError:
                 pass
 
         return None
