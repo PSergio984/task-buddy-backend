@@ -56,6 +56,13 @@ class GlobalConfig(BaseConfig):
     COOKIE_SECURE: bool = False
     COOKIE_SAMESITE: Literal["lax", "none", "strict"] = "lax"
     RATE_LIMIT_ENABLED: bool = True
+    # Rate-limit storage: "memory" (default) | "redis". Render free tier runs a
+    # single instance, so in-process memory is equivalent to Redis-backed
+    # limits — and avoids a second unbounded Redis pool beside the app client
+    # (Redis Cloud free tier caps ~30 clients; the limiter used to open
+    # connections per request per bucket until "max number of clients
+    # reached"). Set RATE_LIMIT_STORAGE=redis only when multi-instance.
+    RATE_LIMIT_STORAGE: str = "memory"
     MAIL_API_KEY: Optional[str] = None
     MAIL_URL: Optional[str] = None
     MAIL_FROM_NAME: str = "Task Buddy"

@@ -39,6 +39,26 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="/api/v1/users/token", auto_error=
 # Lazy Redis client initialization to handle event loop changes (especially in tests)
 _redis_client = None
 
+# Bounds for the app's shared Redis pool. Redis Cloud free tier caps at ~30
+# clients; an unbounded pool grows to the request peak under a storm and the
+# server starts rejecting new connections ("max number of clients reached"),
+# which cascades into auth failures and logout storms.
+REDIS_POOL_MAX_CONNECTIONS = 15
+REDIS_POOL_HEALTH_CHECK_INTERVAL = 30
+REDIS_SOCKET_CONNECT_TIMEOUT = 5
+
+
+def _build_redis_client() -> Any:
+    from redis import asyncio as aioredis
+
+    return aioredis.from_url(
+        REDIS_URL,
+        decode_responses=True,
+        max_connections=REDIS_POOL_MAX_CONNECTIONS,
+        health_check_interval=REDIS_POOL_HEALTH_CHECK_INTERVAL,
+        socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
+    )
+
 
 def get_redis_client() -> Optional[Any]:
     """
@@ -50,9 +70,7 @@ def get_redis_client() -> Optional[Any]:
     if REDIS_URL:
         try:
             if _redis_client is None:
-                from redis import asyncio as aioredis
-
-                _redis_client = aioredis.from_url(REDIS_URL, decode_responses=True)
+                _redis_client = _build_redis_client()
             return _redis_client
         except Exception as e:
             logger.warning("Redis could not be initialized: %s", str(e))
@@ -159,14 +177,20 @@ async def is_token_blacklisted(token: str) -> bool:
             _redis_client = None
             client = get_redis_client()
             if client:
-                token_hash = hashlib.sha256(token.encode()).hexdigest()
-                exists_count = await client.exists(f"blacklist:{token_hash}")
-                return exists_count > 0
-        raise
-    except Exception as e:
+                try:
+                    token_hash = hashlib.sha256(token.encode()).hexdigest()
+                    exists_count = await client.exists(f"blacklist:{token_hash}")
+                    return exists_count > 0
+                except Exception:
+                    logger.exception("Failed to check token blacklist in Redis (retry)")
+        logger.warning("Token blacklist check unavailable; assuming not blacklisted.")
+        return False
+    except Exception:
         logger.exception("Failed to check token blacklist in Redis")
-        # Fail-closed: reject token if security check fails
-        raise create_credentials_exception("Token validation unavailable") from e
+        # Fail-open: a Redis outage must not 401 every request — that turns a
+        # storage blip into a mass-logout storm, amplifying the incident.
+        # Tokens are short-lived (120 min); the blacklist only enforces logout.
+        return False
 
 
 def create_access_token(user_id: int) -> str:
