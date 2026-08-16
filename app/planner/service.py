@@ -43,6 +43,9 @@ logger = logging.getLogger(__name__)
 POOL_LIMIT = 50  # D-06 server-curated pool cap
 HINT_LIMIT = 20  # effort-hint lookups by urgency order
 HINT_SEARCH_LIMIT = 3  # top-1 duration suffices
+# Descriptions enter the prompt verbatim; 50 tasks x 2000 chars can exceed
+# 100K prompt tokens per call. Truncate to keep prompts bounded (audit #29).
+MAX_DESC_CHARS = 400
 
 PLANNER_SYSTEM_PROMPT = (
     "You are a task planner. Given open tasks with their due dates, priorities, "
@@ -229,11 +232,14 @@ async def _build_rows(db: AsyncSession, user_id: int, pool: list[Task]) -> list[
 
     rows: list[PlanTaskInput] = []
     for task in pool:
+        description = task.description or ""
+        if len(description) > MAX_DESC_CHARS:
+            description = description[: MAX_DESC_CHARS - 1] + "…"
         rows.append(
             PlanTaskInput(
                 task_id=task.id,
                 title=task.title,
-                description=task.description,
+                description=description,
                 due_date=task.due_date.isoformat() if task.due_date else None,
                 priority=task.priority.value,
                 estimated_effort_minutes=task.estimated_effort_minutes,
@@ -258,6 +264,7 @@ async def _llm_plan(
     rows: list[PlanTaskInput],
     minutes: int,
     limit: Optional[int],
+    pool_ids: set[int],
 ) -> _LLMPlanResult:
     """One structured LLM call: parse-with-degrade, whitelist, dedupe, cap."""
     payload = {
@@ -303,7 +310,7 @@ async def _llm_plan(
         reason = "plan could not be generated"
         verdict = PlanVerdict(buckets=[])
 
-    buckets = _whitelist_verdict(verdict, {t.id for t in pool}, limit)
+    buckets = _whitelist_verdict(verdict, pool_ids, limit)
     return _LLMPlanResult(buckets=buckets, reason=reason, record=record, answer_text=answer_text)
 
 
@@ -336,7 +343,14 @@ async def create_plan(
         )
 
     rows = await _build_rows(db, user_id, pool)
-    result = await _llm_plan(pool, rows, minutes, limit)
+    # Snapshot pool ids: the rollback below expires every ORM instance, so any
+    # later attribute access would lazy-load outside a greenlet context.
+    pool_ids = {t.id for t in pool}
+    # All DB work above was read-only; end the transaction so the pooled
+    # connection returns to the pool before the seconds-long LLM call
+    # (audit #27). Persistence below re-acquires it for the flush.
+    await db.rollback()
+    result = await _llm_plan(pool, rows, minutes, limit, pool_ids)
 
     plan_id = await _persist_guarded(
         db, user_id, result.answer_text, result.record, pool_size, minutes

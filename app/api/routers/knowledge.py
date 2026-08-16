@@ -20,6 +20,7 @@ from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError, KnowledgeAssistant
+from app.knowledge.budget import BudgetExceededError, check_llm_budget
 from app.knowledge.ingest import ingest_knowledge
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
@@ -283,6 +284,15 @@ async def ask_knowledge(
     db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+
+    # Per-user daily spend cap — checked before any LLM call (audit #29).
+    try:
+        await check_llm_budget(db, current_user.id)
+    except BudgetExceededError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily AI usage limit reached. Try again tomorrow.",
+        ) from exc
 
     assistant = KnowledgeAssistant()
     try:

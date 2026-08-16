@@ -203,16 +203,29 @@ class KnowledgeAssistant:
         chunks = await UserKnowledgeIndex().search(
             db, task.user_id, effective_query, limit=MAX_RETRIEVED_CHUNKS
         )
+        # Snapshot everything the LLM calls below need: the rollback expires
+        # every ORM instance, so any later attribute access would lazy-load
+        # outside a greenlet context (audit #27 + MissingGreenlet lesson).
+        title = task.title
+        description = task.description
+        user_id = task.user_id
+        task_id = task.id
+        # Everything above was read-only; end the transaction so the pooled
+        # connection returns to the pool before the seconds-long LLM call
+        # (audit #27: 10 concurrent asks used to pin 10 pooled connections).
+        await db.rollback()
 
-        answer_text, record = await generate_answer(task.title, task.description, chunks)
+        answer_text, record = await generate_answer(title, description, chunks)
 
         citations = await self._build_citations(db, chunks)
+        # Same release before the judge call.
+        await db.rollback()
         relevance, explanation = await evaluate_relevance(effective_query, answer_text, citations)
 
         return await create_answer(
             db,
-            user_id=task.user_id,
-            task_id=task.id,
+            user_id=user_id,
+            task_id=task_id,
             answer_text=answer_text,
             record=record,
             retrieved_chunks=citations,

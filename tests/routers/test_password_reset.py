@@ -108,3 +108,16 @@ async def test_reset_password_too_short(
     )
     assert response.status_code == 400
     assert "at least 8" in str(response.json()["detail"]).lower()
+
+
+@pytest.mark.anyio
+async def test_reset_password_page_does_not_echo_token(
+    async_client: AsyncClient, confirmed_user: dict[str, Any]
+) -> None:
+    """The GET placeholder page must never echo the reset token (audit #25)."""
+    reset_token = create_reset_token(confirmed_user["id"])
+
+    response = await async_client.get(f"/api/v1/users/reset-password/{reset_token}")
+
+    assert response.status_code == 200
+    assert reset_token not in response.text

@@ -489,8 +489,10 @@ async def reset_password_page(token: str) -> dict:
     """
     Placeholder for the reset password page.
     In a real app, this would be handled by the frontend.
+    Never echo the token back — the response body is logged by proxies and
+    audit tooling, so it must stay token-free (audit #25).
     """
-    return {"detail": f"This is a placeholder for the reset password page with token: {token}"}
+    return {"detail": "Reset your password from the link in your email."}
 
 
 @router.post(

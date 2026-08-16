@@ -81,10 +81,17 @@ async def delete_project(
 
 
 async def reorder_projects(db: AsyncSession, user_id: int, ordered_ids: list[int]) -> None:
+    if not ordered_ids:
+        return
+
+    # Fetch all projects in one IN query, then apply positions from the
+    # ordered_ids list (mirrors reorder_subtasks; audit #30).
+    query = select(Project).where(Project.id.in_(ordered_ids), Project.user_id == user_id)
+    result = await db.execute(query)
+    projects_map = {p.id: p for p in result.scalars().all()}
+
     for index, project_id in enumerate(ordered_ids):
-        query = select(Project).where(Project.id == project_id, Project.user_id == user_id)
-        result = await db.execute(query)
-        db_project = result.scalar_one_or_none()
+        db_project = projects_map.get(project_id)
         if db_project:
             db_project.position = index
             db.add(db_project)

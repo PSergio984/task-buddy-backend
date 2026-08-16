@@ -187,3 +187,12 @@ def test_signing_key_rejects_non_string_components(tmp_path) -> None:
 
     with pytest.raises(ValueError):
         cache.load(str(key_file))
+
+
+@pytest.mark.anyio
+async def test_stream_endpoint_removed(
+    authenticated_async_client: AsyncClient, signing_key_file: Any
+) -> None:
+    """The dead SSE /stream endpoint was removed; it must 404 (audit #28)."""
+    response = await authenticated_async_client.get("/api/v1/realtime/stream")
+    assert response.status_code == 404

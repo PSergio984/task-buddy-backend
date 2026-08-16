@@ -100,10 +100,13 @@ def mock_redis_security(mocker: Any) -> Any:
     mock_redis.exists = mocker.AsyncMock(return_value=False)
     mock_redis.get = mocker.AsyncMock(return_value=None)
     mock_redis.set = mocker.AsyncMock(return_value=True)
+    # Cache invalidation index (audit #26): set_cached_data SADDs, invalidators
+    # SMEMBERS/SREMs — all async so awaiting them in tests works.
+    mock_redis.smembers = mocker.AsyncMock(return_value=set())
+    mock_redis.sadd = mocker.AsyncMock(return_value=1)
+    mock_redis.srem = mocker.AsyncMock(return_value=1)
 
     mocker.patch("app.security.get_redis_client", return_value=mock_redis)
-    mocker.patch("app.api.routers.project.get_redis_client", return_value=mock_redis)
-    mocker.patch("app.api.routers.task.get_redis_client", return_value=mock_redis)
     mocker.patch("app.libs.cache.get_redis_client", return_value=mock_redis)
     mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
 

@@ -11,6 +11,7 @@ from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
 from app.config import RATE_LIMIT_PLAN, SYNTHETIC_CALENDAR_ENABLED
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError
+from app.knowledge.budget import BudgetExceededError, check_llm_budget
 from app.limiter import limiter
 from app.models.user import User
 from app.planner.connector import SyntheticCalendarConnector
@@ -40,26 +41,40 @@ async def plan(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> PlanResponse:
     """Return a ranked, time-bucketed plan across the user's open tasks."""
-    logger.info("POST /plan - %s", current_user.id)
+    # Snapshot the user id: create_plan releases the pooled connection with a
+    # rollback that expires every ORM instance — any later attribute access on
+    # current_user (e.g. logging) would trigger a lazy refresh outside a
+    # greenlet context (audit #27).
+    user_id = current_user.id
+    logger.info("POST /plan - %s", user_id)
+
+    # Per-user daily spend cap — checked before any LLM call (audit #29).
+    try:
+        await check_llm_budget(db, user_id)
+    except BudgetExceededError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily AI usage limit reached. Try again tomorrow.",
+        ) from exc
 
     connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
     try:
         result = await create_plan(
             db,
-            current_user.id,
+            user_id,
             plan_in.available_minutes,
             plan_in.limit,
             connector,
         )
     except AssistantNotConfiguredError as exc:
-        logger.warning("plan not configured for user=%s: %s", current_user.id, exc)
+        logger.warning("plan not configured for user=%s: %s", user_id, exc)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
-        logger.warning("plan unavailable for user=%s: %s", current_user.id, exc)
+        logger.warning("plan unavailable for user=%s: %s", user_id, exc)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except RuntimeError as exc:
         # Embedding path raises RuntimeError when the OpenAI key is missing.
-        logger.warning("plan not configured (embeddings) user=%s: %s", current_user.id, exc)
+        logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
     await db.commit()

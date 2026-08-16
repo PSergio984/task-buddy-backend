@@ -16,14 +16,19 @@ from app.config import (
 from app.crud import project as project_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.libs.cache import get_cache_key, get_cached_data, set_cached_data
+from app.libs.cache import (
+    delete_cached_user_keys,
+    get_cache_key,
+    get_cached_data,
+    set_cached_data,
+)
 from app.limiter import limiter
 from app.models.project import Project
 from app.models.task import Task
 from app.models.user import User
 from app.schemas.project import ProjectCreateRequest, ProjectResponse, ProjectUpdateRequest
 from app.schemas.task import TaskCreateResponse
-from app.security import get_confirmed_user, get_redis_client
+from app.security import get_confirmed_user
 
 logger = logging.getLogger(__name__)
 
@@ -93,11 +98,7 @@ async def create_project(
     logger.info("POST / - created project id=%s", db_project.id)
 
     # Invalidate cache
-    redis = get_redis_client()
-    if redis:
-        keys = await redis.keys(f"cache:projects_list:{current_user.id}:*")
-        if keys:
-            await redis.delete(*keys)
+    await delete_cached_user_keys(current_user.id, f"cache:projects_list:{current_user.id}:")
 
     return db_project
 
@@ -184,11 +185,7 @@ async def update_project(
     logger.info("PUT /%s - project updated", project_id)
 
     # Invalidate cache
-    redis = get_redis_client()
-    if redis:
-        keys = await redis.keys(f"cache:projects_list:{current_user.id}:*")
-        if keys:
-            await redis.delete(*keys)
+    await delete_cached_user_keys(current_user.id, f"cache:projects_list:{current_user.id}:")
 
     return db_project
 
@@ -217,11 +214,7 @@ async def delete_project(
     logger.info("DELETE /%s - project deleted", project_id)
 
     # Invalidate cache
-    redis = get_redis_client()
-    if redis:
-        keys = await redis.keys(f"cache:projects_list:{current_user.id}:*")
-        if keys:
-            await redis.delete(*keys)
+    await delete_cached_user_keys(current_user.id, f"cache:projects_list:{current_user.id}:")
 
     return {"message": "Project deleted successfully"}
 
@@ -240,10 +233,6 @@ async def reorder_projects(
     await db.commit()
 
     # Invalidate cache
-    redis = get_redis_client()
-    if redis:
-        keys = await redis.keys(f"cache:projects_list:{current_user.id}:*")
-        if keys:
-            await redis.delete(*keys)
+    await delete_cached_user_keys(current_user.id, f"cache:projects_list:{current_user.id}:")
 
     return {"message": "Projects reordered successfully"}

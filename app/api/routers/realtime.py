@@ -1,16 +1,11 @@
-import asyncio
 import datetime
-import json
 import logging
-from collections.abc import AsyncIterator
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from fastapi.responses import StreamingResponse
 from jose import jwt
 
 from app.config import config
-from app.libs.broadcaster import broadcaster
 from app.limiter import limiter
 from app.models.user import User
 from app.security import get_confirmed_user
@@ -65,50 +60,3 @@ async def realtime_token(
         "token": token,
         "expires_in": config.SUPABASE_REALTIME_TOKEN_EXPIRE_SECONDS,
     }
-
-
-@router.get("/stream")
-async def stream(
-    request: Request,
-    current_user: Annotated[User, Depends(get_confirmed_user)],
-) -> StreamingResponse:
-    """
-    SSE endpoint for real-time updates.
-    """
-
-    async def event_generator() -> AsyncIterator[str]:
-        queue = broadcaster.subscribe(current_user.id)
-        try:
-            # Send an initial heart beat or connection confirmation
-            yield f"data: {json.dumps({'type': 'connected'})}\n\n"
-
-            while True:
-                if await request.is_disconnected():
-                    break
-
-                try:
-                    # Wait for an event with a timeout to check for disconnection
-                    event = await asyncio.wait_for(queue.get(), timeout=30.0)
-                    yield f"data: {event}\n\n"
-                except asyncio.TimeoutError:
-                    # Keep-alive ping
-                    yield ": ping\n\n"
-        except Exception:
-            logger.exception(
-                "SSE stream error for user %s (path %s)",
-                current_user.id,
-                request.url.path,
-            )
-            raise
-        finally:
-            broadcaster.unsubscribe(current_user.id, queue)
-
-    return StreamingResponse(
-        event_generator(),
-        media_type="text/event-stream",
-        headers={
-            "Cache-Control": "no-cache",
-            "Connection": "keep-alive",
-            "X-Accel-Buffering": "no",
-        },
-    )

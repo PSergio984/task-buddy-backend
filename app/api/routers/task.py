@@ -28,7 +28,7 @@ from app.crud import tag as tag_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
 from app.knowledge.history import delete_history_knowledge, ingest_history_task
-from app.libs.cache import get_cache_key, get_cached_data, set_cached_data
+from app.libs.cache import delete_cached_user_keys, get_cache_key, get_cached_data, set_cached_data
 from app.limiter import limiter
 from app.models.tag import Tag
 from app.models.task import DeadlineType, SubTask, Task
@@ -44,7 +44,7 @@ from app.schemas.task import (
     TaskUpdateRequest,
     TaskWithSubTasks,
 )
-from app.security import get_confirmed_user, get_redis_client
+from app.security import get_confirmed_user
 
 # Constants to avoid duplicated string literals
 ROUTER_TAG = "tasks"
@@ -75,15 +75,13 @@ logger = logging.getLogger(__name__)
 
 
 async def invalidate_task_cache(current_user_id: int, task_id: int | None = None) -> None:
-    redis = get_redis_client()
-    if redis:
-        keys = await redis.keys(f"cache:tasks_list:{current_user_id}:*")
-        if task_id is not None:
-            keys.extend(await redis.keys(f"cache:task_detail:{current_user_id}:{task_id}*"))
-        else:
-            keys.extend(await redis.keys(f"cache:task_detail:{current_user_id}:*"))
-        if keys:
-            await redis.delete(*keys)
+    # Per-user key-index invalidation (no KEYS scan; see libs.cache).
+    prefixes = [f"cache:tasks_list:{current_user_id}:"]
+    if task_id is not None:
+        prefixes.append(f"cache:task_detail:{current_user_id}:task_id={task_id}")
+    else:
+        prefixes.append(f"cache:task_detail:{current_user_id}:")
+    await delete_cached_user_keys(current_user_id, *prefixes)
 
 
 async def verify_project_ownership(db: AsyncSession, project_id: int | None, user_id: int) -> None:

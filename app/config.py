@@ -153,6 +153,10 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_MEMORY_SIMILAR: str = "10/minute"
     RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
     RATE_LIMIT_PLAN: str = "10/minute"
+    # Per-user daily LLM token cap across ask + plan (audit #29). The per-IP
+    # rate limit bounds call count, not spend: a legit-but-abusive client can
+    # burn the free-tier quota without a per-user budget. 0 disables the cap.
+    LLM_DAILY_TOKEN_BUDGET: int = 200_000
     # Demo calendar connector gated on by default (D-11) — no ProdConfig override.
     SYNTHETIC_CALENDAR_ENABLED: bool = True
     PLANNER_WORKING_WINDOW_START_HOUR: int = 18
@@ -439,6 +443,7 @@ RATE_LIMIT_KNOWLEDGE_ASK = config.RATE_LIMIT_KNOWLEDGE_ASK
 RATE_LIMIT_MEMORY_SIMILAR = config.RATE_LIMIT_MEMORY_SIMILAR
 RATE_LIMIT_KNOWLEDGE_FEEDBACK = config.RATE_LIMIT_KNOWLEDGE_FEEDBACK
 RATE_LIMIT_PLAN = config.RATE_LIMIT_PLAN
+LLM_DAILY_TOKEN_BUDGET = config.LLM_DAILY_TOKEN_BUDGET
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
 EMBEDDING_PROVIDER = config.EMBEDDING_PROVIDER
