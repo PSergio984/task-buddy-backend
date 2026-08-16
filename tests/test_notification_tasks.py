@@ -83,9 +83,9 @@ async def test_process_reminders_triggers_channels(
     await db.commit()
     await db.refresh(task)
 
-    # Mock channels
-    mock_push = mocker.patch("app.tasks.send_push_notification")
-    mock_email = mocker.patch("app.tasks.send_confirmation_email")
+    # Mock the async senders (the reminder loop awaits them directly)
+    mock_push = mocker.patch("app.tasks._send_push_notification_async")
+    mock_email = mocker.patch("app.tasks._send_confirmation_email_async")
 
     await _process_reminders_async()
 

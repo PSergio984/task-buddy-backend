@@ -176,20 +176,26 @@ async def _send_confirmation_email_async(
 
 def run_async_coroutine(coro):
     """
-    Helper to run an async coroutine from a synchronous context.
-    If an event loop is already running (e.g., in tests), it runs the coroutine
-    in a separate thread to avoid RuntimeError: asyncio.run() cannot be called from a running event loop.
-    """
-    try:
-        asyncio.get_running_loop()
-        # If we reach here, a loop is running. Run in a thread to block synchronously.
-        import concurrent.futures
+    Run an async coroutine from a synchronous context.
 
-        with concurrent.futures.ThreadPoolExecutor() as pool:
-            return pool.submit(asyncio.run, coro).result()
-    except RuntimeError:
-        # No loop running, safe to use asyncio.run
-        return asyncio.run(coro)
+    Uses a plain threading.Thread instead of a ThreadPoolExecutor: on Python
+    3.14 the running-loop binding lives in the task context, which executor
+    threads COPY — asyncio.run there then raises 'cannot be called from a
+    running event loop' (observed in prod: reminder loop -> sync wrapper).
+    threading.Thread starts with a fresh context, so asyncio.run always gets
+    a loop-free thread.
+    """
+    import threading
+
+    results: list = []
+
+    def _run() -> None:
+        results.append(asyncio.run(coro))
+
+    thread = threading.Thread(target=_run)
+    thread.start()
+    thread.join()
+    return results[0]
 
 
 def send_confirmation_email(
@@ -347,14 +353,15 @@ async def _handle_notification_delivery(db, task: Task, window: dict) -> None:
     )
     db.add(notification)
 
-    # 2. Send Push Notification
-    send_push_notification(task.user_id, title, message, action_url)
+    # 2. Send Push Notification (await directly — the reminder loop runs in
+    #    the event loop; the sync wrappers' asyncio.run would collide with it).
+    await _send_push_notification_async(task.user_id, title, message, action_url)
 
     # 3. Send Email Notification
     user_stmt = select(User.email).where(User.id == task.user_id)
     user_email = (await db.execute(user_stmt)).scalar()
     if user_email:
-        send_confirmation_email(user_email, title, message)
+        await _send_confirmation_email_async(user_email, title, message, suppress_exceptions=True)
 
 
 async def _process_task_notifications(db, task: Task, windows: list[dict]) -> None:

@@ -35,9 +35,9 @@ async def test_trigger_reminder_before_notification(
     await db.commit()
     await db.refresh(task)
 
-    # Mock the Celery tasks so we don't actually try to send push/email during the test
-    mocker.patch("app.tasks.send_push_notification")
-    mocker.patch("app.tasks.send_confirmation_email")
+    # Mock the async senders so the test doesn't send real push/email
+    mocker.patch("app.tasks._send_push_notification_async")
+    mocker.patch("app.tasks._send_confirmation_email_async")
 
     # 2. Trigger the reminder processing logic
     await _process_reminders_async()

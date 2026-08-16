@@ -3,7 +3,28 @@
 import httpx
 import pytest
 
-from app.tasks import APIResponseError, _send_confirmation_email_async, send_confirmation_email
+from app.tasks import (
+    APIResponseError,
+    _send_confirmation_email_async,
+    run_async_coroutine,
+    send_confirmation_email,
+)
+
+
+@pytest.mark.anyio
+async def test_run_async_coroutine_from_running_loop() -> None:
+    """A sync wrapper called from a running event loop must not crash.
+
+    Regression for the prod incident: on Python 3.14 the running-loop binding
+    propagates into ThreadPoolExecutor threads, so asyncio.run raised 'cannot
+    be called from a running event loop' (reminder loop -> sync wrapper).
+    run_async_coroutine must start a fresh-context thread instead.
+    """
+
+    async def _answer() -> int:
+        return 42
+
+    assert run_async_coroutine(_answer()) == 42
 
 
 def test_send_confirmation_email(mock_httpx_client):
