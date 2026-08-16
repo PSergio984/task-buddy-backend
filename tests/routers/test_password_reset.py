@@ -14,7 +14,7 @@ async def test_forgot_password_success(
     async_client: AsyncClient, confirmed_user: dict[str, Any], mocker: Any
 ) -> None:
     """Verify forgot-password sends a reset email with a valid reset URL."""
-    mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
+    mock_delay = mocker.patch("app.tasks.send_password_reset_email")
 
     response = await async_client.post(
         "/api/v1/users/forgot-password", json={"email": confirmed_user["email"]}
@@ -32,7 +32,7 @@ async def test_forgot_password_success(
 @pytest.mark.anyio
 async def test_forgot_password_user_not_found(async_client: AsyncClient, mocker: Any) -> None:
     """Verify forgot-password for an unknown email still returns 200 (no enumeration)."""
-    mock_delay = mocker.patch("app.tasks.send_password_reset_email.delay")
+    mock_delay = mocker.patch("app.tasks.send_password_reset_email")
 
     response = await async_client.post(
         "/api/v1/users/forgot-password", json={"email": "nonexistent@example.com"}
@@ -49,7 +49,7 @@ async def test_reset_password_success(
 ) -> None:
     """Verify a valid reset token allows the user to reset their password."""
     # Mock the confirmation email task
-    mock_delay = mocker.patch("app.tasks.send_password_changed_confirmation.delay")
+    mock_delay = mocker.patch("app.tasks.send_password_changed_confirmation")
 
     # Create a valid reset token
     reset_token = create_reset_token(confirmed_user["id"])

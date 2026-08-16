@@ -84,8 +84,8 @@ async def test_process_reminders_triggers_channels(
     await db.refresh(task)
 
     # Mock channels
-    mock_push = mocker.patch("app.tasks.send_push_notification.delay")
-    mock_email = mocker.patch("app.tasks.send_confirmation_email.delay")
+    mock_push = mocker.patch("app.tasks.send_push_notification")
+    mock_email = mocker.patch("app.tasks.send_confirmation_email")
 
     await _process_reminders_async()
 

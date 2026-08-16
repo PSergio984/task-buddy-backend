@@ -31,7 +31,7 @@ async def test_register_user(db: AsyncSession, async_client: AsyncClient) -> Non
 @pytest.mark.anyio
 async def test_confirm_user(db: AsyncSession, async_client: AsyncClient, mocker: Any) -> None:
     """Verify a user can confirm their email via the confirmation link."""
-    mock_delay = mocker.patch("app.tasks.send_confirmation_email.delay")
+    mock_delay = mocker.patch("app.tasks.send_confirmation_email")
 
     await register_user(async_client, "testuser", "test@example.net", "password123")
     assert mock_delay.called
@@ -54,11 +54,9 @@ async def test_confirm_user_expired_token(async_client: AsyncClient, mocker: Any
     """Verify confirming with an expired token returns 401."""
     mocker.patch("app.security.confirm_token_expire_time", return_value=-1)
 
-    mock_delay = mocker.patch("app.tasks.send_confirmation_email.delay")
+    mock_delay = mocker.patch("app.tasks.send_confirmation_email")
     await register_user(async_client, "testuser2", "test@exaple.net", "password123")
-    assert mock_delay.called, (
-        "Expected send_confirmation_email.delay to be called during registration"
-    )
+    assert mock_delay.called, "Expected send_confirmation_email to be called during registration"
     confirmation_url = str(mock_delay.call_args[1]["confirmation_url"])
     response = await async_client.get(confirmation_url)
 

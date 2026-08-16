@@ -36,8 +36,8 @@ docker-compose up --build
 This will:
 1. Start PostgreSQL and Redis.
 2. Run database migrations automatically via `start.sh`.
-3. Start the FastAPI application.
-4. Start a dedicated Celery worker for background tasks.
+3. Start the FastAPI application (emails, pushes, and reminders run in-process —
+   no separate worker process).
 
 ### 🐍 Local Development
 
@@ -57,11 +57,8 @@ This will:
    ```bash
    uvicorn app.main:app --reload
    ```
-
-5. **Run Celery Worker**:
-   ```bash
-   celery -A app.celery_app worker --loglevel=info
-   ```
+   Background work (confirmation/reset emails, web pushes, the 60s reminder
+   scan, and the boot-time knowledge sweep) runs inside this process.
 
 ## 📚 API Documentation
 
@@ -89,4 +86,4 @@ pytest
 ```
 
 ---
-**Note on Email Sending**: If registration or password reset emails are not being sent, ensure the Celery worker is running and configured with valid SMTP or Brevo API keys in `.env`.
+**Note on Email Sending**: If registration or password reset emails are not being sent, ensure `MAIL_URL`/`MAIL_API_KEY` (Brevo) or `MAIL_SMTP_*` are configured in `.env` — emails are sent in-process after the response.

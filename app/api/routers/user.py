@@ -129,7 +129,8 @@ async def register_user(
 
     confirmation_token = create_confirm_token(db_user.id)
 
-    tasks.send_confirmation_email.delay(
+    background_tasks.add_task(
+        tasks.send_confirmation_email,
         user.email,
         confirmation_url=str(request.url_for("confirm_email", token=confirmation_token)),
     )
@@ -178,9 +179,8 @@ async def resend_confirmation(
 
     confirmation_token = create_confirm_token(user.id)
     confirmation_url = str(request.url_for("confirm_email", token=confirmation_token))
-    tasks.send_confirmation_email.delay(
-        email,
-        confirmation_url=confirmation_url,
+    background_tasks.add_task(
+        tasks.send_confirmation_email, email, confirmation_url=confirmation_url
     )
     return {"detail": "Confirmation email requeued"}
 
@@ -477,9 +477,8 @@ async def forgot_password(
     reset_token = create_reset_token(user.id)
     reset_url = f"{FRONTEND_URL}/reset-password/{reset_token}"
 
-    tasks.send_password_reset_email.delay(
-        forgot_password_data.email,
-        reset_url=reset_url,
+    background_tasks.add_task(
+        tasks.send_password_reset_email, forgot_password_data.email, reset_url=reset_url
     )
 
     return {"detail": "If an account exists with this email, a reset link has been sent."}
@@ -538,8 +537,6 @@ async def reset_password(
     await user_crud.update_user(db, db_user=user, update_data={"password": hashed_password})
     await db.commit()
 
-    tasks.send_password_changed_confirmation.delay(
-        to_email=user.email,
-    )
+    background_tasks.add_task(tasks.send_password_changed_confirmation, to_email=user.email)
 
     return {"detail": "Password reset successfully"}

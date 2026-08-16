@@ -10,7 +10,6 @@ import httpx
 from pywebpush import WebPushException, webpush
 from sqlalchemy import exists, select, update
 
-from app.celery_app import celery_app
 from app.config import config
 from app.database import AsyncSessionLocal
 from app.models.notification import Notification, NotificationType, PushSubscription
@@ -193,19 +192,13 @@ def run_async_coroutine(coro):
         return asyncio.run(coro)
 
 
-@celery_app.task(
-    name="app.tasks.send_confirmation_email",
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    max_retries=3,
-)
 def send_confirmation_email(
     to_email: str,
     subject: str | None = None,
     body: str | None = None,
     confirmation_url: str | None = None,
 ) -> None:
-    """Celery task to send confirmation email."""
+    """In-process confirmation email send (sync wrapper for BackgroundTasks)."""
     run_async_coroutine(
         _send_confirmation_email_async(
             to_email, subject, body, confirmation_url, suppress_exceptions=True
@@ -244,14 +237,8 @@ async def _send_password_reset_email_async(
             raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 
 
-@celery_app.task(
-    name="app.tasks.send_password_reset_email",
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    max_retries=3,
-)
 def send_password_reset_email(to_email: str, reset_url: str) -> None:
-    """Celery task to send password reset email."""
+    """In-process password reset email send (sync wrapper for BackgroundTasks)."""
     run_async_coroutine(
         _send_password_reset_email_async(to_email, reset_url, suppress_exceptions=True)
     )
@@ -287,22 +274,15 @@ async def _send_password_changed_confirmation_async(
             raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 
 
-@celery_app.task(
-    name="app.tasks.send_password_changed_confirmation",
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    max_retries=3,
-)
 def send_password_changed_confirmation(to_email: str) -> None:
-    """Celery task to send password changed confirmation email."""
+    """In-process password-changed email send (sync wrapper for BackgroundTasks)."""
     run_async_coroutine(
         _send_password_changed_confirmation_async(to_email, suppress_exceptions=True)
     )
 
 
-@celery_app.task(name="app.tasks.process_reminders")
 def process_reminders() -> None:
-    """Celery task to scan for upcoming/overdue tasks and send notifications."""
+    """In-process reminder scan; the web lifespan loop calls the async core."""
     run_async_coroutine(_process_reminders_async())
 
 
@@ -367,14 +347,14 @@ async def _handle_notification_delivery(db, task: Task, window: dict) -> None:
     )
     db.add(notification)
 
-    # 2. Enqueue Push Notification
-    send_push_notification.delay(task.user_id, title, message, action_url)
+    # 2. Send Push Notification
+    send_push_notification(task.user_id, title, message, action_url)
 
-    # 3. Enqueue Email Notification
+    # 3. Send Email Notification
     user_stmt = select(User.email).where(User.id == task.user_id)
     user_email = (await db.execute(user_stmt)).scalar()
     if user_email:
-        send_confirmation_email.delay(user_email, title, message)
+        send_confirmation_email(user_email, title, message)
 
 
 async def _process_task_notifications(db, task: Task, windows: list[dict]) -> None:
@@ -413,16 +393,10 @@ async def _process_reminders_async() -> None:
         await db.commit()
 
 
-@celery_app.task(
-    name="app.tasks.send_push_notification",
-    autoretry_for=(Exception,),
-    retry_backoff=True,
-    max_retries=3,
-)
 def send_push_notification(
     user_id: int, title: str, message: str, action_url: str | None = None
 ) -> None:
-    """Celery task to send web push notifications to all user subscriptions."""
+    """In-process web push send (sync wrapper)."""
     run_async_coroutine(_send_push_notification_async(user_id, title, message, action_url))
 
 

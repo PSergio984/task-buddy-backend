@@ -39,6 +39,25 @@ logger = logging.getLogger(__name__)
 # mid-execution (asyncio.create_task discards are a documented GC hazard).
 _background_tasks: set[asyncio.Task[None]] = set()
 
+
+async def reminder_loop() -> None:
+    """In-process replacement for the celery beat 'process-reminders' schedule.
+
+    Scans for upcoming/due/overdue tasks every 60s and sends in-app
+    notifications, web pushes, and reminder emails. Runs inside the web
+    process (no worker service): a crash only skips a tick, and the loop
+    restarts with the process on the next boot.
+    """
+    from app.tasks import _process_reminders_async
+
+    while True:
+        try:
+            await _process_reminders_async()
+        except Exception:
+            logger.exception("reminder loop tick failed")
+        await asyncio.sleep(60)
+
+
 if config.SENTRY_DSN:
     sentry_sdk.init(
         dsn=config.SENTRY_DSN,
@@ -81,7 +100,19 @@ async def lifespan(app: FastAPI):
             sweep_task.add_done_callback(_background_tasks.discard)
         except Exception:
             logger.exception("history backfill sweep failed to start")
-    yield
+    # In-process reminder loop (replaces the celery beat schedule — the
+    # previous celery worker never ran with -B, so reminders never fired).
+    try:
+        reminder_task = asyncio.create_task(reminder_loop())
+        _background_tasks.add(reminder_task)
+        reminder_task.add_done_callback(_background_tasks.discard)
+    except Exception:
+        logger.exception("reminder loop failed to start")
+    try:
+        yield
+    finally:
+        for task in list(_background_tasks):
+            task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
