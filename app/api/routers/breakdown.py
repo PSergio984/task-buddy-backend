@@ -89,6 +89,7 @@ async def breakdown(
         context_description=context_description,
         memory_hints=memory_hints,
         focus_task_title=breakdown_in.focus_task_title,
+        focus_task_number=breakdown_in.focus_task_number,
     )
 
     # Release the pooled connection before the seconds-long LLM call: the

@@ -44,6 +44,23 @@ class TestPromptBuilder:
         prompt = build_breakdown_prompt("blob of tasks", focus_task_title="Deploy")
         assert "<focus>Deploy</focus>" in prompt
 
+    def test_focus_number_and_title_rendered(self) -> None:
+        prompt = build_breakdown_prompt(
+            "blob of tasks",
+            focus_task_title="Deploy",
+            focus_task_number=2,
+        )
+        assert "<focus>#2 Deploy</focus>" in prompt
+        # number-stable targeting must survive an emptied/edited title
+        prompt_empty = build_breakdown_prompt(
+            "blob", focus_task_number=3, focus_task_title=""
+        )
+        assert "<focus>#3</focus>" in prompt_empty
+
+    def test_focus_number_alone_suffices(self) -> None:
+        prompt = build_breakdown_prompt("blob", focus_task_number=5)
+        assert "<focus>#5</focus>" in prompt
+
 
 class TestParseDegrade:
     def test_valid_payload(self) -> None:

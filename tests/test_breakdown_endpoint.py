@@ -190,7 +190,7 @@ async def test_breakdown_503_when_not_configured(
 async def test_breakdown_refine_focus_reaches_prompt(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
-    """The refine loop re-sends the original text plus the focus task title."""
+    """The refine loop re-sends the original text plus a number-anchored focus."""
     _, token = await _confirmed_user(db, async_client, "bd_refine")
     mock = _mock_completion(mocker, VALID_PAYLOAD)
 
@@ -198,13 +198,14 @@ async def test_breakdown_refine_focus_reaches_prompt(
         "/api/v1/breakdown",
         json={
             "text": "set up ci and deploy",
+            "focus_task_number": 2,
             "focus_task_title": "Deploy",
         },
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 200, response.text
     user_prompt = mock.call_args.args[1][-1]["content"]
-    assert "<focus>Deploy</focus>" in user_prompt
+    assert "<focus>#2 Deploy</focus>" in user_prompt
     assert "set up ci and deploy" in user_prompt
 
 

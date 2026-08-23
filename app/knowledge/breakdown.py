@@ -119,6 +119,7 @@ def build_breakdown_prompt(
     context_description: Optional[str] = None,
     memory_hints: Optional[list[str]] = None,
     focus_task_title: Optional[str] = None,
+    focus_task_number: Optional[int] = None,
 ) -> str:
     """Serialize input text (+optional per-task context, +memory hints)."""
     clamped = text[:INPUT_CHAR_LIMIT]
@@ -128,7 +129,15 @@ def build_breakdown_prompt(
         description = (context_description or "").strip()
         if description:
             parts.append(f"Context description: {description}")
-    if focus_task_title:
+    if focus_task_number is not None:
+        # Number-anchored: the client replaces by stable chip number, so the
+        # title here is only prompt context (it may have been edited).
+        title_part = f" {focus_task_title.strip()}" if focus_task_title else ""
+        parts.append(
+            "Refine request: regenerate the breakdown for this one task only:\n"
+            f"<focus>#{focus_task_number}{title_part}</focus>"
+        )
+    elif focus_task_title:
         parts.append(
             "Refine request: regenerate the breakdown for this one task only:\n"
             f"<focus>{focus_task_title}</focus>"
