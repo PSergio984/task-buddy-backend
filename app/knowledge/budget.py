@@ -2,8 +2,8 @@
 
 The per-IP rate limit bounds call *count* but not *spend*: a legit-but-abusive
 client can burn the provider's free-tier quota without a per-user cap. This
-module checks today's instrumented token totals (ask + plan rows) against the
-configured daily budget before any LLM call is made.
+module checks today's instrumented token totals (ask + plan + breakdown rows)
+against the configured daily budget before any LLM call is made.
 """
 
 import logging
@@ -13,6 +13,7 @@ from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import LLM_DAILY_TOKEN_BUDGET
+from app.models.breakdown import BreakdownAnswer
 from app.models.knowledge import KnowledgeAnswer
 from app.models.plan import PlanAnswer
 
@@ -24,7 +25,7 @@ class BudgetExceededError(RuntimeError):
 
 
 async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
-    """Sum today's LLM tokens across ask + plan instrumentation rows."""
+    """Sum today's LLM tokens across ask + plan + breakdown instrumentation rows."""
     start_of_day = datetime.combine(
         datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc
     )
@@ -44,7 +45,15 @@ async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
             )
         )
     ).scalar_one()
-    return int(ask_total or 0) + int(plan_total or 0)
+    breakdown_total = (
+        await db.execute(
+            select(func.coalesce(func.sum(BreakdownAnswer.total_tokens), 0)).where(
+                BreakdownAnswer.user_id == user_id,
+                BreakdownAnswer.created_at >= start_of_day,
+            )
+        )
+    ).scalar_one()
+    return int(ask_total or 0) + int(plan_total or 0) + int(breakdown_total or 0)
 
 
 async def check_llm_budget(db: AsyncSession, user_id: int) -> None:
