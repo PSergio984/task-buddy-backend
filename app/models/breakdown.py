@@ -22,9 +22,7 @@ class BreakdownAnswer(Base):
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
-    context_task_id: Mapped[int | None] = mapped_column(
-        ForeignKey("tbl_tasks.id"), nullable=True
-    )
+    context_task_id: Mapped[int | None] = mapped_column(ForeignKey("tbl_tasks.id"), nullable=True)
     answer: Mapped[str] = mapped_column(Text, nullable=False)
     model: Mapped[str] = mapped_column(String, nullable=False)
     prompt_tokens: Mapped[int] = mapped_column(nullable=False)

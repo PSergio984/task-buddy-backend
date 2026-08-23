@@ -210,9 +210,7 @@ async def test_breakdown_refine_focus_reaches_prompt(
 
 
 @pytest.mark.anyio
-async def test_breakdown_input_too_long_is_422(
-    db: AsyncSession, async_client: AsyncClient
-) -> None:
+async def test_breakdown_input_too_long_is_422(db: AsyncSession, async_client: AsyncClient) -> None:
     _, token = await _confirmed_user(db, async_client, "bd_long")
     response = await async_client.post(
         "/api/v1/breakdown",

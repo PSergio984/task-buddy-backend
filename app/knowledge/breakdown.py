@@ -48,7 +48,7 @@ BREAKDOWN_SYSTEM_PROMPT = (
     "- Never invent tasks that are not implied by the input text.\n"
     "- Keep the user's own wording; subtask titles are short imperatives.\n"
     "- Set estimated_effort_minutes only when the text implies effort; otherwise null.\n"
-    "- If the input contains no tasks at all, return {\"tasks\": []}.\n"
+    '- If the input contains no tasks at all, return {"tasks": []}.\n'
 )
 
 BREAKDOWN_RESPONSE_FORMAT: dict[str, Any] = {

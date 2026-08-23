@@ -52,9 +52,7 @@ class TestPromptBuilder:
         )
         assert "<focus>#2 Deploy</focus>" in prompt
         # number-stable targeting must survive an emptied/edited title
-        prompt_empty = build_breakdown_prompt(
-            "blob", focus_task_number=3, focus_task_title=""
-        )
+        prompt_empty = build_breakdown_prompt("blob", focus_task_number=3, focus_task_title="")
         assert "<focus>#3</focus>" in prompt_empty
 
     def test_focus_number_alone_suffices(self) -> None:
@@ -101,17 +99,13 @@ class TestParseDegrade:
         assert len(proposal.tasks[0].subtasks) <= MAX_SUBTASKS_PER_TASK
 
     def test_blank_titles_dropped(self) -> None:
-        payload = (
-            '{"tasks": [{"title": "", "subtasks": []}, {"title": "Keep", "subtasks": []}]}'
-        )
+        payload = '{"tasks": [{"title": "", "subtasks": []}, {"title": "Keep", "subtasks": []}]}'
         proposal = parse_proposal(payload)
         assert proposal is not None
         assert [t.title for t in proposal.tasks] == ["Keep"]
 
     def test_effort_clamped_to_task_column_range(self) -> None:
-        payload = (
-            '{"tasks": [{"title": "A", "estimated_effort_minutes": 9999999, "subtasks": []}]}'
-        )
+        payload = '{"tasks": [{"title": "A", "estimated_effort_minutes": 9999999, "subtasks": []}]}'
         proposal = parse_proposal(payload)
         assert proposal is not None
         assert proposal.tasks[0].estimated_effort_minutes is None  # out of range dropped
