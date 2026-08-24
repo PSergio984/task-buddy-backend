@@ -1,0 +1,59 @@
+{
+  "description": "Voice assistant golden set (~English v1). Manual harness: re-run each sample through a live POST /api/v1/voice/plan after any STT/model change and eyeball the plan against the spec quality bar (>=1 non-empty bucket, non-empty reasons, no crash). 'blank' records what the offline gate must decide.",
+  "samples": [
+    {
+      "id": "question_tonight",
+      "category": "question",
+      "transcript": "What should I work on tonight?",
+      "blank": false
+    },
+    {
+      "id": "question_whats_next",
+      "category": "question",
+      "transcript": "What's next on my plate?",
+      "blank": false
+    },
+    {
+      "id": "task_dump",
+      "category": "task_dump",
+      "transcript": "Email Priya back, book the dentist, and finish reviewing that pull request before midnight.",
+      "blank": false
+    },
+    {
+      "id": "numbers_and_times",
+      "category": "numbers_and_times",
+      "transcript": "I have about 2 hours free at 8pm, what should I do first?",
+      "blank": false
+    },
+    {
+      "id": "chatter",
+      "category": "chatter",
+      "transcript": "Um, just testing this mic thing out, hello hello.",
+      "blank": false
+    },
+    {
+      "id": "taglish_best_effort",
+      "category": "taglish_best_effort",
+      "transcript": "Anong dapat kong gawin ngayong gabi?",
+      "blank": false
+    },
+    {
+      "id": "very_long_monologue",
+      "category": "very_long",
+      "transcript": "Okay so this week has been a lot. On Monday I promised the team I would send over the revised deck, and then on Tuesday the client moved the launch meeting, which means the landing copy review slipped again, and I still have to call the plumber about the kitchen sink because it started leaking right before dinner, plus I need to renew the car insurance before the end of the month and pick up my prescription, so honestly I don't even know where to start tonight but something has to give.",
+      "blank": false
+    },
+    {
+      "id": "empty_ish_silence",
+      "category": "empty_ish",
+      "transcript": "",
+      "blank": true
+    },
+    {
+      "id": "empty_ish_breath",
+      "category": "empty_ish",
+      "transcript": "   ",
+      "blank": true
+    }
+  ]
+}
