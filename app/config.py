@@ -168,6 +168,12 @@ class GlobalConfig(BaseConfig):
     BREAKDOWN_ENABLED: bool = True
     BREAKDOWN_MODEL: str = "openai/gpt-oss-120b"
     RATE_LIMIT_BREAKDOWN: str = "10/minute"
+    # Voice assistant (POST /api/v1/voice/plan): one Groq Whisper transcription
+    # feeding the existing planner verbatim (stateless, transcript is a pure
+    # trigger). Default-on kill switch, mirroring BREAKDOWN_ENABLED.
+    VOICE_ENABLED: bool = True
+    WHISPER_MODEL: str = "whisper-large-v3-turbo"
+    RATE_LIMIT_VOICE: str = "10/minute"
     # Per-user daily LLM token cap across ask + plan (audit #29). The per-IP
     # rate limit bounds call count, not spend: a legit-but-abusive client can
     # burn the free-tier quota without a per-user budget. 0 disables the cap.
@@ -342,6 +348,7 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_KNOWLEDGE_FEEDBACK: str = "30/minute"
     RATE_LIMIT_PLAN: str = "10/minute"
     RATE_LIMIT_BREAKDOWN: str = "10/minute"
+    RATE_LIMIT_VOICE: str = "10/minute"
     RATE_LIMIT_TAG_CREATE: str = "20/minute"
     RATE_LIMIT_TAG_UPDATE: str = "20/minute"
     RATE_LIMIT_TAG_DELETE: str = "20/minute"
@@ -462,6 +469,9 @@ RATE_LIMIT_PLAN = config.RATE_LIMIT_PLAN
 RATE_LIMIT_BREAKDOWN = config.RATE_LIMIT_BREAKDOWN
 BREAKDOWN_ENABLED = config.BREAKDOWN_ENABLED
 BREAKDOWN_MODEL = config.BREAKDOWN_MODEL
+VOICE_ENABLED = config.VOICE_ENABLED
+WHISPER_MODEL = config.WHISPER_MODEL
+RATE_LIMIT_VOICE = config.RATE_LIMIT_VOICE
 LLM_DAILY_TOKEN_BUDGET = config.LLM_DAILY_TOKEN_BUDGET
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM

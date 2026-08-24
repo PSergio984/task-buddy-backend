@@ -17,6 +17,7 @@ from app.models.project import Project
 from app.models.tag import Tag
 from app.models.task import SubTask, Task
 from app.models.user import User
+from app.models.voice import VoiceAnswer
 
 __all__ = [
     "Base",
@@ -37,4 +38,5 @@ __all__ = [
     "JudgeVerdict",
     "PlanAnswer",
     "BreakdownAnswer",
+    "VoiceAnswer",
 ]

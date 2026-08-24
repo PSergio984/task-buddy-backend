@@ -26,6 +26,7 @@ from app.api.routers import (
     sync,
     task,
     user,
+    voice,
 )
 from app.config import DevConfig, config
 from app.libs.supabase_signing import SigningKeyCache
@@ -166,6 +167,7 @@ app.include_router(knowledge.router, prefix="/api/v1/tasks")
 app.include_router(memory.router, prefix="/api/v1/tasks")
 app.include_router(plan.router, prefix="/api/v1")
 app.include_router(breakdown.router, prefix="/api/v1")
+app.include_router(voice.router, prefix="/api/v1")
 app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")
