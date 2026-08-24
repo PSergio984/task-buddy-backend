@@ -170,9 +170,7 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_BREAKDOWN: str = "10/minute"
     # Voice assistant (POST /api/v1/voice/plan): one Groq Whisper transcription
     # feeding the existing planner verbatim (stateless, transcript is a pure
-    # trigger). Default-on kill switch, mirroring BREAKDOWN_ENABLED. STT bills
-    # into Groq's dedicated ASH/ASD buckets, NOT chat TPM — so the daily
-    # token budget does not see it.
+    # trigger). Default-on kill switch, mirroring BREAKDOWN_ENABLED.
     VOICE_ENABLED: bool = True
     WHISPER_MODEL: str = "whisper-large-v3-turbo"
     RATE_LIMIT_VOICE: str = "10/minute"

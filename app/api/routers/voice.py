@@ -1,7 +1,8 @@
 """API endpoint for the voice assistant (POST /api/v1/voice/plan)."""
 
 import logging
-from typing import Annotated
+from collections.abc import Awaitable, Callable
+from typing import Annotated, TypeVar
 
 import openai
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
@@ -32,35 +33,36 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 BLANK_TRANSCRIPT_DETAIL = "Couldn't hear anything — get a bit closer and try again."
+AUDIO_TOO_LARGE_DETAIL = f"Audio too large ({MAX_AUDIO_BYTES // (1024 * 1024)} MB max)"
+
+_T = TypeVar("_T")
 
 
-async def _transcribe_or_503(audio_bytes: bytes, filename: str) -> tuple[str, float]:
-    """Groq STT with the house error mapping (missing key vs provider outage)."""
+async def _provider_call_or_503(step: str, user_id: int, call: Callable[[], Awaitable[_T]]) -> _T:
+    """Run one provider call with the house error mapping.
+
+    Missing key → AI_NOT_CONFIGURED; provider outage → AI_UNAVAILABLE.
+    Callers snapshot user_id first (audit #27).
+    """
     try:
-        return await transcribe_audio(audio_bytes, filename)
+        return await call()
     except AssistantNotConfiguredError as exc:
-        logger.warning("voice stt not configured: %s", exc)
+        logger.warning("voice %s not configured user=%s: %s", step, user_id, exc)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
-        logger.warning("voice stt unavailable: %s", exc)
+        logger.warning("voice %s unavailable user=%s: %s", step, user_id, exc)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
 
 
 async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
-    """The existing stateless planner with the plan router's error mapping."""
+    """The existing stateless planner. Its embedding path raises bare
+    ``RuntimeError`` when the provider key is missing — normalized here so the
+    shared mapper sees one config-error type and stray RuntimeErrors still 500."""
     connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
     try:
         return await create_plan(db, user_id, None, None, connector)
-    except AssistantNotConfiguredError as exc:
-        logger.warning("voice plan not configured for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
-    except openai.APIError as exc:
-        logger.warning("voice plan unavailable for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except RuntimeError as exc:
-        # Embedding path raises RuntimeError when its provider key is missing.
-        logger.warning("voice plan not configured (embeddings) user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+        raise AssistantNotConfiguredError(f"planner unavailable: {exc}") from exc
 
 
 @router.post(
@@ -68,7 +70,7 @@ async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
     response_model=VoicePlanResponse,
     responses={
         404: {"description": "Voice feature is disabled"},
-        413: {"description": "Audio exceeds the 5 MB limit"},
+        413: {"description": AUDIO_TOO_LARGE_DETAIL},
         422: {"description": BLANK_TRANSCRIPT_DETAIL},
         429: {"description": "Daily AI usage limit reached"},
         503: {"description": AI_UNAVAILABLE},
@@ -105,20 +107,23 @@ async def voice_plan(
     # Early exit before materializing the body; the capped read below stays as
     # belt-and-braces for clients that lie about Content-Length.
     if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
-        raise HTTPException(status_code=413, detail="Audio too large (5 MB max)")
+        raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
 
     # Read at most one byte over the cap so an oversized body is never
     # fully materialized in memory.
     audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
     await audio.close()
     if len(audio_bytes) > MAX_AUDIO_BYTES:
-        raise HTTPException(status_code=413, detail="Audio too large (5 MB max)")
+        raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
 
     # Release the pooled connection before the seconds-long provider calls
     # (audit #27 pattern, mirrors breakdown router).
     await db.rollback()
 
-    transcript, stt_latency = await _transcribe_or_503(audio_bytes, audio.filename or "audio.webm")
+    filename = audio.filename or "audio.webm"
+    transcript, stt_latency = await _provider_call_or_503(
+        "stt", user_id, lambda: transcribe_audio(audio_bytes, filename)
+    )
 
     if is_blank_transcript(transcript):
         raise HTTPException(status_code=422, detail=BLANK_TRANSCRIPT_DETAIL)
