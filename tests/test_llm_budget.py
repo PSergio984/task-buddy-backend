@@ -8,6 +8,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.knowledge.budget import BudgetExceededError, check_llm_budget, daily_llm_tokens_used
+from app.models.breakdown import BreakdownAnswer
 from app.models.knowledge import KnowledgeAnswer
 from app.models.plan import PlanAnswer
 from app.models.task import Task
@@ -80,6 +81,32 @@ async def seed_plan_tokens(db: AsyncSession, user_id: int, total: int) -> None:
         )
     )
     await db.commit()
+
+
+async def seed_breakdown_tokens(db: AsyncSession, user_id: int, total: int) -> None:
+    db.add(
+        BreakdownAnswer(
+            user_id=user_id,
+            answer="b",
+            model="test",
+            prompt_tokens=total,
+            completion_tokens=0,
+            total_tokens=total,
+            cost_usd=0,
+            response_time_ms=1,
+            input_chars=1,
+        )
+    )
+    await db.commit()
+
+
+@pytest.mark.anyio
+async def test_daily_usage_includes_breakdown_tokens(
+    db: AsyncSession, async_client: AsyncClient
+) -> None:
+    user = await register_user(db, async_client, "budget_bd", "budget_bd@example.com")
+    await seed_breakdown_tokens(db, user["id"], 250)
+    assert await daily_llm_tokens_used(db, user["id"]) == 250
 
 
 @pytest.mark.anyio

@@ -86,11 +86,21 @@ def _openai_client() -> OpenAI:
     return OpenAI(api_key=OPENAI_API_KEY)
 
 
-def _call_completion(model: str, messages: list[Any], response_format: Optional[dict] = None):
+def _call_completion(
+    model: str,
+    messages: list[Any],
+    response_format: Optional[dict] = None,
+    max_completion_tokens: Optional[int] = None,
+    reasoning_effort: Optional[str] = None,
+):
     """Sync wrapper: run one chat completion in a worker thread."""
     kwargs: dict[str, Any] = {"model": model, "messages": messages}
     if response_format is not None:
         kwargs["response_format"] = response_format
+    if max_completion_tokens is not None:
+        kwargs["max_completion_tokens"] = max_completion_tokens
+    if reasoning_effort is not None:
+        kwargs["reasoning_effort"] = reasoning_effort
     return _openai_client().chat.completions.create(**kwargs)
 
 

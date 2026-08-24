@@ -1,0 +1,70 @@
+{
+  "description": "Manual golden set for the breakdown prompt (wayfinder ticket 0006). Re-run each sample through POST /api/v1/breakdown after any prompt/model change and eyeball against spec section 4: <=15 tasks, 3-7 subtasks per task, no invented tasks, titles-only output. 'frozen_output' entries additionally regression-test parse_proposal offline.",
+  "samples": [
+    {
+      "id": "single-simple",
+      "category": "single_task",
+      "input": "Fix the login page crash on Safari"
+    },
+    {
+      "id": "single-with-context",
+      "category": "single_task",
+      "input": "clean up the onboarding flow",
+      "context_title": "Improve onboarding",
+      "context_description": "Reduce drop-off between signup and first task"
+    },
+    {
+      "id": "blob-three-tasks",
+      "category": "multi_task_blob",
+      "input": "1. buy groceries - milk eggs rice\n2. renew passport before December\n3. write capstone chapter 2, aim for 3000 words"
+    },
+    {
+      "id": "blob-paste-mixed-notes",
+      "category": "multi_task_blob",
+      "input": "meeting notes from standup:\n- deploy hotfix for checkout bug tonight\n- follow up with vendor about invoice #441\n- book team offsite venue (sometime next month)\nalso personal: dentist appointment"
+    },
+    {
+      "id": "non-task-rant",
+      "category": "non_task",
+      "input": "ugh today was exhausting, just venting, nothing to do really"
+    },
+    {
+      "id": "non-task-quote",
+      "category": "non_task",
+      "input": "\"The best way out is always through.\" - Robert Frost"
+    },
+    {
+      "id": "mixed-language",
+      "category": "multi_task_blob",
+      "input": "Kailangan ko ayusin yung report bukas; also submit visa requirements and mag-laundry this weekend"
+    },
+    {
+      "id": "huge-paste",
+      "category": "large_input",
+      "input": "project kickoff checklist: reserve venue, send invites, prepare deck, order catering, set up registration page, draft agenda, assign facilitators, print badges, arrange transport, book hotel rooms, prep swag bags, test av equipment, write run-of-show, brief volunteers, schedule rehearsal, confirm wifi access, backup projector, plan opening activity"
+    },
+    {
+      "id": "effort-implied",
+      "category": "single_task",
+      "input": "Study chapter 5 for about two hours, then take the practice quiz"
+    },
+    {
+      "id": "frozen-parse-happy",
+      "category": "parser_regression",
+      "input": "(offline parser case)",
+      "frozen_output": "{\"tasks\": [{\"title\": \"Set up CI\", \"estimated_effort_minutes\": 45, \"subtasks\": [{\"title\": \"Pick provider\"}, {\"title\": \"Write workflow\"}]}]}"
+    },
+    {
+      "id": "frozen-parse-empty",
+      "category": "parser_regression",
+      "input": "(offline parser case)",
+      "frozen_output": "{\"tasks\": []}"
+    },
+    {
+      "id": "frozen-parse-garbage",
+      "category": "parser_regression",
+      "input": "(offline parser case)",
+      "frozen_output": "<html>503</html>"
+    }
+  ]
+}
