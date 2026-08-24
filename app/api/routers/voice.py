@@ -18,6 +18,7 @@ from app.limiter import limiter
 from app.models.user import User
 from app.planner.connector import SyntheticCalendarConnector
 from app.planner.service import create_plan
+from app.schemas.plan import PlanResponse
 from app.schemas.voice import VoicePlanResponse
 from app.security import get_confirmed_user
 
@@ -33,6 +34,35 @@ logger = logging.getLogger(__name__)
 BLANK_TRANSCRIPT_DETAIL = "Couldn't hear anything — get a bit closer and try again."
 
 
+async def _transcribe_or_503(audio_bytes: bytes, filename: str) -> tuple[str, float]:
+    """Groq STT with the house error mapping (missing key vs provider outage)."""
+    try:
+        return await transcribe_audio(audio_bytes, filename)
+    except AssistantNotConfiguredError as exc:
+        logger.warning("voice stt not configured: %s", exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except openai.APIError as exc:
+        logger.warning("voice stt unavailable: %s", exc)
+        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+
+
+async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
+    """The existing stateless planner with the plan router's error mapping."""
+    connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
+    try:
+        return await create_plan(db, user_id, None, None, connector)
+    except AssistantNotConfiguredError as exc:
+        logger.warning("voice plan not configured for user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except openai.APIError as exc:
+        logger.warning("voice plan unavailable for user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except RuntimeError as exc:
+        # Embedding path raises RuntimeError when its provider key is missing.
+        logger.warning("voice plan not configured (embeddings) user=%s: %s", user_id, exc)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+
+
 @router.post(
     "/voice/plan",
     response_model=VoicePlanResponse,
@@ -40,6 +70,7 @@ BLANK_TRANSCRIPT_DETAIL = "Couldn't hear anything — get a bit closer and try a
         404: {"description": "Voice feature is disabled"},
         413: {"description": "Audio exceeds the 5 MB limit"},
         422: {"description": BLANK_TRANSCRIPT_DETAIL},
+        429: {"description": "Daily AI usage limit reached"},
         503: {"description": AI_UNAVAILABLE},
     },
 )
@@ -71,6 +102,11 @@ async def voice_plan(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
+    # Early exit before materializing the body; the byte-length check after
+    # read stays as belt-and-braces for clients that lie about Content-Length.
+    if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+        raise HTTPException(status_code=413, detail="Audio too large (5 MB max)")
+
     audio_bytes = await audio.read()
     await audio.close()
     if len(audio_bytes) > MAX_AUDIO_BYTES:
@@ -80,33 +116,12 @@ async def voice_plan(
     # (audit #27 pattern, mirrors breakdown router).
     await db.rollback()
 
-    try:
-        transcript, stt_latency = await transcribe_audio(
-            audio_bytes, audio.filename or "audio.webm"
-        )
-    except AssistantNotConfiguredError as exc:
-        logger.warning("voice stt not configured for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
-    except openai.APIError as exc:
-        logger.warning("voice stt unavailable for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    transcript, stt_latency = await _transcribe_or_503(audio_bytes, audio.filename or "audio.webm")
 
     if is_blank_transcript(transcript):
         raise HTTPException(status_code=422, detail=BLANK_TRANSCRIPT_DETAIL)
 
-    connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
-    try:
-        plan = await create_plan(db, user_id, None, None, connector)
-    except AssistantNotConfiguredError as exc:
-        logger.warning("voice plan not configured for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
-    except openai.APIError as exc:
-        logger.warning("voice plan unavailable for user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
-    except RuntimeError as exc:
-        # Embedding path raises RuntimeError when its provider key is missing.
-        logger.warning("voice plan not configured (embeddings) user=%s: %s", user_id, exc)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    plan = await _plan_or_503(db, user_id)
 
     await create_voice_answer(
         db,
