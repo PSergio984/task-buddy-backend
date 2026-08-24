@@ -9,6 +9,7 @@ telemetry. The plan itself is ``planner.service.create_plan`` verbatim.
 import asyncio
 import logging
 import time
+from functools import lru_cache
 
 from openai import OpenAI
 
@@ -22,10 +23,12 @@ logger = logging.getLogger(__name__)
 MAX_AUDIO_BYTES = 5 * 1024 * 1024
 
 
+@lru_cache(maxsize=1)
 def _stt_client() -> OpenAI:
-    """Lazily build the Groq client used only for Whisper STT; fail fast when
-    no key is configured. STT stays pinned to Groq regardless of LLM_PROVIDER —
-    WHISPER_MODEL names a Groq-hosted model."""
+    """Lazily build (once) the Groq client used only for Whisper STT; fail fast
+    when no key is configured. STT stays pinned to Groq regardless of
+    LLM_PROVIDER — WHISPER_MODEL names a Groq-hosted model. The cached client
+    reuses its connection pool across requests."""
     if not GROQ_API_KEY:
         raise AssistantNotConfiguredError("GROQ_API_KEY is not configured")
     return OpenAI(api_key=GROQ_API_KEY, base_url="https://api.groq.com/openai/v1")

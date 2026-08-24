@@ -102,12 +102,14 @@ async def voice_plan(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    # Early exit before materializing the body; the byte-length check after
-    # read stays as belt-and-braces for clients that lie about Content-Length.
+    # Early exit before materializing the body; the capped read below stays as
+    # belt-and-braces for clients that lie about Content-Length.
     if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail="Audio too large (5 MB max)")
 
-    audio_bytes = await audio.read()
+    # Read at most one byte over the cap so an oversized body is never
+    # fully materialized in memory.
+    audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
     await audio.close()
     if len(audio_bytes) > MAX_AUDIO_BYTES:
         raise HTTPException(status_code=413, detail="Audio too large (5 MB max)")
