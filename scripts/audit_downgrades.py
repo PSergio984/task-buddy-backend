@@ -214,7 +214,7 @@ def _mirror_verdict(up: list[Op], down: list[Op]) -> tuple[str, list[str]]:
     return ("TRUE-INVERSE" if not problems else "NON-INVERSE"), problems
 
 
-def audit_file(path: Path) -> dict[str, object]:
+def audit_file(path: Path) -> dict[str, object]:  # noqa: C901
     tree = ast.parse(path.read_text(encoding="utf-8"))
     mod_doc = ast.get_docstring(tree) or ""
     rev = down = "?"
@@ -325,7 +325,6 @@ def main() -> int:
         if warn:
             print(warn.strip())
 
-    revs = {r["rev"] for r in rows}
     children = {r["down_rev"] for r in rows if r["down_rev"] != "?"}
     heads = [r["rev"] for r in rows if r["rev"] not in children]
     print(f"\n{len(rows)} revisions scanned; single-head check: {heads}")

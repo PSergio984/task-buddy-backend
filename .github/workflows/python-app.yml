@@ -134,3 +134,42 @@ jobs:
       - name: Build Docker image
         run: |
           docker build -t task-buddy-backend:ci .
+
+  migration-reversibility:
+    name: Alembic upgrade-downgrade-upgrade (scratch Postgres)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: taskbuddy_ci
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/taskbuddy_ci
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: 'pip'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+      - name: Alembic upgrade head
+        run: |
+          python -m alembic upgrade head
+      - name: Alembic downgrade base
+        run: |
+          python -m alembic downgrade base
+      - name: Alembic upgrade head
+        run: |
+          python -m alembic upgrade head
