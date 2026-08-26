@@ -2,7 +2,7 @@
 
 FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Planner)** — hybrid retrieval (BM25 `k1=1.5/b=0.75` Porter + `jina-embeddings-v3` 1024-dim + RRF `k=60`), grounded Knowledge answers with citations + LLM-as-judge, Memory over completed-task history, and Planner Tonight/Tomorrow/Later. Supabase Postgres (pgvector), offline-first sync, deployed on **Render**.
 
-> Monorepo front door is at workspace root `D:/Github/task-buddy/README.md` (33k, CEIT-tier: live demo, mermaid, full run-it, walkthrough, eval, rubric — local only, not tracked in this repo). This file is the deep backend reference. Keep it in sync with `docs/codebase/` (STACK, STRUCTURE, ARCHITECTURE, TESTING, etc.).
+> Monorepo front door is at workspace root `../README.md` (local) (33k, CEIT-tier: live demo, mermaid, full run-it, walkthrough, eval, rubric — local only, not tracked in this repo). This file is the deep backend reference. Keep it in sync with `docs/codebase/` (STACK, STRUCTURE, ARCHITECTURE, TESTING, etc.).
 
 ## Features (capstone surfaces)
 
@@ -54,7 +54,7 @@ uv run uvicorn app.main:app --reload  # or: ./start.sh --reload
 
 Background work (emails/pushes/reminders/memory backfill) runs inside this process (`app/tasks.py` lifespan).
 
-## Data flow (snippet — full mermaid in workspace root `D:/Github/task-buddy/README.md`)
+## Data flow (snippet — full mermaid in workspace root `../README.md` (local))
 
 ```text
 Next.js SPA (IndexedDB queue) ── POST /api/v1/sync LWW ──┐
@@ -68,7 +68,23 @@ RAG serves **Knowledge** (notes) + **Memory** (history), *not* live `tbl_tasks` 
 
 ## Endpoints (grouped — auth JWT cookie + CSRF, `10/min` where `app/config.py` `RATE_LIMIT_*`)
 
-All under `app/main.py:163-177` (`/api/v1/*`, 13 routers, ~58 routes). See workspace root README `D:/Github/task-buddy/README.md` for the grouped table with Method|Path|Auth|Rate limit|Description.
+All under `app/main.py:163-177` (`/api/v1/*`, 13 routers, ~58 routes). See workspace root `../README.md` (local) for the full grouped table with Method|Path|Auth|Rate limit|Description.
+
+| Group | Method | Path | Auth | Rate limit | Description |
+|-------|--------|------|------|------------|-------------|
+| Auth | POST | `/api/v1/users/register` | — | — | Register |
+| Auth | POST | `/api/v1/users/login` | — | — | Login → JWT cookie |
+| Tasks | GET | `/api/v1/tasks/` | JWT | — | List |
+| Tasks | POST | `/api/v1/tasks/` | JWT | — | Create |
+| Knowledge | POST | `/api/v1/tasks/{id}/knowledge/ask` | JWT | `10/min`* | RAG top-4 + judge |
+| Knowledge | POST | `/api/v1/tasks/{id}/knowledge/feedback` | JWT | — | Thumbs `+1/-1` |
+| Memory | POST | `/api/v1/tasks/{id}/memory/similar` | JWT | `10/min`* | Top-5 history + effort |
+| Plan | POST | `/api/v1/plan` | JWT | `10/min` | Tonight/Tomorrow/Later |
+| Sync | POST | `/api/v1/sync` | JWT | — | LWW flush |
+| Breakdown | POST | `/api/v1/breakdown` | JWT | `10/min` | `gpt-oss-120b` |
+| Voice | POST | `/api/v1/voice/plan` | JWT | `10/min` | Whisper → plan |
+
+\* `RATE_LIMIT_*` in `app/config.py` — verify exact values. Full table in workspace root README.
 
 Core: `POST /api/v1/users/register`, `POST /api/v1/users/login`, `GET /api/v1/tasks/`, `POST /api/v1/tasks/`, `PUT /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/knowledge/ask` + `feedback`, `POST /api/v1/tasks/{id}/memory/similar`, `POST /api/v1/plan`, `POST /api/v1/breakdown`, `POST /api/v1/voice/plan`, `POST /api/v1/sync` (LWW), plus projects/tags/subtasks/notifications/realtime/audit/stats (`docs/codebase/ARCHITECTURE.md`).
 
@@ -97,7 +113,7 @@ Golden: `tests/fixtures/golden_knowledge.json` (`jq length` for N) — CEIT has 
 
 Sentry `SENTRY_DSN` + `app/logging_conf.py`, audit `tbl_audit_logs` `GET /api/v1/audit/`, per-user daily budget `app/knowledge/budget.py` + slowapi, Realtime `GET /api/v1/realtime/*`, Web Push VAPID, Brevo email `app/tasks.py`. No `GET /metrics` Grafana (scan found none — `docs/codebase/CONCERNS.md`).
 
-## Project structure (backend slice — full monorepo in workspace root `D:/Github/task-buddy/README.md` + `docs/codebase/STRUCTURE.md`)
+## Project structure (backend slice — full monorepo in workspace root `../README.md` (local) + `docs/codebase/STRUCTURE.md`)
 
 ```text
 app/main.py                 # lifespan + routers 163-173
@@ -115,9 +131,9 @@ tests/                      # 49 files + fixtures/golden_knowledge.json
 
 ## Docs
 
-- Monorepo front door: workspace root `D:/Github/task-buddy/README.md` (33k, TOC, live demo, dataset, mermaid, run-it, walkthrough, endpoints, eval, monitoring, rubric — local only, see `docs/codebase/` for tracked deep docs)
+- Monorepo front door: workspace root `../README.md` (local) (33k, TOC, live demo, dataset, mermaid, run-it, walkthrough, endpoints, eval, monitoring, rubric — local only, see `docs/codebase/` for tracked deep docs)
 - Deep docs: [`docs/codebase/`](docs/codebase/) `STACK.md` / `STRUCTURE.md` / `ARCHITECTURE.md` / `CONVENTIONS.md` / `INTEGRATIONS.md` / `TESTING.md` / `CONCERNS.md` / `PRESENTATION.md`
 - Planning trail: `.planning/` GSD `07` Knowledge → `08` Memory → `09` Planner + wayfinder `.wayfinder/issues/0024-wayfinder-map-readme-refresh.md`
 
-> Stale claims removed per workspace `.wayfinder/research/existing-readmes-and-codebase-facts.md` (local, 35k, not tracked in this repo): `VITE_*` → `NEXT_PUBLIC_*`/`BACKEND_URL`, `338KB` unverified → `TODO`, `7` endpoints → `~58` routes, `celery` dead code flagged, `pgvector` drift footnote.
+<!-- Stale claims removed per workspace .wayfinder/research/existing-readmes-and-codebase-facts.md (local, 35k) — maintainer note, not reader-facing: --> `VITE_*` → `NEXT_PUBLIC_*`/`BACKEND_URL`, `338KB` unverified → `TODO`, `7` endpoints → `~58` routes, `celery` dead code flagged, `pgvector` drift footnote.
 
