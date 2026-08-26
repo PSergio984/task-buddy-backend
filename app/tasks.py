@@ -1,3 +1,29 @@
+"""Background work: transactional email, push notifications, reminder sweeps.
+
+Email delivery contract (best-effort per ADR 0001,
+``docs/adr/0001-in-process-background-execution.md``):
+
+- One chain pass per send event: Brevo API first, then the SMTP fallback.
+  No retries and no durable queue — an in-flight send lost to a
+  deploy/restart is accepted.
+- When the whole chain exhausts, log EXACTLY ONE structured ERROR line:
+  ``email delivery chain exhausted class=<class> to=<redacted>
+  channels=brevo,smtp``. Fields: email class (confirmation /
+  password_reset / password_changed), PII-redacted recipient (via
+  :func:`app.logging_conf.obfuscated` plus ``extra={"email": ...}`` so
+  ``EmailObfuscationFilter`` rewrites it), channels tried. An
+  intermediate Brevo-stage failure stays WARNING.
+- Recovery is user-driven, never system-retried:
+  - Confirmation email: ``POST /api/v1/users/resend-confirmation``
+    re-issues the link for an existing, unconfirmed account.
+  - Password reset: ``POST /api/v1/users/forgot-password`` re-issues a
+    reset email.
+
+The outbox-table escape hatch (guaranteed delivery swept by the lifespan
+loops) remains DEFERRED unless deliverability complaints arrive — do not
+build it here.
+"""
+
 import asyncio
 import json
 import logging
