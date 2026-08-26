@@ -8,10 +8,11 @@ from email.message import EmailMessage
 
 import httpx
 from pywebpush import WebPushException, webpush
-from sqlalchemy import exists, select, update
+from sqlalchemy import exists, select
 
 from app.config import config
 from app.database import AsyncSessionLocal
+from app.logging_conf import obfuscated
 from app.models.notification import Notification, NotificationType, PushSubscription
 from app.models.task import Task
 from app.models.user import User
@@ -117,17 +118,6 @@ def _get_confirmation_content(
     return subject, body
 
 
-async def _record_confirmation_failure(to_email: str) -> None:
-    """Helper to mark a user as having a failed email confirmation in the database."""
-    try:
-        async with AsyncSessionLocal() as db:
-            stmt = update(User).where(User.email == to_email).values(confirmation_failed=True)
-            await db.execute(stmt)
-            await db.commit()
-    except Exception:
-        logger.exception("Failed to record confirmation failure for %s", to_email)
-
-
 async def _send_confirmation_email_async(
     to_email: str,
     subject: str | None = None,
@@ -156,18 +146,24 @@ async def _send_confirmation_email_async(
         return
     except Exception:
         logger.warning(
-            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP",
+            obfuscated(to_email),
+            exc_info=True,
         )
 
     # 2. Try SMTP Fallback
     try:
         await asyncio.to_thread(send_smtp_email, to_email, final_subject, text_body, html_body)
     except Exception as smtp_error:
-        logger.exception("SMTP fallback failed for %s", to_email)
-
-        # Record failure in DB as a last resort
-        await _record_confirmation_failure(to_email)
-
+        # SC-4 contract: exactly ONE structured ERROR when the chain exhausts;
+        # recipient is pre-redacted and also passed via extra so
+        # EmailObfuscationFilter rewrites the field at the handler layer.
+        logger.error(
+            "email delivery chain exhausted class=%s to=%s channels=brevo,smtp",
+            "confirmation",
+            obfuscated(to_email),
+            extra={"email": to_email},
+        )
         if not suppress_exceptions:
             raise APIResponseError(
                 "Failed to send confirmation email via Brevo API and SMTP"
