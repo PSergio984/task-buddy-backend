@@ -28,7 +28,12 @@ import pytest
 from pytest import LogCaptureFixture, MonkeyPatch
 
 from app.logging_conf import obfuscated
-from app.tasks import APIResponseError, _send_confirmation_email_async
+from app.tasks import (
+    APIResponseError,
+    _send_confirmation_email_async,
+    _send_password_changed_confirmation_async,
+    _send_password_reset_email_async,
+)
 
 BARE_ADDRESS_RE = re.compile(r"[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}")
 
@@ -93,3 +98,33 @@ async def test_confirmation_brevo_only_failure_stays_warning(
     text = warnings[0].getMessage()
     assert obfuscated(recipient) in text
     assert recipient not in text
+
+
+@pytest.mark.anyio
+async def test_password_reset_dual_failure_single_redacted_error(
+    mock_httpx_client: Any, task_logs: LogCaptureFixture
+) -> None:
+    """Password-reset chain logs through the same one-ERROR contract (class=password_reset)."""
+    mock_httpx_client.post.side_effect = Exception("brevo api unavailable")
+    mock_httpx_client.smtp_client.send_message.side_effect = Exception("smtp relay down")
+    recipient = "reset.me@example.com"
+
+    with pytest.raises(APIResponseError):
+        await _send_password_reset_email_async(recipient, "https://example.com/reset?t=1")
+
+    _assert_single_redacted_error(task_logs, recipient, "password_reset")
+
+
+@pytest.mark.anyio
+async def test_password_changed_dual_failure_single_redacted_error(
+    mock_httpx_client: Any, task_logs: LogCaptureFixture
+) -> None:
+    """Password-changed chain logs through the same one-ERROR contract (class=password_changed)."""
+    mock_httpx_client.post.side_effect = Exception("brevo api unavailable")
+    mock_httpx_client.smtp_client.send_message.side_effect = Exception("smtp relay down")
+    recipient = "changed.pw@example.com"
+
+    with pytest.raises(APIResponseError):
+        await _send_password_changed_confirmation_async(recipient)
+
+    _assert_single_redacted_error(task_logs, recipient, "password_changed")

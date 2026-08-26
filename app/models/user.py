@@ -25,7 +25,6 @@ class User(Base):
     password: Mapped[str] = mapped_column(String, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     confirmed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
-    confirmation_failed: Mapped[bool] = mapped_column(Boolean, server_default="0", default=False)
 
     # Relationships
     tasks: Mapped[list[Task]] = relationship(back_populates="user", cascade="all, delete-orphan")

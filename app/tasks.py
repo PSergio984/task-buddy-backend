@@ -227,14 +227,22 @@ async def _send_password_reset_email_async(
         return
     except Exception:
         logger.warning(
-            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP",
+            obfuscated(to_email),
+            exc_info=True,
         )
 
     # 2. Try SMTP Fallback
     try:
         await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
     except Exception as smtp_error:
-        logger.exception("SMTP fallback failed for %s", to_email)
+        # SC-4 contract: see _send_confirmation_email_async.
+        logger.error(
+            "email delivery chain exhausted class=%s to=%s channels=brevo,smtp",
+            "password_reset",
+            obfuscated(to_email),
+            extra={"email": to_email},
+        )
         if not suppress_exceptions:
             raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 
@@ -264,14 +272,22 @@ async def _send_password_changed_confirmation_async(
         return
     except Exception:
         logger.warning(
-            "Brevo API email failed for %s; falling back to SMTP", to_email, exc_info=True
+            "Brevo API email failed for %s; falling back to SMTP",
+            obfuscated(to_email),
+            exc_info=True,
         )
 
     # 2. Try SMTP Fallback
     try:
         await asyncio.to_thread(send_smtp_email, to_email, subject, text_body, html_body)
     except Exception as smtp_error:
-        logger.exception("SMTP fallback failed for %s", to_email)
+        # SC-4 contract: see _send_confirmation_email_async.
+        logger.error(
+            "email delivery chain exhausted class=%s to=%s channels=brevo,smtp",
+            "password_changed",
+            obfuscated(to_email),
+            extra={"email": to_email},
+        )
         if not suppress_exceptions:
             raise APIResponseError("Failed to send email via Brevo API and SMTP") from smtp_error
 

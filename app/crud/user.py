@@ -39,7 +39,6 @@ async def create_user(db: AsyncSession, user_in: UserCreateRequest, hashed_passw
 @audit_log(action=AuditAction.UPDATE, target_type=TARGET_TYPE_USER, include_diff=True)
 async def update_user_confirmation(db: AsyncSession, db_user: User, confirmed: bool = True) -> User:
     db_user.confirmed = confirmed
-    db_user.confirmation_failed = not confirmed
     db.add(db_user)
     await db.flush()
     return db_user
