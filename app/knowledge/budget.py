@@ -166,6 +166,38 @@ async def reserve_llm_budget(db: AsyncSession, user_id: int, estimate: int) -> N
     await db.commit()
 
 
+async def refund_llm_reservation(db: AsyncSession, user_id: int, estimate: int) -> None:
+    """Return a prepaid ``estimate`` when the provider call aborts (ADR 0002).
+
+    Unconditional keyed UPDATE — no CAS predicate needed because refunds fire
+    only on paths that reserved moments earlier within the same request, and
+    pairing with the reserve keeps the counter non-negative. Ends with its own
+    ``await db.commit()`` exactly like :func:`reserve_llm_budget`. A missing
+    counter row is logged and skipped — a refund failure must never mask the
+    provider error being handled. A cap ≤ 0 disables the gate entirely.
+    """
+    if LLM_DAILY_TOKEN_BUDGET <= 0:
+        return
+    utc_today = _utc_today()
+    result: CursorResult = await db.execute(  # type: ignore[assignment]
+        update(LlmUsageReservation)
+        .where(
+            LlmUsageReservation.user_id == user_id,
+            LlmUsageReservation.day == utc_today,
+        )
+        .values(reserved_tokens=LlmUsageReservation.reserved_tokens - estimate)
+    )
+    if result.rowcount == 0:
+        logger.warning(
+            "LLM reservation refund found no counter row user=%s day=%s estimate=%s",
+            user_id,
+            utc_today,
+            estimate,
+        )
+        return
+    await db.commit()
+
+
 async def reconcile_llm_usage(db: AsyncSession, user_id: int, estimate: int, actual: int) -> None:
     """Reconcile today's reservation by the net delta ``actual - estimate``.
 

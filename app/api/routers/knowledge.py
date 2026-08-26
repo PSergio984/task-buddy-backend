@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routers.task import invalidate_task_cache
 from app.config import (
+    LLM_ASK_RESERVE_TOKENS,
     RATE_LIMIT_KNOWLEDGE_ASK,
     RATE_LIMIT_KNOWLEDGE_CREATE,
     RATE_LIMIT_KNOWLEDGE_DELETE,
@@ -20,7 +21,12 @@ from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError, KnowledgeAssistant
-from app.knowledge.budget import BudgetExceededError, check_llm_budget
+from app.knowledge.budget import (
+    BudgetExceededError,
+    reconcile_llm_usage,
+    refund_llm_reservation,
+    reserve_llm_budget,
+)
 from app.knowledge.ingest import ingest_knowledge
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
@@ -285,9 +291,18 @@ async def ask_knowledge(
     if not db_task:
         raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
 
-    # Per-user daily spend cap — checked before any LLM call (audit #29).
+    # Snapshot the user id BEFORE the reservation and any provider call: the
+    # assistant rolls back mid-request (audit #27), which expires every ORM
+    # instance — touching current_user.id afterwards would lazy-load outside a
+    # greenlet context (MissingGreenlet). Same discipline as plan/breakdown.
+    user_id = current_user.id
+
+    # Per-user daily spend cap (audit #29; ADR 0002): reserved atomically via
+    # a conditional UPDATE that commits before any provider call, so
+    # concurrent requests can never oversubscribe the cap. The foreign-task
+    # 404 above stays BEFORE this reservation so zero-spend-on-404 holds.
     try:
-        await check_llm_budget(db, current_user.id)
+        await reserve_llm_budget(db, user_id, LLM_ASK_RESERVE_TOKENS)
     except BudgetExceededError as exc:
         raise HTTPException(
             status_code=429,
@@ -299,6 +314,7 @@ async def ask_knowledge(
         answer_row = await assistant.ask(db, db_task, ask_in.query)
     except AssistantNotConfiguredError as exc:
         logger.warning("knowledge ask not configured for task=%s: %s", task_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
         # Key set but the provider failed (401/429/network) — still a 503,
@@ -309,13 +325,18 @@ async def ask_knowledge(
             exc,
             exc.__cause__,
         )
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except RuntimeError as exc:
         # Embedding path raises RuntimeError when the OpenAI key is missing
         # (config-level); surface the same 503 as the completion path.
         logger.warning("knowledge ask not configured (embeddings) task=%s: %s", task_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
+    # Reconcile the reservation to actual spend (flush-only); the final
+    # commit below persists it.
+    await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, answer_row.total_tokens)
     await db.commit()
     await db.refresh(answer_row)
 

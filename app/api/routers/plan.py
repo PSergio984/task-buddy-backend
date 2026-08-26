@@ -11,7 +11,12 @@ from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
 from app.config import LLM_PLAN_RESERVE_TOKENS, RATE_LIMIT_PLAN, SYNTHETIC_CALENDAR_ENABLED
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError
-from app.knowledge.budget import BudgetExceededError, reconcile_llm_usage, reserve_llm_budget
+from app.knowledge.budget import (
+    BudgetExceededError,
+    reconcile_llm_usage,
+    refund_llm_reservation,
+    reserve_llm_budget,
+)
 from app.limiter import limiter
 from app.models.user import User
 from app.planner.connector import SyntheticCalendarConnector
@@ -70,13 +75,16 @@ async def plan(
         )
     except AssistantNotConfiguredError as exc:
         logger.warning("plan not configured for user=%s: %s", user_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
         logger.warning("plan unavailable for user=%s: %s", user_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except RuntimeError as exc:
         # Embedding path raises RuntimeError when the OpenAI key is missing.
         logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
     # Reconcile the reservation to actual spend (flush-only); the final

@@ -9,7 +9,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
-from app.config import BREAKDOWN_ENABLED, RATE_LIMIT_BREAKDOWN
+from app.config import BREAKDOWN_ENABLED, LLM_BREAKDOWN_RESERVE_TOKENS, RATE_LIMIT_BREAKDOWN
 from app.crud.breakdown import create_breakdown_answer
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError
@@ -18,7 +18,12 @@ from app.knowledge.breakdown import (
     fetch_memory_hints,
     generate_breakdown,
 )
-from app.knowledge.budget import BudgetExceededError, check_llm_budget
+from app.knowledge.budget import (
+    BudgetExceededError,
+    reconcile_llm_usage,
+    refund_llm_reservation,
+    reserve_llm_budget,
+)
 from app.limiter import limiter
 from app.models.task import Task
 from app.models.user import User
@@ -60,9 +65,11 @@ async def breakdown(
     user_id = current_user.id
     logger.info("POST /breakdown - %s", user_id)
 
-    # Per-user daily spend cap — checked before any LLM call (audit #29).
+    # Per-user daily spend cap (audit #29; ADR 0002): reserved atomically via
+    # a conditional UPDATE that commits before any provider call, so
+    # concurrent requests can never oversubscribe the cap.
     try:
-        await check_llm_budget(db, user_id)
+        await reserve_llm_budget(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
     except BudgetExceededError as exc:
         raise HTTPException(
             status_code=429,
@@ -101,11 +108,16 @@ async def breakdown(
         proposal, record, answer_text = await generate_breakdown(prompt)
     except AssistantNotConfiguredError as exc:
         logger.warning("breakdown not configured for user=%s: %s", user_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except openai.APIError as exc:
         logger.warning("breakdown unavailable for user=%s: %s", user_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
 
+    # Reconcile the reservation to actual spend (flush-only); the final
+    # commit below persists it.
+    await reconcile_llm_usage(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS, record.total_tokens)
     await create_breakdown_answer(
         db,
         user_id=user_id,
