@@ -17,6 +17,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.knowledge.budget import reconcile_llm_usage, reserve_llm_budget
 from app.models.budget import LlmUsageReservation
 from app.models.task import Task
 from app.models.user import User
@@ -200,3 +201,92 @@ async def test_plan_succeeds_with_mocked_provider_under_default_budget(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert resp.status_code == 200, resp.text
+
+
+@pytest.mark.anyio
+async def test_reserve_disabled_at_zero_cap_unit(
+    db: AsyncSession, mocker: Any
+) -> None:
+    """Cap <= 0 disables the gate: reserve returns silently and writes nothing."""
+    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 0)
+
+    await reserve_llm_budget(db, user_id=424242, estimate=500)  # must not raise
+
+    async with TestSessionLocal() as fresh:
+        rows = (
+            await fresh.execute(
+                select(LlmUsageReservation).where(LlmUsageReservation.user_id == 424242)
+            )
+        ).scalars().all()
+        assert rows == []  # no counter row appeared
+
+
+@pytest.mark.anyio
+async def test_plan_serves_end_to_end_with_zero_cap_and_no_rows(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Endpoint-level disable semantics: cap 0 → normal 200, zero counter rows."""
+    user = await register_user(db, async_client, "resv_dis", "resv_dis@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "disabled-cap task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+
+    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 0)
+    mocker.patch("app.api.routers.plan.LLM_PLAN_RESERVE_TOKENS", 300)
+    patch_provider_success(mocker, total_tokens=300)
+
+    resp = await async_client.post(
+        "/api/v1/plan",
+        json={"available_minutes": 120},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert resp.status_code == 200, resp.text
+
+    async with TestSessionLocal() as fresh:
+        rows = (
+            await fresh.execute(
+                select(LlmUsageReservation).where(LlmUsageReservation.user_id == user["id"])
+            )
+        ).scalars().all()
+        assert rows == []  # neither reserve nor reconcile created a counter row
+
+
+@pytest.mark.anyio
+async def test_reconcile_moves_counter_by_actual_minus_estimate_both_directions(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Net-equals-actual arithmetic: counter moves by exactly (actual - est)."""
+    user = await register_user(
+        db, async_client, "resv_rec", "resv_rec@example.com"
+    )
+    user_id = user["id"]
+    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 10_000)
+
+    # Smaller-than direction: reserve 300, actually spend 180 → counter == 180.
+    await reserve_llm_budget(db, user_id, 300)
+    await reconcile_llm_usage(db, user_id, 300, 180)
+    await db.commit()
+    async with TestSessionLocal() as fresh:
+        row = (
+            await fresh.execute(
+                select(LlmUsageReservation).where(LlmUsageReservation.user_id == user_id)
+            )
+        ).scalar_one()
+        assert row.reserved_tokens == 180  # 300 + (180 - 300)
+
+    # Larger-than direction: reserve another 300 (counter 480), spend 450 → 630.
+    await reserve_llm_budget(db, user_id, 300)
+    await reconcile_llm_usage(db, user_id, 300, 450)
+    await db.commit()
+    async with TestSessionLocal() as fresh:
+        row = (
+            await fresh.execute(
+                select(LlmUsageReservation).where(LlmUsageReservation.user_id == user_id)
+            )
+        ).scalar_one()
+        assert row.reserved_tokens == 630  # 480 + (450 - 300)

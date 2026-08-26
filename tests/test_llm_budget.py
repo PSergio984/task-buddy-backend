@@ -10,7 +10,7 @@ from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.knowledge.assistant import AssistantNotConfiguredError
-from app.knowledge.budget import BudgetExceededError, check_llm_budget, daily_llm_tokens_used
+from app.knowledge.budget import BudgetExceededError, daily_llm_tokens_used, reserve_llm_budget
 from app.models.breakdown import BreakdownAnswer
 from app.models.budget import LlmUsageReservation
 from app.models.knowledge import KnowledgeAnswer
@@ -123,48 +123,60 @@ async def test_daily_usage_sums_ask_and_plan(db: AsyncSession, async_client: Asy
 
 
 @pytest.mark.anyio
-async def test_check_budget_raises_when_exhausted(
+async def test_reserve_raises_when_counter_would_exceed_cap(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
+    """Reservation contract (ADR 0002): a reserve that would push the counter
+    past the cap raises and leaves the committed balance untouched."""
     user = await register_user(db, async_client, "budget_over", "budget_over@example.com")
-    await seed_ask_tokens(db, user["id"], 300)
-    await seed_plan_tokens(db, user["id"], 700)
+    await seed_reservation(db, user["id"], 400)
     mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 500)
     with pytest.raises(BudgetExceededError):
-        await check_llm_budget(db, user["id"])
+        await reserve_llm_budget(db, user["id"], 200)
+    # CAS proof: zero rows updated → the committed counter did not move.
+    await db.rollback()
+    assert await counter_value(user["id"]) == 400
 
 
 @pytest.mark.anyio
-async def test_check_budget_passes_under_limit(
+async def test_reserve_passes_under_limit_and_increments_counter(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
+    """A reserve under the cap succeeds and commits its estimate."""
     user = await register_user(db, async_client, "budget_ok", "budget_ok@example.com")
-    await seed_plan_tokens(db, user["id"], 400)
+    await seed_reservation(db, user["id"], 300)
     mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 1000)
-    await check_llm_budget(db, user["id"])  # must not raise
+    await reserve_llm_budget(db, user["id"], 600)  # must not raise
+    assert await counter_value(user["id"]) == 900
 
 
 @pytest.mark.anyio
-async def test_check_budget_disabled_at_zero(
+async def test_reserve_disabled_at_zero_cap(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
+    """Cap <= 0 disables the gate entirely, even with prior spend reserved."""
     user = await register_user(db, async_client, "budget_zero", "budget_zero@example.com")
-    await seed_plan_tokens(db, user["id"], 9999)
+    await seed_reservation(db, user["id"], 9999)
     mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 0)
-    await check_llm_budget(db, user["id"])  # 0 disables the cap
+    await reserve_llm_budget(db, user["id"], 5000)  # 0 disables the cap
+    assert await counter_value(user["id"]) == 9999  # counter untouched
 
 
 @pytest.mark.anyio
 async def test_plan_returns_429_when_budget_exhausted(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
-    """An over-budget user gets 429 before any LLM call is made."""
+    """A user whose reserved counter would exceed the cap gets 429 before any
+    LLM call is made (ADR 0002 reservation contract)."""
     user = await register_user(db, async_client, "budget_429", "budget_429@example.com")
     await confirm_user(db, user)
     token = await login_user(async_client, user)
-    await seed_plan_tokens(db, user["id"], 150)
+    # 900 of a 1000 cap already reserved today; a further 300-token estimate
+    # cannot fit → the conditional UPDATE hits zero rows.
+    await seed_reservation(db, user["id"], 900)
 
-    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 100)
+    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 1000)
+    mocker.patch("app.api.routers.plan.LLM_PLAN_RESERVE_TOKENS", 300)
     boom = mocker.patch(
         "app.knowledge.assistant._openai_client",
         side_effect=AssertionError("LLM called despite budget"),
@@ -193,9 +205,12 @@ async def test_ask_returns_429_when_budget_exhausted(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert task_resp.status_code == 201
-    await seed_plan_tokens(db, user["id"], 150)
+    # 900 of a 1000 cap already reserved today; a further 600-token estimate
+    # cannot fit → 429 before the assistant runs (reservation contract).
+    await seed_reservation(db, user["id"], 900)
 
-    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 100)
+    mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 1000)
+    mocker.patch("app.api.routers.knowledge.LLM_ASK_RESERVE_TOKENS", 600)
     boom = mocker.patch(
         "app.knowledge.assistant._openai_client",
         side_effect=AssertionError("LLM called despite budget"),
