@@ -3,6 +3,7 @@
 from app.models.audit import AuditLog
 from app.models.base import Base
 from app.models.breakdown import BreakdownAnswer
+from app.models.budget import LlmUsageReservation
 from app.models.knowledge import (
     JudgeVerdict,
     KnowledgeAnswer,
@@ -39,4 +40,5 @@ __all__ = [
     "PlanAnswer",
     "BreakdownAnswer",
     "VoiceAnswer",
+    "LlmUsageReservation",
 ]

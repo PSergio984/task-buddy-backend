@@ -8,10 +8,10 @@ from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
-from app.config import RATE_LIMIT_PLAN, SYNTHETIC_CALENDAR_ENABLED
+from app.config import LLM_PLAN_RESERVE_TOKENS, RATE_LIMIT_PLAN, SYNTHETIC_CALENDAR_ENABLED
 from app.dependencies import get_db
 from app.knowledge.assistant import AssistantNotConfiguredError
-from app.knowledge.budget import BudgetExceededError, check_llm_budget
+from app.knowledge.budget import BudgetExceededError, reconcile_llm_usage, reserve_llm_budget
 from app.limiter import limiter
 from app.models.user import User
 from app.planner.connector import SyntheticCalendarConnector
@@ -48,9 +48,11 @@ async def plan(
     user_id = current_user.id
     logger.info("POST /plan - %s", user_id)
 
-    # Per-user daily spend cap — checked before any LLM call (audit #29).
+    # Per-user daily spend cap (audit #29; ADR 0002): reserved atomically via
+    # a conditional UPDATE that commits before any provider call, so
+    # concurrent requests can never oversubscribe the cap.
     try:
-        await check_llm_budget(db, user_id)
+        await reserve_llm_budget(db, user_id, LLM_PLAN_RESERVE_TOKENS)
     except BudgetExceededError as exc:
         raise HTTPException(
             status_code=429,
@@ -77,5 +79,8 @@ async def plan(
         logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
 
+    # Reconcile the reservation to actual spend (flush-only); the final
+    # commit below persists it.
+    await reconcile_llm_usage(db, user_id, LLM_PLAN_RESERVE_TOKENS, result.total_tokens)
     await db.commit()
     return result

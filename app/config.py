@@ -178,6 +178,11 @@ class GlobalConfig(BaseConfig):
     # rate limit bounds call count, not spend: a legit-but-abusive client can
     # burn the free-tier quota without a per-user budget. 0 disables the cap.
     LLM_DAILY_TOKEN_BUDGET: int = 200_000
+    # Prepaid reservation size for POST /api/v1/plan (ADR 0002): the gate
+    # atomically reserves this many tokens BEFORE the provider call and
+    # reconciles by actual - estimate afterwards. Sized generously (~2x
+    # observed mean); tunable via env without a code change.
+    LLM_PLAN_RESERVE_TOKENS: int = 8000
     # Demo calendar connector gated on by default (D-11) — no ProdConfig override.
     SYNTHETIC_CALENDAR_ENABLED: bool = True
     PLANNER_WORKING_WINDOW_START_HOUR: int = 18
@@ -473,6 +478,7 @@ VOICE_ENABLED = config.VOICE_ENABLED
 WHISPER_MODEL = config.WHISPER_MODEL
 RATE_LIMIT_VOICE = config.RATE_LIMIT_VOICE
 LLM_DAILY_TOKEN_BUDGET = config.LLM_DAILY_TOKEN_BUDGET
+LLM_PLAN_RESERVE_TOKENS = config.LLM_PLAN_RESERVE_TOKENS
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
 EMBEDDING_PROVIDER = config.EMBEDDING_PROVIDER
