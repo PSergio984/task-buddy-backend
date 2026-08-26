@@ -103,7 +103,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop the performance indexes created by upgrade()."""
+    """Drop the performance indexes created by upgrade().
+
+DATA LOSS: performance indexes are permanently discarded; queries may degrade until indexes are rebuilt on upgrade."""
     op.drop_index(
         op.f("ix_tbl_task_tags_tag_id"),
         table_name="tbl_task_tags",

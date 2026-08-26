@@ -115,7 +115,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+DATA LOSS: performance indexes and the partial unique history index are permanently discarded; they are recreated on upgrade."""
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         op.execute(

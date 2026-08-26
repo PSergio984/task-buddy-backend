@@ -72,7 +72,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Drop the HNSW index before the chunk table."""
+    """Drop the HNSW index before the chunk table.
+
+DATA LOSS: HNSW index and all rows in tbl_knowledge_chunks are permanently discarded when dropping the table."""
     if op.get_bind().dialect.name == "postgresql":
         op.drop_index(
             op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),

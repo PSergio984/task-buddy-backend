@@ -48,5 +48,6 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    """DATA LOSS: all rows in tbl_breakdown_answers are permanently discarded when dropping the table."""
     op.drop_index("ix_tbl_breakdown_answers_user_created", table_name="tbl_breakdown_answers")
     op.drop_table("tbl_breakdown_answers")

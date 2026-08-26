@@ -44,7 +44,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+DATA LOSS: embedding vectors are permanently discarded if the vector dimension is incompatible; downgrade re-creates the index with the prior dimension."""
     if op.get_bind().dialect.name == "postgresql":
         op.drop_index(
             op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),

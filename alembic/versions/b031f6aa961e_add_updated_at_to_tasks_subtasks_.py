@@ -35,7 +35,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Downgrade schema."""
+    """Downgrade schema.
+
+DATA LOSS: updated_at column values in tbl_projects, tbl_subtasks and tbl_tasks are permanently discarded on downgrade."""
     for table in ("tbl_projects", "tbl_subtasks", "tbl_tasks"):
         with op.batch_alter_table(table) as batch_op:
             batch_op.drop_column("updated_at")
