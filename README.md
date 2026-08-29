@@ -84,7 +84,7 @@ All under `app/main.py:163-177` (`/api/v1/*`, 13 routers, ~58 routes). See works
 | Breakdown | POST | `/api/v1/breakdown` | JWT | `10/min` | `gpt-oss-120b` |
 | Voice | POST | `/api/v1/voice/plan` | JWT | `10/min` | Whisper → plan |
 
-\* `RATE_LIMIT_*` in `app/config.py` — verify exact values. Full table in workspace root README.
+\* `RATE_LIMIT_KNOWLEDGE_ASK/MEMORY_SIMILAR/PLAN/BREAKDOWN/VOICE=10/minute` (`app/config.py:59-64`), `FEEDBACK=30/minute`, others per route (5–60/min) — see `app/config.py` exact. Full ~58-route table in workspace root README.
 
 Core: `POST /api/v1/users/register`, `POST /api/v1/users/login`, `GET /api/v1/tasks/`, `POST /api/v1/tasks/`, `PUT /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/knowledge/ask` + `feedback`, `POST /api/v1/tasks/{id}/memory/similar`, `POST /api/v1/plan`, `POST /api/v1/breakdown`, `POST /api/v1/voice/plan`, `POST /api/v1/sync` (LWW), plus projects/tags/subtasks/notifications/realtime/audit/stats (`docs/codebase/ARCHITECTURE.md`).
 
@@ -108,6 +108,16 @@ pytest --cov=app            # coverage [TODO]
 CI: `alembic` single-head, `ruff lint+format`, `mypy` `3.12`, `pytest`, `docker build` (`.github/workflows/python-app.yml`), frontend `ci.yml` separate. Mocking via `get_embedder()` stub (`app/knowledge/embeddings.py` docstring) — suite offline.
 
 Golden: `tests/fixtures/golden_knowledge.json` (`jq length` for N) — CEIT has 27 cases; Task Buddy's N is different.
+
+**Retrieval evaluation (deterministic — no LLM, per `0031`):**
+
+| Approach | P@5 | R@5 | F1@5 | Top-1 | Neg-pass | Source |
+|----------|-----|-----|------|-------|----------|--------|
+| **hybrid** | `TODO` | `TODO` | `TODO` | `TODO` | `TODO` | `tests/fixtures/golden_knowledge.json` (N) |
+| bm25 | `TODO` | `TODO` | `TODO` | `TODO` | `TODO` | same |
+| semantic | `TODO` | `TODO` | `TODO` | `TODO` | `TODO` | same |
+
+Gate: hybrid RRF ≥ BM25 alone AND ≥ semantic alone on `precision@3` / `F1@5` — fusion must earn its complexity (`docs/codebase/PRESENTATION.md §5`, `tests/test_evaluation.py`). Fill via `pytest tests/test_evaluation.py -v` (do not copy CEIT 0.4545).
 
 ## Monitoring (actual — no Prometheus)
 
