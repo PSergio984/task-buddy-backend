@@ -1,0 +1,22 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["incident_summary", "root_cause", "confidence", "action", "escalate"],
+  "properties": {
+    "incident_summary": { "type": "string" },
+    "root_cause": { "type": "string" },
+    "confidence": { "enum": ["low", "medium", "high"] },
+    "action": {
+      "type": "object",
+      "required": ["type", "command", "rationale"],
+      "properties": {
+        "type": { "type": "string" },
+        "command": { "type": "string" },
+        "rationale": { "type": "string" }
+      }
+    },
+    "verification_plan": { "type": "string" },
+    "escalate": { "type": "boolean" },
+    "escalation_reason": { "type": "string" }
+  }
+}

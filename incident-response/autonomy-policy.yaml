@@ -1,0 +1,24 @@
+# autonomy-policy.yaml — enforced by alert-bridge.mjs, NOT by the model.
+# The model proposes; this file is the permission boundary.
+
+# Action types the gate may execute without human approval.
+allowed_actions:
+  - restart-container      # docker compose restart <svc>
+  - rollback-deploy        # redeploy previous image tag
+  - scale-service          # docker compose up -d --scale
+  - open-pr                # fix in an isolated worktree, PR for human merge
+
+# Always escalate to a human when:
+escalate_when:
+  - action-not-allowlisted
+  - evidence-inconclusive
+  - confidence-low
+  - command-failed
+  - verification-failed
+
+# Hard denies — never executable regardless of allowlist:
+deny:
+  - shell-access-prod
+  - db-mutation
+  - credential-access
+  - volume-or-data-deletion
