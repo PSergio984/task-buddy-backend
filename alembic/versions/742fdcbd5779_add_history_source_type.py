@@ -21,7 +21,10 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     """Upgrade schema."""
     if op.get_bind().dialect.name == "postgresql":
-        op.execute("ALTER TYPE sourcetype ADD VALUE 'history'")
+        # ADD VALUE must commit before 'history' is usable; a later migration
+        # builds a partial index on it in the same alembic transaction.
+        with op.get_context().autocommit_block():
+            op.execute("ALTER TYPE sourcetype ADD VALUE IF NOT EXISTS 'history'")
 
 
 def downgrade() -> None:
