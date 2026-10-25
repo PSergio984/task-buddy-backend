@@ -41,7 +41,5 @@ class LlmUsageReservation(Base):
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
     day: Mapped[date] = mapped_column(Date, nullable=False)
-    reserved_tokens: Mapped[int] = mapped_column(
-        Integer, nullable=False, server_default=text("0")
-    )
+    reserved_tokens: Mapped[int] = mapped_column(Integer, nullable=False, server_default=text("0"))
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

@@ -157,9 +157,7 @@ async def test_reservation_row_lazily_created_first_of_day(
     )
 
     async with TestSessionLocal() as fresh:
-        count_before = len(
-            (await fresh.execute(select(LlmUsageReservation))).scalars().all()
-        )
+        count_before = len((await fresh.execute(select(LlmUsageReservation))).scalars().all())
     assert count_before == 0  # tbl_llm_usage_reservations starts empty
 
     mocker.patch("app.api.routers.plan.LLM_PLAN_RESERVE_TOKENS", 300)
@@ -204,9 +202,7 @@ async def test_plan_succeeds_with_mocked_provider_under_default_budget(
 
 
 @pytest.mark.anyio
-async def test_reserve_disabled_at_zero_cap_unit(
-    db: AsyncSession, mocker: Any
-) -> None:
+async def test_reserve_disabled_at_zero_cap_unit(db: AsyncSession, mocker: Any) -> None:
     """Cap <= 0 disables the gate: reserve returns silently and writes nothing."""
     mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 0)
 
@@ -214,10 +210,14 @@ async def test_reserve_disabled_at_zero_cap_unit(
 
     async with TestSessionLocal() as fresh:
         rows = (
-            await fresh.execute(
-                select(LlmUsageReservation).where(LlmUsageReservation.user_id == 424242)
+            (
+                await fresh.execute(
+                    select(LlmUsageReservation).where(LlmUsageReservation.user_id == 424242)
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert rows == []  # no counter row appeared
 
 
@@ -249,10 +249,14 @@ async def test_plan_serves_end_to_end_with_zero_cap_and_no_rows(
 
     async with TestSessionLocal() as fresh:
         rows = (
-            await fresh.execute(
-                select(LlmUsageReservation).where(LlmUsageReservation.user_id == user["id"])
+            (
+                await fresh.execute(
+                    select(LlmUsageReservation).where(LlmUsageReservation.user_id == user["id"])
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert rows == []  # neither reserve nor reconcile created a counter row
 
 
@@ -261,9 +265,7 @@ async def test_reconcile_moves_counter_by_actual_minus_estimate_both_directions(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
     """Net-equals-actual arithmetic: counter moves by exactly (actual - est)."""
-    user = await register_user(
-        db, async_client, "resv_rec", "resv_rec@example.com"
-    )
+    user = await register_user(db, async_client, "resv_rec", "resv_rec@example.com")
     user_id = user["id"]
     mocker.patch("app.knowledge.budget.LLM_DAILY_TOKEN_BUDGET", 10_000)
 

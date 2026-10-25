@@ -494,8 +494,12 @@ async def test_ask_foreign_task_404_performs_no_reservation(
     # No reservation row was created for the requester at all.
     async with TestSessionLocal() as fresh:
         rows = (
-            await fresh.execute(
-                select(LlmUsageReservation).where(LlmUsageReservation.user_id == other["id"])
+            (
+                await fresh.execute(
+                    select(LlmUsageReservation).where(LlmUsageReservation.user_id == other["id"])
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert rows == []

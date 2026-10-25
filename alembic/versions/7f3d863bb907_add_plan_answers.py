@@ -42,5 +42,5 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema.
 
-DATA LOSS: all rows in tbl_plan_answers are permanently discarded when dropping the table."""
+    DATA LOSS: all rows in tbl_plan_answers are permanently discarded when dropping the table."""
     op.drop_table("tbl_plan_answers")

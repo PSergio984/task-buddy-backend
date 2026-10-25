@@ -97,7 +97,9 @@ async def test_idempotent_duplicate_key_exactly_once_under_gather(
     # --- Phase A: true K-way race on one key -------------------------------
     responses = await asyncio.gather(
         *[
-            authenticated_async_client.post("/api/v1/projects/", json={"name": "P1"}, headers=headers)
+            authenticated_async_client.post(
+                "/api/v1/projects/", json={"name": "P1"}, headers=headers
+            )
             for _ in range(K_CONCURRENT)
         ],
         return_exceptions=True,
@@ -131,7 +133,9 @@ async def test_idempotent_duplicate_key_exactly_once_under_gather(
     # --- Phase B: post-completion duplicate wave replays byte-identically ---
     replay_responses = await asyncio.gather(
         *[
-            authenticated_async_client.post("/api/v1/projects/", json={"name": "P1"}, headers=headers)
+            authenticated_async_client.post(
+                "/api/v1/projects/", json={"name": "P1"}, headers=headers
+            )
             for _ in range(K_CONCURRENT)
         ]
     )

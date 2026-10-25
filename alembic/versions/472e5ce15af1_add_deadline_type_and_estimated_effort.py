@@ -38,7 +38,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema.
 
-DATA LOSS: deadline_type and estimated_effort_minutes column values are permanently discarded on downgrade."""
+    DATA LOSS: deadline_type and estimated_effort_minutes column values are permanently discarded on downgrade."""
     with op.batch_alter_table("tbl_tasks") as batch_op:
         batch_op.drop_column("deadline_type")
         batch_op.drop_column("estimated_effort_minutes")

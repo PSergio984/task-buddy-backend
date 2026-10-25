@@ -53,7 +53,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Downgrade schema.
 
-DATA LOSS: existing knowledge chunks and knowledge rows are permanently discarded when switching embedding dimensions (DELETE FROM); re-ingest restores them on upgrade."""
+    DATA LOSS: existing knowledge chunks and knowledge rows are permanently discarded when switching embedding dimensions (DELETE FROM); re-ingest restores them on upgrade."""
     if op.get_bind().dialect.name == "postgresql":
         op.drop_index(
             op.f("ix_tbl_knowledge_chunks_embedding_hnsw"),

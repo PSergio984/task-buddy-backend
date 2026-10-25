@@ -177,8 +177,12 @@ def scan(stmts: list[ast.stmt], table: str | None = None, guard: str | None = No
             continue
         elif isinstance(s, ast.Expr) and isinstance(s.value, ast.Call):
             ops.append(_classify_call(s.value, table, guard))
-    return [o for o in ops if o.name not in {"op.get_bind", "get_bind", "op.f", "f",
-                                             "batch_alter_table", "op.batch_alter_table"}]
+    return [
+        o
+        for o in ops
+        if o.name
+        not in {"op.get_bind", "get_bind", "op.f", "f", "batch_alter_table", "op.batch_alter_table"}
+    ]
 
 
 def _docstrings(fn: ast.FunctionDef | None, mod_doc: str) -> str:
@@ -207,8 +211,11 @@ def _mirror_verdict(up: list[Op], down: list[Op]) -> tuple[str, list[str]]:
         problems.append(f"upgrade {sig} x{n} not mirrored in downgrade")
     for sig, n in (needed_up - up_keys).items():
         problems.append(f"downgrade {sig} x{n} not mirrored in upgrade")
-    unpaired = [o.name for o in (*up, *down) if o.key is None and o.name.split(".")[-1]
-                in {"alter_column", "rename_table"}]
+    unpaired = [
+        o.name
+        for o in (*up, *down)
+        if o.key is None and o.name.split(".")[-1] in {"alter_column", "rename_table"}
+    ]
     for nm in unpaired:
         problems.append(f"manual-review op present: {nm}")
     return ("TRUE-INVERSE" if not problems else "NON-INVERSE"), problems

@@ -26,9 +26,7 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("tbl_users.id"), nullable=False),
         sa.Column("day", sa.Date(), nullable=False),
-        sa.Column(
-            "reserved_tokens", sa.Integer(), nullable=False, server_default=sa.text("0")
-        ),
+        sa.Column("reserved_tokens", sa.Integer(), nullable=False, server_default=sa.text("0")),
         sa.Column(
             "created_at",
             sa.DateTime(timezone=True),
@@ -49,7 +47,5 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Drop the reservation counter (in-flight prepaid estimates are discarded)."""
-    op.drop_index(
-        "ix_tbl_llm_usage_reservations_user_day", table_name="tbl_llm_usage_reservations"
-    )
+    op.drop_index("ix_tbl_llm_usage_reservations_user_day", table_name="tbl_llm_usage_reservations")
     op.drop_table("tbl_llm_usage_reservations")

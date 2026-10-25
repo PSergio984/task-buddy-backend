@@ -138,7 +138,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Drop the knowledge tables in reverse dependency order.
 
-DATA LOSS: all rows in tbl_knowledge, tbl_knowledge_answers and tbl_knowledge_feedback are permanently discarded when dropping tables."""
+    DATA LOSS: all rows in tbl_knowledge, tbl_knowledge_answers and tbl_knowledge_feedback are permanently discarded when dropping tables."""
     op.drop_table("tbl_knowledge_feedback")
     op.drop_table("tbl_knowledge_answers")
     op.drop_table("tbl_knowledge")

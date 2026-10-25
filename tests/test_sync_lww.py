@@ -163,9 +163,7 @@ async def _seed_task(user_id: int, seed_ts: datetime) -> int:
 async def _run_merge(user_id: int, changes: list[SyncChange]) -> tuple[list, list, list]:
     body = SyncRequest(changes=changes)
     async with TestSessionLocal() as s:
-        applied, conflicts, not_found, _high_water, _flips = await _merge_changes(
-            s, user_id, body
-        )
+        applied, conflicts, not_found, _high_water, _flips = await _merge_changes(s, user_id, body)
         await s.commit()
     return applied, conflicts, not_found
 
@@ -245,8 +243,12 @@ async def test_sync_lww_stale_batch_partitions_identical_across_permutations(
     assert state_ab == state_ba, f"Final states diverged:\n{state_ab}\n{state_ba}"
 
     # Stale-write loser reported as conflict in BOTH orders.
-    assert [(c.entity.value, c.id, c.op.value) for c in conflicts_ab] == [("task", task_id_ab, "update")]
-    assert [(c.entity.value, c.id, c.op.value) for c in conflicts_ba] == [("task", task_id_ba, "update")]
+    assert [(c.entity.value, c.id, c.op.value) for c in conflicts_ab] == [
+        ("task", task_id_ab, "update")
+    ]
+    assert [(c.entity.value, c.id, c.op.value) for c in conflicts_ba] == [
+        ("task", task_id_ba, "update")
+    ]
     assert not_found_ab == [] and not_found_ba == []
 
     # Final merged entity state carries the fresh write.

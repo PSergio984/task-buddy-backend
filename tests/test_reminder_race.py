@@ -151,9 +151,9 @@ async def test_manual_edit_after_completed_sweep_survives_next_round(
     # Round 1 delivers the reminder (exactly once).
     await _process_reminders_async()
     count_after_round1 = len(
-        (
-            await db.execute(select(Notification).where(Notification.task_id == task_id))
-        ).scalars().all()
+        (await db.execute(select(Notification).where(Notification.task_id == task_id)))
+        .scalars()
+        .all()
     )
     assert count_after_round1 == 1
 

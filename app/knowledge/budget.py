@@ -48,9 +48,7 @@ class BudgetExceededError(RuntimeError):
 
 def _utc_today() -> date:
     """The UTC calendar day keying the reservation counter."""
-    return datetime.combine(
-        datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc
-    ).date()
+    return datetime.combine(datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc).date()
 
 
 async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
