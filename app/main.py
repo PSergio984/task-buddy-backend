@@ -34,6 +34,7 @@ from app.limiter import limiter
 from app.logging_conf import configure_logging
 from app.middleware.csrf import origin_check_middleware
 from app.middleware.idempotency import IdempotencyMiddleware
+from app.observability import setup_observability
 
 logger = logging.getLogger(__name__)
 
@@ -118,6 +119,7 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
+setup_observability(app)
 app.state.limiter = limiter
 app.state.signing_key_cache = SigningKeyCache()
 

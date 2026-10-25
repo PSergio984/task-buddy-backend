@@ -42,6 +42,11 @@ dependencies = [
     "sentence-transformers>=5.6.0",
     "pgvector>=0.3.0",
     "openai>=1.30.0",
+    "opentelemetry-sdk>=1.44.0",
+    "opentelemetry-instrumentation-fastapi>=0.65b0",
+    "opentelemetry-instrumentation-logging>=0.65b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.44.0",
+    "prometheus-fastapi-instrumentator>=8.0.0",
 ]
 
 [project.optional-dependencies]

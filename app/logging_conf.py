@@ -5,6 +5,7 @@ cannot be parsed as emails are fully masked rather than logged unchanged.
 """
 
 import logging
+import os
 from logging.config import dictConfig
 
 from app.config import DevConfig, ProdConfig, config
@@ -50,7 +51,8 @@ class EmailObfuscationFilter(logging.Filter):
 
 def _handler_names() -> list:
     """Return the enabled handler names for the ``app`` logger."""
-    names = ["default", "rotating_file"]
+    stdout = "json_stdout" if os.getenv("LOG_FORMAT") == "json" else "default"
+    names = [stdout, "rotating_file"]
     if isinstance(config, DevConfig):
         names.append("sentryHandler")
     return names
@@ -86,7 +88,8 @@ def configure_logging() -> None:
                     "datefmt": "%Y-%m-%d %H:%M:%S",
                     "format": (
                         "%(asctime)s %(msecs)03d %(levelname)s %(name)s "
-                        "%(lineno)d %(correlation_id)s %(message)s"
+                        "%(lineno)d %(correlation_id)s %(otelTraceID)s "
+                        "%(otelSpanID)s %(message)s"
                     ),
                 },
             },
@@ -105,6 +108,12 @@ def configure_logging() -> None:
                     "maxBytes": 1024 * 1024,  # 1 MB
                     "backupCount": 5,
                     "encoding": "utf-8",
+                    "filters": ["correlation_id", "email_obfuscation"],
+                },
+                "json_stdout": {
+                    "class": "logging.StreamHandler",
+                    "level": "DEBUG",
+                    "formatter": "file",
                     "filters": ["correlation_id", "email_obfuscation"],
                 },
                 "sentryHandler": {

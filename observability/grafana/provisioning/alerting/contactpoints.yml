@@ -1,0 +1,22 @@
+apiVersion: 1
+
+contactPoints:
+  - orgId: 1
+    name: on-call-bridge
+    receivers:
+      - uid: on-call-bridge-webhook
+        type: webhook
+        settings:
+          url: http://alert-bridge:9099/alert
+          http_method: POST
+        disableResolveMessage: false
+
+policies:
+  - orgId: 1
+    receiver: on-call-bridge
+    group_by: ["alertname"]
+    group_wait: 10s
+    group_interval: 1m
+    repeat_interval: 1h
+
+muteTimings: []

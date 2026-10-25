@@ -1,0 +1,202 @@
+# One-command full stack: Next.js frontend + FastAPI backend + Postgres + Redis.
+# Run from this repo with the frontend checked out as a sibling:
+#   git clone <frontend> ../task-buddy-frontend
+#   docker compose -f docker-compose.fullstack.yml up --build
+#
+# Frontend calls same-origin /api/*; its route handler proxies server-side to
+# BACKEND_URL, which inside compose is the internal service name (no CORS, no
+# public URL needed).
+services:
+  frontend:
+    build:
+      context: ../task-buddy-frontend
+      args:
+        # Only needs to parse at build time; runtime env below is what serves.
+        BACKEND_URL: http://localhost:8000
+        NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+        NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+    container_name: task-buddy-frontend
+    ports:
+      - "3000:3000"
+    environment:
+      BACKEND_URL: http://app:8000
+      NEXT_PUBLIC_SUPABASE_URL: ${NEXT_PUBLIC_SUPABASE_URL:-}
+      NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY: ${NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY:-}
+    depends_on:
+      app:
+        condition: service_healthy
+    networks:
+      - task-buddy-network
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: task-buddy-backend
+    ports:
+      - "8000:8000"
+    environment:
+      - DEV_DATABASE_URL=postgresql://postgres:postgres@db:5432/task_buddy
+      - DEV_REDIS_URL=redis://redis:6379/0
+      - ENV_STATE=DEV
+      - DEBUG=False
+      - LOG_LEVEL=INFO
+      - LOG_FORMAT=json
+      - OTEL_SERVICE_NAME=task-buddy-backend
+      - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    command: ./start.sh --reload
+    networks:
+      - task-buddy-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  db:
+    image: postgres:15-alpine
+    container_name: task-buddy-db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: task_buddy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - task-buddy-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    container_name: task-buddy-redis
+    ports:
+      - "6379:6379"
+    networks:
+      - task-buddy-network
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # --- Observability stack ---
+
+  prometheus:
+    image: prom/prometheus:v2.55.1
+    container_name: task-buddy-prometheus
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.retention.time=7d
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - prometheus_data:/prometheus
+    ports:
+      - "9090:9090"
+    networks:
+      - task-buddy-network
+
+  tempo:
+    image: grafana/tempo:2.8.1
+    container_name: task-buddy-tempo
+    command: ["-config.file=/etc/tempo.yml"]
+    volumes:
+      - ./observability/tempo.yml:/etc/tempo.yml:ro
+      - tempo_data:/var/tempo
+    ports:
+      - "3200:3200"   # query API (Grafana datasource)
+      - "4317:4317"   # OTLP gRPC ingest
+      - "4318:4318"   # OTLP HTTP ingest
+    networks:
+      - task-buddy-network
+
+  loki:
+    image: grafana/loki:3.4.2
+    container_name: task-buddy-loki
+    command: ["-config.file=/etc/loki/loki.yml"]
+    volumes:
+      - ./observability/loki.yml:/etc/loki/loki.yml:ro
+      - loki_data:/loki
+    ports:
+      - "3100:3100"
+    networks:
+      - task-buddy-network
+
+  promtail:
+    image: grafana/promtail:3.4.2
+    container_name: task-buddy-promtail
+    command: ["-config.file=/etc/promtail/promtail.yml"]
+    volumes:
+      - ./observability/promtail.yml:/etc/promtail/promtail.yml:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+    networks:
+      - task-buddy-network
+    depends_on:
+      - loki
+
+  grafana:
+    image: grafana/grafana:11.6.0
+    container_name: task-buddy-grafana
+    environment:
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_USERS_ALLOW_SIGN_UP=false
+      - GF_AUTH_ANONYMOUS_ENABLED=false
+    volumes:
+      - ./observability/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./observability/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana_data:/var/lib/grafana
+    ports:
+      - "3001:3000"   # 3000 is the frontend; Grafana on 3001
+    networks:
+      - task-buddy-network
+    depends_on:
+      - prometheus
+      - loki
+      - tempo
+
+  alert-bridge:
+    build:
+      context: ./incident-response
+    container_name: task-buddy-alert-bridge
+    volumes:
+      - ./incident-response/incidents:/srv/incident-response/incidents
+      - ./docker-compose.fullstack.yml:/srv/compose.yaml:ro
+      - /var/run/docker.sock:/var/run/docker.sock
+    environment:
+      ONCALL_PORT: 9099
+      ONCALL_DRY_RUN: "1"             # set 0 + ONCALL_AGENT_CMD to enable the agent
+      ONCALL_AGENT_CMD: ""
+      MONITORED_CONTAINERS: "task-buddy-backend task-buddy-db task-buddy-redis"
+      APP_HEALTH_URL: http://app:8000/health/
+      PROMETHEUS_URL: http://prometheus:9090
+      COMPOSE_FILE: /srv/compose.yaml
+    ports:
+      - "9099:9099"
+    networks:
+      - task-buddy-network
+    depends_on:
+      - prometheus
+      - loki
+
+volumes:
+  postgres_data:
+  prometheus_data:
+  tempo_data:
+  loki_data:
+  grafana_data:
+
+networks:
+  task-buddy-network:
+    driver: bridge

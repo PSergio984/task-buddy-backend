@@ -1,0 +1,57 @@
+name: Deploy production
+
+on:
+  workflow_dispatch:
+    inputs:
+      reason:
+        description: "Why are you deploying (ticket/change summary)?"
+        required: true
+      ref:
+        description: "Git ref to deploy (default: main)"
+        required: true
+        default: main
+
+jobs:
+  gate:
+    runs-on: ubuntu-latest
+    # GitHub Environments gate: configure required reviewers on the
+    # 'production' environment (Repo → Settings → Environments) so this
+    # job pauses for human approval before any deploy hook fires.
+    environment:
+      name: production
+      url: https://task-buddy-backend-wy3w.onrender.com
+    steps:
+      - name: Record deploy intent
+        run: |
+          echo "Deploying ${{ inputs.ref }} to production"
+          echo "Reason: ${{ inputs.reason }}"
+          echo "Triggered by: ${{ github.actor }}"
+
+      - name: Verify pre-deploy health
+        run: |
+          curl -fsS https://task-buddy-backend-wy3w.onrender.com/health \
+            | tee health-before.json
+
+      - name: Trigger Render deploy
+        env:
+          RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+        run: |
+          if [ -z "$RENDER_DEPLOY_HOOK" ]; then
+            echo "::warning::RENDER_DEPLOY_HOOK secret not set — record intent only."
+            echo "Create it in Render dashboard → service → Settings → Deploy Hook."
+            exit 0
+          fi
+          curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
+
+      - name: Post-deploy health check
+        run: |
+          sleep 30
+          for i in 1 2 3 4 5; do
+            if curl -fsS https://task-buddy-backend-wy3w.onrender.com/health | grep -q '"ok"'; then
+              echo "Post-deploy health OK (attempt $i)"
+              exit 0
+            fi
+            sleep 20
+          done
+          echo "::error::Post-deploy health check failed — consider rollback (docs/ops/DEPLOYMENT.md)"
+          exit 1

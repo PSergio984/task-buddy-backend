@@ -1,0 +1,144 @@
+apiVersion: 1
+
+groups:
+  - orgId: 1
+    name: task-buddy-user-impact
+    folder: Task Buddy
+    interval: 1m
+    rules:
+      - uid: tb-api-5xx-rate
+        title: Task Buddy API 5xx error rate elevated
+        condition: C
+        for: 2m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: critical
+          service: task-buddy-backend
+          journey: api-requests
+        annotations:
+          summary: Elevated 5xx responses on the Task Buddy API
+          description: "More than 5% of API requests have been failing with 5xx for 2 minutes — users cannot complete task operations."
+          runbook_url: ""
+        isPaused: false
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource: {"type": "prometheus", "uid": "prometheus"}
+              editorMode: code
+              expr: "sum(rate(http_requests_total{job=\"task-buddy-backend\",status=~\"5..\"}[5m])) / sum(rate(http_requests_total{job=\"task-buddy-backend\"}[5m]))"
+              instant: true
+              intervalMs: 1000
+              legendFormat: "5xx rate"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params: [0.05]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+
+      - uid: tb-api-p95-latency
+        title: Task Buddy API p95 latency high
+        condition: C
+        for: 5m
+        noDataState: OK
+        execErrState: Error
+        labels:
+          severity: warning
+          service: task-buddy-backend
+          journey: api-requests
+        annotations:
+          summary: Task Buddy API p95 latency above 3s
+          description: "p95 request latency over 3s for 5 minutes — task operations feel broken to users."
+        isPaused: false
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource: {"type": "prometheus", "uid": "prometheus"}
+              editorMode: code
+              expr: "histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket{job=\"task-buddy-backend\"}[5m])))"
+              instant: true
+              intervalMs: 1000
+              legendFormat: "p95"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params: [3]
+                    type: gt
+                  operator:
+                    type: and
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
