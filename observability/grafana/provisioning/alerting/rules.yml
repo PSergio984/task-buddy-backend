@@ -75,6 +75,74 @@ groups:
               refId: C
               type: threshold
 
+      - uid: tb-backend-down
+        title: Task Buddy API not scrapeable
+        condition: C
+        for: 2m
+        noDataState: Alerting
+        execErrState: Error
+        labels:
+          severity: critical
+          service: task-buddy-backend
+          journey: availability
+        annotations:
+          summary: Task Buddy API is down or unreachable by Prometheus
+          description: "up == 0 for 2 minutes — the API is unavailable to users and invisible to the error-rate alerts."
+        isPaused: false
+        data:
+          - refId: A
+            datasourceUid: prometheus
+            relativeTimeRange:
+              from: 300
+              to: 0
+            model:
+              datasource: {"type": "prometheus", "uid": "prometheus"}
+              editorMode: code
+              expr: "up{job=\"task-buddy-backend\"}"
+              instant: true
+              intervalMs: 1000
+              legendFormat: "up"
+              maxDataPoints: 43200
+              range: false
+              refId: A
+          - refId: B
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: A
+              intervalMs: 1000
+              maxDataPoints: 43200
+              reducer: last
+              refId: B
+              type: reduce
+          - refId: C
+            datasourceUid: "__expr__"
+            relativeTimeRange:
+              from: 0
+              to: 0
+            model:
+              conditions:
+                - evaluator:
+                    params: [1]
+                    type: lt
+                  operator:
+                    type: and
+                  query:
+                    params: ["C"]
+                  reducer:
+                    params: []
+                    type: last
+                  type: query
+              datasource: {"type": "__expr__", "uid": "__expr__"}
+              expression: B
+              intervalMs: 1000
+              maxDataPoints: 43200
+              refId: C
+              type: threshold
+
       - uid: tb-api-p95-latency
         title: Task Buddy API p95 latency high
         condition: C

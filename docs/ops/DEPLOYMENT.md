@@ -12,8 +12,11 @@
 
 `.github/workflows/deploy-production.yml` — `workflow_dispatch` only, bound to
 the GitHub `production` **environment**. Configure the environment with
-*Required reviewers* (Repo → Settings → Environments → production) so every
-deploy pauses for human approval.
+*Required reviewers* (Repo → Settings → Environments → production) so
+**dispatched** deploys pause for human approval. Scope: this gate covers
+deliberate releases only — Render's auto-deploy on push to `main` remains the
+everyday path (disable it in the Render dashboard if you want *every* release
+to require approval).
 
 The workflow: records intent → pre-deploy health check → fires
 `secrets.RENDER_DEPLOY_HOOK` → post-deploy health check with retries. If the

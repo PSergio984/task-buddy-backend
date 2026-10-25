@@ -69,7 +69,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "{container=\"task-buddy-app\"}"
+          "expr": "{container=\"task-buddy-backend\"}"
         }
       ]
     },

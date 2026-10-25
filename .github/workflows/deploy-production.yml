@@ -22,9 +22,12 @@ jobs:
       url: https://task-buddy-backend-wy3w.onrender.com
     steps:
       - name: Record deploy intent
+        env:
+          DEPLOY_REF: ${{ inputs.ref }}
+          DEPLOY_REASON: ${{ inputs.reason }}
         run: |
-          echo "Deploying ${{ inputs.ref }} to production"
-          echo "Reason: ${{ inputs.reason }}"
+          echo "Deploying $DEPLOY_REF to production"
+          echo "Reason: $DEPLOY_REASON"
           echo "Triggered by: ${{ github.actor }}"
 
       - name: Verify pre-deploy health
@@ -35,11 +38,23 @@ jobs:
       - name: Trigger Render deploy
         env:
           RENDER_DEPLOY_HOOK: ${{ secrets.RENDER_DEPLOY_HOOK }}
+          DEPLOY_REF: ${{ inputs.ref }}
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ -z "$RENDER_DEPLOY_HOOK" ]; then
             echo "::warning::RENDER_DEPLOY_HOOK secret not set — record intent only."
             echo "Create it in Render dashboard → service → Settings → Deploy Hook."
             exit 0
+          fi
+          # Deploy only what was approved: resolve the ref to a SHA and
+          # require it to be the current head of main (the branch Render
+          # actually deploys). A stale or non-main ref is recorded, not fired.
+          SHA=$(gh api "repos/${{ github.repository }}/commits/$DEPLOY_REF" -q .sha)
+          MAIN_SHA=$(gh api "repos/${{ github.repository }}/commits/main" -q .sha)
+          if [ "$SHA" != "$MAIN_SHA" ]; then
+            echo "::warning::$DEPLOY_REF resolves to $SHA but main is $MAIN_SHA."
+            echo "Render deploys the linked branch — refusing to fire the hook for a mismatched ref."
+            exit 1
           fi
           curl -fsS -X POST "$RENDER_DEPLOY_HOOK"
 

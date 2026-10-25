@@ -31,4 +31,9 @@ def setup_observability(app: FastAPI) -> None:
 
     LoggingInstrumentor().instrument()
     FastAPIInstrumentor.instrument_app(app)
-    Instrumentator().instrument(app).expose(app, endpoint="/metrics", include_in_schema=False)
+    # Default lowr buckets cap at 1s, which would make the >3s p95 alert
+    # unable to ever fire — extend them to cover the SLO-relevant range.
+    Instrumentator().instrument(
+        app,
+        latency_lowr_buckets=[0.05, 0.1, 0.25, 0.5, 1.0, 2.5, 5.0, 10.0],
+    ).expose(app, endpoint="/metrics", include_in_schema=False)
