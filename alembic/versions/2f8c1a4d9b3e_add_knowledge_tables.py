@@ -144,3 +144,4 @@ def downgrade() -> None:
     op.drop_table("tbl_knowledge")
     if op.get_bind().dialect.name == "postgresql":
         op.execute("DROP TYPE IF EXISTS sourcetype")
+        op.execute("DROP TYPE IF EXISTS judgeverdict")
