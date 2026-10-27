@@ -44,6 +44,11 @@ services:
       - LOG_FORMAT=json
       - OTEL_SERVICE_NAME=task-buddy-backend
       - OTEL_EXPORTER_OTLP_ENDPOINT=http://tempo:4317
+      # Light image has no sentence-transformers: keep provider=local so no
+      # external key is needed, and never warm — the package is then never
+      # imported. Embedding endpoints degrade gracefully if invoked.
+      - EMBEDDING_PROVIDER=local
+      - EMBEDDER_PREWARM=false
     depends_on:
       db:
         condition: service_healthy

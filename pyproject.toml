@@ -39,7 +39,6 @@ dependencies = [
     "pywebpush>=2.0.0",
     "numpy>=2.0.0,<2.5",
     "nltk>=3.10.0",
-    "sentence-transformers>=5.6.0",
     "pgvector>=0.3.0",
     "openai>=1.30.0",
     "opentelemetry-sdk>=1.44.0",
@@ -63,6 +62,14 @@ dev = [
 database = [
     "sqlalchemy>=2.0.0",
     "psycopg2-binary>=2.9.0",  # PostgreSQL driver
+]
+# Local embedding chain (~470MB model + torch). Optional: production uses the
+# jina provider (Render's 512MB tier OOMs on the local model) and the
+# docker-compose demo runs provider=local with EMBEDDER_PREWARM=false so the
+# package is never imported. Include when regenerating dev requirements:
+#   uv pip compile pyproject.toml --extra dev --extra database --extra embed-local
+embed-local = [
+    "sentence-transformers>=5.6.0",
 ]
 
 [project.urls]
