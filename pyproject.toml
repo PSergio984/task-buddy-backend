@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=65", "wheel"]
+requires = ["setuptools>=84.1.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -7,7 +7,7 @@ name = "task-buddy-backend"
 version = "0.1.0"
 description = "FastAPI backend for Task Buddy application"
 readme = "README.md"
-requires-python = ">=3.10"
+requires-python = ">=3.11"
 license = "MIT"
 authors = [
     {name = "Your Name", email = "your.email@example.com"},
@@ -19,7 +19,7 @@ dependencies = [
     "pydantic>=2.0.0",
     "pydantic-settings>=2.14.2",
     "sqlalchemy>=2.0.0",
-    "PyJWT>=2.10.1",
+    "PyJWT>=2.14.0",
     "passlib[argon2]>=1.7.4",
     "python-multipart>=0.0.30",
     "slowapi>=0.1.9",
@@ -41,10 +41,10 @@ dependencies = [
     "nltk>=3.10.0",
     "pgvector>=0.3.0",
     "openai>=1.30.0",
-    "opentelemetry-sdk>=1.44.0",
-    "opentelemetry-instrumentation-fastapi>=0.65b0",
-    "opentelemetry-instrumentation-logging>=0.65b0",
-    "opentelemetry-exporter-otlp-proto-grpc>=1.44.0",
+    "opentelemetry-sdk>=1.45.1",
+    "opentelemetry-instrumentation-fastapi>=0.66b0",
+    "opentelemetry-instrumentation-logging>=0.66b0",
+    "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     "prometheus-fastapi-instrumentator>=8.0.0",
 ]
 
@@ -54,7 +54,7 @@ dev = [
     "pytest-asyncio>=0.21.0",
     "pytest-cov>=4.1.0",
     "pytest-mock>=3.10.0",
-    "black>=23.0.0",
+    "black>=26.10.1",
     "ruff>=0.1.0",
     "mypy>=1.5.0",
     "isort>=5.12.0",
