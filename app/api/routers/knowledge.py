@@ -464,9 +464,9 @@ async def _knowledge_sse_stream(
                 settled = True
                 yield frame
             else:
-                frame = _sse_event_frame(event)
-                if frame is not None:
-                    yield frame
+                event_frame = _sse_event_frame(event)
+                if event_frame is not None:
+                    yield event_frame
     except openai.APIError as exc:
         # Status line is already sent; a provider failure mid-stream surfaces
         # as a terminal error event, then the stream closes.
