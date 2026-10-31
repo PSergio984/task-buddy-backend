@@ -3,12 +3,12 @@ import logging
 import re
 import uuid
 from collections.abc import Awaitable, Callable
-from typing import Any, Optional
+from typing import Any, Optional, cast
 
 import jwt
 from fastapi import Request, Response
 from starlette.middleware.base import BaseHTTPMiddleware
-from starlette.responses import JSONResponse
+from starlette.responses import JSONResponse, StreamingResponse
 
 from app.config import ALGORITHM, SECRET_KEY
 from app.security import get_redis_client
@@ -225,6 +225,23 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         # client errors (401/404/409) must be retryable, not replayed.
         if response.status_code < 200 or response.status_code >= 300:
             await redis_client.delete(cache_key)
+            return response
+
+        # SSE streams are unbounded and unreplayable: never consume or cache
+        # the body — but hold the lock for the stream's lifetime so a same-key
+        # retry mid-stream gets a 409 instead of a second paid generation.
+        if response.headers.get("content-type", "").lower().startswith("text/event-stream"):
+            stream = cast(StreamingResponse, response)
+            body_iterator = stream.body_iterator
+
+            async def release_stream_lock() -> Any:
+                try:
+                    async for chunk in body_iterator:
+                        yield chunk
+                finally:
+                    await redis_client.delete(cache_key)
+
+            stream.body_iterator = release_stream_lock()
             return response
 
         # Consume the response body to cache it

@@ -5,10 +5,11 @@ OPENAI_API_KEY set. The key-check lives in ``_openai_client`` and is bypassed
 by mocking either that function or ``generate_answer``/``evaluate_relevance``.
 """
 
+import asyncio
 import json
 from datetime import datetime
 from types import SimpleNamespace
-from typing import Any, cast
+from typing import Any, Optional, cast
 from unittest.mock import AsyncMock
 
 import pytest
@@ -627,3 +628,341 @@ def test_normalize_citation_drops_chunk_without_text() -> None:
 
     assert normalize_citation({"knowledge_id": 7, "rrf_score": 0.5}) is None
     assert normalize_citation({"knowledge_id": 7, "chunk_text": "", "rrf_score": 0.5}) is None
+
+
+def fake_stream_chunk(text: Optional[str] = None, usage: Any = None) -> Any:
+    """A minimal streamed-ChatCompletionChunk-shaped object."""
+    choices = [SimpleNamespace(delta=SimpleNamespace(content=text))] if text is not None else []
+    return SimpleNamespace(choices=choices, usage=usage)
+
+
+def fake_streaming_client(mocker: Any, chunks: list[Any], error: Any = None) -> Any:
+    """An AsyncOpenAI-shaped mock whose create() returns an async chunk stream."""
+
+    async def _stream() -> Any:
+        for chunk in chunks:
+            yield chunk
+        if error is not None:
+            raise error
+
+    client = mocker.MagicMock()
+    client.chat.completions.create = AsyncMock(return_value=_stream())
+    client.close = AsyncMock()
+    return client
+
+
+def parse_sse(body: str) -> list[tuple[str, str]]:
+    """Parse ``event:``/``data:`` frames into (event, raw-data) pairs."""
+    events = []
+    for block in body.strip().split("\n\n"):
+        event = data = ""
+        for line in block.splitlines():
+            if line.startswith("event: "):
+                event = line[len("event: ") :]
+            elif line.startswith("data: "):
+                data = line[len("data: ") :]
+        events.append((event, data))
+    return events
+
+
+@pytest.mark.anyio
+async def test_ask_stream_endpoint_emits_contract_order(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """SSE order is citations -> token x N -> verdict -> done; row persists."""
+    task = await create_task(async_client, logged_in_token, {"title": "Database project"})
+    await create_note(
+        async_client,
+        logged_in_token,
+        task["id"],
+        {"content": "Database project rubric: ER diagram and 3NF normalization."},
+    )
+
+    usage = SimpleNamespace(prompt_tokens=100, completion_tokens=20, total_tokens=120)
+    client = fake_streaming_client(
+        mocker,
+        [
+            fake_stream_chunk("You need "),
+            fake_stream_chunk("the rubric."),
+            fake_stream_chunk(usage=usage),
+        ],
+    )
+    mocker.patch("app.knowledge.assistant._async_openai_client", return_value=client)
+    mocker.patch(
+        "app.knowledge.assistant.evaluate_relevance",
+        new=AsyncMock(return_value=("RELEVANT", "Covers the rubric.")),
+    )
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.headers["content-type"].startswith("text/event-stream")
+    assert response.headers["cache-control"] == "no-cache"
+    assert response.headers["x-accel-buffering"] == "no"
+
+    events = parse_sse(response.text)
+    assert [event for event, _ in events] == [
+        "citations",
+        "token",
+        "token",
+        "verdict",
+        "done",
+    ]
+
+    citations = json.loads(events[0][1])["citations"]
+    assert citations and all(c["knowledge_id"] for c in citations)
+
+    answer_text = "".join(json.loads(data)["text"] for event, data in events if event == "token")
+    assert answer_text == "You need the rubric."
+
+    verdict = json.loads(events[3][1])
+    assert verdict == {"relevance": "RELEVANT", "explanation": "Covers the rubric."}
+
+    done = json.loads(events[4][1])
+    assert done["task_id"] == task["id"]
+    assert done["answer_id"]
+    assert done["prompt_tokens"] == 100
+    assert done["completion_tokens"] == 20
+    assert done["total_tokens"] == 120
+    assert isinstance(done["cost_usd"], (int, float))
+    assert isinstance(done["response_time_ms"], (int, float))
+
+    rows = (
+        (await db.execute(select(KnowledgeAnswer).where(KnowledgeAnswer.task_id == task["id"])))
+        .scalars()
+        .all()
+    )
+    assert len(rows) == 1
+    assert rows[0].answer == "You need the rubric."
+    assert rows[0].judge_verdict == JudgeVerdict.RELEVANT
+
+
+@pytest.mark.anyio
+async def test_ask_stream_endpoint_rejects_foreign_task(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+) -> None:
+    """A user cannot stream-ask on another user's task (404 before any LLM call)."""
+    task = await create_task(async_client, logged_in_token, {"title": "User 1 task"})
+
+    user2 = await register_user(db, async_client, "user2", "user2@example.com")
+    await confirm_user(db, user2)
+    token2 = await login_user(async_client, user2)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {token2}"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_ask_stream_endpoint_503_when_not_configured(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """Missing key surfaces as a pre-stream 503, never as SSE bytes."""
+    from app.knowledge.assistant import AssistantNotConfiguredError
+
+    task = await create_task(async_client, logged_in_token, {"title": "Config task"})
+    mocker.patch(
+        "app.knowledge.assistant._async_openai_client",
+        side_effect=AssistantNotConfiguredError("OPENAI_API_KEY is not configured"),
+    )
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 503
+    assert "not configured" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_ask_stream_mid_stream_provider_error_refunds(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """A mid-stream APIError emits a terminal error event and refunds the reservation."""
+    import openai
+
+    task = await create_task(async_client, logged_in_token, {"title": "Stream error task"})
+    client = fake_streaming_client(
+        mocker,
+        [fake_stream_chunk("partial")],
+        error=openai.APIError("provider boom", request=None, body=None),
+    )
+    mocker.patch("app.knowledge.assistant._async_openai_client", return_value=client)
+    refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 200, response.text
+
+    events = parse_sse(response.text)
+    assert events[-1][0] == "error"
+    assert json.loads(events[-1][1]) == {
+        "code": "provider_error",
+        "message": "AI service unavailable",
+    }
+    refund.assert_awaited_once()
+
+    rows = (
+        (await db.execute(select(KnowledgeAnswer).where(KnowledgeAnswer.task_id == task["id"])))
+        .scalars()
+        .all()
+    )
+    assert rows == []
+
+
+@pytest.mark.anyio
+async def test_ask_stream_disabled_flag_404s(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """KNOWLEDGE_STREAM_ENABLED=False gates the endpoint like BREAKDOWN_ENABLED."""
+    mocker.patch("app.api.routers.knowledge.KNOWLEDGE_STREAM_ENABLED", False)
+    task = await create_task(async_client, logged_in_token, {"title": "Flag task"})
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 404
+
+
+@pytest.mark.anyio
+async def test_ask_stream_missing_usage_reconciles_at_reserve(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """No usage chunk in the stream -> reconcile at the reserved amount (never under-bills)."""
+    task = await create_task(async_client, logged_in_token, {"title": "No-usage task"})
+    client = fake_streaming_client(mocker, [fake_stream_chunk("done.")])
+    mocker.patch("app.knowledge.assistant._async_openai_client", return_value=client)
+    mocker.patch(
+        "app.knowledge.assistant.evaluate_relevance",
+        new=AsyncMock(return_value=("RELEVANT", "ok")),
+    )
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert parse_sse(response.text)[-1][0] == "done"
+
+    from app.config import LLM_ASK_RESERVE_TOKENS
+
+    reconcile.assert_awaited_once()
+    assert reconcile.await_args.args[3] == LLM_ASK_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_endpoint_503_on_openai_api_error(
+    db: AsyncSession,
+    async_client: AsyncClient,
+    logged_in_token: str,
+    confirmed_user: dict[str, Any],
+    mocker: Any,
+) -> None:
+    """Pre-stream provider failure surfaces as 503, never as SSE bytes."""
+    import openai
+
+    task = await create_task(async_client, logged_in_token, {"title": "API error task"})
+    mocker.patch(
+        "app.knowledge.assistant._async_openai_client",
+        side_effect=openai.APIError("provider boom", request=None, body=None),
+    )
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
+        json={},
+        headers={"Authorization": f"Bearer {logged_in_token}"},
+    )
+    assert response.status_code == 503
+    assert "unavailable" in response.json()["detail"]
+
+
+@pytest.mark.anyio
+async def test_sse_stream_disconnect_before_generation_refunds(mocker: Any) -> None:
+    """Closing the stream after citations (request never sent) refunds the reservation."""
+    from app.api.routers.knowledge import _knowledge_sse_stream
+
+    class FakeAssistant:
+        async def ask_stream(self, db: Any, ctx: Any) -> Any:
+            yield {"event": "citations", "citations": []}
+            await asyncio.sleep(3600)  # hang: client is gone
+
+    db = AsyncMock()
+    refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
+
+    ctx = SimpleNamespace(generation_started=False)
+    gen = _knowledge_sse_stream(FakeAssistant(), db, ctx, 1, 1)  # type: ignore[arg-type]
+    assert "event: citations" in await gen.__anext__()
+    await gen.aclose()
+
+    refund.assert_awaited_once()
+    reconcile.assert_not_awaited()
+
+
+@pytest.mark.anyio
+async def test_sse_stream_disconnect_after_provider_request_settles(mocker: Any) -> None:
+    """Once ask_stream flips generation_started (provider request sent), a
+    disconnect settles the reservation — even before the first token arrives."""
+    from app.api.routers.knowledge import _knowledge_sse_stream
+
+    class FakeAssistant:
+        async def ask_stream(self, db: Any, ctx: Any) -> Any:
+            yield {"event": "citations", "citations": []}
+            ctx.generation_started = True  # provider request in flight
+            await asyncio.sleep(3600)
+
+    db = AsyncMock()
+    refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
+
+    ctx = SimpleNamespace(generation_started=False)
+    gen = _knowledge_sse_stream(FakeAssistant(), db, ctx, 1, 1)  # type: ignore[arg-type]
+    assert "event: citations" in await gen.__anext__()
+
+    # Drive the next event: the fake flips generation_started then hangs —
+    # cancelling the pending read models a disconnect mid provider-request.
+    pending = asyncio.ensure_future(gen.__anext__())
+    await asyncio.sleep(0.01)
+    pending.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await pending
+
+    reconcile.assert_awaited_once()
+    refund.assert_not_awaited()

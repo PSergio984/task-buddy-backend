@@ -533,3 +533,37 @@ async def test_distinct_keys_are_independent(
     assert second.status_code == 201
 
     assert await _project_count(db) == 2
+
+
+@pytest.mark.anyio
+async def test_sse_response_passes_through_unbuffered_and_unlocked() -> None:
+    """SSE bodies are unbounded and unreplayable: _handle_response must release
+    the lock and return the stream untouched instead of draining it into Redis."""
+    from fastapi.responses import StreamingResponse
+
+    from app.middleware.idempotency import IdempotencyMiddleware
+
+    async def _noop_app(scope: Any, receive: Any, send: Any) -> None:
+        pass
+
+    fake = FakeRedis()
+    cache_key = "idempotency:1:stream-key"
+    produced: list[str] = []
+
+    async def _chunks() -> Any:
+        for token in ("a", "b"):
+            produced.append(token)
+            yield f'event: token\ndata: {{"text":"{token}"}}\n\n'
+
+    stream = StreamingResponse(_chunks(), media_type="text/event-stream")
+    result = await IdempotencyMiddleware(app=_noop_app)._handle_response(fake, cache_key, stream)
+
+    assert result is stream, "The streaming response must pass through untouched"
+    assert produced == [], "The body iterator must not be drained for caching"
+    assert fake.deleted == [], "The lock is held while the stream is in flight"
+    assert not fake.store, "Stream transcripts must never be cached"
+
+    # Consuming the stream releases the lock; a mid-stream retry sees 409.
+    assert [chunk async for chunk in result.body_iterator]
+    assert produced == ["a", "b"]
+    assert fake.deleted == [cache_key], "Lock releases only after the stream completes"
