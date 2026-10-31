@@ -285,7 +285,9 @@ requests==2.34.2
     #   b2sdk
     #   pywebpush
 rich==15.0.0
-    # via typer
+    # via
+    #   task-buddy-backend (pyproject.toml)
+    #   typer
 safetensors==0.8.0
     # via transformers
 scikit-learn==1.9.1

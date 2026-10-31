@@ -118,8 +118,12 @@ logfury==1.0.1
     # via b2sdk
 mako==1.4.3
     # via alembic
+markdown-it-py==4.2.0
+    # via rich
 markupsafe==3.0.3
     # via mako
+mdurl==0.1.2
+    # via markdown-it-py
 multidict==7.2.1
     # via
     #   aiohttp
@@ -212,6 +216,8 @@ pydantic-core==2.46.4
     # via pydantic
 pydantic-settings==2.15.0
     # via task-buddy-backend (pyproject.toml)
+pygments==2.21.0
+    # via rich
 pyjwt==2.15.1
     # via task-buddy-backend (pyproject.toml)
 python-dotenv==1.2.2
@@ -234,6 +240,8 @@ requests==2.34.2
     # via
     #   b2sdk
     #   pywebpush
+rich==15.0.0
+    # via task-buddy-backend (pyproject.toml)
 sentry-sdk==2.68.0
     # via task-buddy-backend (pyproject.toml)
 slowapi==0.1.10
