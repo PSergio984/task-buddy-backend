@@ -560,5 +560,10 @@ async def test_sse_response_passes_through_unbuffered_and_unlocked() -> None:
 
     assert result is stream, "The streaming response must pass through untouched"
     assert produced == [], "The body iterator must not be drained for caching"
-    assert fake.deleted == [cache_key], "The in-progress lock must be released"
+    assert fake.deleted == [], "The lock is held while the stream is in flight"
     assert not fake.store, "Stream transcripts must never be cached"
+
+    # Consuming the stream releases the lock; a mid-stream retry sees 409.
+    assert [chunk async for chunk in result.body_iterator]
+    assert produced == ["a", "b"]
+    assert fake.deleted == [cache_key], "Lock releases only after the stream completes"
