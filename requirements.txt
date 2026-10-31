@@ -2,7 +2,7 @@
 #    uv pip compile pyproject.toml -o requirements.txt --python-version 3.11
 aiohappyeyeballs==2.7.1
     # via aiohttp
-aiohttp==3.14.3
+aiohttp==3.14.5
     # via pywebpush
 aiosignal==1.4.0
     # via aiohttp
@@ -43,7 +43,7 @@ attrs==26.1.0
     # via aiohttp
 b2sdk==2.12.0
     # via task-buddy-backend (pyproject.toml)
-certifi==2026.7.22
+certifi==2026.10.23
     # via
     #   httpcore
     #   httpx
@@ -97,13 +97,13 @@ http-ece==1.2.1
     # via pywebpush
 httpcore==1.0.9
     # via httpx
-httpcore2==2.10.0
+httpcore2==2.16.0
     # via httpx2
 httptools==0.8.0
     # via uvicorn
 httpx==0.28.1
     # via task-buddy-backend (pyproject.toml)
-httpx2==2.10.0
+httpx2==2.16.0
     # via openai
 idna==3.18
     # via
@@ -120,7 +120,7 @@ limits==5.8.0
     # via slowapi
 logfury==1.0.1
     # via b2sdk
-mako==1.4.1
+mako==1.4.3
     # via alembic
 markdown-it-py==4.2.0
     # via rich
@@ -128,7 +128,7 @@ markupsafe==3.0.3
     # via mako
 mdurl==0.1.2
     # via markdown-it-py
-multidict==6.7.1
+multidict==7.2.1
     # via
     #   aiohttp
     #   yarl
@@ -138,7 +138,7 @@ numpy==2.4.6
     # via task-buddy-backend (pyproject.toml)
 openai==3.1.0
     # via task-buddy-backend (pyproject.toml)
-opentelemetry-api==1.44.0
+opentelemetry-api==1.45.2
     # via
     #   opentelemetry-exporter-otlp-proto-grpc
     #   opentelemetry-instrumentation
@@ -147,37 +147,40 @@ opentelemetry-api==1.44.0
     #   opentelemetry-instrumentation-logging
     #   opentelemetry-sdk
     #   opentelemetry-semantic-conventions
-opentelemetry-exporter-otlp-proto-common==1.44.0
+opentelemetry-exporter-otlp-common==0.66b2
     # via opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-exporter-otlp-proto-grpc==1.44.0
+opentelemetry-exporter-otlp-proto-common==1.45.2
+    # via opentelemetry-exporter-otlp-proto-grpc
+opentelemetry-exporter-otlp-proto-grpc==1.45.2
     # via task-buddy-backend (pyproject.toml)
-opentelemetry-instrumentation==0.65b0
+opentelemetry-instrumentation==0.66b2
     # via
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-logging
-opentelemetry-instrumentation-asgi==0.65b0
+opentelemetry-instrumentation-asgi==0.66b2
     # via opentelemetry-instrumentation-fastapi
-opentelemetry-instrumentation-fastapi==0.65b0
+opentelemetry-instrumentation-fastapi==0.66b2
     # via task-buddy-backend (pyproject.toml)
-opentelemetry-instrumentation-logging==0.65b0
+opentelemetry-instrumentation-logging==0.66b2
     # via task-buddy-backend (pyproject.toml)
-opentelemetry-proto==1.44.0
+opentelemetry-proto==1.45.2
     # via
     #   opentelemetry-exporter-otlp-proto-common
     #   opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-sdk==1.44.0
+opentelemetry-sdk==1.45.2
     # via
     #   task-buddy-backend (pyproject.toml)
+    #   opentelemetry-exporter-otlp-common
     #   opentelemetry-exporter-otlp-proto-grpc
-opentelemetry-semantic-conventions==0.65b0
+opentelemetry-semantic-conventions==0.66b2
     # via
     #   opentelemetry-instrumentation
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-fastapi
     #   opentelemetry-instrumentation-logging
     #   opentelemetry-sdk
-opentelemetry-util-http==0.65b0
+opentelemetry-util-http==0.66b2
     # via
     #   opentelemetry-instrumentation-asgi
     #   opentelemetry-instrumentation-fastapi
@@ -219,7 +222,7 @@ pydantic-settings==2.15.0
     # via task-buddy-backend (pyproject.toml)
 pygments==2.20.0
     # via rich
-pyjwt==2.13.0
+pyjwt==2.15.1
     # via task-buddy-backend (pyproject.toml)
 python-dotenv==1.2.2
     # via
@@ -293,7 +296,7 @@ typing-inspection==0.4.4
     #   fastapi
     #   pydantic
     #   pydantic-settings
-urllib3==2.7.0
+urllib3==2.8.0
     # via
     #   requests
     #   sentry-sdk
@@ -307,5 +310,5 @@ wrapt==2.3.0
     # via
     #   deprecated
     #   opentelemetry-instrumentation
-yarl==1.24.5
+yarl==1.25.1
     # via aiohttp

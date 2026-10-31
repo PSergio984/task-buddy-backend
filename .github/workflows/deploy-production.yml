@@ -13,7 +13,7 @@ on:
 
 jobs:
   gate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     # GitHub Environments gate: configure required reviewers on the
     # 'production' environment (Repo → Settings → Environments) so this
     # job pauses for human approval before any deploy hook fires.
