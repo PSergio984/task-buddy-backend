@@ -6,7 +6,7 @@ FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Pla
 
 ## Features (capstone surfaces)
 
-- 🚀 FastAPI + Uvicorn + SQLAlchemy 2 async + Alembic + Pydantic v2 (Python `>=3.10`, compiled `3.11`, `mypy 3.12` `pyproject.toml`)
+- 🚀 FastAPI + Uvicorn + SQLAlchemy 2 async + Alembic + Pydantic v2 (Python `>=3.11`, compiled `3.11`, `mypy 3.12` `pyproject.toml`)
 - 🤖 **Knowledge** `POST /api/v1/tasks/{id}/knowledge/ask` — hybrid RRF over `tbl_knowledge_chunks`, citations + judge `RELEVANT/PARTLY/NON` `app/knowledge/assistant.py`
 - 🧠 **Memory** `POST /api/v1/tasks/{id}/memory/similar` — history RAG top-5 + `estimated_effort_minutes` `app/knowledge/sources/history.py`
 - 📅 **Planner** `POST /api/v1/plan` — synthetic connector + LLM-judged scoring `app/planner/service.py` → `{tonight, tomorrow, later}` + soft deadlines `app/planner/deadline.py`
@@ -42,7 +42,7 @@ docker compose up --build  # from task-buddy-backend/
 
 ### 🐍 Local dev
 
-Prereqs: Python `3.11` (`>=3.10` declared `pyproject.toml:8` + `requirements.txt:1` `uv pip compile --python-version 3.11`, Docker `python:3.11-slim` `Dockerfile:1`, CI `python: "3.11"` `.github/workflows/python-app.yml`), `uv` (`pyproject.toml`) or `pip`.
+Prereqs: Python `3.11` (`>=3.11` declared `pyproject.toml:10` + `requirements.txt:1` `uv pip compile --python-version 3.11`, Docker `python:3.11-slim` `Dockerfile:1`, CI `python: "3.11"` `.github/workflows/python-app.yml`), `uv` (`pyproject.toml`) or `pip`.
 
 ```bash
 uv sync  # or: pip install -r requirements.txt

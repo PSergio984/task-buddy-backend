@@ -116,7 +116,7 @@ exclude_lines = [
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311"]
+target-version = ["py311"]  # dev-tool only (CI gates `ruff format`); a local `black .` restyles ~18 files — deferred
 include = '\.pyi?$'
 extend-exclude = '''
 /(
@@ -134,7 +134,7 @@ extend-exclude = '''
 
 [tool.ruff]
 line-length = 100
-target-version = "py39"
+target-version = "py311"
 
 [tool.ruff.lint]
 select = [
@@ -149,6 +149,14 @@ select = [
 ignore = [
     "E501",  # line-too-long (handled by black)
     "B008",  # function-call-in-default-argument
+    # shortcut: py311-target-enabled modernizations deferred to a dedicated pass
+    # (UP007/UP045 unions, UP017 datetime.UTC, UP035 imports, UP042, B905 zip strict=)
+    "UP007",
+    "UP017",
+    "UP035",
+    "UP042",
+    "UP045",
+    "B905",
 ]
 
 [tool.mypy]
