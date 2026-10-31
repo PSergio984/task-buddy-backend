@@ -419,6 +419,9 @@ async def _done_frame(
             "total_tokens": answer_row.total_tokens,
             "cost_usd": float(answer_row.cost_usd or 0),
             "response_time_ms": float(answer_row.response_time_ms or 0),
+            # Explicit marker: False means the token fields are unmeasured
+            # zeros and the reservation was charged, not "free usage".
+            "usage_reported": usage_reported,
         },
     )
 
@@ -465,6 +468,9 @@ async def _knowledge_sse_stream(
     # Tokens actually generated, when the provider reports them — used to
     # settle at real spend if the client disconnects mid-flight.
     stream_tokens = LLM_ASK_RESERVE_TOKENS
+    # Refund boundary: a disconnect before the first token consumed nothing
+    # billable, so it refunds; after generation starts it settles like /ask.
+    generation_started = False
     # Every abort-after-reservation path must settle the prepaid estimate —
     # including client disconnects, which surface as GeneratorExit and skip
     # the except clauses entirely (ADR 0002).
@@ -473,6 +479,7 @@ async def _knowledge_sse_stream(
         async for event in assistant.ask_stream(db, stream_ctx):
             kind = event["event"]
             if kind == "record":
+                generation_started = True
                 usage_reported = event["usage_reported"]
                 stream_tokens = event["record"].total_tokens
             elif kind == "answer":
@@ -482,6 +489,7 @@ async def _knowledge_sse_stream(
                 settled = True
                 yield frame
             else:
+                generation_started = generation_started or kind == "token"
                 event_frame = _sse_event_frame(event)
                 if event_frame is not None:
                     yield event_frame
@@ -503,12 +511,15 @@ async def _knowledge_sse_stream(
             # checkpoint, which would kill the settlement exactly when it is
             # needed most.
             with anyio.CancelScope(shield=True):
-                await _settle_reservation(
-                    db,
-                    user_id,
-                    task_id,
-                    stream_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS,
-                )
+                if generation_started:
+                    await _settle_reservation(
+                        db,
+                        user_id,
+                        task_id,
+                        stream_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS,
+                    )
+                else:
+                    await _refund_reservation(db, user_id, task_id)
 
 
 @router.post(

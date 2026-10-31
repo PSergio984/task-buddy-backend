@@ -32,7 +32,7 @@ Same semantics as `/ask`: `404` TASK_NOT_FOUND, `429` budget/rate limit,
 | 1 | `citations` | `{"citations": [...]}` | Canonical citations, built from retrieved chunks before generation |
 | 2 | `token` | `{"text": "<delta>"}` | 0..N raw model deltas, in order |
 | 3 | `verdict` | `{"relevance": "RELEVANT\|PARTLY_RELEVANT\|NON_RELEVANT", "explanation": "..."}` | Judge result; degrades to PARTLY_RELEVANT on judge failure (T-7-12) |
-| 4 | `done` | `{answer_id, task_id, model, prompt_tokens, completion_tokens, total_tokens, cost_usd, response_time_ms}` | Terminal success; answer row persisted |
+| 4 | `done` | `{answer_id, task_id, model, prompt_tokens, completion_tokens, total_tokens, cost_usd, response_time_ms, usage_reported}` | Terminal success; answer row persisted |
 | any | `error` | `{"code": "provider_error", "message": "AI service unavailable"}` | Terminal mid-stream failure; stream then closes |
 
 ## Server semantics
@@ -44,7 +44,11 @@ Same semantics as `/ask`: `404` TASK_NOT_FOUND, `429` budget/rate limit,
   seconds-long stream; reuse the session for citations/persist/reconcile.
 - Token usage: request `stream_options={"include_usage": true}`; if the
   provider omits usage, fall back to the reserved amount for reconciliation
-  (conservative, never under-bills).
+  (conservative, never under-bills) and emit `usage_reported: false` in
+  `done` so clients can tell unmeasured zeros from measured usage.
+- Disconnects: before the first token the reservation is refunded; after
+  generation starts it is settled at actual usage (or the reserve when
+  unreported) — matching `/ask` semantics.
 - Mid-stream `openai.APIError` → emit `error` event, refund reservation, close.
 - Persist the answer row only after the stream completes (display ≠ stored).
 - Judge stays serial after generation (needs full text) — `verdict` is a tail
