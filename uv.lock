@@ -1020,23 +1020,6 @@ nvtx = [
 ]
 
 [[package]]
-name = "databases"
-version = "0.9.0"
-source = { registry = "https://pypi.org/simple" }
-dependencies = [
-    { name = "sqlalchemy" },
-]
-sdist = { url = "https://files.pythonhosted.org/packages/76/de/ea55722907bd1b2389b01e362faa3c66a09d5a8463c13d44c80da7b32497/databases-0.9.0.tar.gz", hash = "sha256:d2f259677609bf187737644c95fa41701072e995dfeb8d2882f335795c5b61b0", size = 31084, upload-time = "2024-03-01T17:39:28.378Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/d5/43/6035922af5471f1a196851831a1d5f403447401b395f474bf673efa8959f/databases-0.9.0-py3-none-any.whl", hash = "sha256:9ee657c9863b34f8d3a06c06eafbe1bda68af2a434b56996312edf1f1c0b6297", size = 25580, upload-time = "2024-03-01T17:39:26.352Z" },
-]
-
-[package.optional-dependencies]
-sqlite = [
-    { name = "aiosqlite" },
-]
-
-[[package]]
 name = "defusedxml"
 version = "0.7.1"
 source = { registry = "https://pypi.org/simple" }
@@ -3715,7 +3698,6 @@ dependencies = [
     { name = "asgi-correlation-id" },
     { name = "asyncpg" },
     { name = "b2sdk" },
-    { name = "databases", extra = ["sqlite"] },
     { name = "fastapi" },
     { name = "httpx" },
     { name = "nltk" },
@@ -3736,7 +3718,6 @@ dependencies = [
     { name = "python-multipart" },
     { name = "pywebpush" },
     { name = "redis" },
-    { name = "rich" },
     { name = "sentry-sdk" },
     { name = "slowapi" },
     { name = "sqlalchemy" },
@@ -3771,7 +3752,6 @@ requires-dist = [
     { name = "asyncpg", specifier = ">=0.28.0" },
     { name = "b2sdk", specifier = ">=2.5.0" },
     { name = "black", marker = "extra == 'dev'", specifier = ">=26.10.1" },
-    { name = "databases", extras = ["sqlite"], specifier = ">=0.8.0" },
     { name = "fastapi", specifier = ">=0.100.0" },
     { name = "httpx", specifier = ">=0.24.0" },
     { name = "isort", marker = "extra == 'dev'", specifier = ">=5.12.0" },
@@ -3799,7 +3779,6 @@ requires-dist = [
     { name = "python-multipart", specifier = ">=0.0.30" },
     { name = "pywebpush", specifier = ">=2.0.0" },
     { name = "redis", specifier = ">=5.0.0" },
-    { name = "rich", specifier = ">=13.5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.1.0" },
     { name = "sentence-transformers", marker = "extra == 'embed-local'", specifier = ">=5.6.0" },
     { name = "sentry-sdk", specifier = ">=1.30.0" },

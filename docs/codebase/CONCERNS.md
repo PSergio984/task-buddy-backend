@@ -16,10 +16,10 @@
 
 | Debt item | Why it exists | Where | Risk if ignored | Suggested fix |
 |-----------|---------------|-------|-----------------|---------------|
-| SSE `/stream` endpoint is dead code (broadcaster.notify never called) | Phase 5 cut SSE in favor of Supabase Realtime (ticket #17); endpoint left behind | `app/api/routers/realtime.py`, `app/libs/broadcaster.py` | Unbounded per-user queues if ever used; audit #28 flagged "remove or wire" | Remove endpoint or wire events; verify Realtime is sole push channel |
-| Manifest drift (celery, pgvector package) | Provider/arch switches outran manifest updates | `pyproject.toml` | Install bloat, misleading docs | Prune + recompile requirements |
-| Frontend `.env.example` still uses `VITE_API_BASE_URL` (Vite-era) | Vite→Next migration (#1) left the example stale | `task-buddy-frontend/.env.example` | New devs misconfigure | Align with `BACKEND_URL`/`NEXT_PUBLIC_*` |
-| LLM retry/backoff and explicit timeouts undocumented | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/api/routers/*` | Transient provider failures surface as 503 without retry | Add bounded retry + timeout config |
+| ~~SSE `/stream` dead code~~ RESOLVED | Removed in `29b9936` (audit cleanup); `app/libs/broadcaster.py` gone, no `/stream` route. `realtime.py` is the live Supabase Realtime token mint, not SSE | — | — | CONCERNS row was stale |
+| Manifest drift | Provider/arch switches outran manifest updates | `pyproject.toml` | Install bloat, misleading docs | RESOLVED 2026-10-31: `databases[sqlite]` + `rich` pruned (zero imports; `aiosqlite` kept for `sqlite+aiosqlite://` test URLs, `psycopg2-binary` kept as Alembic sync driver); celery/pgvector concerns stale — celery already removed, pgvector imported by models |
+| ~~Frontend `.env.example` Vite-era~~ RESOLVED | Vite→Next migration (#1) left the example stale | `task-buddy-frontend/.env.example` | — | Rewritten 2026-10-31 to `BACKEND_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_*` |
+| LLM retry/timeout policy undocumented | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/knowledge/embeddings.py`, `app/knowledge/voice.py` | Undocumented, not absent | DOCUMENTED: OpenAI SDK defaults apply — `max_retries=2` (transient 429/5xx, exponential backoff), timeout 600s SDK default; graceful 503 surfaces only after SDK retries exhaust |
 
 ### 3) Security Concerns
 
@@ -53,8 +53,8 @@
 ### 6) `[ASK USER]` Questions
 
 1. [ASK USER] Coverage thresholds: what coverage % should the docs record as the target (pytest-cov/vitest configs have no explicit threshold)?
-2. [ASK USER] Is the SSE `/stream` endpoint (`app/api/routers/realtime.py`) to be removed, or kept as dead code until post-dogfood cleanup?
-3. [ASK USER] Should the docs include a full LLM retry/timeout policy now, or is graceful 503 sufficient for the capstone demo?
+2. ~~[ASK USER] SSE `/stream` remove-or-wire~~ — moot: already removed in `29b9936`; question was stale.
+3. ~~[ASK USER] LLM retry/timeout policy vs graceful 503~~ — resolved 2026-10-31: SDK defaults (`max_retries=2`, 600s timeout) documented in §2; graceful 503-after-retries stands for the capstone demo.
 
 ### 7) Evidence
 
