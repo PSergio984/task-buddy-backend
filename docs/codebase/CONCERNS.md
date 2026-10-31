@@ -10,16 +10,16 @@
 | med | In-memory per-user retrieval index rebuilt on demand | `app/knowledge/retrieval/__init__.py` (`ensure_index`, content-hash invalidation) | Multi-instance deploys recompute embeddings per instance; cold-start latency on first ask | Acceptable on single Render instance; revisit if scaling |
 | med | Frontend hybrid routing (Next app router + SPA + Vercel function proxy) | `vercel.json`, git log `ecb1f0d` (stale-build root cause) | Deploys can serve stale builds; Vercel auto-deploy integration unconfirmed (map resolution) | Confirm auto-deploy pipeline; add post-deploy smoke check |
 | low-med | SonarCloud quality gate deferred | map resolution; `.github/workflows/sonarcloud.yml` | Static-analysis findings unreviewed | Re-enable gate post-dogfood |
-| low | Manifest drift: pyproject.toml lists celery/pgvector/openai-era deps no longer used at runtime | `task-buddy-backend/pyproject.toml` vs git log `ee84a2f`, `c68a8c9` | Confusion for maintainers; bloated install | Prune pyproject; regenerate requirements.txt |
+| ~~low~~ | ~~Manifest drift~~ RESOLVED 2026-10-31 | `task-buddy-backend/pyproject.toml` | — | Resolved: `databases[sqlite]` pruned; pgvector/openai imports are live — see §2 |
 
 ### 2) Technical Debt
 
 | Debt item | Why it exists | Where | Risk if ignored | Suggested fix |
 |-----------|---------------|-------|-----------------|---------------|
-| ~~SSE `/stream` dead code~~ RESOLVED | Removed in `29b9936` (audit cleanup); `app/libs/broadcaster.py` gone, no `/stream` route. `realtime.py` is the live Supabase Realtime token mint, not SSE | — | — | CONCERNS row was stale |
-| Manifest drift | Provider/arch switches outran manifest updates | `pyproject.toml` | Install bloat, misleading docs | RESOLVED 2026-10-31: `databases[sqlite]` + `rich` pruned (zero imports; `aiosqlite` kept for `sqlite+aiosqlite://` test URLs, `psycopg2-binary` kept as Alembic sync driver); celery/pgvector concerns stale — celery already removed, pgvector imported by models |
+| ~~Legacy realtime SSE `/stream` route~~ RESOLVED | Removed in `29b9936` (audit cleanup); `app/libs/broadcaster.py` gone. `realtime.py` is the live Supabase Realtime token mint; knowledge answers stream via `POST /tasks/{id}/knowledge/ask/stream` | — | — | CONCERNS row was stale |
+| ~~Manifest drift~~ RESOLVED | Provider/arch switches outran manifest updates | `pyproject.toml` | — | RESOLVED 2026-10-31: `databases[sqlite]` pruned (zero imports); `rich` kept — `RichHandler` is loaded by name via `logging_conf.py` dictConfig. `aiosqlite` kept for `sqlite+aiosqlite://` test URLs, `psycopg2-binary` as Alembic sync driver; celery/pgvector concerns stale — celery already removed, pgvector imported by models |
 | ~~Frontend `.env.example` Vite-era~~ RESOLVED | Vite→Next migration (#1) left the example stale | `task-buddy-frontend/.env.example` | — | Rewritten 2026-10-31 to `BACKEND_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_*` |
-| LLM retry/timeout policy undocumented | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/knowledge/embeddings.py`, `app/knowledge/voice.py` | Undocumented, not absent | DOCUMENTED: OpenAI SDK defaults apply — `max_retries=2` (transient 429/5xx, exponential backoff), timeout 600s SDK default; graceful 503 surfaces only after SDK retries exhaust |
+| ~~LLM retry/timeout policy undocumented~~ RESOLVED | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/knowledge/embeddings.py`, `app/knowledge/voice.py` | — | DOCUMENTED: OpenAI SDK defaults apply — `max_retries=2` (retryable 429/5xx, exponential backoff), timeout 600s SDK default; retryable failures surface as 503 after retries exhaust, while configuration/auth failures surface immediately |
 
 ### 3) Security Concerns
 
