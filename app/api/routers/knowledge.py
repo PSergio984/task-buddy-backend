@@ -408,7 +408,6 @@ async def _done_frame(
     actual = answer_row.total_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS
     await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, actual)
     await db.commit()
-    await db.refresh(answer_row)
     return _sse_frame(
         "done",
         {
@@ -439,6 +438,21 @@ async def _refund_reservation(db: AsyncSession, user_id: int, task_id: int) -> b
         return False
 
 
+async def _settle_reservation(db: AsyncSession, user_id: int, task_id: int, actual: int) -> None:
+    """Charge the reservation on abort paths where generation was consumed.
+
+    A disconnect is not a provider failure: the work happened, so settle the
+    way ``/ask`` does (actual when reported, else the reserve). Refunding here
+    would let a client read the full answer, hang up, and keep the tokens.
+    """
+    try:
+        await db.rollback()
+        await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, actual)
+        await db.commit()
+    except Exception:
+        logger.exception("stream settlement failed for task=%s", task_id)
+
+
 async def _knowledge_sse_stream(
     assistant: KnowledgeAssistant,
     db: AsyncSession,
@@ -448,6 +462,9 @@ async def _knowledge_sse_stream(
 ) -> AsyncGenerator[str, None]:
     """Map ask_stream events to SSE frames; reconcile/refund the reservation."""
     usage_reported = True
+    # Tokens actually generated, when the provider reports them — used to
+    # settle at real spend if the client disconnects mid-flight.
+    stream_tokens = LLM_ASK_RESERVE_TOKENS
     # Every abort-after-reservation path must settle the prepaid estimate —
     # including client disconnects, which surface as GeneratorExit and skip
     # the except clauses entirely (ADR 0002).
@@ -457,6 +474,7 @@ async def _knowledge_sse_stream(
             kind = event["event"]
             if kind == "record":
                 usage_reported = event["usage_reported"]
+                stream_tokens = event["record"].total_tokens
             elif kind == "answer":
                 frame = await _done_frame(db, event["answer"], usage_reported, user_id, task_id)
                 # Settled once reconcile+commit land — before the done frame is
@@ -485,7 +503,12 @@ async def _knowledge_sse_stream(
             # checkpoint, which would kill the settlement exactly when it is
             # needed most.
             with anyio.CancelScope(shield=True):
-                await _refund_reservation(db, user_id, task_id)
+                await _settle_reservation(
+                    db,
+                    user_id,
+                    task_id,
+                    stream_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS,
+                )
 
 
 @router.post(
