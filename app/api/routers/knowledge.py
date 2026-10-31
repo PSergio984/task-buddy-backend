@@ -571,6 +571,12 @@ async def ask_knowledge_stream(
         logger.warning("knowledge ask stream not configured (embeddings) task=%s: %s", task_id, exc)
         await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except Exception:
+        # Anything unexpected (DB, retrieval) still owes a refund — the
+        # reservation must not charge for a request that never streamed.
+        logger.exception("knowledge ask stream preparation failed for task=%s", task_id)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        raise
 
     return StreamingResponse(
         _knowledge_sse_stream(assistant, db, stream_ctx, user_id, task_id),

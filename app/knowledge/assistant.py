@@ -370,10 +370,9 @@ class KnowledgeAssistant:
         A provider error propagates to the endpoint, which downgrades it to a
         terminal SSE ``error`` event.
         """
-        yield {"event": "citations", "citations": ctx.citations}
-
         record: Optional[LLMCallRecord] = None
         try:
+            yield {"event": "citations", "citations": ctx.citations}
             async for event in generate_answer_stream(ctx.client, ctx.prompt):
                 if event["event"] == "record":
                     record = event["record"]
