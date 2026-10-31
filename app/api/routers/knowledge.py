@@ -1,14 +1,19 @@
 """API endpoints for task-attached knowledge (notes)."""
 
+import json
 import logging
-from typing import Annotated
+from collections.abc import AsyncGenerator
+from typing import Annotated, Any, Optional
 
+import anyio
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routers.task import invalidate_task_cache
 from app.config import (
+    KNOWLEDGE_STREAM_ENABLED,
     LLM_ASK_RESERVE_TOKENS,
     RATE_LIMIT_KNOWLEDGE_ASK,
     RATE_LIMIT_KNOWLEDGE_CREATE,
@@ -20,7 +25,11 @@ from app.config import (
 from app.crud import knowledge as knowledge_crud
 from app.crud import task as task_crud
 from app.dependencies import get_db
-from app.knowledge.assistant import AssistantNotConfiguredError, KnowledgeAssistant
+from app.knowledge.assistant import (
+    AskStreamContext,
+    AssistantNotConfiguredError,
+    KnowledgeAssistant,
+)
 from app.knowledge.budget import (
     BudgetExceededError,
     reconcile_llm_usage,
@@ -360,6 +369,190 @@ async def ask_knowledge(
         judge_verdict=answer_row.judge_verdict.value if answer_row.judge_verdict else None,
         judge_explanation=answer_row.judge_explanation,
         answer_id=answer_row.id,
+    )
+
+
+def _sse_frame(event: str, payload: dict) -> str:
+    """One SSE frame: ``event:`` name plus a JSON ``data:`` payload."""
+    return f"event: {event}\ndata: {json.dumps(payload)}\n\n"
+
+
+def _sse_event_frame(event: dict) -> Optional[str]:
+    """Map one streamed internal event to an SSE frame; internal-only kinds
+    (``record``, ``answer``) return None and are handled by the endpoint."""
+    kind = event["event"]
+    if kind == "citations":
+        return _sse_frame("citations", {"citations": event["citations"]})
+    if kind == "token":
+        return _sse_frame("token", {"text": event["text"]})
+    if kind == "verdict":
+        return _sse_frame(
+            "verdict",
+            {"relevance": event["relevance"], "explanation": event["explanation"]},
+        )
+    return None
+
+
+async def _done_frame(
+    db: AsyncSession,
+    answer_row: Any,
+    usage_reported: bool,
+    user_id: int,
+    task_id: int,
+) -> str:
+    """Reconcile the reservation to actual spend, commit, then emit ``done``.
+
+    A provider that omits the usage chunk reconciles at the reserved amount
+    (conservative, never under-bills).
+    """
+    actual = answer_row.total_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS
+    await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, actual)
+    await db.commit()
+    await db.refresh(answer_row)
+    return _sse_frame(
+        "done",
+        {
+            "answer_id": answer_row.id,
+            "task_id": task_id,
+            "model": answer_row.model,
+            "prompt_tokens": answer_row.prompt_tokens,
+            "completion_tokens": answer_row.completion_tokens,
+            "total_tokens": answer_row.total_tokens,
+            "cost_usd": float(answer_row.cost_usd or 0),
+            "response_time_ms": float(answer_row.response_time_ms or 0),
+        },
+    )
+
+
+async def _refund_reservation(db: AsyncSession, user_id: int, task_id: int) -> bool:
+    """Roll back pending ORM state, refund the prepaid estimate, report success.
+
+    The rollback matters when the failure landed after ``create_answer``'s
+    flush — otherwise the refund's own commit would persist an orphan row.
+    """
+    try:
+        await db.rollback()
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        return True
+    except Exception:
+        logger.exception("stream refund failed for task=%s", task_id)
+        return False
+
+
+async def _knowledge_sse_stream(
+    assistant: KnowledgeAssistant,
+    db: AsyncSession,
+    stream_ctx: AskStreamContext,
+    user_id: int,
+    task_id: int,
+) -> AsyncGenerator[str, None]:
+    """Map ask_stream events to SSE frames; reconcile/refund the reservation."""
+    usage_reported = True
+    # Every abort-after-reservation path must settle the prepaid estimate —
+    # including client disconnects, which surface as GeneratorExit and skip
+    # the except clauses entirely (ADR 0002).
+    settled = False
+    try:
+        async for event in assistant.ask_stream(db, stream_ctx):
+            kind = event["event"]
+            if kind == "record":
+                usage_reported = event["usage_reported"]
+            elif kind == "answer":
+                frame = await _done_frame(db, event["answer"], usage_reported, user_id, task_id)
+                # Settled once reconcile+commit land — before the done frame is
+                # yielded, so a disconnect at this exact yield can't over-refund.
+                settled = True
+                yield frame
+            else:
+                frame = _sse_event_frame(event)
+                if frame is not None:
+                    yield frame
+    except openai.APIError as exc:
+        # Status line is already sent; a provider failure mid-stream surfaces
+        # as a terminal error event, then the stream closes.
+        logger.warning("knowledge ask stream provider error for task=%s: %s", task_id, exc)
+        settled = await _refund_reservation(db, user_id, task_id)
+        yield _sse_frame("error", {"code": "provider_error", "message": "AI service unavailable"})
+    except Exception:
+        # Any other mid-stream failure (judge, citations, reconcile) — still
+        # close with a terminal error frame rather than an abrupt abort.
+        logger.exception("knowledge ask stream failed for task=%s", task_id)
+        settled = await _refund_reservation(db, user_id, task_id)
+        yield _sse_frame("error", {"code": "internal_error", "message": "AI service unavailable"})
+    finally:
+        if not settled:
+            # Shielded: a disconnect mid-await re-raises Cancelled at every
+            # checkpoint, which would kill the settlement exactly when it is
+            # needed most.
+            with anyio.CancelScope(shield=True):
+                await _refund_reservation(db, user_id, task_id)
+
+
+@router.post(
+    "/{task_id}/knowledge/ask/stream",
+    responses={
+        404: {"description": "Task not found or streaming disabled"},
+        503: {"description": AI_NOT_CONFIGURED},
+    },
+)
+@limiter.limit(RATE_LIMIT_KNOWLEDGE_ASK)
+async def ask_knowledge_stream(
+    task_id: int,
+    ask_in: KnowledgeAskRequest,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> StreamingResponse:
+    """SSE variant of /ask: citations -> token deltas -> verdict -> done.
+
+    Pre-stream failures stay normal HTTP errors (the status line is sent once
+    streaming begins); a mid-stream provider failure downgrades to a terminal
+    ``error`` SSE event instead (docs/specs/knowledge-ask-streaming.md).
+    """
+    if not KNOWLEDGE_STREAM_ENABLED:
+        raise HTTPException(status_code=404, detail="Knowledge streaming is disabled")
+
+    logger.info("POST /tasks/%s/knowledge/ask/stream - %s", task_id, current_user.id)
+
+    db_task = await task_crud.get_task(db, task_id=task_id, user_id=current_user.id)
+    if not db_task:
+        raise HTTPException(status_code=404, detail=TASK_NOT_FOUND)
+
+    # Same snapshot discipline as /ask: mid-request rollbacks expire every
+    # ORM instance (audit #27).
+    user_id = current_user.id
+
+    # Same ADR 0002 reservation as /ask, still AFTER the zero-spend 404.
+    try:
+        await reserve_llm_budget(db, user_id, LLM_ASK_RESERVE_TOKENS)
+    except BudgetExceededError as exc:
+        raise HTTPException(
+            status_code=429,
+            detail="Daily AI usage limit reached. Try again tomorrow.",
+        ) from exc
+
+    assistant = KnowledgeAssistant()
+    try:
+        stream_ctx = await assistant.prepare_ask_stream(db, db_task, ask_in.query)
+    except AssistantNotConfiguredError as exc:
+        logger.warning("knowledge ask stream not configured for task=%s: %s", task_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except openai.APIError as exc:
+        # Same mapping as /ask: provider failure pre-stream is still a 503.
+        logger.warning("knowledge ask stream unavailable for task=%s: %s", task_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except RuntimeError as exc:
+        logger.warning("knowledge ask stream not configured (embeddings) task=%s: %s", task_id, exc)
+        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+
+    return StreamingResponse(
+        _knowledge_sse_stream(assistant, db, stream_ctx, user_id, task_id),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
 
 

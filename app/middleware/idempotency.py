@@ -227,6 +227,12 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             await redis_client.delete(cache_key)
             return response
 
+        # SSE streams are unbounded and unreplayable: never consume or cache
+        # the body — release the lock and pass the stream through untouched.
+        if response.headers.get("content-type", "").lower().startswith("text/event-stream"):
+            await redis_client.delete(cache_key)
+            return response
+
         # Consume the response body to cache it
         if hasattr(response, "body_iterator"):
             response_body = b""
