@@ -10,16 +10,16 @@
 | med | In-memory per-user retrieval index rebuilt on demand | `app/knowledge/retrieval/__init__.py` (`ensure_index`, content-hash invalidation) | Multi-instance deploys recompute embeddings per instance; cold-start latency on first ask | Acceptable on single Render instance; revisit if scaling |
 | med | Frontend hybrid routing (Next app router + SPA + Vercel function proxy) | `vercel.json`, git log `ecb1f0d` (stale-build root cause) | Deploys can serve stale builds; Vercel auto-deploy integration unconfirmed (map resolution) | Confirm auto-deploy pipeline; add post-deploy smoke check |
 | low-med | SonarCloud quality gate deferred | map resolution; `.github/workflows/sonarcloud.yml` | Static-analysis findings unreviewed | Re-enable gate post-dogfood |
-| low | Manifest drift: pyproject.toml lists celery/pgvector/openai-era deps no longer used at runtime | `task-buddy-backend/pyproject.toml` vs git log `ee84a2f`, `c68a8c9` | Confusion for maintainers; bloated install | Prune pyproject; regenerate requirements.txt |
+| ~~low~~ | ~~Manifest drift~~ RESOLVED 2026-10-31 | `task-buddy-backend/pyproject.toml` | — | Resolved: `databases[sqlite]` pruned; pgvector/openai imports are live — see §2 |
 
 ### 2) Technical Debt
 
 | Debt item | Why it exists | Where | Risk if ignored | Suggested fix |
 |-----------|---------------|-------|-----------------|---------------|
-| SSE `/stream` endpoint is dead code (broadcaster.notify never called) | Phase 5 cut SSE in favor of Supabase Realtime (ticket #17); endpoint left behind | `app/api/routers/realtime.py`, `app/libs/broadcaster.py` | Unbounded per-user queues if ever used; audit #28 flagged "remove or wire" | Remove endpoint or wire events; verify Realtime is sole push channel |
-| Manifest drift (celery, pgvector package) | Provider/arch switches outran manifest updates | `pyproject.toml` | Install bloat, misleading docs | Prune + recompile requirements |
-| Frontend `.env.example` still uses `VITE_API_BASE_URL` (Vite-era) | Vite→Next migration (#1) left the example stale | `task-buddy-frontend/.env.example` | New devs misconfigure | Align with `BACKEND_URL`/`NEXT_PUBLIC_*` |
-| LLM retry/backoff and explicit timeouts undocumented | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/api/routers/*` | Transient provider failures surface as 503 without retry | Add bounded retry + timeout config |
+| ~~Legacy realtime SSE `/stream` route~~ RESOLVED | Removed in `29b9936` (audit cleanup); `app/libs/broadcaster.py` gone. `realtime.py` is the live Supabase Realtime token mint; knowledge answers stream via `POST /tasks/{id}/knowledge/ask/stream` | — | — | CONCERNS row was stale |
+| ~~Manifest drift~~ RESOLVED | Provider/arch switches outran manifest updates | `pyproject.toml` | — | RESOLVED 2026-10-31: `databases[sqlite]` pruned (zero imports); `rich` kept — `RichHandler` is loaded by name via `logging_conf.py` dictConfig. `aiosqlite` kept for `sqlite+aiosqlite://` test URLs, `psycopg2-binary` as Alembic sync driver; celery/pgvector concerns stale — celery already removed, pgvector imported by models |
+| ~~Frontend `.env.example` Vite-era~~ RESOLVED | Vite→Next migration (#1) left the example stale | `task-buddy-frontend/.env.example` | — | Rewritten 2026-10-31 to `BACKEND_URL`, `NEXT_PUBLIC_API_BASE_URL`, `NEXT_PUBLIC_SUPABASE_*` |
+| ~~LLM retry/timeout policy undocumented~~ RESOLVED | Rushed through hardening commits | `app/knowledge/assistant.py`, `app/knowledge/embeddings.py`, `app/knowledge/voice.py` | — | DOCUMENTED: OpenAI SDK defaults apply — `max_retries=2` (retryable 429/5xx, exponential backoff), timeout 600s SDK default; retryable failures surface as 503 after retries exhaust, while configuration/auth failures surface immediately |
 
 ### 3) Security Concerns
 
@@ -53,8 +53,8 @@
 ### 6) `[ASK USER]` Questions
 
 1. [ASK USER] Coverage thresholds: what coverage % should the docs record as the target (pytest-cov/vitest configs have no explicit threshold)?
-2. [ASK USER] Is the SSE `/stream` endpoint (`app/api/routers/realtime.py`) to be removed, or kept as dead code until post-dogfood cleanup?
-3. [ASK USER] Should the docs include a full LLM retry/timeout policy now, or is graceful 503 sufficient for the capstone demo?
+2. ~~[ASK USER] SSE `/stream` remove-or-wire~~ — moot: already removed in `29b9936`; question was stale.
+3. ~~[ASK USER] LLM retry/timeout policy vs graceful 503~~ — resolved 2026-10-31: SDK defaults (`max_retries=2`, 600s timeout) documented in §2; graceful 503-after-retries stands for the capstone demo.
 
 ### 7) Evidence
 
