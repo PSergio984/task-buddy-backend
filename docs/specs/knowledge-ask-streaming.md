@@ -46,9 +46,10 @@ Same semantics as `/ask`: `404` TASK_NOT_FOUND, `429` budget/rate limit,
   provider omits usage, fall back to the reserved amount for reconciliation
   (conservative, never under-bills) and emit `usage_reported: false` in
   `done` so clients can tell unmeasured zeros from measured usage.
-- Disconnects: before the first token the reservation is refunded; after
-  generation starts it is settled at actual usage (or the reserve when
-  unreported) — matching `/ask` semantics.
+- Disconnects: before the provider request is sent the reservation is
+  refunded; from then on it is settled at actual usage (or the reserve when
+  unreported) — matching `/ask` semantics. `stream_ctx.generation_started` is
+  the shared flag for that boundary.
 - Mid-stream `openai.APIError` → emit `error` event, refund reservation, close.
 - Persist the answer row only after the stream completes (display ≠ stored).
 - Judge stays serial after generation (needs full text) — `verdict` is a tail

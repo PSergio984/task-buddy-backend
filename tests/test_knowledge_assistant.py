@@ -915,7 +915,7 @@ async def test_ask_stream_endpoint_503_on_openai_api_error(
 
 @pytest.mark.anyio
 async def test_sse_stream_disconnect_before_generation_refunds(mocker: Any) -> None:
-    """Closing the stream after citations (no generation) refunds the reservation."""
+    """Closing the stream after citations (request never sent) refunds the reservation."""
     from app.api.routers.knowledge import _knowledge_sse_stream
 
     class FakeAssistant:
@@ -927,7 +927,8 @@ async def test_sse_stream_disconnect_before_generation_refunds(mocker: Any) -> N
     refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
     reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
 
-    gen = _knowledge_sse_stream(FakeAssistant(), db, mocker.Mock(), 1, 1)  # type: ignore[arg-type]
+    ctx = SimpleNamespace(generation_started=False)
+    gen = _knowledge_sse_stream(FakeAssistant(), db, ctx, 1, 1)  # type: ignore[arg-type]
     assert "event: citations" in await gen.__anext__()
     await gen.aclose()
 
@@ -936,22 +937,32 @@ async def test_sse_stream_disconnect_before_generation_refunds(mocker: Any) -> N
 
 
 @pytest.mark.anyio
-async def test_sse_stream_disconnect_after_token_settles(mocker: Any) -> None:
-    """Closing the stream after generation started settles the reservation."""
+async def test_sse_stream_disconnect_after_provider_request_settles(mocker: Any) -> None:
+    """Once ask_stream flips generation_started (provider request sent), a
+    disconnect settles the reservation — even before the first token arrives."""
     from app.api.routers.knowledge import _knowledge_sse_stream
 
     class FakeAssistant:
         async def ask_stream(self, db: Any, ctx: Any) -> Any:
-            yield {"event": "token", "text": "hi"}
+            yield {"event": "citations", "citations": []}
+            ctx.generation_started = True  # provider request in flight
             await asyncio.sleep(3600)
 
     db = AsyncMock()
     refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
     reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
 
-    gen = _knowledge_sse_stream(FakeAssistant(), db, mocker.Mock(), 1, 1)  # type: ignore[arg-type]
-    assert "event: token" in await gen.__anext__()
-    await gen.aclose()
+    ctx = SimpleNamespace(generation_started=False)
+    gen = _knowledge_sse_stream(FakeAssistant(), db, ctx, 1, 1)  # type: ignore[arg-type]
+    assert "event: citations" in await gen.__anext__()
+
+    # Drive the next event: the fake flips generation_started then hangs —
+    # cancelling the pending read models a disconnect mid provider-request.
+    pending = asyncio.ensure_future(gen.__anext__())
+    await asyncio.sleep(0.01)
+    pending.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await pending
 
     reconcile.assert_awaited_once()
     refund.assert_not_awaited()

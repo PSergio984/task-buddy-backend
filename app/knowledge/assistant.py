@@ -285,6 +285,10 @@ class AskStreamContext:
     task_id: int
     citations: list[dict]
     prompt: str
+    # Shared settlement boundary: flipped just before the provider request is
+    # sent, so the endpoint can tell "nothing billable consumed" (refund) from
+    # "request in flight" (settle) at any disconnect point.
+    generation_started: bool = False
 
 
 class KnowledgeAssistant:
@@ -373,6 +377,7 @@ class KnowledgeAssistant:
         record: Optional[LLMCallRecord] = None
         try:
             yield {"event": "citations", "citations": ctx.citations}
+            ctx.generation_started = True
             async for event in generate_answer_stream(ctx.client, ctx.prompt):
                 if event["event"] == "record":
                     record = event["record"]
