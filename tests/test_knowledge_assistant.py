@@ -924,12 +924,8 @@ async def test_sse_stream_disconnect_before_generation_refunds(mocker: Any) -> N
             await asyncio.sleep(3600)  # hang: client is gone
 
     db = AsyncMock()
-    refund = mocker.patch(
-        "app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock()
-    )
-    reconcile = mocker.patch(
-        "app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock()
-    )
+    refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
 
     gen = _knowledge_sse_stream(FakeAssistant(), db, mocker.Mock(), 1, 1)  # type: ignore[arg-type]
     assert "event: citations" in await gen.__anext__()
@@ -950,12 +946,8 @@ async def test_sse_stream_disconnect_after_token_settles(mocker: Any) -> None:
             await asyncio.sleep(3600)
 
     db = AsyncMock()
-    refund = mocker.patch(
-        "app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock()
-    )
-    reconcile = mocker.patch(
-        "app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock()
-    )
+    refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
 
     gen = _knowledge_sse_stream(FakeAssistant(), db, mocker.Mock(), 1, 1)  # type: ignore[arg-type]
     assert "event: token" in await gen.__anext__()
