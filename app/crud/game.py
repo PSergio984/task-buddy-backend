@@ -214,3 +214,38 @@ async def get_events_between(
     events = [e for e in result.scalars() if start <= utc_aware(e.client_ts) < end]
     events.sort(key=lambda e: (e.client_ts, e.id))
     return events
+
+
+async def get_session(
+    db: AsyncSession, session_id: int, user_id: int, *, for_update: bool = False
+) -> FocusSession | None:
+    """A session by id, scoped to its owner."""
+    query = select(FocusSession).where(
+        FocusSession.id == session_id, FocusSession.user_id == user_id
+    )
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def get_active_session(
+    db: AsyncSession, user_id: int, *, for_update: bool = False
+) -> FocusSession | None:
+    """The user's single in-flight session, if any. The partial unique index
+    uq_focus_sessions_one_active guarantees at most one 'active' row."""
+    query = select(FocusSession).where(
+        FocusSession.user_id == user_id, FocusSession.status == "active"
+    )
+    if for_update:
+        query = query.with_for_update()
+    result = await db.execute(query)
+    return result.scalar_one_or_none()
+
+
+async def get_phases(db: AsyncSession, session_id: int) -> list[FocusPhase]:
+    """A session's phases in sequence order."""
+    result = await db.execute(
+        select(FocusPhase).where(FocusPhase.session_id == session_id).order_by(FocusPhase.seq)
+    )
+    return list(result.scalars().all())

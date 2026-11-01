@@ -6,6 +6,7 @@ from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
+from app.game.engine import SERVER_EVENT_TYPES
 from app.models.game import GameProfile
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
@@ -19,6 +20,24 @@ class GameEventIn(BaseModel):
     type: str = Field(min_length=1, max_length=64)
     client_ts: datetime
     payload: dict = Field(default_factory=dict)
+
+    @field_validator("client_event_id")
+    @classmethod
+    def no_server_namespace(cls, v: str) -> str:
+        # Server-authored events own the "server:" prefix — a client could
+        # otherwise squat a server id and suppress the real event via dedupe.
+        if v.startswith("server:"):
+            raise ValueError("client_event_id prefix 'server:' is reserved")
+        return v
+
+    @field_validator("type")
+    @classmethod
+    def no_server_event_type(cls, v: str) -> str:
+        # Session-lifecycle types are server-authored — a client claiming
+        # them could award itself milestone/phase XP or forge history.
+        if v in SERVER_EVENT_TYPES:
+            raise ValueError(f"event type '{v}' is server-authored")
+        return v
 
     @field_validator("client_ts")
     @classmethod
@@ -230,6 +249,43 @@ class RetentionIn(BaseModel):
     retention: Literal["90d", "1y", "forever"]
 
 
+class SessionPhaseIn(BaseModel):
+    """One leg of a focus plan: focus minutes or a break between focus legs."""
+
+    kind: Literal["focus", "break"]
+    minutes: int = Field(gt=0, le=600)
+
+
+class SessionStartIn(BaseModel):
+    """Open a focus session. mode=stopwatch ignores `phases` (open-ended)."""
+
+    mode: Literal["timer", "stopwatch"] = "timer"
+    phases: list[SessionPhaseIn] | None = Field(default=None, max_length=32)
+    task_id: int | None = None
+    tag_id: int | None = None
+    activity_label: str | None = Field(default=None, max_length=200)
+    difficulty: Literal["trivial", "easy", "medium", "hard"] = "easy"
+    auto_start_breaks: bool = True
+    auto_start_focus: bool = False
+    pause_budget_count: int = Field(default=3, ge=0, le=20)
+    pause_budget_seconds: int = Field(default=300, gt=0, le=3600)
+
+
+class SessionPhaseOut(BaseModel):
+    seq: int
+    kind: str
+    status: str
+    planned_seconds: int
+    actual_seconds: int | None
+    pause_count: int
+    paused_seconds: int
+    pause_started_at: datetime | None
+    started_at: datetime | None
+    ended_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
 class TimelinePhase(BaseModel):
     """One work/break phase — a sub-block inside a session block."""
 
@@ -274,4 +330,26 @@ class TimelineDayResponse(BaseModel):
     sessions: list[TimelineSessionBlock]
     markers: list[TimelineMarker]
     diary: list[DiaryEntryRead]
+    server_time: datetime
+
+
+class FocusSessionOut(BaseModel):
+    id: int
+    mode: str
+    status: str
+    task_id: int | None
+    activity_label: str | None
+    preset: dict | None
+    pause_budget_count: int
+    pause_budget_seconds: int
+    started_at: datetime
+    ended_at: datetime | None
+    phases: list[SessionPhaseOut]
+
+
+class SessionActionResponse(BaseModel):
+    """Session view after evaluation + the applied action, with totals."""
+
+    session: FocusSessionOut
+    profile: GameProfileRead | None
     server_time: datetime

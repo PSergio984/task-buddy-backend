@@ -21,7 +21,7 @@ def make_session(user_id: int, start: datetime, end: datetime | None, **kw) -> F
     return FocusSession(
         user_id=user_id,
         mode=kw.pop("mode", "pomodoro"),
-        status=kw.pop("status", "completed" if end else "active"),
+        status=kw.pop("status", "ended" if end else "active"),
         started_at=start,
         ended_at=end,
         **kw,
@@ -320,7 +320,7 @@ class TestTimeline:
         block = body["sessions"][0]
         assert block["id"] == session.id
         assert block["mode"] == "pomodoro"
-        assert block["status"] == "completed"
+        assert block["status"] == "ended"
         assert block["activity_label"] == "deep work"
         assert block["duration_seconds"] == 1500
         assert len(block["phases"]) == 2
