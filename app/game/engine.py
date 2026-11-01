@@ -62,6 +62,7 @@ class GameRates:
     habit_xp_factor: float = 6.0  # XP = delta * P * crit * INT-bonus * factor
     daily_xp_cap: int = 500
     daily_gold_cap: float = 150.0
+    stopwatch_milestone_xp: float = 25.0  # XP per 25/50/75-min stopwatch chunk
     # Level curve: 25*lvl below 5, fixed 150 at 5, quadratic afterwards.
     lvl_curve_early: float = 25.0
     lvl_curve_lvl5: float = 150.0
@@ -321,6 +322,31 @@ def _apply_damage(
     return outcome
 
 
+def _apply_stopwatch_milestone(
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    rng: random.Random | None,
+    today: date,
+) -> dict:
+    """One fixed XP chunk per milestone crossed (25/50/75 min), claimed on
+    stop — no per-minute accrual, so marathons can't farm."""
+    milestones = payload.get("milestones", 1)
+    if (
+        not isinstance(milestones, int)
+        or isinstance(milestones, bool)
+        or milestones < 1
+        or milestones > 100
+    ):
+        raise ValueError("stopwatch_milestone requires integer milestones in [1, 100]")
+    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    xp = _round_half_up(milestones * rates.stopwatch_milestone_xp * mult)
+    outcome = {"scored": True, "type": "stopwatch_milestone", "crit": mult > 1.0}
+    outcome.update(award_xp(profile, xp, rates, today))
+    return outcome
+
+
 def apply_event(
     profile: GameProfile,
     event_type: str,
@@ -347,4 +373,9 @@ def apply_event(
         return _apply_habit_click(profile, payload, rates, rng_roll, rng, day)
     if event_type == "damage":
         return _apply_damage(profile, payload, rates, rng)
+    if event_type == "session_abandoned":
+        # Abandon reasons carry the session's difficulty for HP scaling.
+        return _apply_damage(profile, payload, rates, rng)
+    if event_type == "stopwatch_milestone":
+        return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day)
     return {"scored": False}

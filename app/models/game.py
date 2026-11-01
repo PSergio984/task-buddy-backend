@@ -10,6 +10,7 @@ import sqlalchemy as sa
 from sqlalchemy import (
     JSON,
     Boolean,
+    CheckConstraint,
     Date,
     DateTime,
     Float,
@@ -124,6 +125,10 @@ class FocusSession(Base):
             sqlite_where=text("status = 'active'"),
             postgresql_where=text("status = 'active'"),
         ),
+        CheckConstraint(
+            "status IN ('active', 'ended', 'abandoned')",
+            name="ck_focus_sessions_status",
+        ),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -161,6 +166,9 @@ class FocusPhase(Base):
     actual_seconds: Mapped[int | None] = mapped_column(Integer, nullable=True)
     pause_count: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     paused_seconds: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
+    pause_started_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
     started_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
 
