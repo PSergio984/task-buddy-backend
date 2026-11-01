@@ -359,9 +359,11 @@ class TestTimeline:
         db: AsyncSession,
     ) -> None:
         # Regression: an in-progress session (ended_at=None) must not crash the
-        # duration computation — SQLite hands back naive timestamps.
-        day = datetime.now(timezone.utc).date()
-        db.add(make_session(confirmed_user["id"], at(day, 10), None))
+        # duration computation — SQLite hands back naive timestamps. Start
+        # relative to now so duration stays nonnegative at any wall-clock hour.
+        now = datetime.now(timezone.utc)
+        day = now.date()
+        db.add(make_session(confirmed_user["id"], now - timedelta(minutes=5), None))
         await db.commit()
 
         response = await authenticated_async_client.get(f"{GAME}/timeline", params={"date": day})
