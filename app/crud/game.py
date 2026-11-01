@@ -13,6 +13,7 @@ from app.models.game import (
     GameConfig,
     GameEvent,
     GameProfile,
+    Habit,
     SessionNote,
 )
 
@@ -248,4 +249,16 @@ async def get_phases(db: AsyncSession, session_id: int) -> list[FocusPhase]:
     result = await db.execute(
         select(FocusPhase).where(FocusPhase.session_id == session_id).order_by(FocusPhase.seq)
     )
+    return list(result.scalars().all())
+
+
+async def get_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit | None:
+    """One habit by id, scoped to its owner."""
+    result = await db.execute(select(Habit).where(Habit.id == habit_id, Habit.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def list_habits(db: AsyncSession, user_id: int) -> list[Habit]:
+    """All of the user's habits in creation order."""
+    result = await db.execute(select(Habit).where(Habit.user_id == user_id).order_by(Habit.id))
     return list(result.scalars().all())

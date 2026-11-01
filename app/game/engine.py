@@ -284,9 +284,11 @@ def _apply_habit_click(
     ):
         raise ValueError("habit_click value must be a finite number")
     # Clamp first: extremes would explode 0.9747**V and inflate rewards.
-    # shortcut: value is client-claimed until #62 persists Habit.value —
-    # bounded to 3.36x neutral reward by the clamp; upgrade when habits
-    # land and score from stored state.
+    # `value` is whatever the caller passed — bounded to ~3.36x neutral
+    # reward by the clamp. In practice the service layer always injects the
+    # stored Habit.value here and writes the drift back (#62): a synced
+    # habit_click whose habit_id doesn't resolve is recorded unscored
+    # upstream, so no client-claimed value can ever reach this line.
     value = clamp_habit_value(float(value), rates)
     delta = habit_delta(value, rates)
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)

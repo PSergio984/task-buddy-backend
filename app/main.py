@@ -17,6 +17,7 @@ from app.api.routers import (
     audit,
     breakdown,
     game,
+    game_habits,
     game_sessions,
     knowledge,
     memory,
@@ -178,6 +179,7 @@ app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
 app.include_router(game.router, prefix="/api/v1")
 app.include_router(game_sessions.router, prefix="/api/v1")
+app.include_router(game_habits.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")

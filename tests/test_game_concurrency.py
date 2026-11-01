@@ -21,7 +21,7 @@ from sqlalchemy.pool import NullPool
 import app.models  # noqa: F401 — registers every table on Base.metadata
 from app.game import service
 from app.models.base import Base
-from app.models.game import GameEvent, GameProfile
+from app.models.game import GameEvent, GameProfile, Habit
 from app.models.user import User
 from app.schemas.game import GameEventIn
 
@@ -129,3 +129,76 @@ async def test_concurrent_ingest_no_lost_update(sessions):
     ids, profile = await _fetch(sessions, uid)
     assert ids == ["e-0", "e-4", "e-5"]
     assert profile.xp_today == 70
+
+
+def _habit_click(eid: str, habit_id: int) -> GameEventIn:
+    return GameEventIn(
+        client_event_id=eid,
+        type="habit_click",
+        client_ts=datetime.now(timezone.utc),
+        payload={"habit_id": habit_id, "direction": "positive"},
+    )
+
+
+async def _make_habit(Session, user_id: int) -> int:
+    async with Session() as s:
+        habit = Habit(user_id=user_id, title="h")
+        s.add(habit)
+        await s.commit()
+        return habit.id
+
+
+async def test_concurrent_same_eid_habit_click(sessions):
+    """Same client_event_id racing in two batches: one applies, one dedupes —
+    the ledger row, counter and drift land exactly once."""
+    uid = await _make_user(sessions, "race-h1@test.dev")
+    hid = await _make_habit(sessions, uid)
+    await asyncio.gather(
+        _ingest(sessions, uid, [_habit_click("h-1", hid)]),
+        _ingest(sessions, uid, [_habit_click("h-1", hid)]),
+    )
+    async with sessions() as s:
+        rows = (
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.type == "habit_click", GameEvent.user_id == uid
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 1
+        habit = (await s.execute(select(Habit).where(Habit.id == hid))).scalar_one()
+        assert habit.counter == 1
+        assert habit.value == pytest.approx(1.0)
+
+
+@requires_postgres
+async def test_concurrent_habit_clicks_serialize(sessions):
+    """Different eids on the same habit: the profile lock serializes them —
+    both apply, counter +2, drift compounds instead of lost-updating."""
+    uid = await _make_user(sessions, "race-h2@test.dev")
+    hid = await _make_habit(sessions, uid)
+    await asyncio.gather(
+        _ingest(sessions, uid, [_habit_click("h-a", hid)]),
+        _ingest(sessions, uid, [_habit_click("h-b", hid)]),
+    )
+    async with sessions() as s:
+        rows = (
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.type == "habit_click", GameEvent.user_id == uid
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(rows) == 2
+        habit = (await s.execute(select(Habit).where(Habit.id == hid))).scalar_one()
+        assert habit.counter == 2
+        # 1 + 0.9747**1: second click drifted from the first's write-back.
+        assert habit.value == pytest.approx(1.0 + 0.9747**1.0, abs=1e-6)

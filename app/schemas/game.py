@@ -1,16 +1,21 @@
 """Pydantic contracts for the /api/v1/game endpoints."""
 
 import json
+import re
 from datetime import date, datetime, timezone
 from typing import Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.game.engine import SERVER_EVENT_TYPES
-from app.models.game import GameProfile
+from app.models.game import GameProfile, HabitDirection
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
 _TEXT_MAX_LEN = 10_000
+
+_HabitDirection = Literal["positive", "negative", "both"]
+_Difficulty = Literal["trivial", "easy", "medium", "hard"]
+_REMINDER_TIME_RE = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
 class GameEventIn(BaseModel):
@@ -255,6 +260,127 @@ class SessionNoteRead(BaseModel):
 
 class RetentionIn(BaseModel):
     retention: Literal["90d", "1y", "forever"]
+
+
+def _clean_title(v: Optional[str]) -> Optional[str]:
+    if v is None:
+        return None
+    v = v.strip()
+    if not v:
+        raise ValueError("title must not be blank")
+    return v
+
+
+def _clean_reminder_times(v: Optional[list[str]]) -> Optional[list[str]]:
+    if v is None:
+        return None
+    for t in v:
+        if not isinstance(t, str) or _REMINDER_TIME_RE.fullmatch(t) is None:
+            raise ValueError("reminder times must be 'HH:MM' 24-hour strings")
+    return v
+
+
+class HabitIn(BaseModel):
+    """A new habit: a +/- counter with optional reminders and focus binding."""
+
+    title: str = Field(min_length=1, max_length=200)
+    notes: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    direction: _HabitDirection = "both"
+    difficulty: _Difficulty = "easy"
+    # Scheduled times the notification ticket delivers; storage only here.
+    reminder_times: list[str] = Field(default_factory=list, max_length=24)
+    bind_focus: bool = False
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: str) -> str:
+        return _clean_title(v) or v
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+    @field_validator("reminder_times")
+    @classmethod
+    def check_reminder_times(cls, v: list[str]) -> list[str]:
+        return _clean_reminder_times(v) or []
+
+
+class HabitUpdate(BaseModel):
+    """Partial update; value/counter are engine-owned and never mutable."""
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    notes: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    direction: Optional[_HabitDirection] = None
+    difficulty: Optional[_Difficulty] = None
+    reminder_times: Optional[list[str]] = Field(None, max_length=24)
+    bind_focus: Optional[bool] = None
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: Optional[str]) -> Optional[str]:
+        return _clean_title(v)
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+    @field_validator("reminder_times")
+    @classmethod
+    def check_reminder_times(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _clean_reminder_times(v)
+
+    @model_validator(mode="after")
+    def no_null_on_required_fields(self) -> "HabitUpdate":
+        # Only notes is nullable — an explicit null on a required field would
+        # write NULL into a non-nullable column at commit time.
+        for name in ("title", "direction", "difficulty", "reminder_times", "bind_focus"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
+
+
+class HabitRead(BaseModel):
+    """Full habit row; `value` is the hidden drift state the UI badges."""
+
+    id: int
+    title: str
+    notes: str | None
+    direction: HabitDirection
+    difficulty: str
+    value: float
+    counter: int
+    bind_focus: bool
+    reminder_times: list[str]
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class HabitClickIn(BaseModel):
+    """One +/- click; client_event_id dedupes retries and batch replays."""
+
+    direction: Literal["positive", "negative"]
+    client_event_id: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @field_validator("client_event_id")
+    @classmethod
+    def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.startswith("server:"):
+            raise ValueError("client_event_id prefix 'server:' is reserved")
+        return v
+
+
+class HabitClickResponse(BaseModel):
+    """Post-click habit plus authoritative totals for the HUD."""
+
+    habit: HabitRead
+    profile: GameProfileRead
+    status: Literal["applied", "duplicate"]
+    server_time: datetime
 
 
 class SessionPhaseIn(BaseModel):

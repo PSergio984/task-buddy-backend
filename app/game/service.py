@@ -13,9 +13,9 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import engine
+from app.game import engine, habit_service
 from app.game.engine import GameRates
-from app.models.game import GameEvent, GameProfile
+from app.models.game import GameEvent, GameProfile, Habit
 from app.schemas.game import GameEventIn, GameEventResult
 
 _rng = random.Random()
@@ -24,6 +24,19 @@ _rng = random.Random()
 async def load_rates(db: AsyncSession) -> GameRates:
     config_map = await game_crud.get_config_map(db)
     return GameRates.from_dict(config_map.get("economy", {}))
+
+
+def _habit_for_event(event: GameEventIn, habits_by_id: dict[int, Habit]) -> Habit | None:
+    """Resolve the habit a client habit_click targets; None = unresolvable.
+
+    Only an int habit_id maps to a row — bool is excluded (True == 1 would
+    silently resolve habit 1). Unresolvable ids (deleted/foreign/malformed)
+    are recorded unscored — a client-claimed value can never reach the engine.
+    """
+    habit_id = event.payload.get("habit_id")
+    if isinstance(habit_id, int) and not isinstance(habit_id, bool):
+        return habits_by_id.get(habit_id)
+    return None
 
 
 async def ingest_events(
@@ -51,16 +64,77 @@ async def ingest_events(
     # report applied-then-duplicate independently.
     status_by_idx: dict[int, Literal["applied", "duplicate"]] = {}
     ordered = sorted(enumerate(events), key=lambda t: (t[1].client_ts, t[0]))
+    # One map serves both ends of the habit contract: click events resolve
+    # stored state for drift, and scored focus phases auto-click bound habits.
+    # Fetched only when the batch can touch habits.
+    habits_by_id: dict[int, Habit] = {}
+    if any(e.type in ("habit_click", "focus_phase_completed") for e in events):
+        habits_by_id = {h.id: h for h in await game_crud.list_habits(db, user_id)}
+    bound_habits = [h for h in habits_by_id.values() if h.bind_focus]
+    # One fanout budget per batch: bound habits x scored phase claims could
+    # otherwise multiply into tens of thousands of writes inside this
+    # profile-locked transaction (see habit_service.MAX_AUTO_CLICKS_PER_EVAL).
+    auto_budget = habit_service.MAX_AUTO_CLICKS_PER_EVAL
     for idx, event in ordered:
         if event.client_event_id in seen:
             status_by_idx[idx] = "duplicate"
+            continue
+        if event.type == "habit_click":
+            habit = _habit_for_event(event, habits_by_id)
+            direction: str | None = event.payload.get("direction")
+            if (
+                habit is not None
+                and direction in ("positive", "negative")
+                and habit_service.direction_allows(habit, direction)
+            ):
+                await habit_service.score_click(
+                    db,
+                    habit,
+                    direction,
+                    profile,
+                    rates,
+                    today,
+                    eid=event.client_event_id,
+                    client_ts=event.client_ts,
+                    rng=rng,
+                    extra=event.payload,
+                )
+            else:
+                # Record applied-but-unscored instead of scoring a claim the
+                # server can't verify, or wedging the batch on a 400:
+                # habit_unresolvable — no owned row (deleted/foreign/malformed
+                # /missing id); direction_mismatch — the queued click predates
+                # a direction PATCH or carries a malformed direction.
+                # Consumer notes: the eid is permanently consumed — a client
+                # correcting a rejected click must resend it under a NEW
+                # client_event_id. Unscored rows keep client-claimed fields
+                # (value/difficulty) at the same top-level keys that are
+                # authoritative on scored rows — "_outcome.scored" is the
+                # discriminator readers must check.
+                unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
+                db.add(
+                    GameEvent(
+                        user_id=user_id,
+                        client_event_id=event.client_event_id,
+                        type=event.type,
+                        payload={
+                            **habit_service.clean_extra(event.payload),
+                            "_outcome": {"scored": False, "reason": unscored_reason},
+                        },
+                        client_ts=event.client_ts,
+                    )
+                )
+            seen.add(event.client_event_id)
+            status_by_idx[idx] = "applied"
             continue
         outcome = engine.apply_event(
             profile, event.type, event.payload, rates, rng_roll=rng.random(), rng=rng, today=today
         )
         # Engine outcome lands under "_outcome" so client payload keys never
-        # collide with bookkeeping in the immutable ledger row.
-        payload = {**event.payload, "_outcome": outcome}
+        # collide with bookkeeping in the immutable ledger row. Client extras
+        # are cleaned of server-reserved markers — a forged auto/session_id
+        # can't masquerade a claimed event as server-authored metadata.
+        payload = {**habit_service.clean_extra(event.payload), "_outcome": outcome}
         db.add(
             GameEvent(
                 user_id=user_id,
@@ -70,6 +144,21 @@ async def ingest_events(
                 client_ts=event.client_ts,
             )
         )
+        if event.type == "focus_phase_completed" and outcome.get("scored") and bound_habits:
+            # Offline-run sessions trigger the same focus binding as the
+            # server-side session engine (resolve #44: +click once per phase).
+            auto_budget -= await habit_service.auto_click_bound(
+                db,
+                user_id,
+                profile,
+                rates,
+                today,
+                source_eid=event.client_event_id,
+                client_ts=event.client_ts,
+                rng=rng,
+                habits=bound_habits,
+                budget=auto_budget,
+            )
         seen.add(event.client_event_id)
         status_by_idx[idx] = "applied"
     await db.flush()
