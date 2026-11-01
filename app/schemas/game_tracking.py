@@ -1,0 +1,61 @@
+"""Pydantic contracts for /api/v1/game/activity — the Stats/Activity tab feed.
+
+Separate module from schemas/game.py to keep merge surface zero while
+parallel game tickets land (same convention as the router/crud splits).
+"""
+
+from datetime import date, datetime
+
+from pydantic import BaseModel
+
+
+class ActivityDay(BaseModel):
+    """One calendar cell of the contribution grid.
+
+    score = focus_minutes + Σ(weight × event count); tier is the intensity
+    bucket the client colors — index into ActivityGridResponse.tier_thresholds
+    (tier 0 = no activity). `events` is the per-type count map for tooltips.
+    """
+
+    date: date
+    score: float
+    focus_minutes: float
+    events: dict[str, int]
+    tier: int
+
+
+class ActivityGridResponse(BaseModel):
+    """The filled grid: one row per UTC day in [start, end], empty days
+    included (tier 0) so the client never fills gaps itself."""
+
+    start: date
+    end: date
+    days: list[ActivityDay]
+    # Sorted score cutoffs: tier n applies when score >= tier_thresholds[n-1].
+    tier_thresholds: list[float]
+    server_time: datetime
+
+
+class ActivityBestDay(BaseModel):
+    date: date
+    score: float
+
+
+class ActivityStatsResponse(BaseModel):
+    """The profile stat set, computed over the same window convention as the
+    grid (defaults: trailing 365 UTC days). Streaks count consecutive days
+    with score > 0; a scoreless today can't break the current one."""
+
+    start: date
+    end: date
+    avg_hours_per_day: float
+    total_hours: float
+    current_streak: int
+    longest_streak: int
+    best_day: ActivityBestDay | None
+    # Trailing-7-day score sum ending today (clipped to the window).
+    weekly_total: float
+    # Always null until the speedrun records feature (#69) exists — there is
+    # no PB table; FocusSession.speedrun is a per-session blob.
+    speedrun_pbs: list[dict] | None
+    server_time: datetime
