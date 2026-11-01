@@ -16,6 +16,7 @@ from slowapi.middleware import SlowAPIMiddleware
 from app.api.routers import (
     audit,
     breakdown,
+    game,
     knowledge,
     memory,
     notifications,
@@ -174,6 +175,7 @@ app.include_router(user.router, prefix="/api/v1/users")
 app.include_router(project.router, prefix="/api/v1/projects")
 app.include_router(audit.router, prefix="/api/v1")
 app.include_router(stats.router, prefix="/api/v1")
+app.include_router(game.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")

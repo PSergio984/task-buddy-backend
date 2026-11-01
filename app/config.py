@@ -122,6 +122,8 @@ class GlobalConfig(BaseConfig):
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     RATE_LIMIT_SYNC: str = "60/minute"
+    RATE_LIMIT_GAME_READ: str = "60/minute"
+    RATE_LIMIT_GAME_EVENTS: str = "30/minute"
     # Embedding provider: "local" (sentence-transformers, zero per-query cost,
     # offline) | "openai" (text-embedding-3-small, ~$0.02/1M tokens) | "jina"
     # (jina-embeddings-v3, free tier 10M tokens/month). Production uses jina:
@@ -376,6 +378,8 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_PUSH_SUBSCRIBE: str = "10/minute"
     RATE_LIMIT_REALTIME_TOKEN: str = "30/minute"
     RATE_LIMIT_SYNC: str = "60/minute"
+    RATE_LIMIT_GAME_READ: str = "60/minute"
+    RATE_LIMIT_GAME_EVENTS: str = "30/minute"
 
     model_config = SettingsConfigDict(env_prefix="TEST_", env_file=".env", extra="ignore")
 
@@ -476,6 +480,8 @@ RATE_LIMIT_NOTIFICATION_READ_ALL = config.RATE_LIMIT_NOTIFICATION_READ_ALL
 RATE_LIMIT_PUSH_SUBSCRIBE = config.RATE_LIMIT_PUSH_SUBSCRIBE
 RATE_LIMIT_REALTIME_TOKEN = config.RATE_LIMIT_REALTIME_TOKEN
 RATE_LIMIT_SYNC = config.RATE_LIMIT_SYNC
+RATE_LIMIT_GAME_READ = config.RATE_LIMIT_GAME_READ
+RATE_LIMIT_GAME_EVENTS = config.RATE_LIMIT_GAME_EVENTS
 RATE_LIMIT_KNOWLEDGE_ASK = config.RATE_LIMIT_KNOWLEDGE_ASK
 KNOWLEDGE_STREAM_ENABLED = config.KNOWLEDGE_STREAM_ENABLED
 RATE_LIMIT_MEMORY_SIMILAR = config.RATE_LIMIT_MEMORY_SIMILAR
