@@ -18,14 +18,40 @@ from app.crud import game as game_crud
 from app.game.engine import GameRates, apply_event
 from app.models.game import GameEvent, GameProfile, Habit, HabitDirection
 
+# Per-user cap — bounds the per-phase auto-click fanout and the habit map
+# ingest builds for a batch.
+MAX_HABITS_PER_USER = 100
+
+# Keys a client may not plant on a ledger row: server-set markers only.
+# direction/difficulty/value/habit_id may stay in client extras — scored rows
+# overwrite them with the authoritative fields anyway and unscored rows keep
+# them as context for why the event failed to score.
+_EXTRA_DENY = frozenset({"auto", "session_id"})
+
 _rng = random.Random()
+
+
+def clean_extra(extra: dict | None) -> dict:
+    """Client extras minus server-reserved marker keys.
+
+    Applied wherever an untrusted payload lands in a ledger row so a manual
+    click can't forge auto-click/session metadata.
+    """
+    return {
+        k: v for k, v in (extra or {}).items() if k not in _EXTRA_DENY and not k.startswith("_")
+    }
+
+
+def direction_allows(habit: Habit, direction: str) -> bool:
+    """Whether the habit's direction accepts this click direction."""
+    return habit.direction is HabitDirection.BOTH or habit.direction.value == direction
 
 
 def check_direction(habit: Habit, direction: Any) -> Literal["positive", "negative"]:
     """Validate a click direction against the habit; return it narrowed."""
     if direction not in ("positive", "negative"):
         raise ValueError("habit_click requires direction 'positive' or 'negative'")
-    if habit.direction is not HabitDirection.BOTH and habit.direction.value != direction:
+    if not direction_allows(habit, direction):
         raise ValueError(f"habit does not accept {direction} clicks")
     return cast("Literal['positive', 'negative']", direction)
 
@@ -42,14 +68,21 @@ async def score_click(
     client_ts: datetime,
     rng: random.Random | None = None,
     extra: dict | None = None,
+    server_extra: dict | None = None,
 ) -> dict:
     """Apply one click through the engine; write back drift + counter; ledger row.
 
     The stored value is authoritative — the engine reads it, returns the
     drifted new_value, and both land in the ledger payload alongside
     "_outcome" (direction/difficulty likewise override any client extras).
+    Callers hold the user's profile lock; the flush+refresh reloads the habit
+    against the latest committed state — including this transaction's own
+    earlier writes — so back-to-back clicks in one batch drift sequentially
+    and a concurrently committed row update can't be lost.
     """
     rng = rng if rng is not None else _rng
+    await db.flush()
+    await db.refresh(habit)
     before = float(habit.value)
     outcome = apply_event(
         profile,
@@ -63,7 +96,8 @@ async def score_click(
     habit.counter += 1 if direction == "positive" else -1
     habit.value = float(outcome["new_value"])
     payload = {
-        **(extra or {}),
+        **clean_extra(extra),
+        **(server_extra or {}),
         "habit_id": habit.id,
         "direction": direction,
         "difficulty": habit.difficulty,
@@ -93,7 +127,7 @@ async def auto_click_bound(
     client_ts: datetime,
     rng: random.Random | None = None,
     habits: list[Habit] | None = None,
-    extra: dict | None = None,
+    server_extra: dict | None = None,
 ) -> None:
     """One +click per focus-bound habit for a completed focus phase.
 
@@ -101,10 +135,18 @@ async def auto_click_bound(
     trigger's own dedupe guards replays, and the reserved "server:" prefix
     keeps clients from squatting the id. A negative-only habit accepts no
     +click, so binding it is a stored no-op.
+
+    Spec notes (resolve #44 says literally "per focus_phase_completed"):
+    - stopwatch_milestone deliberately does NOT auto-click — milestones are
+      not phase completions.
+    - If a client-claimed phase event AND the server-side session engine
+      both score the same phase (different eids), the union-merge dedupe
+      can credit a bound habit twice. That's the accepted cross-path cost
+      of the offline contract.
     """
     rng = rng if rng is not None else _rng
     candidates = habits if habits is not None else await game_crud.list_habits(db, user_id)
-    digest = hashlib.sha1(source_eid.encode()).hexdigest()[:16]
+    digest = hashlib.sha1(source_eid.encode(), usedforsecurity=False).hexdigest()[:16]
     for habit in candidates:
         if not habit.bind_focus or habit.direction is HabitDirection.NEGATIVE:
             continue
@@ -118,5 +160,5 @@ async def auto_click_bound(
             eid=f"server:habit:{habit.id}:focus:{digest}",
             client_ts=client_ts,
             rng=rng,
-            extra={"auto": True, **(extra or {})},
+            server_extra={"auto": True, **(server_extra or {})},
         )

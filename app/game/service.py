@@ -77,8 +77,12 @@ async def ingest_events(
             continue
         if event.type == "habit_click":
             habit = _habit_for_event(event, habits_by_id)
-            if habit is not None:
-                direction = habit_service.check_direction(habit, event.payload.get("direction"))
+            direction: str | None = event.payload.get("direction")
+            if (
+                habit is not None
+                and direction in ("positive", "negative")
+                and habit_service.direction_allows(habit, direction)
+            ):
                 await habit_service.score_click(
                     db,
                     habit,
@@ -91,11 +95,28 @@ async def ingest_events(
                     rng=rng,
                     extra=event.payload,
                 )
-                seen.add(event.client_event_id)
-                status_by_idx[idx] = "applied"
-                continue
-            # Unresolvable habit_id (deleted/foreign/malformed): the generic
-            # path scores the client-claimed value — the pre-#62 contract.
+            else:
+                # Record applied-but-unscored instead of scoring a claim the
+                # server can't verify, or wedging the batch on a 400:
+                # habit_unresolvable — no owned row (deleted/foreign/malformed
+                # /missing id); direction_mismatch — the queued click predates
+                # a direction PATCH or carries a malformed direction.
+                unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
+                db.add(
+                    GameEvent(
+                        user_id=user_id,
+                        client_event_id=event.client_event_id,
+                        type=event.type,
+                        payload={
+                            **habit_service.clean_extra(event.payload),
+                            "_outcome": {"scored": False, "reason": unscored_reason},
+                        },
+                        client_ts=event.client_ts,
+                    )
+                )
+            seen.add(event.client_event_id)
+            status_by_idx[idx] = "applied"
+            continue
         outcome = engine.apply_event(
             profile, event.type, event.payload, rates, rng_roll=rng.random(), rng=rng, today=today
         )

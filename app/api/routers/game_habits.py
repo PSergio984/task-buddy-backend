@@ -59,6 +59,12 @@ async def create_habit(
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> HabitRead:
     user_id = current_user.id
+    # The profile lock serializes creates against each other and against
+    # scoring, so the count check is exact; the cap bounds the per-phase
+    # auto-click fanout.
+    await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    if len(await game_crud.list_habits(db, user_id)) >= habit_service.MAX_HABITS_PER_USER:
+        raise HTTPException(status_code=400, detail="Habit limit reached")
     habit = Habit(
         user_id=user_id,
         title=habit_in.title,
@@ -137,6 +143,10 @@ async def delete_habit(
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> dict:
+    # Serialize against in-flight clicks: every scoring path holds this lock
+    # while updating the habit row — an unlocked delete could strand the
+    # concurrent UPDATE (StaleDataError -> 500).
+    await game_crud.get_or_create_profile(db, current_user.id, for_update=True)
     habit = await _owned_habit(db, current_user.id, habit_id)
     await db.delete(habit)
     await db.commit()
@@ -161,12 +171,16 @@ async def click_habit(
     scoring by queueing habit_click events to /game/events instead.
     """
     user_id = current_user.id
+    # Lock first (per-user serialization point), then read mutable state:
+    # the habit snapshot, the dedupe check and the write-back all happen
+    # under the lock so same-eid replays dedupe and parallel clicks
+    # serialize instead of IntegrityError-500ing or double-scoring.
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
     habit = await _owned_habit(db, user_id, habit_id)
+    rates = await service.load_rates(db)
     if click_in.client_event_id is not None:
         seen = await game_crud.existing_event_ids(db, user_id, [click_in.client_event_id])
         if click_in.client_event_id in seen:
-            profile = await game_crud.get_or_create_profile(db, user_id)
-            rates = await service.load_rates(db)
             return HabitClickResponse(
                 habit=HabitRead.model_validate(habit),
                 profile=_profile_read(profile, rates),
@@ -177,8 +191,6 @@ async def click_habit(
         habit_service.check_direction(habit, click_in.direction)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
-    rates = await service.load_rates(db)
     now = datetime.now(timezone.utc)
     # A client-supplied id dedupes offline replays of the same click; absent
     # one the server mints its own under the reserved "server:" namespace.

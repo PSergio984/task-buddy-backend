@@ -18,7 +18,7 @@ from app.game import habit_service
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
-from app.models.game import FocusPhase, FocusSession, GameEvent, GameProfile
+from app.models.game import FocusPhase, FocusSession, GameEvent, GameProfile, Habit
 from app.models.tag import Tag
 from app.models.task import Task
 from app.schemas.game import SessionStartIn
@@ -99,11 +99,14 @@ async def _persist_step(
     rates: GameRates,
     now: datetime,
     seen: set[str],
+    habits: list[Habit] | None = None,
 ) -> None:
     """Write one transition's ledger row; score it when the engine knows how.
 
     `now` is the caller's evaluation instant — the same fallback used to build
     the dedupe id set, so a Step without `at` dedupes correctly on retry.
+    `habits` is the caller's prefetched bound-habit list (auto-click fanout);
+    None means "no scored focus completion expected in this call".
     """
     event_type, payload = _event_for(step, session)
     if event_type is None:
@@ -151,7 +154,8 @@ async def _persist_step(
             source_eid=eid,
             client_ts=at,
             rng=_rng,
-            extra={"session_id": session.id},
+            habits=habits,
+            server_extra={"session_id": session.id},
         )
 
 
@@ -184,13 +188,23 @@ async def _evaluate(
         # scoring applies to the values committed under the lock, not a stale
         # snapshot a concurrent /events award may have already overwritten.
         await db.refresh(profile)
+    bound_habits: list[Habit] | None = None
+    if any(
+        s.kind == "phase_completed" and s.scored and not s.extra.get("milestone_index")
+        for s in steps
+    ):
+        # One query feeds every scored phase's auto-click fanout — otherwise
+        # a multi-phase catch-up would re-query per step.
+        bound_habits = [h for h in await game_crud.list_habits(db, user_id) if h.bind_focus]
     ids = [  # deterministic ids; dedupe guards a retried evaluation
         _event_id(session.id, s.kind, s.phase_seq, s.at or now, s.extra.get("n", i))
         for i, s in enumerate(steps)
     ]
     seen = await game_crud.existing_event_ids(db, user_id, ids)
     for i, step in enumerate(steps):
-        await _persist_step(db, session, user_id, step, i, profile, rates, now, seen)
+        await _persist_step(
+            db, session, user_id, step, i, profile, rates, now, seen, habits=bound_habits
+        )
     await db.flush()
     return phases, steps
 

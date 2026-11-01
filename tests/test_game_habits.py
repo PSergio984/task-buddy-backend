@@ -230,6 +230,21 @@ class TestHabitCrud:
         response = await authenticated_async_client.delete(f"{HABITS}/999999")
         assert response.status_code == 404
 
+    async def test_habit_cap_rejects_over_limit(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict
+    ) -> None:
+        # Seed the cap minus one directly; the cap-th via API works, the next 400s.
+        db.add_all(
+            [
+                Habit(user_id=confirmed_user["id"], title=f"h{i}")
+                for i in range(habit_service.MAX_HABITS_PER_USER - 1)
+            ]
+        )
+        await db.commit()
+        await _create(authenticated_async_client)  # reaches the cap — ok
+        response = await authenticated_async_client.post(HABITS, json={"title": "one too many"})
+        assert response.status_code == 400
+
     async def test_requires_auth(self, async_client: AsyncClient) -> None:
         assert (await async_client.get(HABITS)).status_code == 401
         assert (await async_client.post(HABITS, json={"title": "x"})).status_code == 401
@@ -424,10 +439,77 @@ class TestHabitEventSync:
         assert stored["value"] == pytest.approx(0.0)
         assert stored["difficulty"] == "easy"
 
-    async def test_synced_click_respects_direction(
-        self, authenticated_async_client: AsyncClient
+    async def test_synced_click_direction_mismatch_records_unscored(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        habit = await _create(authenticated_async_client, direction="negative")
+        # The wedge scenario: queued while the habit accepted +, PATCHed to
+        # negative-only before sync — the event lands unscored instead of
+        # 400ing, and the rest of the batch still applies.
+        habit = await _create(authenticated_async_client)
+        await authenticated_async_client.patch(
+            f"{HABITS}/{habit['id']}", json={"direction": "negative"}
+        )
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    self._habit_event("h-1", {"habit_id": habit["id"], "direction": "positive"}),
+                    {
+                        "client_event_id": "f-1",
+                        "type": "focus_phase_completed",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 2
+        profile = response.json()["profile"]
+        assert profile["xp_today"] == 10  # only the focus event scored
+
+        result = await db.execute(select(GameEvent).where(GameEvent.client_event_id == "h-1"))
+        outcome = result.scalar_one().payload["_outcome"]
+        assert outcome == {"scored": False, "reason": "direction_mismatch"}
+        row = await _get_habit_row(db, habit["id"])
+        assert row.counter == 0
+        assert row.value == pytest.approx(0.0)
+
+    @pytest.mark.parametrize("bad_id", [999999, "not-an-id", True])
+    async def test_unresolvable_habit_event_records_unscored(
+        self, authenticated_async_client: AsyncClient, bad_id: object
+    ) -> None:
+        # No owned habit row (missing/foreign/malformed id): the event lands
+        # unscored — claimed value/difficulty can't amplify rewards.
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    self._habit_event(
+                        "h-1",
+                        {
+                            "habit_id": bad_id,
+                            "direction": "positive",
+                            "value": 21.27,
+                            "difficulty": "hard",
+                        },
+                    )
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 1
+        profile = response.json()["profile"]
+        assert profile["xp_today"] == 0
+        assert profile["gold_today"] == 0
+        assert profile["hp"] == profile["max_hp"]
+
+    async def test_deleted_habit_event_records_unscored(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # Click queued before the delete; habit gone by sync time.
+        habit = await _create(authenticated_async_client)
+        await authenticated_async_client.delete(f"{HABITS}/{habit['id']}")
         response = await authenticated_async_client.post(
             f"{GAME}/events",
             json={
@@ -436,25 +518,33 @@ class TestHabitEventSync:
                 ]
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 200
+        assert response.json()["applied"] == 1
+        result = await db.execute(select(GameEvent).where(GameEvent.client_event_id == "h-1"))
+        assert result.scalar_one().payload["_outcome"] == {
+            "scored": False,
+            "reason": "habit_unresolvable",
+        }
 
-    async def test_synced_click_on_missing_habit_still_applies(
-        self, authenticated_async_client: AsyncClient
+    async def test_two_synced_clicks_drift_sequentially(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        # Habit deleted between queue and sync: the ledger event can't drift a
-        # row, so it scores on the client-claimed value (pre-#62 contract).
+        # Both clicks in one batch must each see the freshest stored value —
+        # second click drifts from the first's write-back, not a stale read.
+        habit = await _create(authenticated_async_client)
         response = await authenticated_async_client.post(
             f"{GAME}/events",
             json={
                 "events": [
-                    self._habit_event(
-                        "h-1", {"habit_id": 999999, "direction": "positive", "value": 0.0}
-                    )
+                    self._habit_event("h-1", {"habit_id": habit["id"], "direction": "positive"}),
+                    self._habit_event("h-2", {"habit_id": habit["id"], "direction": "positive"}),
                 ]
             },
         )
-        assert response.status_code == 200
-        assert response.json()["applied"] == 1
+        assert response.status_code == 200, response.text
+        row = await _get_habit_row(db, habit["id"])
+        assert row.counter == 2
+        assert row.value == pytest.approx(1.0 + 0.9747**1.0, abs=1e-6)
 
     async def test_synced_click_replay_dedupes(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
@@ -503,6 +593,47 @@ class TestFocusBinding:
         assert event.client_event_id.startswith("server:")
         assert event.payload["habit_id"] == habit["id"]
         assert event.payload["auto"] is True
+
+    async def test_multiple_bound_habits_each_auto_click(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        bound_a = await _create(authenticated_async_client, title="a", bind_focus=True)
+        bound_b = await _create(authenticated_async_client, title="b", bind_focus=True)
+        unbound = await _create(authenticated_async_client, title="c")
+        session = await self._start_session(authenticated_async_client)
+        await db.execute(
+            update(FocusPhase)
+            .where(FocusPhase.session_id == session["id"], FocusPhase.seq == 0)
+            .values(started_at=_ago(10 * 60 + 5))
+        )
+        await db.commit()
+        await authenticated_async_client.get(f"{SESSIONS}/active")
+        for habit_id in (bound_a["id"], bound_b["id"]):
+            row = await _get_habit_row(db, habit_id)
+            assert row.counter == 1
+            assert row.value == pytest.approx(1.0)
+        row = await _get_habit_row(db, unbound["id"])
+        assert row.counter == 0
+
+    async def test_stopwatch_does_not_auto_click(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # Spec is literal: binding fires per focus_phase_completed — a
+        # stopwatch session scores milestones, never a phase completion.
+        habit = await _create(authenticated_async_client, bind_focus=True)
+        response = await authenticated_async_client.post(SESSIONS, json={"mode": "stopwatch"})
+        assert response.status_code == 201, response.text
+        session = response.json()["session"]
+        await db.execute(
+            update(FocusPhase)
+            .where(FocusPhase.session_id == session["id"], FocusPhase.seq == 0)
+            .values(started_at=_ago(30 * 60))
+        )
+        await db.commit()
+        await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/stop")
+        row = await _get_habit_row(db, habit["id"])
+        assert row.counter == 0
+        assert row.value == pytest.approx(0.0)
 
     async def test_unbound_habit_not_auto_clicked(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
