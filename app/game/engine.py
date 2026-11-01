@@ -364,6 +364,7 @@ SERVER_EVENT_TYPES = frozenset(
         "phase_paused",
         "phase_resumed",
         "phase_skipped",
+        "phase_abandoned",
     }
 )
 

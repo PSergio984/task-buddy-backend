@@ -291,6 +291,15 @@ def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tupl
                 live.pause_started_at = None
             live.status = ABANDONED if live.kind == FOCUS else SKIPPED
             live.ended_at = now
+            # The feed needs the phase transition too — session_ended alone
+            # can't say what happened to the phase that was live.
+            scored.append(
+                Step(
+                    "phase_abandoned" if live.status == ABANDONED else "phase_skipped",
+                    phase_seq=live.seq,
+                    at=now,
+                )
+            )
         # Stopping with nothing scored is an abandon regardless of which phase
         # was live (or none) — a clean end requires >=1 completed focus.
         if completed_focus_count(phases) == 0:

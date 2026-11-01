@@ -309,6 +309,7 @@ class TestWallClockEvaluation:
         body = r.json()
         if body is not None:
             assert body["session"]["status"] == "ended"
+            assert body["session"]["phases"][2]["status"] == "pending"
         else:
             # /active returns null once the session is no longer active —
             # fetch by id to confirm it ended cleanly.

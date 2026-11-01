@@ -75,7 +75,13 @@ def _event_for(step: se.Step, session: FocusSession) -> tuple[str | None, dict]:
             "difficulty": difficulty,
             "phase_seq": step.phase_seq,
         }
-    if kind in ("phase_started", "phase_paused", "phase_resumed", "phase_skipped"):
+    if kind in (
+        "phase_started",
+        "phase_paused",
+        "phase_resumed",
+        "phase_skipped",
+        "phase_abandoned",
+    ):
         return kind, {**payload, "phase_seq": step.phase_seq}
     if kind == "session_ended":
         return kind, payload
@@ -112,7 +118,13 @@ async def _persist_step(
         "stopwatch_milestone",
         "session_abandoned",
     ):
-        outcome = apply_event(profile, event_type, payload, rates, _rng.random(), _rng, now.date())
+        # Charge the transition's own UTC day so a midnight-straddling
+        # session doesn't collapse rewards into the poll day's cap — but
+        # never roll totals_day backward, or a stale step would wipe the
+        # earnings already booked on the newer day.
+        step_day = at.date()
+        day = max(step_day, profile.totals_day) if profile.totals_day else step_day
+        outcome = apply_event(profile, event_type, payload, rates, _rng.random(), _rng, day)
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,
@@ -248,7 +260,16 @@ async def start_session(
         db,
         session,
         user_id,
-        se.Step("session_started", at=now, extra={"mode": req.mode}),
+        se.Step(
+            "session_started",
+            at=now,
+            extra={
+                "mode": req.mode,
+                # The feed reconstructs sessions from events alone — plan
+                # kinds/seconds must live here, not only on phase rows.
+                "phases": [{"kind": k, "seconds": s} for k, s in plan],
+            },
+        ),
         0,
         None,
         GameRates(),
