@@ -20,7 +20,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.crud import game as game_crud
 from app.game import daily_service, engine
@@ -150,18 +150,24 @@ async def _evaluate_daily(
     return recorded
 
 
-async def run_daily_miss_sweep(now: datetime | None = None) -> int:
+async def run_daily_miss_sweep(
+    now: datetime | None = None,
+    session_factory: async_sessionmaker[AsyncSession] | None = None,
+) -> int:
     """One sweep tick over all active dailies; returns misses recorded.
 
-    `now` is injectable for tests — day-ends are evaluated in UTC until a
-    user timezone field exists (issue #63 documented fallback).
+    `now` and `session_factory` are injectable for tests — day-ends are
+    evaluated in UTC until a user timezone field exists (issue #63
+    documented fallback).
     """
-    from app.database import AsyncSessionLocal
+    if session_factory is None:
+        from app.database import AsyncSessionLocal
 
+        session_factory = AsyncSessionLocal
     now = now or datetime.now(timezone.utc)
     today = now.date()
     recorded = 0
-    async with AsyncSessionLocal() as db:
+    async with session_factory() as db:
         rates = await load_rates(db)
         last_id = 0
         while True:

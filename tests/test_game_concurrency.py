@@ -9,7 +9,7 @@ locally any URL works for a smoke run (e.g. sqlite+aiosqlite:///./conc.db).
 import asyncio
 import os
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from uuid import uuid4
 
 import pytest
@@ -19,9 +19,9 @@ from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine
 from sqlalchemy.pool import NullPool
 
 import app.models  # noqa: F401 — registers every table on Base.metadata
-from app.game import service
+from app.game import daily_sweep, service
 from app.models.base import Base
-from app.models.game import GameEvent, GameProfile, Habit
+from app.models.game import Daily, DailyMiss, GameEvent, GameProfile, Habit
 from app.models.user import User
 from app.schemas.game import GameEventIn
 
@@ -202,3 +202,52 @@ async def test_concurrent_habit_clicks_serialize(sessions):
         assert habit.counter == 2
         # 1 + 0.9747**1: second click drifted from the first's write-back.
         assert habit.value == pytest.approx(1.0 + 0.9747**1.0, abs=1e-6)
+
+
+@requires_postgres
+async def test_concurrent_sweep_overlap_records_once(sessions):
+    """Two racing sweep ticks (rolling-deploy overlap, ADR 0001): the
+    (daily_id, scheduled_day) unique constraint decides the winner — the
+    miss row, HP loss, and ledger event land exactly once."""
+    uid = await _make_user(sessions, "race-s1@test.dev")
+    async with sessions() as s:
+        s.add(GameProfile(user_id=uid, hp=50.0))
+        daily = Daily(
+            user_id=uid,
+            title="d",
+            recurrence={"kind": "daily"},
+            streak=3,
+            created_at=datetime.now(timezone.utc) - timedelta(days=1),
+        )
+        s.add(daily)
+        await s.commit()
+        daily_id = daily.id
+    # Any instant past yesterday's 03:00-day-end+grace: fixed midday.
+    now = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+    await asyncio.gather(
+        daily_sweep.run_daily_miss_sweep(now=now, session_factory=sessions),
+        daily_sweep.run_daily_miss_sweep(now=now, session_factory=sessions),
+    )
+    async with sessions() as s:
+        misses = (
+            (await s.execute(select(DailyMiss).where(DailyMiss.daily_id == daily_id)))
+            .scalars()
+            .all()
+        )
+        assert len(misses) == 1
+        events = (
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == uid, GameEvent.type == "daily_missed"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) == 1
+        hp = (
+            await s.execute(select(GameProfile.hp).where(GameProfile.user_id == uid))
+        ).scalar_one()
+        assert hp == pytest.approx(48.0)  # 2 hp loss applied exactly once
