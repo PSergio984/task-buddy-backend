@@ -8,6 +8,7 @@ locally any URL works for a smoke run (e.g. sqlite+aiosqlite:///./conc.db).
 
 import asyncio
 import os
+import random
 from datetime import datetime, timezone
 
 import pytest
@@ -61,7 +62,9 @@ async def _ingest(Session, user_id: int, events: list[GameEventIn], attempts: in
     for attempt in range(attempts):
         async with Session() as s:
             try:
-                await service.ingest_events(s, user_id, events)
+                # Seeded so no crit ever rolls (0.84 > 0.03 chance) — XP
+                # assertions stay deterministic across runs and backends.
+                await service.ingest_events(s, user_id, events, rng=random.Random(0))
                 await s.commit()
                 return
             except (IntegrityError, OperationalError):
