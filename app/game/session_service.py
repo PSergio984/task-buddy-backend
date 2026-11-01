@@ -8,12 +8,13 @@ totals, crits and the death cascade behave identically to /events ingestion.
 """
 
 import random
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
+from app.game import habit_service
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
@@ -113,6 +114,7 @@ async def _persist_step(
         return
     seen.add(eid)
     outcome = {"scored": False}
+    day: date | None = None
     if profile is not None and event_type in (
         "focus_phase_completed",
         "stopwatch_milestone",
@@ -133,6 +135,24 @@ async def _persist_step(
         payload={**payload, "_outcome": outcome},
     )
     db.add(row)
+    # Focus-bound habits +click once per completed focus phase (resolve #44).
+    if (
+        event_type == "focus_phase_completed"
+        and outcome.get("scored")
+        and profile is not None
+        and day is not None
+    ):
+        await habit_service.auto_click_bound(
+            db,
+            user_id,
+            profile,
+            rates,
+            day,
+            source_eid=eid,
+            client_ts=at,
+            rng=_rng,
+            extra={"session_id": session.id},
+        )
 
 
 async def _evaluate(
