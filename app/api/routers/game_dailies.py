@@ -82,13 +82,16 @@ async def _daily_read(db: AsyncSession, daily: Daily, today: date) -> DailyRead:
     return (await _daily_reads(db, [daily], today))[0]
 
 
-def _item_rows(daily_id: int, items_in) -> list[DailyItem]:
-    """Checklist rows for a write; missing positions default to list order."""
+def _item_rows(daily_id: int, items_in: list[dict]) -> list[DailyItem]:
+    """Checklist rows for a write; missing positions default to list order.
+
+    Takes model_dump dicts (the PATCH path) — attribute access would fail.
+    """
     return [
         DailyItem(
             daily_id=daily_id,
-            title=item.title,
-            position=item.position if item.position is not None else i,
+            title=item["title"],
+            position=item["position"] if item.get("position") is not None else i,
         )
         for i, item in enumerate(items_in)
     ]
@@ -122,7 +125,7 @@ async def create_daily(
     )
     db.add(daily)
     await db.flush()  # populate daily.id before the item rows need it
-    db.add_all(_item_rows(daily.id, daily_in.items))
+    db.add_all(_item_rows(daily.id, [i.model_dump() for i in daily_in.items]))
     await db.commit()
     logger.info("daily created: user=%s daily=%s", user_id, daily.id)
     return await _daily_read(db, daily, today)
@@ -266,6 +269,7 @@ async def check_daily(
             today,
             eid=eid,
             client_ts=now,
+            done=check_in.done,
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc

@@ -23,7 +23,7 @@ the master mark. Streak increments once per completed schedulable day; the
 
 import random
 from datetime import date, datetime, time, timedelta, timezone
-from typing import Any
+from typing import Any, TypeGuard
 
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -59,7 +59,7 @@ def _parse_date(value: Any) -> date | None:
     return None
 
 
-def _is_int(value: Any) -> bool:
+def _is_int(value: Any) -> TypeGuard[int]:
     return isinstance(value, int) and not isinstance(value, bool)
 
 
@@ -136,7 +136,7 @@ def is_schedulable(rec: dict, day: date, anchor: date) -> bool:
         start = rec.get("anchor") or anchor
         if day < start:
             return False
-        return (day - start).days % rec["interval"] == 0
+        return bool((day - start).days % rec["interval"] == 0)
     if kind == "times_per_week":
         return True
     return False
@@ -206,6 +206,85 @@ def is_schedulable_day(daily: Daily, day: date) -> bool:
 # --- Check scoring ---------------------------------------------------------
 
 
+def _zero_outcome(daily: Daily, **flags) -> dict:
+    """A scored-but-unpaid outcome: state changed (restore/uncheck/all-paid
+    master) without touching xp/gold — mirrors the engine's outcome keys so
+    ledger readers see one shape."""
+    return {
+        "scored": True,
+        "crit": False,
+        "share": 0.0,
+        "streak": daily.streak,
+        "xp": 0,
+        "levels_gained": 0,
+        "gold": 0.0,
+        **flags,
+    }
+
+
+async def _transition_marks(
+    db: AsyncSession,
+    daily: Daily,
+    n_items: int,
+    item_id: int | None,
+    check_date: date,
+    done: bool,
+) -> tuple[float, bool, bool, str | None]:
+    """Mutate the day's mark rows for one check/uncheck.
+
+    Returns (share, first_completion, uncheck, reject_reason). The share is
+    0 for restores and all-paid masters; first_completion marks the day's
+    first transition to master-done (the only streak-bumping path);
+    reject_reason is the applied-but-unscored vocabulary.
+    """
+    checks = await game_crud.list_daily_checks(db, [daily.id], check_date, check_date)
+    marks = {c.daily_item_id: c for c in checks}
+    master_mark = marks.get(None)
+    master_was_done = master_mark is not None and master_mark.done
+    done_item_ids = {k for k, c in marks.items() if k is not None and c.done}
+    target = marks.get(item_id) if item_id is not None else master_mark
+    share = 0.0
+    first_completion = False
+    uncheck = False
+    reason: str | None = None
+    if not done:
+        if target is None or not target.done:
+            reason = "nothing_to_uncheck"
+        else:
+            target.done = False
+            uncheck = True
+            if item_id is not None and master_mark is not None and master_mark.done:
+                # An open item un-completes the day.
+                master_mark.done = False
+    elif master_was_done or (target is not None and target.done):
+        reason = "already_checked"
+    elif item_id is not None:
+        if target is None:
+            db.add(DailyCheck(daily_id=daily.id, daily_item_id=item_id, check_date=check_date))
+            share = 1.0 / n_items
+        else:
+            target.done = True  # restore — the share already paid once
+        # The target just transitioned to done either way (+1 vs the
+        # pre-read done set).
+        if len(done_item_ids) + 1 >= n_items:
+            # Last open item — flip/insert the whole-daily mark so the day
+            # reads completed to the sweep and to readers.
+            if master_mark is None:
+                db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
+                first_completion = True
+            else:
+                master_mark.done = True
+    else:
+        if master_mark is None:
+            db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
+            first_completion = True
+            # The whole-daily check pays the fraction items haven't.
+            share = (n_items - len(done_item_ids)) / n_items if n_items else 1.0
+        else:
+            master_mark.done = True  # restore — already paid once
+    return share, first_completion, uncheck, reason
+
+
 async def score_check(
     db: AsyncSession,
     daily: Daily,
@@ -220,17 +299,27 @@ async def score_check(
     client_ts: datetime,
     rng: random.Random | None = None,
     extra: dict | None = None,
+    done: bool | None = None,
 ) -> dict:
-    """Apply one check to a daily; write back state + ledger row; return outcome.
+    """Apply one check/uncheck to a daily; write back state + ledger row.
 
     Callers hold the user's profile lock. ValueError reasons are the
     unscored-ledger vocabulary: daily_inactive, check_date_out_of_range,
-    item_unresolvable — ingest records them on the stored row; the endpoint
-    maps them to 400. An already-checked target is not an error: it records
-    applied-but-unscored (the eid stays consumed) or returns a duplicate
-    response, same as habit clicks.
+    item_unresolvable, done_malformed — ingest records them on the stored
+    row; the endpoint maps them to 400.
+
+    Payout rules keep toggling un-farmable: a share pays once per
+    (daily, item, day) — restoring an unchecked mark flips it back for share
+    0, and the streak increments only on a day's FIRST completion (an
+    uncheck never claws back rewards or streak; a same-day re-check
+    restores without re-paying). Unchecking an item also un-marks the
+    whole-day mark — the day is no longer complete.
     """
     rng = rng if rng is not None else _rng
+    if done is None:
+        done = True
+    if not isinstance(done, bool):
+        raise ValueError("done_malformed")
     if not daily.active:
         raise ValueError("daily_inactive")
     if check_date > today or check_date < daily_anchor(daily):
@@ -238,43 +327,17 @@ async def score_check(
     if item_id is not None and all(i.id != item_id for i in items):
         raise ValueError("item_unresolvable")
 
-    checks = await game_crud.list_daily_checks(db, [daily.id], check_date, check_date)
-    done_item_ids = {c.daily_item_id for c in checks if c.daily_item_id is not None and c.done}
-    master_done = any(c.daily_item_id is None and c.done for c in checks)
-    n = len(items)
-    share = 0.0
-    completing = False
-    reason: str | None = None
-    if master_done or (item_id is not None and item_id in done_item_ids):
-        reason = "already_checked"
-    elif item_id is not None:
-        db.add(DailyCheck(daily_id=daily.id, daily_item_id=item_id, check_date=check_date))
-        share = 1.0 / n
-        if len(done_item_ids) + 1 >= n:
-            # Last open item — write the whole-daily mark so the day reads
-            # completed to the sweep and to readers.
-            db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
-            completing = True
-    else:
-        db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
-        completing = True
-        share = (n - len(done_item_ids)) / n if n else 1.0
-    if completing and is_schedulable_day(daily, check_date):
+    share, first_completion, uncheck, reason = await _transition_marks(
+        db, daily, len(items), item_id, check_date, done
+    )
+    if first_completion and is_schedulable_day(daily, check_date):
         daily.streak += 1
     if reason is not None:
         outcome: dict = {"scored": False, "reason": reason}
+    elif uncheck:
+        outcome = _zero_outcome(daily, uncheck=True)
     elif share <= 0:
-        # Master check on a fully item-paid day: completes the day and bumps
-        # the streak, but every share already paid out.
-        outcome = {
-            "scored": True,
-            "crit": False,
-            "share": 0.0,
-            "streak": daily.streak,
-            "xp": 0,
-            "levels_gained": 0,
-            "gold": 0.0,
-        }
+        outcome = _zero_outcome(daily)
     else:
         outcome = engine.apply_event(
             profile,
@@ -290,6 +353,7 @@ async def score_check(
         "daily_id": daily.id,
         "daily_item_id": item_id,
         "check_date": check_date.isoformat(),
+        "done": done,
         "share": share,
         "streak": daily.streak,
         "_outcome": outcome,
@@ -303,4 +367,7 @@ async def score_check(
             payload=payload,
         )
     )
+    # autoflush is disabled project-wide: a same-batch follow-up event (e.g.
+    # a queued uncheck) re-reads marks and must see this check's writes.
+    await db.flush()
     return outcome

@@ -59,6 +59,67 @@ async def _daily_items(
     return cache[daily_id]
 
 
+async def _ingest_daily_check(
+    db: AsyncSession,
+    user_id: int,
+    event: GameEventIn,
+    dailies_by_id: dict[int, Daily],
+    items_cache: dict[int, list[DailyItem]],
+    profile: GameProfile,
+    rates: GameRates,
+    today,
+    rng: random.Random,
+) -> None:
+    """Score one synced daily_check (or record it unscored).
+
+    The check day comes from the client's own timestamp — the same
+    UTC-normalized axis the ledger sorts on. Unresolvable dailies/items and
+    score_check rejections (daily_inactive / check_date_out_of_range /
+    item_unresolvable) are recorded applied-but-unscored like habit failures,
+    so the batch never wedges and the eid stays consumed.
+    """
+    daily = _daily_for_event(event, dailies_by_id)
+    item_id = event.payload.get("daily_item_id")
+    unscored_reason: str | None = None
+    if daily is None:
+        unscored_reason = "daily_unresolvable"
+    elif item_id is not None and (not isinstance(item_id, int) or isinstance(item_id, bool)):
+        unscored_reason = "item_unresolvable"
+    else:
+        items = await _daily_items(db, daily.id, items_cache)
+        try:
+            await daily_service.score_check(
+                db,
+                daily,
+                items,
+                item_id,
+                event.client_ts.date(),
+                profile,
+                rates,
+                today,
+                eid=event.client_event_id,
+                client_ts=event.client_ts,
+                rng=rng,
+                extra=event.payload,
+                done=event.payload.get("done"),
+            )
+        except ValueError as exc:
+            unscored_reason = str(exc)
+    if unscored_reason is not None:
+        db.add(
+            GameEvent(
+                user_id=user_id,
+                client_event_id=event.client_event_id,
+                type=event.type,
+                payload={
+                    **habit_service.clean_extra(event.payload),
+                    "_outcome": {"scored": False, "reason": unscored_reason},
+                },
+                client_ts=event.client_ts,
+            )
+        )
+
+
 async def ingest_events(
     db: AsyncSession,
     user_id: int,
@@ -152,53 +213,17 @@ async def ingest_events(
             status_by_idx[idx] = "applied"
             continue
         if event.type == "daily_check":
-            daily = _daily_for_event(event, dailies_by_id)
-            item_id = event.payload.get("daily_item_id")
-            unscored_reason: str | None = None
-            if daily is None:
-                unscored_reason = "daily_unresolvable"
-            elif item_id is not None and (
-                not isinstance(item_id, int) or isinstance(item_id, bool)
-            ):
-                unscored_reason = "item_unresolvable"
-            else:
-                items = await _daily_items(db, daily.id, daily_items_cache)
-                try:
-                    # The check day comes from the client's own timestamp —
-                    # the same UTC-normalized axis the ledger sorts on.
-                    await daily_service.score_check(
-                        db,
-                        daily,
-                        items,
-                        item_id,
-                        event.client_ts.date(),
-                        profile,
-                        rates,
-                        today,
-                        eid=event.client_event_id,
-                        client_ts=event.client_ts,
-                        rng=rng,
-                        extra=event.payload,
-                    )
-                except ValueError as exc:
-                    # score_check raises only the unscored-reason vocabulary
-                    # (daily_inactive / check_date_out_of_range /
-                    # item_unresolvable) — recorded like habit failures so the
-                    # batch never wedges and the eid stays consumed.
-                    unscored_reason = str(exc)
-            if unscored_reason is not None:
-                db.add(
-                    GameEvent(
-                        user_id=user_id,
-                        client_event_id=event.client_event_id,
-                        type=event.type,
-                        payload={
-                            **habit_service.clean_extra(event.payload),
-                            "_outcome": {"scored": False, "reason": unscored_reason},
-                        },
-                        client_ts=event.client_ts,
-                    )
-                )
+            await _ingest_daily_check(
+                db,
+                user_id,
+                event,
+                dailies_by_id,
+                daily_items_cache,
+                profile,
+                rates,
+                today,
+                rng,
+            )
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue

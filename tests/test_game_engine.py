@@ -2,7 +2,7 @@
 
 import math
 import random
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 
@@ -400,8 +400,12 @@ class TestApplyEvent:
     def test_profile_read_zeroes_stale_day_totals(self) -> None:
         # Counters only reset inside award_*; a next-day read must not
         # report yesterday's earnings as today's.
+        # from_profile compares in UTC — deriving the stale day from the
+        # local date flakes when local time is a calendar day ahead of UTC.
         profile = make_profile(
-            xp_today=40, gold_today=9.0, totals_day=date.today() - timedelta(days=1)
+            xp_today=40,
+            gold_today=9.0,
+            totals_day=datetime.now(timezone.utc).date() - timedelta(days=1),
         )
         read = GameProfileRead.from_profile(profile, 100)
         assert read.xp_today == 0

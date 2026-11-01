@@ -281,9 +281,7 @@ async def list_dailies(db: AsyncSession, user_id: int) -> list[Daily]:
 
 
 async def count_dailies(db: AsyncSession, user_id: int) -> int:
-    result = await db.execute(
-        select(func.count(Daily.id)).where(Daily.user_id == user_id)
-    )
+    result = await db.execute(select(func.count(Daily.id)).where(Daily.user_id == user_id))
     return int(result.scalar_one())
 
 
@@ -329,8 +327,6 @@ async def list_daily_checks(
 async def list_daily_misses(db: AsyncSession, daily_id: int, since: date) -> list[DailyMiss]:
     """Miss rows for one daily on/after `since` — sweep + freeze bookkeeping."""
     result = await db.execute(
-        select(DailyMiss).where(
-            DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day >= since
-        )
+        select(DailyMiss).where(DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day >= since)
     )
     return list(result.scalars().all())

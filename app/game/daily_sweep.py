@@ -40,9 +40,8 @@ def _unit_satisfied(rec: dict, unit: date, done_days: set[date], anchor: date) -
     """
     if rec["kind"] == "times_per_week":
         week_start = unit - timedelta(days=6)
-        return (
-            sum(1 for d in done_days if week_start <= d <= unit and d >= anchor)
-            >= rec["count"]
+        return bool(
+            sum(1 for d in done_days if week_start <= d <= unit and d >= anchor) >= rec["count"]
         )
     return unit in done_days
 
@@ -78,9 +77,7 @@ async def _evaluate_daily(
     for unit in units:
         if unit in missed_days or _unit_satisfied(rec, unit, done_days, anchor):
             continue
-        prior = daily_service.prior_units(
-            rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1
-        )
+        prior = daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
         # One miss per rolling 7 scheduled units is frozen: a miss in the
         # prior 6 units means this one breaks the streak.
         frozen = not any(u in missed_days for u in prior)
@@ -110,7 +107,7 @@ async def _evaluate_daily(
                     .with_for_update()
                 )
             ).scalar_one_or_none()
-        outcome = {"scored": False}
+        outcome: dict = {"scored": False}
         if profile is not None:
             outcome = engine.apply_event(
                 profile,
@@ -168,9 +165,7 @@ async def run_daily_miss_sweep(now: datetime | None = None) -> int:
         rates = await load_rates(db)
         last_id = 0
         while True:
-            batch = await game_crud.list_active_dailies(
-                db, last_id, daily_service.SWEEP_BATCH_SIZE
-            )
+            batch = await game_crud.list_active_dailies(db, last_id, daily_service.SWEEP_BATCH_SIZE)
             if not batch:
                 break
             last_id = batch[-1].id

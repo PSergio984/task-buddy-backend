@@ -665,10 +665,12 @@ class DailyRead(BaseModel):
 
 class DailyCheckIn(BaseModel):
     """One check on a daily (whole) or a sub-item; check_date backfills for
-    offline-queued check-ins and defaults to today (UTC)."""
+    offline-queued check-ins and defaults to today (UTC). done=false un-marks
+    without clawing back already-paid rewards."""
 
     daily_item_id: Optional[int] = Field(None, ge=1)
     check_date: Optional[date] = None
+    done: bool = True
     client_event_id: Optional[str] = Field(None, min_length=1, max_length=128)
 
     @field_validator("client_event_id")

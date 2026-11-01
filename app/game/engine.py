@@ -392,11 +392,7 @@ def _apply_daily_check(
         (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor * share
     )
     gold = math.ceil(
-        p
-        * mult
-        * (1 + rates.per_gold_pct * profile.per_stat)
-        * (1 + 0.01 * streak)
-        * share
+        p * mult * (1 + rates.per_gold_pct * profile.per_stat) * (1 + 0.01 * streak) * share
     )
     outcome: dict = {"scored": True, "crit": mult > 1.0, "share": share, "streak": streak}
     outcome.update(award_xp(profile, xp, rates, today))
