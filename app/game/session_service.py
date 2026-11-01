@@ -100,21 +100,24 @@ async def _persist_step(
     now: datetime,
     seen: set[str],
     habits: list[Habit] | None = None,
-) -> None:
+    auto_budget: int = 0,
+) -> int:
     """Write one transition's ledger row; score it when the engine knows how.
 
     `now` is the caller's evaluation instant — the same fallback used to build
     the dedupe id set, so a Step without `at` dedupes correctly on retry.
     `habits` is the caller's prefetched bound-habit list (auto-click fanout);
-    None means "no scored focus completion expected in this call".
+    None means "no scored focus completion expected in this call". Returns
+    the auto-clicks spent so the caller can run a per-evaluation budget —
+    0 for any step that doesn't fan out.
     """
     event_type, payload = _event_for(step, session)
     if event_type is None:
-        return
+        return 0
     at = step.at or now
     eid = _event_id(session.id, step.kind, step.phase_seq, at, step.extra.get("n", i))
     if eid in seen:
-        return
+        return 0
     seen.add(eid)
     outcome = {"scored": False}
     day: date | None = None
@@ -145,7 +148,7 @@ async def _persist_step(
         and profile is not None
         and day is not None
     ):
-        await habit_service.auto_click_bound(
+        return await habit_service.auto_click_bound(
             db,
             user_id,
             profile,
@@ -156,7 +159,9 @@ async def _persist_step(
             rng=_rng,
             habits=habits,
             server_extra={"session_id": session.id},
+            budget=auto_budget,
         )
+    return 0
 
 
 async def _evaluate(
@@ -189,6 +194,9 @@ async def _evaluate(
         # snapshot a concurrent /events award may have already overwritten.
         await db.refresh(profile)
     bound_habits: list[Habit] | None = None
+    # One fanout budget per evaluation — a long catch-up (many scored
+    # phases) times bound habits stays inside the profile lock briefly.
+    auto_budget = habit_service.MAX_AUTO_CLICKS_PER_EVAL
     if any(
         s.kind == "phase_completed" and s.scored and not s.extra.get("milestone_index")
         for s in steps
@@ -202,8 +210,18 @@ async def _evaluate(
     ]
     seen = await game_crud.existing_event_ids(db, user_id, ids)
     for i, step in enumerate(steps):
-        await _persist_step(
-            db, session, user_id, step, i, profile, rates, now, seen, habits=bound_habits
+        auto_budget -= await _persist_step(
+            db,
+            session,
+            user_id,
+            step,
+            i,
+            profile,
+            rates,
+            now,
+            seen,
+            habits=bound_habits,
+            auto_budget=auto_budget,
         )
     await db.flush()
     return phases, steps

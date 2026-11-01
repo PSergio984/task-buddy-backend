@@ -22,6 +22,13 @@ from app.models.game import GameEvent, GameProfile, Habit, HabitDirection
 # ingest builds for a batch.
 MAX_HABITS_PER_USER = 100
 
+# Max auto-clicks one batch ingest or session evaluation may spend — bound
+# habits x scored phase events would otherwise multiply into tens of
+# thousands of writes inside a single profile-locked transaction.
+# shortcut: spec says per-phase-per-bound-habit; a breach only triggers at
+# abuse scale (a legit week-offline sync is ≈ <=300 clicks).
+MAX_AUTO_CLICKS_PER_EVAL = 500
+
 # Keys a client may not plant on a ledger row: server-set markers only.
 # direction/difficulty/value/habit_id may stay in client extras — scored rows
 # overwrite them with the authoritative fields anyway and unscored rows keep
@@ -128,13 +135,18 @@ async def auto_click_bound(
     rng: random.Random | None = None,
     habits: list[Habit] | None = None,
     server_extra: dict | None = None,
-) -> None:
+    budget: int | None = None,
+) -> int:
     """One +click per focus-bound habit for a completed focus phase.
 
     The derived eid is deterministic per (habit, triggering event) — the
     trigger's own dedupe guards replays, and the reserved "server:" prefix
     keeps clients from squatting the id. A negative-only habit accepts no
     +click, so binding it is a stored no-op.
+
+    `budget` caps this call's share of the caller's per-evaluation fanout
+    (defaults to MAX_AUTO_CLICKS_PER_EVAL); returns the clicks spent so the
+    caller can decrement its running total.
 
     Spec notes (resolve #44 says literally "per focus_phase_completed"):
     - stopwatch_milestone deliberately does NOT auto-click — milestones are
@@ -146,8 +158,12 @@ async def auto_click_bound(
     """
     rng = rng if rng is not None else _rng
     candidates = habits if habits is not None else await game_crud.list_habits(db, user_id)
+    limit = MAX_AUTO_CLICKS_PER_EVAL if budget is None else budget
     digest = hashlib.sha1(source_eid.encode(), usedforsecurity=False).hexdigest()[:16]
+    spent = 0
     for habit in candidates:
+        if spent >= limit:
+            break
         if not habit.bind_focus or habit.direction is HabitDirection.NEGATIVE:
             continue
         await score_click(
@@ -160,5 +176,7 @@ async def auto_click_bound(
             eid=f"server:habit:{habit.id}:focus:{digest}",
             client_ts=client_ts,
             rng=rng,
-            server_extra={"auto": True, **(server_extra or {})},
+            server_extra={**(server_extra or {}), "auto": True},
         )
+        spent += 1
+    return spent

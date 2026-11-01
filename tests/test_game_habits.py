@@ -13,6 +13,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import game as game_crud
 from app.game import habit_service, service, session_service
 from app.models.game import FocusPhase, GameEvent, Habit
 from app.models.user import User
@@ -446,27 +447,28 @@ class TestHabitEventSync:
         # negative-only before sync — the event lands unscored instead of
         # 400ing, and the rest of the batch still applies.
         habit = await _create(authenticated_async_client)
+        bound = await _create(authenticated_async_client, title="bound", bind_focus=True)
         await authenticated_async_client.patch(
             f"{HABITS}/{habit['id']}", json={"direction": "negative"}
         )
-        response = await authenticated_async_client.post(
-            f"{GAME}/events",
-            json={
-                "events": [
-                    self._habit_event("h-1", {"habit_id": habit["id"], "direction": "positive"}),
-                    {
-                        "client_event_id": "f-1",
-                        "type": "focus_phase_completed",
-                        "client_ts": datetime.now(timezone.utc).isoformat(),
-                        "payload": {"minutes": 10, "difficulty": "easy"},
-                    },
-                ]
-            },
-        )
+        batch = {
+            "events": [
+                self._habit_event("h-1", {"habit_id": habit["id"], "direction": "positive"}),
+                {
+                    "client_event_id": "f-1",
+                    "type": "focus_phase_completed",
+                    "client_ts": datetime.now(timezone.utc).isoformat(),
+                    "payload": {"minutes": 10, "difficulty": "easy"},
+                },
+            ]
+        }
+        response = await authenticated_async_client.post(f"{GAME}/events", json=batch)
         assert response.status_code == 200, response.text
         assert response.json()["applied"] == 2
         profile = response.json()["profile"]
-        assert profile["xp_today"] == 10  # only the focus event scored
+        # 10 phase xp + 6 for the bound habit's auto-click; the mismatched
+        # click scored nothing.
+        assert profile["xp_today"] == 16
 
         result = await db.execute(select(GameEvent).where(GameEvent.client_event_id == "h-1"))
         outcome = result.scalar_one().payload["_outcome"]
@@ -474,6 +476,67 @@ class TestHabitEventSync:
         row = await _get_habit_row(db, habit["id"])
         assert row.counter == 0
         assert row.value == pytest.approx(0.0)
+
+        # The scored phase in the same batch still fans out to bound habits.
+        bound_row = await _get_habit_row(db, bound["id"])
+        assert bound_row.counter == 1
+
+        # An unscored eid is still consumed — replay dedupes; a corrected
+        # click must resend under a NEW client_event_id.
+        replay = await authenticated_async_client.post(f"{GAME}/events", json=batch)
+        assert replay.json()["duplicates"] == 2
+
+    async def test_forged_marker_keys_stripped_from_stored_rows(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # Reserved server markers in a client payload never reach the ledger
+        # row; legit extras pass through untouched.
+        habit = await _create(authenticated_async_client)
+        await _create(authenticated_async_client, title="bound", bind_focus=True)
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    self._habit_event(
+                        "h-1",
+                        {
+                            "habit_id": habit["id"],
+                            "direction": "positive",
+                            "auto": True,
+                            "session_id": 5,
+                            "note": "legit",
+                        },
+                    ),
+                    {
+                        "client_event_id": "f-1",
+                        "type": "focus_phase_completed",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"minutes": 10, "auto": True, "session_id": 5},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 2
+        h1 = (
+            await db.execute(select(GameEvent).where(GameEvent.client_event_id == "h-1"))
+        ).scalar_one()
+        assert h1.payload["note"] == "legit"
+        assert "auto" not in h1.payload
+        assert "session_id" not in h1.payload
+        f1 = (
+            await db.execute(select(GameEvent).where(GameEvent.client_event_id == "f-1"))
+        ).scalar_one()
+        assert f1.payload["minutes"] == 10
+        assert "auto" not in f1.payload
+        assert "session_id" not in f1.payload
+        # ...while the phase's genuine auto-click row still stamps its marker.
+        auto_rows = (
+            (await db.execute(select(GameEvent).where(GameEvent.client_event_id.like("server:%"))))
+            .scalars()
+            .all()
+        )
+        assert [r.payload["auto"] for r in auto_rows] == [True]
 
     @pytest.mark.parametrize("bad_id", [999999, "not-an-id", True])
     async def test_unresolvable_habit_event_records_unscored(
@@ -724,3 +787,74 @@ class TestFocusBinding:
         )
         row = await _get_habit_row(db, habit["id"])
         assert row.counter == 1
+
+    async def test_auto_click_budget_bounds_fanout(
+        self,
+        authenticated_async_client: AsyncClient,
+        db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        # shortcut (habit_service): fanout is per-phase-per-bound-habit, but
+        # the per-evaluation budget caps abuse-scale claimed batches.
+        monkeypatch.setattr(habit_service, "MAX_AUTO_CLICKS_PER_EVAL", 3)
+        bound_a = await _create(authenticated_async_client, title="a", bind_focus=True)
+        bound_b = await _create(authenticated_async_client, title="b", bind_focus=True)
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": f"f-{i}",
+                        "type": "focus_phase_completed",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    }
+                    for i in range(3)
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 3
+        # All three phases scored; only the budget's share of fanout wrote.
+        assert response.json()["profile"]["xp_today"] >= 30
+        result = await db.execute(select(GameEvent).where(GameEvent.type == "habit_click"))
+        assert len(result.scalars().all()) == 3
+        # Candidates fire in id order until the budget runs out.
+        assert (await _get_habit_row(db, bound_a["id"])).counter == 2
+        assert (await _get_habit_row(db, bound_b["id"])).counter == 1
+
+    async def test_multi_phase_catchup_fetches_bound_habits_once(
+        self,
+        authenticated_async_client: AsyncClient,
+        db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        habit = await _create(authenticated_async_client, bind_focus=True)
+        session = await self._start_session(
+            authenticated_async_client,
+            auto_start_focus=True,  # chain both focus phases in one catch-up
+            phases=[
+                {"kind": "focus", "minutes": 10},
+                {"kind": "break", "minutes": 5},
+                {"kind": "focus", "minutes": 10},
+            ],
+        )
+        await db.execute(
+            update(FocusPhase)
+            .where(FocusPhase.session_id == session["id"], FocusPhase.seq == 0)
+            .values(started_at=_ago(26 * 60))
+        )
+        await db.commit()
+        calls = 0
+        original = game_crud.list_habits
+
+        async def counting(db_: AsyncSession, user_id_: int) -> list[Habit]:
+            nonlocal calls
+            calls += 1
+            return await original(db_, user_id_)
+
+        monkeypatch.setattr(game_crud, "list_habits", counting)
+        await authenticated_async_client.get(f"{SESSIONS}/active")
+        row = await _get_habit_row(db, habit["id"])
+        assert row.counter == 2  # both focus phases auto-clicked
+        assert calls == 1  # one bound-habit fetch served the whole evaluation

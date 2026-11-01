@@ -71,6 +71,10 @@ async def ingest_events(
     if any(e.type in ("habit_click", "focus_phase_completed") for e in events):
         habits_by_id = {h.id: h for h in await game_crud.list_habits(db, user_id)}
     bound_habits = [h for h in habits_by_id.values() if h.bind_focus]
+    # One fanout budget per batch: bound habits x scored phase claims could
+    # otherwise multiply into tens of thousands of writes inside this
+    # profile-locked transaction (see habit_service.MAX_AUTO_CLICKS_PER_EVAL).
+    auto_budget = habit_service.MAX_AUTO_CLICKS_PER_EVAL
     for idx, event in ordered:
         if event.client_event_id in seen:
             status_by_idx[idx] = "duplicate"
@@ -101,6 +105,12 @@ async def ingest_events(
                 # habit_unresolvable — no owned row (deleted/foreign/malformed
                 # /missing id); direction_mismatch — the queued click predates
                 # a direction PATCH or carries a malformed direction.
+                # Consumer notes: the eid is permanently consumed — a client
+                # correcting a rejected click must resend it under a NEW
+                # client_event_id. Unscored rows keep client-claimed fields
+                # (value/difficulty) at the same top-level keys that are
+                # authoritative on scored rows — "_outcome.scored" is the
+                # discriminator readers must check.
                 unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
                 db.add(
                     GameEvent(
@@ -137,7 +147,7 @@ async def ingest_events(
         if event.type == "focus_phase_completed" and outcome.get("scored") and bound_habits:
             # Offline-run sessions trigger the same focus binding as the
             # server-side session engine (resolve #44: +click once per phase).
-            await habit_service.auto_click_bound(
+            auto_budget -= await habit_service.auto_click_bound(
                 db,
                 user_id,
                 profile,
@@ -147,6 +157,7 @@ async def ingest_events(
                 client_ts=event.client_ts,
                 rng=rng,
                 habits=bound_habits,
+                budget=auto_budget,
             )
         seen.add(event.client_event_id)
         status_by_idx[idx] = "applied"
