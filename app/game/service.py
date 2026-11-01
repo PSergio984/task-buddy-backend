@@ -13,9 +13,9 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import engine, habit_service
+from app.game import daily_service, engine, habit_service
 from app.game.engine import GameRates
-from app.models.game import GameEvent, GameProfile, Habit
+from app.models.game import Daily, DailyItem, GameEvent, GameProfile, Habit
 from app.schemas.game import GameEventIn, GameEventResult
 
 _rng = random.Random()
@@ -37,6 +37,26 @@ def _habit_for_event(event: GameEventIn, habits_by_id: dict[int, Habit]) -> Habi
     if isinstance(habit_id, int) and not isinstance(habit_id, bool):
         return habits_by_id.get(habit_id)
     return None
+
+
+def _daily_for_event(event: GameEventIn, dailies_by_id: dict[int, Daily]) -> Daily | None:
+    """Resolve the daily a client daily_check targets; None = unresolvable.
+
+    Same trust rule as _habit_for_event: only an owned row can score.
+    """
+    daily_id = event.payload.get("daily_id")
+    if isinstance(daily_id, int) and not isinstance(daily_id, bool):
+        return dailies_by_id.get(daily_id)
+    return None
+
+
+async def _daily_items(
+    db: AsyncSession, daily_id: int, cache: dict[int, list[DailyItem]]
+) -> list[DailyItem]:
+    """Checklist rows for one daily, memoized across the batch."""
+    if daily_id not in cache:
+        cache[daily_id] = await game_crud.list_daily_items(db, [daily_id])
+    return cache[daily_id]
 
 
 async def ingest_events(
@@ -70,6 +90,10 @@ async def ingest_events(
     habits_by_id: dict[int, Habit] = {}
     if any(e.type in ("habit_click", "focus_phase_completed") for e in events):
         habits_by_id = {h.id: h for h in await game_crud.list_habits(db, user_id)}
+    dailies_by_id: dict[int, Daily] = {}
+    if any(e.type == "daily_check" for e in events):
+        dailies_by_id = {d.id: d for d in await game_crud.list_dailies(db, user_id)}
+    daily_items_cache: dict[int, list[DailyItem]] = {}
     bound_habits = [h for h in habits_by_id.values() if h.bind_focus]
     # One fanout budget per batch: bound habits x scored phase claims could
     # otherwise multiply into tens of thousands of writes inside this
@@ -112,6 +136,57 @@ async def ingest_events(
                 # authoritative on scored rows — "_outcome.scored" is the
                 # discriminator readers must check.
                 unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
+                db.add(
+                    GameEvent(
+                        user_id=user_id,
+                        client_event_id=event.client_event_id,
+                        type=event.type,
+                        payload={
+                            **habit_service.clean_extra(event.payload),
+                            "_outcome": {"scored": False, "reason": unscored_reason},
+                        },
+                        client_ts=event.client_ts,
+                    )
+                )
+            seen.add(event.client_event_id)
+            status_by_idx[idx] = "applied"
+            continue
+        if event.type == "daily_check":
+            daily = _daily_for_event(event, dailies_by_id)
+            item_id = event.payload.get("daily_item_id")
+            unscored_reason: str | None = None
+            if daily is None:
+                unscored_reason = "daily_unresolvable"
+            elif item_id is not None and (
+                not isinstance(item_id, int) or isinstance(item_id, bool)
+            ):
+                unscored_reason = "item_unresolvable"
+            else:
+                items = await _daily_items(db, daily.id, daily_items_cache)
+                try:
+                    # The check day comes from the client's own timestamp —
+                    # the same UTC-normalized axis the ledger sorts on.
+                    await daily_service.score_check(
+                        db,
+                        daily,
+                        items,
+                        item_id,
+                        event.client_ts.date(),
+                        profile,
+                        rates,
+                        today,
+                        eid=event.client_event_id,
+                        client_ts=event.client_ts,
+                        rng=rng,
+                        extra=event.payload,
+                    )
+                except ValueError as exc:
+                    # score_check raises only the unscored-reason vocabulary
+                    # (daily_inactive / check_date_out_of_range /
+                    # item_unresolvable) — recorded like habit failures so the
+                    # batch never wedges and the eid stays consumed.
+                    unscored_reason = str(exc)
+            if unscored_reason is not None:
                 db.add(
                     GameEvent(
                         user_id=user_id,

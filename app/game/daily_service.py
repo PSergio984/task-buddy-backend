@@ -1,0 +1,306 @@
+"""Dailies orchestration: recurrence evaluation, check scoring, streaks.
+
+One scoring path for every check — the endpoint's synchronous check and an
+offline-synced daily_check event both land here. The stored Daily/DailyCheck
+rows (never client-claimed ones) drive share and streak math; each check
+writes back the day's completion state and lands a daily_check row in the
+event ledger.
+
+Recurrence contract (JSONB `Daily.recurrence`):
+- {"kind": "daily"} — every day
+- {"kind": "weekdays", "days": [0..6]} — specific weekdays, 0=Monday
+- {"kind": "every_n_days", "interval": N, "anchor": "YYYY-MM-DD"} — every N
+  days from the anchor (the write day when the client omits it)
+- {"kind": "times_per_week", "count": C} — C completed days per ISO week
+  (Mon–Sun); the scheduled unit is the week, keyed by its Sunday.
+
+Payout contract: a daily with N items pays each item check 1/N of the base
+reward; the whole-daily (master) check pays the remaining fraction so a day
+never pays more than the base. Checking the last open item auto-completes
+the master mark. Streak increments once per completed schedulable day; the
++1%/day gold bonus applies to the post-increment streak.
+"""
+
+import random
+from datetime import date, datetime, time, timedelta, timezone
+from typing import Any
+
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.crud import game as game_crud
+from app.game import engine
+from app.game.engine import GameRates
+from app.game.habit_service import clean_extra
+from app.models.game import Daily, DailyCheck, DailyItem, GameEvent, GameProfile
+
+# Per-user cap — bounds the per-check item fanout and the sweep scan.
+MAX_DAILIES_PER_USER = 100
+
+# Sweep tunables — infra constants, deliberately not economy rates.
+SWEEP_BATCH_SIZE = 200
+GRACE_HOURS = 3  # a scheduled day is evaluated at next-day 03:00 (user tz)
+LOOKBACK_DAYS = 35  # bounds post-downtime catch-up; also covers 7 weekly units
+FREEZE_WINDOW_UNITS = 7  # one miss absorbed per rolling 7 scheduled units
+
+_rng = random.Random()
+
+
+# --- Recurrence (pure functions; malformed blobs evaluate to None) ---------
+
+
+def _parse_date(value: Any) -> date | None:
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    if isinstance(value, str):
+        try:
+            return date.fromisoformat(value)
+        except ValueError:
+            return None
+    return None
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def parse_recurrence(raw: Any) -> dict | None:
+    """Normalize a stored recurrence blob; None = malformed (sweep skips it).
+
+    The write path validates through the schemas, but the stored JSONB is a
+    trust boundary for the sweep: a bad blob must skip the daily, not crash
+    the tick.
+    """
+    if not isinstance(raw, dict):
+        return None
+    kind = raw.get("kind")
+    if kind == "daily":
+        return {"kind": "daily"}
+    if kind == "weekdays":
+        days = raw.get("days")
+        if not isinstance(days, list):
+            return None
+        clean = sorted({d for d in days if _is_int(d) and 0 <= d <= 6})
+        if not clean:
+            return None
+        return {"kind": "weekdays", "days": clean}
+    if kind == "every_n_days":
+        interval = raw.get("interval")
+        if not _is_int(interval) or not 1 <= interval <= 365:
+            return None
+        return {
+            "kind": "every_n_days",
+            "interval": interval,
+            "anchor": _parse_date(raw.get("anchor")),
+        }
+    if kind == "times_per_week":
+        count = raw.get("count")
+        if not _is_int(count) or not 1 <= count <= 7:
+            return None
+        return {"kind": "times_per_week", "count": count}
+    return None
+
+
+def recurrence_for_storage(recurrence: dict, today: date) -> dict:
+    """The blob persisted on write: fills the every_n_days anchor with the
+    write day so phase never silently depends on creation time."""
+    rec = dict(recurrence)
+    if rec.get("kind") == "every_n_days" and not rec.get("anchor"):
+        rec["anchor"] = today.isoformat()
+    return rec
+
+
+def daily_anchor(daily: Daily) -> date:
+    """The earliest schedulable day: the daily's creation day (UTC)."""
+    return daily.created_at.date()
+
+
+def week_end(day: date) -> date:
+    """The ISO week's Sunday — the unit key for times_per_week recurrences."""
+    return day + timedelta(days=6 - day.weekday())
+
+
+def is_schedulable(rec: dict, day: date, anchor: date) -> bool:
+    """Whether `day` accepts check-ins / is a scheduled day for `rec`.
+
+    times_per_week has no fixed days — every day at/after the anchor is a
+    check-in day; its scheduled unit is the week, not the day.
+    """
+    if day < anchor:
+        return False
+    kind = rec["kind"]
+    if kind == "daily":
+        return True
+    if kind == "weekdays":
+        return day.weekday() in rec["days"]
+    if kind == "every_n_days":
+        start = rec.get("anchor") or anchor
+        if day < start:
+            return False
+        return (day - start).days % rec["interval"] == 0
+    if kind == "times_per_week":
+        return True
+    return False
+
+
+def scheduled_units(rec: dict, anchor: date, start: date, end: date) -> list[date]:
+    """Ordered scheduled-unit days in [start, end].
+
+    For day-based recurrences the unit is the scheduled day itself; for
+    times_per_week it is each week-end (Sunday) covering a week with at
+    least one schedulable day.
+    """
+    if start > end:
+        return []
+    if rec["kind"] == "times_per_week":
+        units = []
+        d = max(week_end(start), week_end(anchor))
+        while d <= end:
+            units.append(d)
+            d += timedelta(days=7)
+        return units
+    units = []
+    day = start
+    while day <= end:
+        if is_schedulable(rec, day, anchor):
+            units.append(day)
+        day += timedelta(days=1)
+    return units
+
+
+def prior_units(rec: dict, anchor: date, unit: date, n: int) -> list[date]:
+    """The n scheduled units immediately before `unit`, newest first —
+    the rolling window the streak-freeze rule inspects."""
+    out: list[date] = []
+    if rec["kind"] == "times_per_week":
+        d = unit - timedelta(days=7)
+        first = week_end(anchor)
+        while len(out) < n and d >= first:
+            out.append(d)
+            d -= timedelta(days=7)
+        return out
+    d = unit - timedelta(days=1)
+    scanned = 0
+    # The scan cap bounds pathological intervals (e.g. every 365 days: six
+    # prior units is ~6 years of day-steps) — still cheap, never unbounded.
+    while len(out) < n and d >= anchor and scanned < 3700:
+        if is_schedulable(rec, d, anchor):
+            out.append(d)
+        d -= timedelta(days=1)
+        scanned += 1
+    return out
+
+
+def eval_due(unit: date, now: datetime, grace_hours: int = GRACE_HOURS) -> bool:
+    """Whether the unit's day-end + grace instant has passed."""
+    deadline = datetime.combine(unit, time(0), tzinfo=timezone.utc) + timedelta(
+        days=1, hours=grace_hours
+    )
+    return now >= deadline
+
+
+def is_schedulable_day(daily: Daily, day: date) -> bool:
+    rec = parse_recurrence(daily.recurrence)
+    return rec is not None and is_schedulable(rec, day, daily_anchor(daily))
+
+
+# --- Check scoring ---------------------------------------------------------
+
+
+async def score_check(
+    db: AsyncSession,
+    daily: Daily,
+    items: list[DailyItem],
+    item_id: int | None,
+    check_date: date,
+    profile: GameProfile,
+    rates: GameRates,
+    today: date,
+    *,
+    eid: str,
+    client_ts: datetime,
+    rng: random.Random | None = None,
+    extra: dict | None = None,
+) -> dict:
+    """Apply one check to a daily; write back state + ledger row; return outcome.
+
+    Callers hold the user's profile lock. ValueError reasons are the
+    unscored-ledger vocabulary: daily_inactive, check_date_out_of_range,
+    item_unresolvable — ingest records them on the stored row; the endpoint
+    maps them to 400. An already-checked target is not an error: it records
+    applied-but-unscored (the eid stays consumed) or returns a duplicate
+    response, same as habit clicks.
+    """
+    rng = rng if rng is not None else _rng
+    if not daily.active:
+        raise ValueError("daily_inactive")
+    if check_date > today or check_date < daily_anchor(daily):
+        raise ValueError("check_date_out_of_range")
+    if item_id is not None and all(i.id != item_id for i in items):
+        raise ValueError("item_unresolvable")
+
+    checks = await game_crud.list_daily_checks(db, [daily.id], check_date, check_date)
+    done_item_ids = {c.daily_item_id for c in checks if c.daily_item_id is not None and c.done}
+    master_done = any(c.daily_item_id is None and c.done for c in checks)
+    n = len(items)
+    share = 0.0
+    completing = False
+    reason: str | None = None
+    if master_done or (item_id is not None and item_id in done_item_ids):
+        reason = "already_checked"
+    elif item_id is not None:
+        db.add(DailyCheck(daily_id=daily.id, daily_item_id=item_id, check_date=check_date))
+        share = 1.0 / n
+        if len(done_item_ids) + 1 >= n:
+            # Last open item — write the whole-daily mark so the day reads
+            # completed to the sweep and to readers.
+            db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
+            completing = True
+    else:
+        db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=check_date))
+        completing = True
+        share = (n - len(done_item_ids)) / n if n else 1.0
+    if completing and is_schedulable_day(daily, check_date):
+        daily.streak += 1
+    if reason is not None:
+        outcome: dict = {"scored": False, "reason": reason}
+    elif share <= 0:
+        # Master check on a fully item-paid day: completes the day and bumps
+        # the streak, but every share already paid out.
+        outcome = {
+            "scored": True,
+            "crit": False,
+            "share": 0.0,
+            "streak": daily.streak,
+            "xp": 0,
+            "levels_gained": 0,
+            "gold": 0.0,
+        }
+    else:
+        outcome = engine.apply_event(
+            profile,
+            "daily_check",
+            {"difficulty": daily.difficulty, "share": share, "streak": daily.streak},
+            rates,
+            rng.random(),
+            rng,
+            today,
+        )
+    payload = {
+        **clean_extra(extra),
+        "daily_id": daily.id,
+        "daily_item_id": item_id,
+        "check_date": check_date.isoformat(),
+        "share": share,
+        "streak": daily.streak,
+        "_outcome": outcome,
+    }
+    db.add(
+        GameEvent(
+            user_id=daily.user_id,
+            client_event_id=eid,
+            type="daily_check",
+            client_ts=client_ts,
+            payload=payload,
+        )
+    )
+    return outcome

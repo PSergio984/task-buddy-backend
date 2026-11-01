@@ -3,7 +3,7 @@
 import json
 import re
 from datetime import date, datetime, timezone
-from typing import Literal, Optional
+from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -486,4 +486,203 @@ class SessionActionResponse(BaseModel):
 
     session: FocusSessionOut
     profile: GameProfileRead | None
+    server_time: datetime
+
+
+# --- Dailies (issue #63) ---------------------------------------------------
+
+
+class RecurrenceDaily(BaseModel):
+    """Every day."""
+
+    kind: Literal["daily"] = "daily"
+
+
+class RecurrenceWeekdays(BaseModel):
+    """Specific weekdays; Python convention 0=Monday .. 6=Sunday."""
+
+    kind: Literal["weekdays"]
+    days: list[int] = Field(min_length=1, max_length=7)
+
+    @field_validator("days")
+    @classmethod
+    def check_days(cls, v: list[int]) -> list[int]:
+        if any(not isinstance(d, int) or isinstance(d, bool) or d < 0 or d > 6 for d in v):
+            raise ValueError("days must be integers 0 (Mon) .. 6 (Sun)")
+        return sorted(set(v))
+
+
+class RecurrenceEveryNDays(BaseModel):
+    """Every N days from an anchor (defaults to the write day server-side)."""
+
+    kind: Literal["every_n_days"]
+    interval: int = Field(ge=1, le=365)
+    anchor: Optional[date] = None
+
+
+class RecurrenceTimesPerWeek(BaseModel):
+    """C completions per ISO week (Mon–Sun); any day is a check-in day."""
+
+    kind: Literal["times_per_week"]
+    count: int = Field(ge=1, le=7)
+
+
+RecurrenceIn = Annotated[
+    RecurrenceDaily | RecurrenceWeekdays | RecurrenceEveryNDays | RecurrenceTimesPerWeek,
+    Field(discriminator="kind"),
+]
+
+
+class DailyItemIn(BaseModel):
+    """A checklist sub-item; position defaults to list order."""
+
+    title: str = Field(min_length=1, max_length=200)
+    position: Optional[int] = Field(None, ge=0)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: str) -> str:
+        return _clean_title(v) or v
+
+
+class DailyIn(BaseModel):
+    """A new daily: recurrence + optional checklist + reminder times."""
+
+    title: str = Field(min_length=1, max_length=200)
+    notes: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    difficulty: _Difficulty = "easy"
+    recurrence: RecurrenceIn = Field(default_factory=RecurrenceDaily)
+    items: list[DailyItemIn] = Field(default_factory=list, max_length=30)
+    reminder_times: list[str] = Field(default_factory=list, max_length=24)
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: str) -> str:
+        return _clean_title(v) or v
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+    @field_validator("reminder_times")
+    @classmethod
+    def check_reminder_times(cls, v: list[str]) -> list[str]:
+        return _clean_reminder_times(v) or []
+
+
+class DailyUpdate(BaseModel):
+    """Partial update; streak is engine-owned and never mutable. A provided
+    `items` list fully replaces the checklist."""
+
+    title: Optional[str] = Field(None, min_length=1, max_length=200)
+    notes: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    difficulty: Optional[_Difficulty] = None
+    recurrence: Optional[RecurrenceIn] = None
+    items: Optional[list[DailyItemIn]] = Field(None, max_length=30)
+    reminder_times: Optional[list[str]] = Field(None, max_length=24)
+    active: Optional[bool] = None
+
+    @field_validator("title")
+    @classmethod
+    def normalize_title(cls, v: Optional[str]) -> Optional[str]:
+        return _clean_title(v)
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_notes(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+    @field_validator("reminder_times")
+    @classmethod
+    def check_reminder_times(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _clean_reminder_times(v)
+
+    @model_validator(mode="after")
+    def no_null_on_required_fields(self) -> "DailyUpdate":
+        for name in ("title", "difficulty", "recurrence", "items", "reminder_times", "active"):
+            if name in self.model_fields_set and getattr(self, name) is None:
+                raise ValueError(f"{name} cannot be null")
+        return self
+
+
+class DailyItemRead(BaseModel):
+    id: int
+    title: str
+    position: int
+    done_today: bool = False
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DailyRead(BaseModel):
+    """Full daily row plus the checklist and today's completion state."""
+
+    id: int
+    title: str
+    notes: str | None
+    difficulty: str
+    recurrence: dict
+    streak: int
+    active: bool
+    reminder_times: list[str]
+    items: list[DailyItemRead]
+    completed_today: bool
+    created_at: datetime
+    updated_at: datetime
+
+    @classmethod
+    def from_rows(
+        cls,
+        daily,
+        items: list,
+        done_item_ids: set[int],
+        master_done: bool,
+    ) -> "DailyRead":
+        return cls(
+            id=daily.id,
+            title=daily.title,
+            notes=daily.notes,
+            difficulty=daily.difficulty,
+            recurrence=daily.recurrence or {},
+            streak=daily.streak,
+            active=daily.active,
+            reminder_times=daily.reminder_times or [],
+            items=[
+                DailyItemRead(
+                    id=item.id,
+                    title=item.title,
+                    position=item.position,
+                    done_today=item.id in done_item_ids,
+                )
+                for item in items
+            ],
+            completed_today=master_done,
+            created_at=daily.created_at,
+            updated_at=daily.updated_at,
+        )
+
+
+class DailyCheckIn(BaseModel):
+    """One check on a daily (whole) or a sub-item; check_date backfills for
+    offline-queued check-ins and defaults to today (UTC)."""
+
+    daily_item_id: Optional[int] = Field(None, ge=1)
+    check_date: Optional[date] = None
+    client_event_id: Optional[str] = Field(None, min_length=1, max_length=128)
+
+    @field_validator("client_event_id")
+    @classmethod
+    def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
+        if v is not None and v.startswith("server:"):
+            raise ValueError("client_event_id prefix 'server:' is reserved")
+        return v
+
+
+class DailyCheckResponse(BaseModel):
+    """Post-check daily plus authoritative totals for the HUD."""
+
+    daily: DailyRead
+    profile: GameProfileRead
+    status: Literal["applied", "duplicate"]
     server_time: datetime

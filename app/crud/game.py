@@ -2,11 +2,15 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.game import (
+    Daily,
+    DailyCheck,
+    DailyItem,
+    DailyMiss,
     DiaryEntry,
     FocusPhase,
     FocusSession,
@@ -261,4 +265,72 @@ async def get_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit | No
 async def list_habits(db: AsyncSession, user_id: int) -> list[Habit]:
     """All of the user's habits in creation order."""
     result = await db.execute(select(Habit).where(Habit.user_id == user_id).order_by(Habit.id))
+    return list(result.scalars().all())
+
+
+async def get_daily(db: AsyncSession, user_id: int, daily_id: int) -> Daily | None:
+    """One daily by id, scoped to its owner."""
+    result = await db.execute(select(Daily).where(Daily.id == daily_id, Daily.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def list_dailies(db: AsyncSession, user_id: int) -> list[Daily]:
+    """All of the user's dailies in creation order."""
+    result = await db.execute(select(Daily).where(Daily.user_id == user_id).order_by(Daily.id))
+    return list(result.scalars().all())
+
+
+async def count_dailies(db: AsyncSession, user_id: int) -> int:
+    result = await db.execute(
+        select(func.count(Daily.id)).where(Daily.user_id == user_id)
+    )
+    return int(result.scalar_one())
+
+
+async def list_active_dailies(db: AsyncSession, after_id: int, limit: int) -> list[Daily]:
+    """One id-ordered page of active dailies for the miss sweep."""
+    result = await db.execute(
+        select(Daily)
+        .where(Daily.active.is_(True), Daily.id > after_id)
+        .order_by(Daily.id)
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_items(db: AsyncSession, daily_ids: list[int]) -> list[DailyItem]:
+    """Checklist rows for the given dailies in position order."""
+    if not daily_ids:
+        return []
+    result = await db.execute(
+        select(DailyItem)
+        .where(DailyItem.daily_id.in_(daily_ids))
+        .order_by(DailyItem.daily_id, DailyItem.position, DailyItem.id)
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_checks(
+    db: AsyncSession, daily_ids: list[int], start: date, end: date
+) -> list[DailyCheck]:
+    """Check marks for the given dailies on check_date in [start, end]."""
+    if not daily_ids:
+        return []
+    result = await db.execute(
+        select(DailyCheck).where(
+            DailyCheck.daily_id.in_(daily_ids),
+            DailyCheck.check_date >= start,
+            DailyCheck.check_date <= end,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_misses(db: AsyncSession, daily_id: int, since: date) -> list[DailyMiss]:
+    """Miss rows for one daily on/after `since` — sweep + freeze bookkeeping."""
+    result = await db.execute(
+        select(DailyMiss).where(
+            DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day >= since
+        )
+    )
     return list(result.scalars().all())
