@@ -221,9 +221,7 @@ def resume(session: FocusSession, phase: FocusPhase | None, now: datetime) -> St
     phase.paused_seconds = (phase.paused_seconds or 0) + extra
     phase.pause_started_at = None
     phase.status = ACTIVE
-    return Step(
-        "phase_resumed", phase_seq=phase.seq, at=now, extra={"n": phase.pause_count}
-    )
+    return Step("phase_resumed", phase_seq=phase.seq, at=now, extra={"n": phase.pause_count})
 
 
 def advance(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[Step]:

@@ -231,9 +231,7 @@ class TestPauseResume:
         await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
         await authenticated_async_client.post(f"{SESSIONS}/{sid}/resume")
         await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
-        events = await db.execute(
-            select(GameEvent).where(GameEvent.type == "phase_paused")
-        )
+        events = await db.execute(select(GameEvent).where(GameEvent.type == "phase_paused"))
         assert len(events.scalars().all()) == 2
 
     async def test_pause_seconds_budget_abandons(
