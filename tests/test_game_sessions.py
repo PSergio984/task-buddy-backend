@@ -166,7 +166,7 @@ class TestStart:
         self, authenticated_async_client: AsyncClient
     ) -> None:
         """Session-lifecycle types are server-authored — clients can't claim
-        milestone/phase XP through /game/events."""
+        milestone XP or forge lifecycle history through /game/events."""
         response = await authenticated_async_client.post(
             "/api/v1/game/events",
             json={
