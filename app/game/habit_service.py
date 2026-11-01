@@ -84,8 +84,9 @@ async def score_click(
     "_outcome" (direction/difficulty likewise override any client extras).
     Callers hold the user's profile lock; the flush+refresh reloads the habit
     against the latest committed state — including this transaction's own
-    earlier writes — so back-to-back clicks in one batch drift sequentially
-    and a concurrently committed row update can't be lost.
+    earlier writes (autoflush is off — refresh alone re-reads the committed
+    row and discards pending writes) — so back-to-back clicks in one batch
+    drift sequentially and a concurrently committed row update can't be lost.
     """
     rng = rng if rng is not None else _rng
     await db.flush()

@@ -142,9 +142,10 @@ def _habit_click(eid: str, habit_id: int) -> GameEventIn:
 
 async def _make_habit(Session, user_id: int) -> int:
     async with Session() as s:
-        s.add(Habit(user_id=user_id, title="h"))
+        habit = Habit(user_id=user_id, title="h")
+        s.add(habit)
         await s.commit()
-        return (await s.execute(select(Habit.id))).scalar_one()
+        return habit.id
 
 
 async def test_concurrent_same_eid_habit_click(sessions):
@@ -158,7 +159,13 @@ async def test_concurrent_same_eid_habit_click(sessions):
     )
     async with sessions() as s:
         rows = (
-            (await s.execute(select(GameEvent).where(GameEvent.type == "habit_click")))
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.type == "habit_click", GameEvent.user_id == uid
+                    )
+                )
+            )
             .scalars()
             .all()
         )
@@ -180,7 +187,13 @@ async def test_concurrent_habit_clicks_serialize(sessions):
     )
     async with sessions() as s:
         rows = (
-            (await s.execute(select(GameEvent).where(GameEvent.type == "habit_click")))
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.type == "habit_click", GameEvent.user_id == uid
+                    )
+                )
+            )
             .scalars()
             .all()
         )
