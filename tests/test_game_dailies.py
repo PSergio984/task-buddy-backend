@@ -1059,8 +1059,8 @@ class TestDailySweep:
         """Losing the (daily, scheduled_day) insert race must not poison the
         tick: the claimed unit is skipped, later units still land, and the
         loser scores nothing for it. Simulates the overlap window by hiding
-        a committed miss from the sweep's pre-read — begin_nested and the
-        IntegrityError run for real (file-backed SQLite)."""
+        a committed miss from the sweep's pre-read — the claim insert and
+        its IntegrityError run for real (file-backed SQLite)."""
         _, daily = await _make_daily(db, created_days_ago=2, streak=5)
         first_day = _today() - timedelta(days=2)
         db.add(
