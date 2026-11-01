@@ -36,16 +36,12 @@ depends_on: Union[str, Sequence[str], None] = None
 def upgrade() -> None:
     op.add_column(
         "tbl_game_profiles",
-        sa.Column(
-            "retention", sa.String(length=16), server_default="forever", nullable=False
-        ),
+        sa.Column("retention", sa.String(length=16), server_default="forever", nullable=False),
     )
     # Existing diary rows predate freeform entries — they're all stand-ups.
     with op.batch_alter_table("tbl_diary_entries") as batch_op:
         batch_op.add_column(
-            sa.Column(
-                "kind", sa.String(length=16), server_default="standup", nullable=False
-            )
+            sa.Column("kind", sa.String(length=16), server_default="standup", nullable=False)
         )
         batch_op.drop_constraint("uq_diary_entries_user_date")
     op.create_index(
@@ -76,9 +72,7 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.create_index(
-        "ix_tbl_session_notes_session_id", "tbl_session_notes", ["session_id"]
-    )
+    op.create_index("ix_tbl_session_notes_session_id", "tbl_session_notes", ["session_id"])
     op.drop_index("uq_session_notes_one_per_session", table_name="tbl_session_notes")
     op.drop_index("ix_diary_entries_user_date", table_name="tbl_diary_entries")
     op.drop_index("uq_diary_entries_one_standup", table_name="tbl_diary_entries")
@@ -86,8 +80,6 @@ def downgrade() -> None:
     # at most one row per day — freeform rows cannot survive the rollback.
     op.execute("DELETE FROM tbl_diary_entries WHERE kind <> 'standup'")
     with op.batch_alter_table("tbl_diary_entries") as batch_op:
-        batch_op.create_unique_constraint(
-            "uq_diary_entries_user_date", ["user_id", "entry_date"]
-        )
+        batch_op.create_unique_constraint("uq_diary_entries_user_date", ["user_id", "entry_date"])
         batch_op.drop_column("kind")
     op.drop_column("tbl_game_profiles", "retention")
