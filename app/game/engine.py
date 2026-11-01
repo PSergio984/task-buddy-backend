@@ -35,6 +35,9 @@ _POSITIVE_FIELDS = frozenset(
     }
 )
 
+# Rates where zero is meaningful (0 disables the award) but negatives aren't.
+_NONNEGATIVE_FIELDS = frozenset({"stopwatch_milestone_xp"})
+
 # Fields that must stay integral: daily_xp_cap feeds an Integer column, and
 # lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
 _INT_FIELDS = frozenset({"daily_xp_cap", "lvl_curve_round"})
@@ -62,6 +65,7 @@ class GameRates:
     habit_xp_factor: float = 6.0  # XP = delta * P * crit * INT-bonus * factor
     daily_xp_cap: int = 500
     daily_gold_cap: float = 150.0
+    stopwatch_milestone_xp: float = 25.0  # XP per 25/50/75-min stopwatch chunk
     # Level curve: 25*lvl below 5, fixed 150 at 5, quadratic afterwards.
     lvl_curve_early: float = 25.0
     lvl_curve_lvl5: float = 150.0
@@ -104,6 +108,7 @@ class GameRates:
                 or isinstance(v, bool)
                 or not math.isfinite(v)
                 or (key in _POSITIVE_FIELDS and v <= 0)
+                or (key in _NONNEGATIVE_FIELDS and v < 0)
                 or (key in _INT_FIELDS and not float(v).is_integer())
             ):
                 continue
@@ -321,6 +326,52 @@ def _apply_damage(
     return outcome
 
 
+def _apply_stopwatch_milestone(
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    rng: random.Random | None,
+    today: date,
+) -> dict:
+    """One fixed XP chunk per milestone crossed (25/50/75 min), claimed on
+    stop — no per-minute accrual, so marathons can't farm."""
+    milestones = payload.get("milestones", 1)
+    if (
+        not isinstance(milestones, int)
+        or isinstance(milestones, bool)
+        or milestones < 1
+        or milestones > 100
+    ):
+        raise ValueError("stopwatch_milestone requires integer milestones in [1, 100]")
+    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    xp = _round_half_up(milestones * rates.stopwatch_milestone_xp * mult)
+    outcome = {"scored": True, "type": "stopwatch_milestone", "crit": mult > 1.0}
+    outcome.update(award_xp(profile, xp, rates, today))
+    return outcome
+
+
+# Types only the session engine's wall-clock evaluation may author —
+# /game/events rejects them so clients can't claim milestone XP or forge
+# lifecycle history. focus_phase_completed stays client-authoritative: it's
+# the #60 offline-sync contract (a session run on-device reports its outcome
+# through the ledger, same trust class as habit_click).
+SERVER_EVENT_TYPES = frozenset(
+    {
+        "session_started",
+        "session_ended",
+        "session_abandoned",
+        "stopwatch_milestone",
+        "phase_completed",
+        "phase_started",
+        "phase_paused",
+        "phase_resumed",
+        "phase_skipped",
+        "phase_abandoned",
+    }
+)
+
+
 def apply_event(
     profile: GameProfile,
     event_type: str,
@@ -347,4 +398,9 @@ def apply_event(
         return _apply_habit_click(profile, payload, rates, rng_roll, rng, day)
     if event_type == "damage":
         return _apply_damage(profile, payload, rates, rng)
+    if event_type == "session_abandoned":
+        # Abandon reasons carry the session's difficulty for HP scaling.
+        return _apply_damage(profile, payload, rates, rng)
+    if event_type == "stopwatch_milestone":
+        return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day)
     return {"scored": False}
