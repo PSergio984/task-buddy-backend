@@ -173,3 +173,8 @@ jobs:
       - name: Alembic upgrade head
         run: |
           python -m alembic upgrade head
+      - name: Game concurrency test (scratch Postgres)
+        env:
+          GAME_TEST_DB_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/taskbuddy_ci
+        run: |
+          python -m pytest tests/test_game_concurrency.py -q
