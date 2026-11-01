@@ -102,7 +102,7 @@ async def _persist_step(
     if event_type is None:
         return
     at = step.at or now
-    eid = _event_id(session.id, step.kind, step.phase_seq, at, i)
+    eid = _event_id(session.id, step.kind, step.phase_seq, at, step.extra.get("n", i))
     if eid in seen:
         return
     seen.add(eid)
@@ -147,8 +147,14 @@ async def _evaluate(
     profile = (
         await game_crud.get_or_create_profile(db, user_id, for_update=True) if scored else None
     )
+    if profile is not None:
+        # The prefetch loaded this object before the FOR UPDATE — refresh so
+        # scoring applies to the values committed under the lock, not a stale
+        # snapshot a concurrent /events award may have already overwritten.
+        await db.refresh(profile)
     ids = [  # deterministic ids; dedupe guards a retried evaluation
-        _event_id(session.id, s.kind, s.phase_seq, s.at or now, i) for i, s in enumerate(steps)
+        _event_id(session.id, s.kind, s.phase_seq, s.at or now, s.extra.get("n", i))
+        for i, s in enumerate(steps)
     ]
     seen = await game_crud.existing_event_ids(db, user_id, ids)
     for i, step in enumerate(steps):
@@ -218,7 +224,11 @@ async def start_session(
         await db.flush()  # uq_focus_sessions_one_active race -> IntegrityError
     except IntegrityError as exc:
         await db.rollback()
-        if "uq_focus_sessions_one_active" not in str(exc.orig):
+        detail = str(exc.orig)
+        # SQLite reports index violations by table.column ("tbl_focus_sessions.user_id"),
+        # Postgres by constraint name ("uq_focus_sessions_one_active").
+        is_unique = "unique" in detail.lower()
+        if not (is_unique and "focus_sessions" in detail):
             raise  # FK/CK violations aren't the one-active conflict
         raise ConflictError("an active session already exists") from exc
     phases = [

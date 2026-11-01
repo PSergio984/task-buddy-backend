@@ -221,6 +221,21 @@ class TestPauseResume:
         profile = r.json()["profile"]
         assert profile["hp"] < profile["max_hp"]
 
+    async def test_rapid_pause_cycle_emits_both_events(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """pause->resume->pause inside one second must not dedupe away the
+        second pause (server eids differ via pause_count)."""
+        session = await _start(authenticated_async_client)
+        sid = session["id"]
+        await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
+        await authenticated_async_client.post(f"{SESSIONS}/{sid}/resume")
+        await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
+        events = await db.execute(
+            select(GameEvent).where(GameEvent.type == "phase_paused")
+        )
+        assert len(events.scalars().all()) == 2
+
     async def test_pause_seconds_budget_abandons(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:

@@ -107,6 +107,7 @@ def _check_pause_overflow(session: FocusSession, cur: FocusPhase, now: datetime)
     session.ended_at = crossed_at
     cur.status = ABANDONED
     cur.ended_at = crossed_at
+    cur.paused_seconds = banked + extra  # bank the final pause before clearing
     cur.pause_started_at = None
     return Step("session_abandoned", reason="pause_overflow", phase_seq=cur.seq, at=crossed_at)
 
@@ -192,7 +193,9 @@ def pause(session: FocusSession, phase: FocusPhase | None, now: datetime) -> Ste
         phase.pause_count = (phase.pause_count or 0) + 1
         phase.pause_started_at = now
         phase.status = PAUSED
-        return Step("phase_paused", phase_seq=phase.seq, at=now)
+        # n disambiguates rapid pause->resume->pause cycles inside one second,
+        # which would otherwise collide on identical server event ids.
+        return Step("phase_paused", phase_seq=phase.seq, at=now, extra={"n": phase.pause_count})
     phase.status = ABANDONED
     phase.ended_at = now
     phase.pause_started_at = None
@@ -210,6 +213,7 @@ def resume(session: FocusSession, phase: FocusPhase | None, now: datetime) -> St
     if phase.kind == FOCUS and (phase.paused_seconds or 0) + extra > session.pause_budget_seconds:
         phase.status = ABANDONED
         phase.ended_at = now
+        phase.paused_seconds = (phase.paused_seconds or 0) + extra
         phase.pause_started_at = None
         session.status = S_ABANDONED
         session.ended_at = now
@@ -217,7 +221,9 @@ def resume(session: FocusSession, phase: FocusPhase | None, now: datetime) -> St
     phase.paused_seconds = (phase.paused_seconds or 0) + extra
     phase.pause_started_at = None
     phase.status = ACTIVE
-    return Step("phase_resumed", phase_seq=phase.seq, at=now)
+    return Step(
+        "phase_resumed", phase_seq=phase.seq, at=now, extra={"n": phase.pause_count}
+    )
 
 
 def advance(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[Step]:
@@ -265,11 +271,14 @@ def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tupl
         live.ended_at = now
         bound = min(actual // 60, MAX_MILESTONES * 25)
         for i, minutes in enumerate(range(25, bound + 1, 25), start=1):
+            # shortcut: crossing ts assumes all pauses preceded the milestone —
+            # exact reconstruction needs per-pause intervals we don't store.
+            crossed = started + timedelta(seconds=minutes * 60 + paused)
             scored.append(
                 Step(
                     "phase_completed",
                     phase_seq=live.seq,
-                    at=started + timedelta(seconds=minutes * 60),
+                    at=crossed,
                     actual_seconds=minutes * 60,
                     scored=True,
                     extra={"milestone_index": i},
