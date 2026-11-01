@@ -2,7 +2,7 @@
 
 import math
 import random
-from datetime import date
+from datetime import date, timedelta
 
 import pytest
 
@@ -18,6 +18,7 @@ from app.game.engine import (
     xp_to_next_level,
 )
 from app.models.game import GameProfile
+from app.schemas.game import GameProfileRead
 
 
 def make_profile(**kwargs) -> GameProfile:
@@ -335,12 +336,13 @@ class TestApplyEvent:
             )
 
     def test_extreme_habit_value_is_clamped(self, rates: GameRates) -> None:
-        # value=-1e9 would explode 0.9747**value and inflate rewards; clamp first.
+        # value=-1e5 stays under the magnitude bound but beyond the habit
+        # clamp; it must clamp before drift, not explode 0.9747**value.
         profile = make_profile()
         outcome = apply_event(
             profile,
             "habit_click",
-            {"direction": "positive", "value": -1e9},
+            {"direction": "positive", "value": -1e5},
             rates,
             rng_roll=1.0,
         )
@@ -376,6 +378,42 @@ class TestApplyEvent:
         # habit_drift_base=0 would explode 0**negative_value in habit_delta.
         tuned = GameRates.from_dict({"habit_drift_base": 0.0})
         assert tuned.habit_drift_base == 0.9747
+
+    def test_rates_from_dict_merges_difficulty_over_defaults(self) -> None:
+        # A partial override must keep untouched names — events omitting
+        # difficulty fall back to "easy" and would 400 without it.
+        tuned = GameRates.from_dict({"difficulty": {"hard": 3.0}})
+        assert tuned.difficulty["hard"] == 3.0
+        assert tuned.difficulty["easy"] == 1.0
+        assert tuned.difficulty["trivial"] == 0.1
+
+    def test_rates_from_dict_requires_integral_daily_xp_cap(self) -> None:
+        # xp_today is an Integer column; a fractional cap would write floats.
+        assert GameRates.from_dict({"daily_xp_cap": 500.5}).daily_xp_cap == 500
+        assert GameRates.from_dict({"daily_xp_cap": 600.0}).daily_xp_cap == 600
+
+    def test_profile_read_zeroes_stale_day_totals(self) -> None:
+        # Counters only reset inside award_*; a next-day read must not
+        # report yesterday's earnings as today's.
+        profile = make_profile(
+            xp_today=40, gold_today=9.0, totals_day=date.today() - timedelta(days=1)
+        )
+        read = GameProfileRead.from_profile(profile, 100)
+        assert read.xp_today == 0
+        assert read.gold_today == 0.0
+
+    def test_giant_int_minutes_raises(self, rates: GameRates) -> None:
+        # JSON ints are arbitrary size; isfinite(10**400) overflows before
+        # the bound check would run.
+        profile = make_profile()
+        with pytest.raises(ValueError):
+            apply_event(
+                profile,
+                "focus_phase_completed",
+                {"minutes": 10**400, "difficulty": "easy"},
+                rates,
+                rng_roll=1.0,
+            )
 
     def test_non_numeric_habit_value_raises(self, rates: GameRates) -> None:
         profile = make_profile()

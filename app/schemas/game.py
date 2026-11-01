@@ -29,9 +29,20 @@ class GameEventIn(BaseModel):
     @field_validator("payload")
     @classmethod
     def cap_payload_size(cls, v: dict) -> dict:
-        # The ledger stores payloads verbatim in JSONB; cap them so a 500-event
-        # batch can't grow a user's ledger unboundedly.
-        if len(json.dumps(v, default=str, ensure_ascii=False).encode("utf-8")) > _PAYLOAD_MAX_BYTES:
+        # "_"-prefixed keys are server-reserved (e.g. "_outcome"); overwriting
+        # client data in the ledger would silently hide it.
+        if any(key.startswith("_") for key in v):
+            raise ValueError("payload keys starting with '_' are reserved")
+        # Cap bytes so a batch can't grow the ledger unboundedly, and reject
+        # non-finite floats in unused fields — dumps would emit Infinity,
+        # which JSONB rejects with a 500 at insert time.
+        try:
+            size = len(
+                json.dumps(v, default=str, ensure_ascii=False, allow_nan=False).encode("utf-8")
+            )
+        except ValueError:
+            raise ValueError("payload contains a non-finite number") from None
+        if size > _PAYLOAD_MAX_BYTES:
             raise ValueError("payload exceeds 16 KB")
         return v
 
@@ -72,6 +83,9 @@ class GameProfileRead(BaseModel):
     def from_profile(cls, profile: GameProfile, xp_to_next: int) -> "GameProfileRead":
         # Read only exposed fields — touching server_default columns after a
         # flush would trigger an expired-attribute lazy load (async-unsafe).
+        # Daily counters reset inside award_* only; a next-day read must
+        # report zero rather than yesterday's earnings.
+        is_today = profile.totals_day == datetime.now(timezone.utc).date()
         return cls(
             level=profile.level,
             xp=profile.xp,
@@ -86,8 +100,8 @@ class GameProfileRead(BaseModel):
             unspent_stat_points=profile.unspent_stat_points,
             game_class=profile.game_class,
             avatar_config=profile.avatar_config or {},
-            xp_today=profile.xp_today,
-            gold_today=profile.gold_today,
+            xp_today=profile.xp_today if is_today else 0,
+            gold_today=profile.gold_today if is_today else 0.0,
         )
 
 

@@ -21,6 +21,8 @@ async def get_or_create_profile(
     """
     query = select(GameProfile).where(GameProfile.user_id == user_id)
     if for_update:
+        # Postgres-only clause (dropped silently on SQLite — the test
+        # backend serializes writes at the file level anyway).
         query = query.with_for_update()
     result = await db.execute(query)
     profile = result.scalar_one_or_none()

@@ -193,10 +193,35 @@ class TestEventIngestion:
         response = await authenticated_async_client.post(f"{GAME}/events", json={"events": [event]})
         assert response.status_code == 422
 
+    async def test_reserved_underscore_key_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # "_"-prefixed keys are server-reserved; silently overwriting client
+        # data in the ledger would hide bugs.
+        event = focus_event("e-key")
+        event["payload"]["_outcome"] = {"xp": 9999}
+        response = await authenticated_async_client.post(f"{GAME}/events", json={"events": [event]})
+        assert response.status_code == 422
+
+    async def test_non_finite_extra_field_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Fields the engine never reads still land in the JSONB ledger;
+        # 1e999 -> Infinity is not valid JSONB and would 500 at insert.
+        body = (
+            '{"events": [{"client_event_id": "e-x", "type": "focus_phase_completed",'
+            ' "client_ts": "2026-01-01T00:00:00Z", "payload": {"minutes": 5, "x": 1e999}}]}'
+        )
+        response = await authenticated_async_client.post(
+            f"{GAME}/events", content=body, headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 422
+
     async def test_non_finite_minutes_rejected(
         self, authenticated_async_client: AsyncClient
     ) -> None:
-        # JSON "1e999" parses to float inf server-side; engine must 400 not 500.
+        # JSON "1e999" parses to float inf server-side; the payload validator
+        # rejects non-finite numbers with 422 before the engine sees them.
         body = (
             '{"events": [{"client_event_id": "e-inf", "type": "focus_phase_completed",'
             ' "client_ts": "2026-01-01T00:00:00Z", "payload": {"minutes": 1e999}}]}'
@@ -204,7 +229,7 @@ class TestEventIngestion:
         response = await authenticated_async_client.post(
             f"{GAME}/events", content=body, headers={"Content-Type": "application/json"}
         )
-        assert response.status_code == 400
+        assert response.status_code == 422
 
     async def test_outcome_namespaced_in_stored_payload(
         self, authenticated_async_client: AsyncClient, db: AsyncSession

@@ -35,6 +35,9 @@ _POSITIVE_FIELDS = frozenset(
     }
 )
 
+# Fields feeding Integer columns — non-integral overrides would write floats.
+_INT_FIELDS = frozenset({"daily_xp_cap"})
+
 
 @dataclass(frozen=True)
 class GameRates:
@@ -82,7 +85,8 @@ class GameRates:
             if key == "difficulty":
                 if isinstance(v, Mapping):
                     # Multipliers must stay finite and positive — a negative
-                    # difficulty would invert rewards.
+                    # difficulty would invert rewards. Merge over defaults so
+                    # a partial override can't orphan fallback names.
                     clean = {
                         str(name): float(mult)
                         for name, mult in v.items()
@@ -92,16 +96,17 @@ class GameRates:
                         and mult > 0
                     }
                     if clean:
-                        kwargs[key] = clean
+                        kwargs[key] = {**cls().difficulty, **clean}
                 continue
             if (
                 not isinstance(v, (int, float))
                 or isinstance(v, bool)
                 or not math.isfinite(v)
                 or (key in _POSITIVE_FIELDS and v <= 0)
+                or (key in _INT_FIELDS and not float(v).is_integer())
             ):
                 continue
-            kwargs[key] = v
+            kwargs[key] = int(v) if key in _INT_FIELDS else v
         return cls(**kwargs)
 
 
@@ -221,12 +226,14 @@ def apply_hp_loss(
 def _finite_positive(value: Any, name: str) -> float:
     """Guards JSON numbers: rejects non-numeric, bool, inf/NaN, and
     overflow-sized magnitudes (1e308 passes isfinite but explodes downstream)."""
+    # Bounds before isfinite: giant JSON ints (10**400) raise OverflowError
+    # inside isfinite's int->float conversion, escaping the ValueError path.
     if (
         not isinstance(value, (int, float))
         or isinstance(value, bool)
-        or not math.isfinite(value)
         or value <= 0
         or value > 1e6
+        or not math.isfinite(value)
     ):
         raise ValueError(f"{name} must be a finite number in (0, 1e6]")
     return float(value)
@@ -262,9 +269,18 @@ def _apply_habit_click(
     if direction not in ("positive", "negative"):
         raise ValueError("habit_click requires direction 'positive' or 'negative'")
     value = payload.get("value", 0.0)
-    if not isinstance(value, (int, float)) or isinstance(value, bool) or not math.isfinite(value):
+    # Bounds before isfinite: giant JSON ints overflow int->float inside it.
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or abs(value) > 1e6
+        or not math.isfinite(value)
+    ):
         raise ValueError("habit_click value must be a finite number")
     # Clamp first: extremes would explode 0.9747**V and inflate rewards.
+    # shortcut: value is client-claimed until #62 persists Habit.value —
+    # bounded to 3.36x neutral reward by the clamp; upgrade when habits
+    # land and score from stored state.
     value = clamp_habit_value(float(value), rates)
     delta = habit_delta(value, rates)
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
