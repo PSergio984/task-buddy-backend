@@ -35,8 +35,9 @@ _POSITIVE_FIELDS = frozenset(
     }
 )
 
-# Fields feeding Integer columns — non-integral overrides would write floats.
-_INT_FIELDS = frozenset({"daily_xp_cap"})
+# Fields that must stay integral: daily_xp_cap feeds an Integer column, and
+# lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
+_INT_FIELDS = frozenset({"daily_xp_cap", "lvl_curve_round"})
 
 
 @dataclass(frozen=True)

@@ -174,7 +174,6 @@ jobs:
         run: |
           python -m alembic upgrade head
       - name: Game concurrency test (scratch Postgres)
-        env:
-          GAME_TEST_DB_URL: postgresql+asyncpg://postgres:postgres@127.0.0.1:5432/taskbuddy_ci
         run: |
+          export GAME_TEST_DB_URL="${DATABASE_URL/postgresql:/postgresql+asyncpg:}"
           python -m pytest tests/test_game_concurrency.py -q

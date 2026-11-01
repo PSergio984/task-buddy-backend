@@ -392,6 +392,11 @@ class TestApplyEvent:
         assert GameRates.from_dict({"daily_xp_cap": 500.5}).daily_xp_cap == 500
         assert GameRates.from_dict({"daily_xp_cap": 600.0}).daily_xp_cap == 600
 
+    def test_rates_from_dict_requires_integral_curve_round(self) -> None:
+        # int(0.5) == 0 would collapse the curve: every level costs 1 XP.
+        assert GameRates.from_dict({"lvl_curve_round": 0.5}).lvl_curve_round == 10.0
+        assert GameRates.from_dict({"lvl_curve_round": 5.0}).lvl_curve_round == 5
+
     def test_profile_read_zeroes_stale_day_totals(self) -> None:
         # Counters only reset inside award_*; a next-day read must not
         # report yesterday's earnings as today's.
