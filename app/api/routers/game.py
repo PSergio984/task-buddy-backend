@@ -151,6 +151,13 @@ async def create_diary_entry(
     """Create a diary entry: one stand-up per user per UTC day, freeform unlimited."""
     user_id = current_user.id
     entry_date = entry_in.entry_date or datetime.now(timezone.utc).date()
+    # A date past the retention horizon would be unreadable the moment it's
+    # written — reject at the boundary instead of 409ing on an invisible
+    # stand-up or returning an id that instantly 404s.
+    retention = await game_crud.get_retention(db, user_id)
+    cutoff = game_crud.retention_cutoff(retention, datetime.now(timezone.utc).date())
+    if cutoff is not None and entry_date < cutoff:
+        raise HTTPException(status_code=400, detail="entry_date is before the retention horizon")
     # Pre-check so the common double-post gets a deterministic 409; the
     # partial unique index (uq_diary_entries_one_standup) is the race backstop.
     if entry_in.kind == "standup" and await game_crud.find_standup(db, user_id, entry_date):

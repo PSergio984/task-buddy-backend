@@ -369,6 +369,50 @@ class TestRetention:
         )
         assert len(listing.json()["entries"]) == 1
 
+    async def test_create_rejects_date_past_retention_horizon(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await authenticated_async_client.patch(
+            f"{GAME}/profile/retention", json={"retention": "90d"}
+        )
+        hidden_day = today() - timedelta(days=200)
+        # An existing (invisible) stand-up on that day must not surface as a
+        # 409 — the date itself is unwritable past the horizon.
+        db.add(
+            DiaryEntry(
+                user_id=confirmed_user["id"],
+                entry_date=hidden_day,
+                kind="standup",
+                good="old",
+            )
+        )
+        await db.commit()
+
+        standup = await authenticated_async_client.post(
+            f"{GAME}/diary", json={"entry_date": hidden_day.isoformat(), "good": "backfill"}
+        )
+        assert standup.status_code == 400, standup.text
+
+        freeform = await authenticated_async_client.post(
+            f"{GAME}/diary",
+            json={
+                "kind": "freeform",
+                "entry_date": hidden_day.isoformat(),
+                "freeform": "note",
+            },
+        )
+        assert freeform.status_code == 400, freeform.text
+
+        # A date inside the horizon — and the boundary day itself — still write.
+        boundary = (today() - timedelta(days=90)).isoformat()
+        ok = await authenticated_async_client.post(
+            f"{GAME}/diary", json={"entry_date": boundary, "kind": "freeform", "freeform": "edge"}
+        )
+        assert ok.status_code == 201, ok.text
+
     async def test_1y_cutoff(
         self,
         authenticated_async_client: AsyncClient,
