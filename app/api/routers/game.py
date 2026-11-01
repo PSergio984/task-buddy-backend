@@ -362,6 +362,9 @@ async def get_timeline(
     user_id = current_user.id
     today = datetime.now(timezone.utc).date()
     day = date or today
+    # The widened query bounds span day±2 — extreme dates would OverflowError.
+    if not (day.min + timedelta(days=1) <= day <= day.max - timedelta(days=2)):
+        raise HTTPException(status_code=400, detail="date out of supported range")
     retention = await game_crud.get_retention(db, user_id)
     cutoff = game_crud.retention_cutoff(retention, today)
 

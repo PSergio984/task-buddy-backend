@@ -360,10 +360,12 @@ class TestTimeline:
     ) -> None:
         # Regression: an in-progress session (ended_at=None) must not crash the
         # duration computation — SQLite hands back naive timestamps. Start
-        # relative to now so duration stays nonnegative at any wall-clock hour.
-        now = datetime.now(timezone.utc)
-        day = now.date()
-        db.add(make_session(confirmed_user["id"], now - timedelta(minutes=5), None))
+        # relative to now so duration stays nonnegative at any wall-clock hour,
+        # and query the session's own day so a midnight boundary can't strand
+        # it on the previous date.
+        started = datetime.now(timezone.utc) - timedelta(minutes=5)
+        day = started.date()
+        db.add(make_session(confirmed_user["id"], started, None))
         await db.commit()
 
         response = await authenticated_async_client.get(f"{GAME}/timeline", params={"date": day})
@@ -372,6 +374,43 @@ class TestTimeline:
         assert block["status"] == "active"
         assert block["ended_at"] is None
         assert block["duration_seconds"] >= 0
+
+    async def test_event_with_non_utc_offset_lands_on_utc_day(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+    ) -> None:
+        # 00:30 +02:00 is 22:30 UTC the previous day — the marker must bucket
+        # by the instant, not by the submitted wall clock.
+        day = datetime.now(timezone.utc).date() - timedelta(days=2)
+        post = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-offset",
+                        "type": "habit_click",
+                        "client_ts": f"{day}T00:30:00+02:00",
+                        "payload": {"direction": "positive"},
+                    }
+                ]
+            },
+        )
+        assert post.status_code == 200, post.text
+        response = await authenticated_async_client.get(
+            f"{GAME}/timeline", params={"date": day - timedelta(days=1)}
+        )
+        markers = [m["type"] for m in response.json()["markers"]]
+        assert markers == ["habit_click"]
+
+    async def test_timeline_extreme_dates_return_400(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for extreme in ("0001-01-01", "9999-12-30", "9999-12-31"):
+            response = await authenticated_async_client.get(
+                f"{GAME}/timeline", params={"date": extreme}
+            )
+            assert response.status_code == 400, extreme
 
     async def test_timeline_only_returns_the_requested_day(
         self,

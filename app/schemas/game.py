@@ -43,8 +43,11 @@ class GameEventIn(BaseModel):
     @classmethod
     def require_timezone(cls, v: datetime) -> datetime:
         # Naive timestamps are assumed UTC so ledger ordering never mixes
-        # aware and naive values (which would crash the batch sort).
-        return v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
+        # aware and naive values (which would crash the batch sort). Aware
+        # values are converted to UTC — SQLite drops the offset on write, and
+        # re-labeling a local wall time as UTC mis-buckets the day views.
+        aware = v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
+        return aware.astimezone(timezone.utc)
 
     @field_validator("payload")
     @classmethod
