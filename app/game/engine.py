@@ -368,9 +368,13 @@ def _fraction(value: Any, name: str) -> float:
 
 
 def _streak_days(value: Any) -> int:
-    if not isinstance(value, int) or isinstance(value, bool) or value < 0 or value > 10000:
-        raise ValueError("daily_check streak must be an integer in [0, 10000]")
-    return value
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ValueError("daily_check streak must be an integer >= 0")
+    # Saturate at the economy bound rather than rejecting: a legit streak
+    # past 10000 would otherwise make the daily unscorable — every check
+    # recorded unscored and its mark rolled back, forever. The +1%/day gold
+    # bonus simply caps at +10000%.
+    return min(value, 10000)
 
 
 def _nonnegative(value: Any, name: str) -> float:

@@ -509,6 +509,19 @@ class TestDailyCheck:
         assert body["profile"]["gold_today"] == 2
         assert body["daily"]["streak"] == 11
 
+    async def test_streak_over_bound_still_scores(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # A legit streak past the economy bound stays scorable — the gold
+        # bonus saturates at +10000% instead of wedging the daily forever.
+        daily = await _create(authenticated_async_client)
+        await db.execute(update(Daily).where(Daily.id == daily["id"]).values(streak=10000))
+        await db.commit()
+        body = await _check(authenticated_async_client, daily["id"])
+        assert body["profile"]["xp_today"] == 6
+        assert body["profile"]["gold_today"] == 101  # ceil(1 * (1 + 0.01 * 10000))
+        assert body["daily"]["streak"] == 10001
+
     async def test_check_off_schedule_pays_without_streak(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
@@ -826,12 +839,14 @@ class TestDailyCheckEventSync:
     async def test_rejected_synced_check_leaves_no_mark_or_streak(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        # score_check validates lazily: with streak already at the engine
-        # bound, apply_event raises AFTER the mark + streak bump staged —
-        # recording the event unscored must roll that state back too, or a
-        # rejected check would still write marks and streak at commit.
+        # score_check validates lazily: a bogus stored difficulty raises in
+        # apply_event AFTER the mark + streak bump staged — recording the
+        # event unscored must roll that state back too, or a rejected check
+        # would still write marks and streak at commit.
         daily = await _create(authenticated_async_client)
-        await db.execute(update(Daily).where(Daily.id == daily["id"]).values(streak=10000))
+        await db.execute(
+            update(Daily).where(Daily.id == daily["id"]).values(difficulty="bogus", streak=5)
+        )
         await db.commit()
         response = await authenticated_async_client.post(
             f"{GAME}/events",
@@ -847,14 +862,59 @@ class TestDailyCheckEventSync:
             .all()
         )
         assert marks == []
-        assert (await _get_daily_row(db, daily["id"])).streak == 10000
+        assert (await _get_daily_row(db, daily["id"])).streak == 5
         stored = (
             (await db.execute(select(GameEvent).where(GameEvent.client_event_id == "d-1")))
             .scalar_one()
             .payload
         )
         assert stored["_outcome"]["scored"] is False
-        assert "streak" in stored["_outcome"]["reason"]
+        assert "difficulty" in stored["_outcome"]["reason"]
+
+    async def test_rejected_check_preserves_rest_of_batch(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # The rollback must be surgical: earlier scored events keep their
+        # pending rewards (profile stays dirty-unflushed between events) and
+        # later events still apply — expiring shared objects would discard
+        # them and 500 the batch on next access.
+        daily = await _create(authenticated_async_client)
+        await db.execute(
+            update(Daily).where(Daily.id == daily["id"]).values(difficulty="bogus", streak=5)
+        )
+        await db.commit()
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "f-1",
+                        "type": "focus_phase_completed",
+                        "client_ts": _at(0).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    },
+                    self._event("d-1", {"daily_id": daily["id"]}),
+                    {
+                        "client_event_id": "f-2",
+                        "type": "focus_phase_completed",
+                        "client_ts": _at(0).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 3
+        # Both focus events' rewards persist — only the rejected check's
+        # own staged state was rolled back.
+        assert response.json()["profile"]["xp_today"] == 20
+        assert (await _get_daily_row(db, daily["id"])).streak == 5
+        marks = (
+            (await db.execute(select(DailyCheck).where(DailyCheck.daily_id == daily["id"])))
+            .scalars()
+            .all()
+        )
+        assert marks == []
 
     async def test_client_cannot_claim_daily_missed(
         self, authenticated_async_client: AsyncClient
@@ -1090,3 +1150,38 @@ class TestDailySweep:
         # The surviving unit saw the peer's miss in its freeze window —
         # unfrozen, so the streak breaks.
         assert (await _get_daily_row(db, daily.id)).streak == 0
+
+    async def test_check_landing_mid_eval_suppresses_miss(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A check committing between the daily pre-read and the unit's
+        claim must suppress the miss — the unit transaction re-reads
+        completion before committing."""
+        _, daily = await _make_daily(db, created_days_ago=1, streak=5)
+        yesterday = _today() - timedelta(days=1)
+        real_list = game_crud.list_daily_checks
+        calls = {"n": 0}
+
+        async def _wrapped(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                # Second call = the unit's fresh re-read: a check lands in
+                # a separate committed transaction between the two reads.
+                from app.database import AsyncSessionLocal
+
+                async with AsyncSessionLocal() as s:
+                    s.add(
+                        DailyCheck(
+                            daily_id=daily.id,
+                            daily_item_id=None,
+                            check_date=yesterday,
+                        )
+                    )
+                    await s.commit()
+            return await real_list(*args, **kwargs)
+
+        monkeypatch.setattr(game_crud, "list_daily_checks", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
+        assert await self._miss_rows(db, daily.id) == []
+        assert (await _get_daily_row(db, daily.id)).streak == 5
+        assert (await _profile(db, daily.user_id)).hp == 50

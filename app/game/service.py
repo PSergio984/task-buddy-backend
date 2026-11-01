@@ -87,14 +87,16 @@ async def _ingest_daily_check(
         unscored_reason = "item_unresolvable"
     else:
         items = await _daily_items(db, daily.id, items_cache)
-        # score_check validates lazily: a late ValueError (e.g. a streak
-        # outside engine bounds) can fire AFTER it staged mark adds and the
-        # streak bump — none flushed yet, so they sit in session.new/dirty.
-        # Undo that ORM state on rejection or the "unscored" check would
-        # still land at the batch's commit. (No savepoint: every raise path
-        # precedes score_check's flush, and an outermost SAVEPOINT's release
-        # would commit early on aiosqlite's deferred-BEGIN driver.)
+        # score_check validates lazily: a late ValueError (e.g. a bogus
+        # difficulty in stored state) can fire AFTER it staged mark adds and
+        # the streak bump — none flushed yet, so they sit in
+        # session.new/dirty. Undo exactly that ORM state on rejection or the
+        # "unscored" check would still land at the batch's commit. (No
+        # savepoint: every raise path precedes score_check's flush, and an
+        # outermost SAVEPOINT's release would commit early on aiosqlite's
+        # deferred-BEGIN driver.)
         staged = set(db.new)
+        dirty_before = set(db.dirty)
         try:
             await daily_service.score_check(
                 db,
@@ -114,11 +116,13 @@ async def _ingest_daily_check(
         except ValueError as exc:
             for obj in set(db.new) - staged:
                 db.expunge(obj)
-            # Dirty state (the streak bump, a flipped mark) reverts by
-            # expiring: pending changes are discarded and attributes
-            # lazy-reload from the pre-check committed row.
-            for obj in set(db.dirty):
-                db.expire(obj)
+            # Revert ONLY what this check dirtied (streak bump, flipped
+            # marks) — objects dirty from earlier batch events keep their
+            # pending rewards. refresh eagerly reloads the committed row,
+            # discarding pending changes; a bare expire would instead
+            # lazy-refresh → MissingGreenlet on the next event touching it.
+            for obj in set(db.dirty) - dirty_before:
+                await db.refresh(obj)
             unscored_reason = str(exc)
     if unscored_reason is not None:
         db.add(

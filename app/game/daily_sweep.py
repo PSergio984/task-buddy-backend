@@ -58,19 +58,21 @@ async def _evaluate_unit(
     rec: dict,
     anchor: date,
     missed_days: set[date],
+    done_days: set[date],
     now: datetime,
     today: date,
     rates,
 ) -> bool:
     """Claim + score one due unit, committed as its own transaction.
 
-    True = miss recorded; False = a racing instance claimed the unit first
-    (the unit rolls back and `daily` is left expired — the caller re-reads
-    it before the next unit). Claim insert, scoring and ledger row land
-    atomically, and a later unit's failure can't take this one back. (A
-    savepoint can't express this on aiosqlite: the driver's implicit BEGIN
-    only materializes on the first DML, so an outermost SAVEPOINT's RELEASE
-    would commit outright.)
+    True = miss recorded; False = the unit rolled back — either a racing
+    instance claimed it first (`missed_days` updated here) or a check
+    committed mid-eval (`done_days` updated here). Either way `daily` is
+    left expired and the caller re-reads it before the next unit. Claim
+    insert, scoring and ledger row land atomically, and a later unit's
+    failure can't take this one back. (A savepoint can't express this on
+    aiosqlite: the driver's implicit BEGIN only materializes on the first
+    DML, so an outermost SAVEPOINT's RELEASE would commit outright.)
     """
     # One miss per rolling 7 scheduled units is frozen: a miss in the
     # prior 6 units means this one breaks the streak.
@@ -89,8 +91,19 @@ async def _evaluate_unit(
         await db.flush()
     except IntegrityError:
         await db.rollback()
+        missed_days.add(unit)
         return False
     missed_days.add(unit)
+    # A check committing between the daily pre-read and this claim would
+    # land a day that's both missed (HP + streak reset) and done — re-read
+    # satisfaction inside the unit transaction before committing the miss.
+    fresh_from = unit - timedelta(days=6) if rec["kind"] == "times_per_week" else unit
+    fresh_checks = await game_crud.list_daily_checks(db, [daily.id], fresh_from, unit)
+    fresh_done = {c.check_date for c in fresh_checks if c.daily_item_id is None and c.done}
+    if _unit_satisfied(rec, unit, fresh_done, anchor):
+        await db.rollback()
+        done_days.update(fresh_done)
+        return False
     # FOR UPDATE serializes against a racing claim's scoring — two
     # instances can win different units of the same daily, and the profile
     # lock makes their HP losses additive, not lost-update.
@@ -128,6 +141,10 @@ async def _evaluate_unit(
             # Deterministic server id — the ledger uq is the backstop if a
             # miss row ever survives without its event (crash between flush
             # and commit replays cleanly: the whole unit retries).
+            # shortcut: out-of-band deletion of a miss row while its event
+            # survives re-claims the unit, then wedges on this eid's uq at
+            # commit (per-daily rollback, retried forever) — admin cleanup
+            # must remove both rows or neither.
             client_event_id=f"server:daily:{daily.id}:missed:{unit.isoformat()}",
             type="daily_missed",
             client_ts=now,
@@ -187,12 +204,17 @@ async def _evaluate_daily(
     for unit in units:
         if unit in missed_days or _unit_satisfied(rec, unit, done_days, anchor):
             continue
-        if await _evaluate_unit(db, daily, unit, rec, anchor, missed_days, now, today, rates):
+        # `daily` is re-read only after a rollback — its attributes (e.g.
+        # difficulty for scoring) can go stale across the unit commits if a
+        # PATCH lands mid-eval; harmless, next tick's pass self-corrects.
+        if await _evaluate_unit(
+            db, daily, unit, rec, anchor, missed_days, done_days, now, today, rates
+        ):
             recorded += 1
             continue
-        missed_days.add(unit)
-        # The rollback expired `daily`; re-read it for the next unit — a
-        # mid-tick delete/deactivate ends this evaluation early.
+        # Rolled back (lost claim or a check landed mid-eval) — `daily` is
+        # expired; re-read it for the next unit. A mid-tick
+        # delete/deactivate ends this evaluation early.
         fresh = await db.get(Daily, daily_id, populate_existing=True)
         if fresh is None or not fresh.active:
             return recorded
