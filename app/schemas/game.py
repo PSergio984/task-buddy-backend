@@ -1,15 +1,16 @@
 """Pydantic contracts for the /api/v1/game endpoints."""
 
 import json
-from datetime import datetime, timezone
-from typing import Literal
+from datetime import date, datetime, timezone
+from typing import Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from app.game.engine import SERVER_EVENT_TYPES
 from app.models.game import GameProfile
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
+_TEXT_MAX_LEN = 10_000
 
 
 class GameEventIn(BaseModel):
@@ -42,8 +43,16 @@ class GameEventIn(BaseModel):
     @classmethod
     def require_timezone(cls, v: datetime) -> datetime:
         # Naive timestamps are assumed UTC so ledger ordering never mixes
-        # aware and naive values (which would crash the batch sort).
-        return v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
+        # aware and naive values (which would crash the batch sort). Aware
+        # values are converted to UTC — SQLite drops the offset on write, and
+        # re-labeling a local wall time as UTC mis-buckets the day views.
+        aware = v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
+        try:
+            return aware.astimezone(timezone.utc)
+        except OverflowError:
+            # The instant is representable locally but its UTC form isn't —
+            # reject as input error, not a server crash.
+            raise ValueError("client_ts out of representable range") from None
 
     @field_validator("payload")
     @classmethod
@@ -95,6 +104,7 @@ class GameProfileRead(BaseModel):
     avatar_config: dict
     xp_today: int
     gold_today: float
+    retention: str
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -121,6 +131,8 @@ class GameProfileRead(BaseModel):
             avatar_config=profile.avatar_config or {},
             xp_today=profile.xp_today if is_today else 0,
             gold_today=profile.gold_today if is_today else 0.0,
+            # Column default applies at flush; an unflushed profile reads None.
+            retention=profile.retention or "forever",
         )
 
 
@@ -150,6 +162,99 @@ class GameEventRead(BaseModel):
 class GameEventsFeedResponse(BaseModel):
     events: list[GameEventRead]
     server_time: datetime
+
+
+def _blank_to_none(v: Optional[str]) -> Optional[str]:
+    # Whitespace-only text normalizes to NULL, not an empty-looking row.
+    if v is None:
+        return None
+    v = v.strip()
+    return v or None
+
+
+class DiaryEntryIn(BaseModel):
+    """A new diary entry; kind picks the uniqueness rule."""
+
+    kind: Literal["standup", "freeform"] = "standup"
+    # Missing -> today (UTC). Client may backfill a missed day.
+    entry_date: Optional[date] = None
+    good: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    bad: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    next: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    freeform: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+
+    @field_validator("good", "bad", "next", "freeform")
+    @classmethod
+    def normalize_text(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+    @model_validator(mode="after")
+    def require_some_content(self) -> "DiaryEntryIn":
+        # An all-NULL row is a diary page entry with nothing on it.
+        if not any((self.good, self.bad, self.next, self.freeform)):
+            raise ValueError("entry needs at least one of good/bad/next/freeform")
+        return self
+
+
+class DiaryEntryUpdate(BaseModel):
+    """Partial update; only the four text fields are mutable."""
+
+    good: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    bad: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    next: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+    freeform: Optional[str] = Field(None, max_length=_TEXT_MAX_LEN)
+
+    @field_validator("good", "bad", "next", "freeform")
+    @classmethod
+    def normalize_text(cls, v: Optional[str]) -> Optional[str]:
+        return _blank_to_none(v)
+
+
+class DiaryEntryRead(BaseModel):
+    id: int
+    kind: str
+    entry_date: date
+    good: str | None
+    bad: str | None
+    next: str | None
+    freeform: str | None
+    created_at: datetime
+    updated_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class DiaryListResponse(BaseModel):
+    entries: list[DiaryEntryRead]
+    # True when the query window held more rows than `limit` returned.
+    has_more: bool = False
+
+
+class SessionNoteIn(BaseModel):
+    """The end-of-session reflection note; one per session."""
+
+    content: str = Field(min_length=1, max_length=_TEXT_MAX_LEN)
+
+    @field_validator("content")
+    @classmethod
+    def require_visible_content(cls, v: str) -> str:
+        v = v.strip()
+        if not v:
+            raise ValueError("content must not be blank")
+        return v
+
+
+class SessionNoteRead(BaseModel):
+    id: int
+    session_id: int | None
+    content: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class RetentionIn(BaseModel):
+    retention: Literal["90d", "1y", "forever"]
 
 
 class SessionPhaseIn(BaseModel):
@@ -187,6 +292,53 @@ class SessionPhaseOut(BaseModel):
     ended_at: datetime | None
 
     model_config = ConfigDict(from_attributes=True)
+
+
+class TimelinePhase(BaseModel):
+    """One work/break phase — a sub-block inside a session block."""
+
+    seq: int
+    kind: str
+    status: str
+    planned_seconds: int
+    actual_seconds: int | None
+    started_at: datetime | None
+    ended_at: datetime | None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class TimelineSessionBlock(BaseModel):
+    """A focus session rendered as a span on the day's time axis."""
+
+    id: int
+    mode: str
+    status: str
+    task_id: int | None
+    activity_label: str | None
+    started_at: datetime
+    ended_at: datetime | None
+    duration_seconds: int
+    phases: list[TimelinePhase]
+
+
+class TimelineMarker(BaseModel):
+    """One ledger event rendered as a point marker on the time axis."""
+
+    id: int
+    type: str
+    ts: datetime
+    outcome: dict | None
+
+
+class TimelineDayResponse(BaseModel):
+    """Merged day view: session blocks, ledger markers, and the day's diary."""
+
+    date: date
+    sessions: list[TimelineSessionBlock]
+    markers: list[TimelineMarker]
+    diary: list[DiaryEntryRead]
+    server_time: datetime
 
 
 class FocusSessionOut(BaseModel):

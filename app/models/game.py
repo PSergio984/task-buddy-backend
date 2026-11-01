@@ -78,6 +78,11 @@ class GameProfile(Base):
         Float, default=0.0, server_default="0", nullable=False
     )
     totals_day: Mapped[date | None] = mapped_column(Date, nullable=True)
+    # Diary/timeline read horizon: '90d' | '1y' | 'forever'. A read filter
+    # only — nothing is deleted when the window shrinks.
+    retention: Mapped[str] = mapped_column(
+        String(16), default="forever", server_default="forever", nullable=False
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
@@ -353,16 +358,34 @@ class GameConfig(Base):
 
 
 class DiaryEntry(Base):
-    """One user-authored diary entry per day (stand-up fields + freeform)."""
+    """A user-authored diary entry: one stand-up per day, unlimited freeform."""
 
     __tablename__ = "tbl_diary_entries"
-    __table_args__ = (UniqueConstraint("user_id", "entry_date", name="uq_diary_entries_user_date"),)
+    __table_args__ = (
+        # Partial unique: at most one stand-up row per (user, day);
+        # kind='freeform' rows are unlimited.
+        Index(
+            "uq_diary_entries_one_standup",
+            "user_id",
+            "entry_date",
+            unique=True,
+            sqlite_where=text("kind = 'standup'"),
+            postgresql_where=text("kind = 'standup'"),
+        ),
+        # The partial unique above skips freeform rows, so it can't serve the
+        # (user_id, entry_date) list reads — this one covers them.
+        Index("ix_diary_entries_user_date", "user_id", "entry_date"),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False
     )
     entry_date: Mapped[date] = mapped_column(Date, nullable=False)
+    # 'standup' rows are unique per (user, entry_date); 'freeform' are not.
+    kind: Mapped[str] = mapped_column(
+        String(16), default="standup", server_default="standup", nullable=False
+    )
     good: Mapped[str | None] = mapped_column(Text, nullable=True)
     bad: Mapped[str | None] = mapped_column(Text, nullable=True)
     next: Mapped[str | None] = mapped_column(Text, nullable=True)
@@ -377,13 +400,24 @@ class SessionNote(Base):
     """A skippable reflection note prompted after a focus session."""
 
     __tablename__ = "tbl_session_notes"
+    __table_args__ = (
+        # One note per session; rows keep NULL session_id after the session
+        # row is deleted (SET NULL), and NULLs never collide.
+        Index(
+            "uq_session_notes_one_per_session",
+            "session_id",
+            unique=True,
+            sqlite_where=text("session_id IS NOT NULL"),
+            postgresql_where=text("session_id IS NOT NULL"),
+        ),
+    )
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(
         ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     session_id: Mapped[int | None] = mapped_column(
-        ForeignKey("tbl_focus_sessions.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("tbl_focus_sessions.id", ondelete="SET NULL"), nullable=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
