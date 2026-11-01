@@ -20,6 +20,7 @@ import sys  # noqa: E402
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 
 from app.config import config as app_config  # noqa: E402
+from app.models import game  # noqa: E402, F401
 from app.models.audit import AuditLog  # noqa: E402, F401
 from app.models.base import Base  # noqa: E402
 from app.models.notification import Notification, PushSubscription  # noqa: E402, F401
