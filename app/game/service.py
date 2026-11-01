@@ -30,8 +30,8 @@ def _habit_for_event(event: GameEventIn, habits_by_id: dict[int, Habit]) -> Habi
     """Resolve the habit a client habit_click targets; None = unresolvable.
 
     Only an int habit_id maps to a row — bool is excluded (True == 1 would
-    silently resolve habit 1) and malformed ids get the same treatment as a
-    deleted habit: the generic client-claimed-value path.
+    silently resolve habit 1). Unresolvable ids (deleted/foreign/malformed)
+    are recorded unscored — a client-claimed value can never reach the engine.
     """
     habit_id = event.payload.get("habit_id")
     if isinstance(habit_id, int) and not isinstance(habit_id, bool):
@@ -121,8 +121,10 @@ async def ingest_events(
             profile, event.type, event.payload, rates, rng_roll=rng.random(), rng=rng, today=today
         )
         # Engine outcome lands under "_outcome" so client payload keys never
-        # collide with bookkeeping in the immutable ledger row.
-        payload = {**event.payload, "_outcome": outcome}
+        # collide with bookkeeping in the immutable ledger row. Client extras
+        # are cleaned of server-reserved markers — a forged auto/session_id
+        # can't masquerade a claimed event as server-authored metadata.
+        payload = {**habit_service.clean_extra(event.payload), "_outcome": outcome}
         db.add(
             GameEvent(
                 user_id=user_id,

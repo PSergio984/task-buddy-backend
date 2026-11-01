@@ -122,7 +122,13 @@ async def update_habit(
     update_data = habit_in.model_dump(exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
-    habit = await _owned_habit(db, current_user.id, habit_id)
+    # Hoisted before the lock: a create-race rollback in get_or_create_profile
+    # expires every session object, including current_user.
+    user_id = current_user.id
+    # Same serialization as click/delete: a PATCH mid-flight must not race a
+    # scored click's direction/difficulty read or strand on a deleted row.
+    await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    habit = await _owned_habit(db, user_id, habit_id)
     for field, value in update_data.items():
         if field == "direction":
             value = HabitDirection(value)
@@ -130,7 +136,7 @@ async def update_habit(
     await db.commit()
     # updated_at is an onupdate column — expired post-commit, refetch it.
     await db.refresh(habit)
-    logger.info("habit updated: user=%s habit=%s", current_user.id, habit.id)
+    logger.info("habit updated: user=%s habit=%s", user_id, habit.id)
     return HabitRead.model_validate(habit)
 
 
@@ -146,11 +152,12 @@ async def delete_habit(
     # Serialize against in-flight clicks: every scoring path holds this lock
     # while updating the habit row — an unlocked delete could strand the
     # concurrent UPDATE (StaleDataError -> 500).
-    await game_crud.get_or_create_profile(db, current_user.id, for_update=True)
-    habit = await _owned_habit(db, current_user.id, habit_id)
+    user_id = current_user.id
+    await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    habit = await _owned_habit(db, user_id, habit_id)
     await db.delete(habit)
     await db.commit()
-    logger.info("habit deleted: user=%s habit=%s", current_user.id, habit_id)
+    logger.info("habit deleted: user=%s habit=%s", user_id, habit_id)
     return {"message": "Habit deleted successfully"}
 
 
