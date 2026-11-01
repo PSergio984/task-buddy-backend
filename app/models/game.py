@@ -364,6 +364,9 @@ class DiaryEntry(Base):
             sqlite_where=text("kind = 'standup'"),
             postgresql_where=text("kind = 'standup'"),
         ),
+        # The partial unique above skips freeform rows, so it can't serve the
+        # (user_id, entry_date) list reads — this one covers them.
+        Index("ix_diary_entries_user_date", "user_id", "entry_date"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -406,7 +409,7 @@ class SessionNote(Base):
         ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False, index=True
     )
     session_id: Mapped[int | None] = mapped_column(
-        ForeignKey("tbl_focus_sessions.id", ondelete="SET NULL"), nullable=True, index=True
+        ForeignKey("tbl_focus_sessions.id", ondelete="SET NULL"), nullable=True
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

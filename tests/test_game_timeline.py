@@ -167,6 +167,83 @@ class TestSessionNotes:
             response = await anon.post(f"{GAME}/sessions/{session.id}/note", json={"content": "hi"})
         assert response.status_code == 401
 
+    async def test_get_note(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        today = datetime.now(timezone.utc).date()
+        session = make_session(confirmed_user["id"], at(today, 10), at(today, 10, 25))
+        db.add(session)
+        await db.commit()
+
+        await authenticated_async_client.post(
+            f"{GAME}/sessions/{session.id}/note", json={"content": "went well"}
+        )
+        fetched = await authenticated_async_client.get(f"{GAME}/sessions/{session.id}/note")
+        assert fetched.status_code == 200, fetched.text
+        assert fetched.json()["session_id"] == session.id
+        assert fetched.json()["content"] == "went well"
+
+    async def test_get_note_missing_returns_404(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        today = datetime.now(timezone.utc).date()
+        session = make_session(confirmed_user["id"], at(today, 10), at(today, 10, 25))
+        db.add(session)
+        await db.commit()
+
+        response = await authenticated_async_client.get(f"{GAME}/sessions/{session.id}/note")
+        assert response.status_code == 404
+
+    async def test_get_note_scoped_to_owner(
+        self,
+        authenticated_async_client: AsyncClient,
+        async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        today = datetime.now(timezone.utc).date()
+        session = make_session(confirmed_user["id"], at(today, 10), at(today, 10, 25))
+        db.add(session)
+        await db.commit()
+        await authenticated_async_client.post(
+            f"{GAME}/sessions/{session.id}/note", json={"content": "mine"}
+        )
+
+        other = await second_user(async_client, db)
+        response = await async_client.get(
+            f"{GAME}/sessions/{session.id}/note", headers=other["headers"]
+        )
+        assert response.status_code == 404
+
+    async def test_note_survives_session_delete(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        today = datetime.now(timezone.utc).date()
+        session = make_session(confirmed_user["id"], at(today, 10), at(today, 10, 25))
+        db.add(session)
+        await db.commit()
+        await authenticated_async_client.post(
+            f"{GAME}/sessions/{session.id}/note", json={"content": "postmortem"}
+        )
+
+        # SET NULL on the FK detaches the note instead of deleting it.
+        await db.delete(session)
+        await db.commit()
+
+        result = await db.execute(select(SessionNote))
+        note = result.scalar_one()
+        assert note.session_id is None
+        assert note.content == "postmortem"
+
 
 class TestTimeline:
     async def test_day_view_assembles_blocks_markers_diary(
@@ -264,13 +341,35 @@ class TestTimeline:
     async def test_timeline_defaults_to_today(
         self, authenticated_async_client: AsyncClient
     ) -> None:
+        # Bracket the request — a midnight crossing must not flake the check.
+        before = datetime.now(timezone.utc).date()
         response = await authenticated_async_client.get(f"{GAME}/timeline")
+        after = datetime.now(timezone.utc).date()
         assert response.status_code == 200, response.text
         body = response.json()
-        assert body["date"] == datetime.now(timezone.utc).date().isoformat()
+        assert body["date"] in {before.isoformat(), after.isoformat()}
         assert body["sessions"] == []
         assert body["markers"] == []
         assert body["diary"] == []
+
+    async def test_timeline_includes_active_session_block(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # Regression: an in-progress session (ended_at=None) must not crash the
+        # duration computation — SQLite hands back naive timestamps.
+        day = datetime.now(timezone.utc).date()
+        db.add(make_session(confirmed_user["id"], at(day, 10), None))
+        await db.commit()
+
+        response = await authenticated_async_client.get(f"{GAME}/timeline", params={"date": day})
+        assert response.status_code == 200, response.text
+        block = response.json()["sessions"][0]
+        assert block["status"] == "active"
+        assert block["ended_at"] is None
+        assert block["duration_seconds"] >= 0
 
     async def test_timeline_only_returns_the_requested_day(
         self,

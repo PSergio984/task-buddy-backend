@@ -43,14 +43,17 @@ class TestDiaryCreate:
     async def test_create_standup_defaults_to_today(
         self, authenticated_async_client: AsyncClient
     ) -> None:
+        # Bracket the request — a midnight crossing must not flake the check.
+        before = today()
         response = await authenticated_async_client.post(
             f"{GAME}/diary",
             json={"good": "shipped the ledger", "bad": "too many meetings", "next": "rest"},
         )
+        after = today()
         assert response.status_code == 201, response.text
         body = response.json()
         assert body["kind"] == "standup"
-        assert body["entry_date"] == today().isoformat()
+        assert body["entry_date"] in {before.isoformat(), after.isoformat()}
         assert body["good"] == "shipped the ledger"
         assert body["bad"] == "too many meetings"
         assert body["next"] == "rest"
@@ -58,10 +61,16 @@ class TestDiaryCreate:
     async def test_second_standup_same_day_conflicts(
         self, authenticated_async_client: AsyncClient
     ) -> None:
-        first = await authenticated_async_client.post(f"{GAME}/diary", json={"good": "a"})
+        # Pinned date: two implicit-today posts could straddle midnight.
+        day = today().isoformat()
+        first = await authenticated_async_client.post(
+            f"{GAME}/diary", json={"entry_date": day, "good": "a"}
+        )
         assert first.status_code == 201, first.text
 
-        second = await authenticated_async_client.post(f"{GAME}/diary", json={"good": "b"})
+        second = await authenticated_async_client.post(
+            f"{GAME}/diary", json={"entry_date": day, "good": "b"}
+        )
         assert second.status_code == 409, second.text
 
     async def test_standup_conflict_uses_entry_date(
@@ -162,6 +171,31 @@ class TestDiaryReadUpdateDelete:
         )
         assert response.status_code == 400
 
+    async def test_patch_cannot_empty_every_field(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # A patch that nulls out the last populated field would leave an
+        # all-NULL row — same thing create validation rejects.
+        created = await authenticated_async_client.post(
+            f"{GAME}/diary", json={"good": "a", "bad": "b"}
+        )
+        entry_id = created.json()["id"]
+
+        response = await authenticated_async_client.patch(
+            f"{GAME}/diary/{entry_id}", json={"good": None, "bad": None}
+        )
+        assert response.status_code == 400, response.text
+
+        # Nulling one field while writing another still leaves content -> 200.
+        ok = await authenticated_async_client.patch(
+            f"{GAME}/diary/{entry_id}", json={"bad": None, "freeform": "note"}
+        )
+        assert ok.status_code == 200, ok.text
+        body = ok.json()
+        assert body["good"] == "a"
+        assert body["bad"] is None
+        assert body["freeform"] == "note"
+
     async def test_delete_entry(self, authenticated_async_client: AsyncClient) -> None:
         created = await authenticated_async_client.post(f"{GAME}/diary", json={"good": "a"})
         entry_id = created.json()["id"]
@@ -190,6 +224,43 @@ class TestDiaryReadUpdateDelete:
 
         all_entries = await authenticated_async_client.get(f"{GAME}/diary")
         assert len(all_entries.json()["entries"]) == 3
+
+    async def test_list_pagination_offset_and_has_more(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for i in range(3):
+            created = await authenticated_async_client.post(
+                f"{GAME}/diary", json={"kind": "freeform", "freeform": f"note {i}"}
+            )
+            assert created.status_code == 201, created.text
+
+        page1 = await authenticated_async_client.get(f"{GAME}/diary", params={"limit": 2})
+        assert page1.status_code == 200, page1.text
+        assert len(page1.json()["entries"]) == 2
+        assert page1.json()["has_more"] is True
+
+        page2 = await authenticated_async_client.get(
+            f"{GAME}/diary", params={"limit": 2, "offset": 2}
+        )
+        assert page2.status_code == 200, page2.text
+        assert len(page2.json()["entries"]) == 1
+        assert page2.json()["has_more"] is False
+
+        # Pages don't overlap — the offset rows are the ones page 1 trimmed.
+        ids1 = {e["id"] for e in page1.json()["entries"]}
+        ids2 = {e["id"] for e in page2.json()["entries"]}
+        assert ids1.isdisjoint(ids2)
+
+    async def test_list_exact_page_reports_no_more(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for i in range(2):
+            await authenticated_async_client.post(
+                f"{GAME}/diary", json={"kind": "freeform", "freeform": f"n{i}"}
+            )
+        page = await authenticated_async_client.get(f"{GAME}/diary", params={"limit": 2})
+        assert len(page.json()["entries"]) == 2
+        assert page.json()["has_more"] is False
 
     async def test_entries_scoped_to_owner(
         self,

@@ -25,9 +25,10 @@ def retention_cutoff(retention: str | None, today: date) -> date | None:
     return today - timedelta(days=days) if days else None
 
 
-def _utc(ts: datetime) -> datetime:
-    # Stored timestamps are UTC-aware; a naive value is read as UTC (the same
-    # assumption the ingest schema makes for client_ts).
+def utc_aware(ts: datetime) -> datetime:
+    # SQLite reads DateTime(timezone=True) back tz-naive (the offset is not
+    # stored); a naive value is labeled UTC — the same assumption the ingest
+    # schema makes for client_ts.
     return ts if ts.tzinfo is not None else ts.replace(tzinfo=timezone.utc)
 
 
@@ -132,7 +133,8 @@ async def list_diary_entries(
     user_id: int,
     entry_date: date | None,
     cutoff: date | None,
-    limit: int,
+    limit: int | None = None,
+    offset: int = 0,
 ) -> list[DiaryEntry]:
     """Newest-first entries; `entry_date` pins one day, `cutoff` is retention."""
     query = select(DiaryEntry).where(DiaryEntry.user_id == user_id)
@@ -140,9 +142,12 @@ async def list_diary_entries(
         query = query.where(DiaryEntry.entry_date == entry_date)
     if cutoff is not None:
         query = query.where(DiaryEntry.entry_date >= cutoff)
-    result = await db.execute(
-        query.order_by(DiaryEntry.entry_date.desc(), DiaryEntry.id.desc()).limit(limit)
-    )
+    query = query.order_by(DiaryEntry.entry_date.desc(), DiaryEntry.id.desc())
+    if limit is not None:
+        query = query.limit(limit)
+    if offset:
+        query = query.offset(offset)
+    result = await db.execute(query)
     return list(result.scalars().all())
 
 
@@ -164,9 +169,9 @@ async def get_sessions_started_between(
     """Sessions whose started_at lands inside [start, end) on the UTC axis.
 
     The SQL window is widened a day each side and re-filtered on the UTC
-    instant: on SQLite an aware timestamp stored with a non-UTC offset sorts
-    lexically, not chronologically, so a tight filter would mis-bucket it.
-    Postgres (timestamptz) is unaffected either way.
+    instant: SQLite stores timestamps without the offset, so lexical bounds
+    alone can't be trusted once a client writes a non-UTC wall time. Postgres
+    (timestamptz) is unaffected either way.
     """
     result = await db.execute(
         select(FocusSession).where(
@@ -175,7 +180,7 @@ async def get_sessions_started_between(
             FocusSession.started_at < end + timedelta(days=1),
         )
     )
-    sessions = [s for s in result.scalars() if start <= _utc(s.started_at) < end]
+    sessions = [s for s in result.scalars() if start <= utc_aware(s.started_at) < end]
     sessions.sort(key=lambda s: (s.started_at, s.id))
     return sessions
 
@@ -206,6 +211,6 @@ async def get_events_between(
             GameEvent.client_ts < end + timedelta(days=1),
         )
     )
-    events = [e for e in result.scalars() if start <= _utc(e.client_ts) < end]
+    events = [e for e in result.scalars() if start <= utc_aware(e.client_ts) < end]
     events.sort(key=lambda e: (e.client_ts, e.id))
     return events

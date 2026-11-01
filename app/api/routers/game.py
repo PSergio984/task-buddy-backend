@@ -186,12 +186,19 @@ async def list_diary_entries(
     db: Annotated[AsyncSession, Depends(get_db)],
     date: Annotated[Optional[date], Query()] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 500,
+    offset: Annotated[int, Query(ge=0)] = 0,
 ) -> DiaryListResponse:
     """Entries newest-first; `date` pins one day. Entries past retention are hidden."""
     retention = await game_crud.get_retention(db, current_user.id)
     cutoff = game_crud.retention_cutoff(retention, datetime.now(timezone.utc).date())
-    rows = await game_crud.list_diary_entries(db, current_user.id, date, cutoff, limit)
-    return DiaryListResponse(entries=[DiaryEntryRead.model_validate(row) for row in rows])
+    # limit+1 rows: the extra row is the has_more signal, not a real read.
+    rows = await game_crud.list_diary_entries(
+        db, current_user.id, date, cutoff, limit=limit + 1, offset=offset
+    )
+    return DiaryListResponse(
+        entries=[DiaryEntryRead.model_validate(row) for row in rows[:limit]],
+        has_more=len(rows) > limit,
+    )
 
 
 @router.get(
@@ -236,6 +243,17 @@ async def update_diary_entry(
     entry = await _visible_entry(db, current_user.id, entry_id)
     if entry is None:
         raise HTTPException(status_code=404, detail="Diary entry not found")
+    # The patch merges over existing fields — reject if the result would be
+    # an empty row (create validates non-empty; update must hold the line).
+    merged = {
+        field: update_data.get(field, getattr(entry, field))
+        for field in ("good", "bad", "next", "freeform")
+    }
+    if not any(merged.values()):
+        raise HTTPException(
+            status_code=400,
+            detail="Entry must keep at least one of good/bad/next/freeform",
+        )
     for field, value in update_data.items():
         setattr(entry, field, value)
     await db.commit()
@@ -307,6 +325,29 @@ async def attach_session_note(
     return SessionNoteRead.model_validate(note)
 
 
+@router.get(
+    "/sessions/{session_id}/note",
+    response_model=SessionNoteRead,
+    responses={404: {"description": "Focus session or note not found"}},
+)
+@limiter.limit(RATE_LIMIT_GAME_READ)
+async def get_session_note(
+    session_id: int,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SessionNoteRead:
+    """Fetch the note attached to a session — owner only, 404 without one."""
+    session = await game_crud.get_focus_session(db, session_id, current_user.id)
+    if session is None:
+        raise HTTPException(status_code=404, detail="Focus session not found")
+    note = await game_crud.find_session_note(db, session_id)
+    if note is None:
+        raise HTTPException(status_code=404, detail="No note for this session")
+    return SessionNoteRead.model_validate(note)
+
+
 @router.get("/timeline", response_model=TimelineDayResponse)
 @limiter.limit(RATE_LIMIT_GAME_READ)
 async def get_timeline(
@@ -344,9 +385,17 @@ async def get_timeline(
                 status=s.status,
                 task_id=s.task_id,
                 activity_label=s.activity_label,
-                started_at=s.started_at,
-                ended_at=s.ended_at,
-                duration_seconds=int(((s.ended_at or now) - s.started_at).total_seconds()),
+                # SQLite reads tz columns back naive — normalize before the
+                # subtraction (an active session's None ended_at falls back to
+                # aware `now` and a naive-aware mix raises TypeError).
+                started_at=game_crud.utc_aware(s.started_at),
+                ended_at=game_crud.utc_aware(s.ended_at) if s.ended_at else None,
+                duration_seconds=int(
+                    (
+                        (game_crud.utc_aware(s.ended_at) if s.ended_at else now)
+                        - game_crud.utc_aware(s.started_at)
+                    ).total_seconds()
+                ),
                 phases=[TimelinePhase.model_validate(p) for p in phases_by_session.get(s.id, [])],
             )
             for s in session_rows
@@ -355,14 +404,14 @@ async def get_timeline(
             TimelineMarker(
                 id=e.id,
                 type=e.type,
-                ts=e.client_ts,
+                ts=game_crud.utc_aware(e.client_ts),
                 outcome=e.payload.get("_outcome"),
             )
             for e in await game_crud.get_events_between(db, user_id, start, end)
         ]
         diary = [
             DiaryEntryRead.model_validate(row)
-            for row in await game_crud.list_diary_entries(db, user_id, day, cutoff, limit=500)
+            for row in await game_crud.list_diary_entries(db, user_id, day, cutoff)
         ]
 
     return TimelineDayResponse(

@@ -199,6 +199,8 @@ class DiaryEntryRead(BaseModel):
 
 class DiaryListResponse(BaseModel):
     entries: list[DiaryEntryRead]
+    # True when the query window held more rows than `limit` returned.
+    has_more: bool = False
 
 
 class SessionNoteIn(BaseModel):
