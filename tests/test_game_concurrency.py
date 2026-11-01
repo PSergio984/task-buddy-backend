@@ -10,6 +10,7 @@ import asyncio
 import os
 import random
 from datetime import datetime, timezone
+from uuid import uuid4
 
 import pytest
 from sqlalchemy import select
@@ -74,6 +75,9 @@ async def _ingest(Session, user_id: int, events: list[GameEventIn], attempts: in
 
 
 async def _make_user(Session, email: str) -> int:
+    # Per-run suffix: reruns against a persistent GAME_TEST_DB_URL must not
+    # collide on users.email.
+    email = f"{email.split('@')[0]}-{uuid4().hex[:8]}@test.dev"
     async with Session() as s:
         user = User(username=email.split("@")[0], email=email, password="x", confirmed=True)
         s.add(user)
