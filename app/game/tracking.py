@@ -38,6 +38,9 @@ from app.crud import game_tracking as tracking_crud
 DEFAULT_WEIGHTS: dict[str, float] = {
     "focus_phase_completed": 0.0,
     "habit_click": 2.0,
+    # Dead until the dailies scorer lands (#63): no write path emits
+    # scored:true daily_check rows yet. Any future emitter MUST stamp
+    # _outcome.scored=True or the row is filtered before weighting.
     "daily_check": 3.0,
     "stopwatch_milestone": 1.0,
     "damage": 0.0,
@@ -131,7 +134,9 @@ def build_days(
 ) -> list[dict]:
     """One filled row per calendar day in [start, end] — the grid needs empty
     days rendered as tier-0 cells, so the server emits them rather than
-    leaving the client to fill."""
+    leaving the client to fill. `events` carries only score-eligible counts
+    (the CRUD layer already filters unscored rows — it is not raw ledger
+    activity)."""
     days = []
     day = start
     while day <= end:

@@ -162,6 +162,10 @@ async def get_client_focus_minutes_by_day(
         ~GameEvent.client_event_id.ilike("server:%"),
         GameEvent.client_ts >= start,
         GameEvent.client_ts < end,
+        # Same weight-bearing contract as the counts query — unreachable
+        # today (client focus rows persist only scored:true) but keeps the
+        # two reads symmetric if a future path writes unscored rows.
+        _scored_events_where(db),
     ]
     if _is_postgres(db):
         filters.append(func.jsonb_typeof(GameEvent.payload["minutes"]) == "number")

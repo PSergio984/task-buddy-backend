@@ -727,14 +727,27 @@ async def test_aggregation_queries_on_postgres() -> None:
                         payload={"minutes": 30, "_outcome": {"scored": True}},
                         client_ts=at(TODAY, 11),
                     ),
+                    # Malformed minutes: a scored client row with a STRING
+                    # value — without the jsonb_typeof guard, the ->> cast
+                    # either 500s the query or silently adds 30 more.
+                    GameEvent(
+                        user_id=uid,
+                        client_event_id="pg-bad-minutes",
+                        type="focus_phase_completed",
+                        payload={"minutes": "30", "_outcome": {"scored": True}},
+                        client_ts=at(TODAY, 12),
+                    ),
                 ]
             )
             await s.commit()
 
             counts = await tracking_crud.get_event_counts_by_day(s, uid, start_dt, end_dt)
-            assert counts == {TODAY: {"habit_click": 1, "focus_phase_completed": 2}}
+            # scored:false habit_click filtered out; all three focus rows count.
+            assert counts == {TODAY: {"habit_click": 1, "focus_phase_completed": 3}}
             phase_minutes = await tracking_crud.get_focus_minutes_by_day(s, uid, start_dt, end_dt)
             assert phase_minutes == {TODAY: pytest.approx(25.0)}
+            # Returns without error and excludes the malformed "30" row +
+            # the server-authored 25 — only the real client 30 lands.
             client_minutes = await tracking_crud.get_client_focus_minutes_by_day(
                 s, uid, start_dt, end_dt
             )

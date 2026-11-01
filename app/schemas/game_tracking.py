@@ -20,6 +20,9 @@ class ActivityDay(BaseModel):
     date: date
     score: float
     focus_minutes: float
+    # Score-eligible per-type counts, NOT raw ledger activity: unscored rows
+    # (forged types, failed clicks, lifecycle noise) are excluded, and a
+    # weight-0 type can appear while adding 0 to the score.
     events: dict[str, int]
     tier: int
 
