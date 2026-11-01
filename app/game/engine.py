@@ -32,9 +32,11 @@ _POSITIVE_FIELDS = frozenset(
         "lvl_curve_early",
         "lvl_curve_lvl5",
         "habit_drift_base",
-        "stopwatch_milestone_xp",
     }
 )
+
+# Rates where zero is meaningful (0 disables the award) but negatives aren't.
+_NONNEGATIVE_FIELDS = frozenset({"stopwatch_milestone_xp"})
 
 # Fields that must stay integral: daily_xp_cap feeds an Integer column, and
 # lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
@@ -106,6 +108,7 @@ class GameRates:
                 or isinstance(v, bool)
                 or not math.isfinite(v)
                 or (key in _POSITIVE_FIELDS and v <= 0)
+                or (key in _NONNEGATIVE_FIELDS and v < 0)
                 or (key in _INT_FIELDS and not float(v).is_integer())
             ):
                 continue

@@ -314,7 +314,9 @@ async def get_active_view(db: AsyncSession, user_id: int) -> _View | None:
         return None
     profile = await game_crud.get_or_create_profile(db, user_id)
     session = await game_crud.get_active_session(db, user_id, for_update=True)
-    assert session is not None  # it existed a line ago and only we can end it
+    if session is None:
+        # A concurrent /stop landed between the probe and the lock.
+        return None
     phases, _ = await _evaluate(db, session, user_id, datetime.now(timezone.utc))
     return session, phases, profile
 
