@@ -53,7 +53,8 @@ class ActivityStatsResponse(BaseModel):
     current_streak: int
     longest_streak: int
     best_day: ActivityBestDay | None
-    # Trailing-7-day score sum ending today (clipped to the window).
+    # Score sum over the 7 days ending at server-today, clipped to the
+    # window — a window ending earlier legitimately reads lower.
     weekly_total: float
     # Always null until the speedrun records feature (#69) exists — there is
     # no PB table; FocusSession.speedrun is a per-session blob.

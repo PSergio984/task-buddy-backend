@@ -5,14 +5,20 @@ phase rows vs offline-synced ledger events, empty-day fill, tier assignment,
 config overrides, and streak math.
 """
 
+import os
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from httpx import ASGITransport, AsyncClient
 from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker, create_async_engine
+from sqlalchemy.pool import NullPool
 
+import app.models  # noqa: F401 — registers every table on Base.metadata
+from app.crud import game_tracking as tracking_crud
+from app.game import tracking
 from app.main import app
+from app.models.base import Base
 from app.models.game import FocusPhase, FocusSession, GameConfig, GameEvent
 from app.models.user import User
 
@@ -124,14 +130,45 @@ class TestActivityGrid:
         confirmed_user: dict,
         db: AsyncSession,
     ) -> None:
-        # Default weights: habit_click=2, damage=0, lifecycle=0, milestone=1.
+        # Default weights: habit_click=2, damage=0, milestone=1. Unscored
+        # lifecycle rows (session_started stamps scored:false) are excluded.
         db.add_all(
             [
-                make_event(confirmed_user["id"], "h1", "habit_click", at(TODAY, 9)),
-                make_event(confirmed_user["id"], "h2", "habit_click", at(TODAY, 9, 30)),
-                make_event(confirmed_user["id"], "d1", "damage", at(TODAY, 10)),
-                make_event(confirmed_user["id"], "s1", "session_started", at(TODAY, 8)),
-                make_event(confirmed_user["id"], "m1", "stopwatch_milestone", at(TODAY, 11)),
+                make_event(
+                    confirmed_user["id"],
+                    "h1",
+                    "habit_click",
+                    at(TODAY, 9),
+                    {"_outcome": {"scored": True}},
+                ),
+                make_event(
+                    confirmed_user["id"],
+                    "h2",
+                    "habit_click",
+                    at(TODAY, 9, 30),
+                    {"_outcome": {"scored": True}},
+                ),
+                make_event(
+                    confirmed_user["id"],
+                    "d1",
+                    "damage",
+                    at(TODAY, 10),
+                    {"_outcome": {"scored": True, "hp_lost": 2}},
+                ),
+                make_event(
+                    confirmed_user["id"],
+                    "s1",
+                    "session_started",
+                    at(TODAY, 8),
+                    {"_outcome": {"scored": False}},
+                ),
+                make_event(
+                    confirmed_user["id"],
+                    "m1",
+                    "stopwatch_milestone",
+                    at(TODAY, 11),
+                    {"_outcome": {"scored": True}},
+                ),
             ]
         )
         await db.commit()
@@ -145,11 +182,75 @@ class TestActivityGrid:
         assert row["events"] == {
             "habit_click": 2,
             "damage": 1,
-            "session_started": 1,
             "stopwatch_milestone": 1,
         }
-        assert row["score"] == pytest.approx(2 * 2 + 0 + 0 + 1)  # = 5 -> tier 1
+        assert row["score"] == pytest.approx(2 * 2 + 0 + 1)  # = 5 -> tier 1
         assert row["tier"] == 1
+
+    async def test_unscored_and_forged_events_earn_no_score(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # The mint vector: a client posts a type the engine doesn't score —
+        # the row lands with _outcome.scored=false and must not earn weight.
+        post = await authenticated_async_client.post(
+            "/api/v1/game/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "forge-daily",
+                        "type": "daily_check",
+                        "client_ts": f"{TODAY}T09:00:00Z",
+                        "payload": {"daily_id": 1},
+                    }
+                ]
+            },
+        )
+        assert post.status_code == 200, post.text
+        db.add_all(
+            [
+                # Unscored habit_click — the marker the service writes for
+                # unresolvable/direction-mismatched clicks.
+                make_event(
+                    confirmed_user["id"],
+                    "h-bad",
+                    "habit_click",
+                    at(TODAY, 10),
+                    {
+                        "habit_id": 999,
+                        "_outcome": {"scored": False, "reason": "habit_unresolvable"},
+                    },
+                ),
+                make_event(
+                    confirmed_user["id"],
+                    "h-ok",
+                    "habit_click",
+                    at(TODAY, 11),
+                    {"_outcome": {"scored": True}},
+                ),
+                # An outcome without a scored key is NOT explicit-false and
+                # still counts (a forged row always lands scored:false).
+                make_event(
+                    confirmed_user["id"],
+                    "h-legacy",
+                    "habit_click",
+                    at(TODAY, 12),
+                    {"_outcome": {"xp": 25}},
+                ),
+            ]
+        )
+        await db.commit()
+
+        body = (
+            await authenticated_async_client.get(
+                ACTIVITY, params={"start": TODAY.isoformat(), "end": TODAY.isoformat()}
+            )
+        ).json()
+        row = day_row(body, TODAY)
+        assert row["events"] == {"habit_click": 2}
+        assert row["score"] == pytest.approx(4.0)
 
     async def test_focus_minutes_from_completed_phases(
         self,
@@ -218,6 +319,35 @@ class TestActivityGrid:
         assert row["score"] == pytest.approx(55.0)  # weight 0 -> score is minutes only
         assert row["tier"] == 3
 
+    async def test_server_prefix_match_is_case_insensitive(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # SQLite LIKE is ASCII case-insensitive but PG LIKE is not — the
+        # namespace split must behave identically on both backends.
+        db.add(
+            make_event(
+                confirmed_user["id"],
+                "SERVER:squat",
+                "focus_phase_completed",
+                at(TODAY, 9),
+                {"minutes": 99, "_outcome": {"scored": True}},
+            )
+        )
+        await db.commit()
+
+        body = (
+            await authenticated_async_client.get(
+                ACTIVITY, params={"start": TODAY.isoformat(), "end": TODAY.isoformat()}
+            )
+        ).json()
+        row = day_row(body, TODAY)
+        assert row["focus_minutes"] == 0
+        # The row itself still shows in the events map (weight 0 either way).
+        assert row["events"] == {"focus_phase_completed": 1}
+
     async def test_events_bucket_by_client_ts_day(
         self,
         authenticated_async_client: AsyncClient,
@@ -271,6 +401,84 @@ class TestActivityGrid:
         assert row["tier"] == 2  # custom ladder [1, 10]
         assert body["tier_thresholds"] == [1, 10]
 
+    async def test_focus_phase_weight_is_pinned_to_zero(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # A config weight on focus_phase_completed can't reintroduce the
+        # minutes+events double-count — the code pins it to 0.
+        db.add(
+            GameConfig(
+                key="activity_weights",
+                value={"weights": {"focus_phase_completed": 5}},
+            )
+        )
+        db.add(
+            make_event(
+                confirmed_user["id"],
+                "client-1",
+                "focus_phase_completed",
+                at(TODAY, 9),
+                {"minutes": 30, "_outcome": {"scored": True}},
+            )
+        )
+        await db.commit()
+
+        body = (
+            await authenticated_async_client.get(
+                ACTIVITY, params={"start": TODAY.isoformat(), "end": TODAY.isoformat()}
+            )
+        ).json()
+        row = day_row(body, TODAY)
+        assert row["focus_minutes"] == pytest.approx(30.0)
+        assert row["score"] == pytest.approx(30.0)  # not 30 + 5
+
+    async def test_non_object_config_row_falls_back_to_defaults(
+        self,
+        authenticated_async_client: AsyncClient,
+        db: AsyncSession,
+    ) -> None:
+        # JSONB holds any JSON value — a string/list row must not 500.
+        db.add(GameConfig(key="activity_weights", value="bogus"))
+        await db.commit()
+
+        response = await authenticated_async_client.get(
+            ACTIVITY, params={"start": TODAY.isoformat(), "end": TODAY.isoformat()}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["tier_thresholds"] == [1, 15, 35, 60]
+
+    async def test_end_clamps_to_today(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        db.add(
+            make_event(
+                confirmed_user["id"],
+                "h1",
+                "habit_click",
+                at(TODAY, 9),
+                {"_outcome": {"scored": True}},
+            )
+        )
+        await db.commit()
+        params = {
+            "start": (TODAY - timedelta(days=3)).isoformat(),
+            "end": (TODAY + timedelta(days=30)).isoformat(),
+        }
+
+        body = (await authenticated_async_client.get(ACTIVITY, params=params)).json()
+        assert body["end"] == TODAY.isoformat()
+        assert body["days"][-1]["date"] == TODAY.isoformat()
+
+        # A scoreless future tail can't zero the current streak.
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats", params=params)).json()
+        assert stats["current_streak"] == 1
+
     async def test_range_validation(self, authenticated_async_client: AsyncClient) -> None:
         # start after end
         response = await authenticated_async_client.get(
@@ -287,6 +495,10 @@ class TestActivityGrid:
             },
         )
         assert response.status_code == 400
+        # extreme dates overflow the window arithmetic — 400, not 500
+        for extreme in ("0001-01-01", "9999-12-31"):
+            response = await authenticated_async_client.get(ACTIVITY, params={"end": extreme})
+            assert response.status_code == 400, extreme
 
     async def test_scoped_to_user(
         self,
@@ -422,3 +634,110 @@ class TestActivityStats:
         assert body["best_day"] is None
         assert body["weekly_total"] == 0
         assert body["speedrun_pbs"] is None
+
+
+def test_tier_computed_on_the_shipped_score() -> None:
+    # 3 x 4.9999 = 14.9997 -> ships 15.0; tier must match the shipped score
+    # or a client recomputing tier from score+thresholds disagrees.
+    rates = tracking.ActivityRates(weights={"habit_click": 4.9999}, tier_thresholds=(1.0, 15.0))
+    days = tracking.build_days(TODAY, TODAY, {}, {TODAY: {"habit_click": 3}}, rates)
+    assert days[0]["score"] == 15.0
+    assert days[0]["tier"] == 2
+
+
+PG_URL = os.getenv("GAME_TEST_DB_URL")
+
+# The dialect branches (AT TIME ZONE bucketing, ->> text extraction,
+# jsonb_typeof, ilike) only exist on real Postgres — SQLite can't verify them.
+requires_postgres = pytest.mark.skipif(
+    not (PG_URL and PG_URL.startswith("postgresql")),
+    reason="Postgres-only SQL paths (GAME_TEST_DB_URL not set)",
+)
+
+
+@requires_postgres
+async def test_aggregation_queries_on_postgres() -> None:
+    """Exercise the PG branches of the three aggregation queries directly."""
+    engine = create_async_engine(PG_URL, poolclass=NullPool)
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        Session = async_sessionmaker(engine, expire_on_commit=False)
+        async with Session() as s:
+            s.add(
+                User(
+                    username="pg-activity",
+                    email=f"pg-activity-{os.urandom(4).hex()}@test.dev",
+                    password="x",
+                    confirmed=True,
+                )
+            )
+            await s.commit()
+            uid = (
+                await s.execute(select(User.id).where(User.username == "pg-activity"))
+            ).scalar_one()
+            start_dt = datetime(TODAY.year, TODAY.month, TODAY.day, tzinfo=timezone.utc)
+            end_dt = start_dt + timedelta(days=1)
+            session = FocusSession(
+                user_id=uid,
+                mode="timer",
+                status="ended",
+                started_at=start_dt,
+                ended_at=at(TODAY, 10, 30),
+            )
+            s.add(session)
+            await s.flush()
+            s.add_all(
+                [
+                    FocusPhase(
+                        session_id=session.id,
+                        seq=0,
+                        kind="focus",
+                        status="completed",
+                        planned_seconds=1500,
+                        actual_seconds=1500,
+                        started_at=at(TODAY, 9),
+                        ended_at=at(TODAY, 10),
+                    ),
+                    GameEvent(
+                        user_id=uid,
+                        client_event_id="pg-h1",
+                        type="habit_click",
+                        payload={"_outcome": {"scored": True}},
+                        client_ts=at(TODAY, 9),
+                    ),
+                    GameEvent(
+                        user_id=uid,
+                        client_event_id="pg-bad",
+                        type="habit_click",
+                        payload={"_outcome": {"scored": False}},
+                        client_ts=at(TODAY, 9),
+                    ),
+                    GameEvent(
+                        user_id=uid,
+                        client_event_id="server:s1:phase_completed:0:1:0",
+                        type="focus_phase_completed",
+                        payload={"minutes": 25, "_outcome": {"scored": True}},
+                        client_ts=at(TODAY, 10),
+                    ),
+                    GameEvent(
+                        user_id=uid,
+                        client_event_id="pg-client",
+                        type="focus_phase_completed",
+                        payload={"minutes": 30, "_outcome": {"scored": True}},
+                        client_ts=at(TODAY, 11),
+                    ),
+                ]
+            )
+            await s.commit()
+
+            counts = await tracking_crud.get_event_counts_by_day(s, uid, start_dt, end_dt)
+            assert counts == {TODAY: {"habit_click": 1, "focus_phase_completed": 2}}
+            phase_minutes = await tracking_crud.get_focus_minutes_by_day(s, uid, start_dt, end_dt)
+            assert phase_minutes == {TODAY: pytest.approx(25.0)}
+            client_minutes = await tracking_crud.get_client_focus_minutes_by_day(
+                s, uid, start_dt, end_dt
+            )
+            assert client_minutes == {TODAY: pytest.approx(30.0)}
+    finally:
+        await engine.dispose()

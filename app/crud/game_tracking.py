@@ -12,21 +12,31 @@ enough for the residual scan. Focus phases are reached through
 tbl_focus_sessions.user_id (indexed) then the session_id index on phases.
 """
 
+from collections.abc import Mapping
 from datetime import date, datetime
 from typing import Any
 
-from sqlalchemy import func, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
 from app.models.game import FocusPhase, FocusSession, GameConfig, GameEvent
 
+# The tbl_game_config key carrying the activity weights + tier ladder.
+ACTIVITY_CONFIG_KEY = "activity_weights"
+
 # Phase kinds that represent focus time; breaks never do. Completed is the
 # only status with real actual_seconds (skipped/abandoned phases didn't run
 # their course — mirroring session_engine, which scores completions only).
 _FOCUS_KINDS = ("focus", "stopwatch")
 _COMPLETED = "completed"
+
+
+def _is_postgres(db: AsyncSession) -> bool:
+    # get_bind() raises on an unbound session — silent fallback would
+    # mis-bucket days on a PG session by its local TZ.
+    return db.get_bind().dialect.name == "postgresql"
 
 
 def _day_expr(db: AsyncSession, column: InstrumentedAttribute[Any]) -> ColumnElement[Any]:
@@ -38,7 +48,7 @@ def _day_expr(db: AsyncSession, column: InstrumentedAttribute[Any]) -> ColumnEle
     normalizes offsets, and server writes are aware now()s), so date()
     clips the day directly.
     """
-    if db.bind is not None and db.bind.dialect.name == "postgresql":
+    if _is_postgres(db):
         return func.date(func.timezone("UTC", column))
     return func.date(column)
 
@@ -52,20 +62,42 @@ def _to_date(value) -> date:
     return date.fromisoformat(str(value)[:10])
 
 
+def _scored_events_where(db: AsyncSession) -> ColumnElement[bool]:
+    """Weight-bearing rows only: drop events whose outcome is explicit-false.
+
+    Every ledger write stamps payload._outcome.scored — engine successes
+    carry true; forged types, unresolvable habit clicks and lifecycle noise
+    carry false. "Not literal-false" (never "= true") keeps counting any
+    other stored outcome shape, including a missing scored key.
+    """
+    scored = GameEvent.payload["_outcome"]["scored"]
+    if _is_postgres(db):
+        # ->>'scored' yields 'true'/'false'/NULL text on Postgres.
+        text = scored.as_string()
+        return or_(text.is_(None), text != "false")
+    # SQLite JSON_EXTRACT yields 1/0/NULL for true/false/missing.
+    number = scored.as_integer()
+    return or_(number.is_(None), number != 0)
+
+
 async def get_activity_config(db: AsyncSession) -> dict:
-    """The activity_weights config row's value; absent -> {} (defaults apply)."""
-    row = await db.get(GameConfig, "activity_weights")
-    return dict(row.value) if row is not None else {}
+    """The activity_weights config row's value; absent or a non-object JSON
+    value (row is JSONB — nothing enforces shape) -> {} (defaults apply)."""
+    row = await db.get(GameConfig, ACTIVITY_CONFIG_KEY)
+    if row is None or not isinstance(row.value, Mapping):
+        return {}
+    return dict(row.value)
 
 
 async def get_event_counts_by_day(
     db: AsyncSession, user_id: int, start: datetime, end: datetime
 ) -> dict[date, dict[str, int]]:
-    """Ledger events per day per type: {day: {type: count}}.
+    """Scored ledger events per day per type: {day: {type: count}}.
 
     Bucketed on client_ts — the same marker axis the timeline uses, so a
     backdated client event lands on the day the client claims, and offline
-    syncs fill past cells instead of piling onto today.
+    syncs fill past cells instead of piling onto today. Unscored rows are
+    excluded entirely (the score weight lives on these counts).
     """
     day = _day_expr(db, GameEvent.client_ts)
     result = await db.execute(
@@ -74,6 +106,7 @@ async def get_event_counts_by_day(
             GameEvent.user_id == user_id,
             GameEvent.client_ts >= start,
             GameEvent.client_ts < end,
+            _scored_events_where(db),
         )
         .group_by(day, GameEvent.type)
     )
@@ -113,23 +146,26 @@ async def get_client_focus_minutes_by_day(
 ) -> dict[date, float]:
     """Offline-synced focus minutes: client-authored focus_phase_completed rows.
 
-    Server-authored rows (client_event_id 'server:...') are excluded — their
-    minutes are already counted through the FocusPhase rows above, so reading
-    both would double-count. Stored payloads carry a validated numeric
-    `minutes` (the ingest engine rejects non-numbers before the row lands),
-    so the ->> cast is safe.
+    Server-authored rows are skipped by their 'server:' eid prefix — an
+    authoring-channel split, not a semantic dedupe: a phase reported via
+    offline sync that ALSO exists as a phase row still double-counts (the
+    accepted cross-path cost documented in habit_service.auto_click_bound).
+    ilike keeps the split identical on both backends (SQLite LIKE is ASCII
+    case-insensitive, Postgres LIKE is not). The PG-only jsonb_typeof guard
+    keeps a malformed stored payload from 500ing the ->> float cast.
     """
     day = _day_expr(db, GameEvent.client_ts)
     minutes = GameEvent.payload["minutes"].as_float()
+    filters = [
+        GameEvent.user_id == user_id,
+        GameEvent.type == "focus_phase_completed",
+        ~GameEvent.client_event_id.ilike("server:%"),
+        GameEvent.client_ts >= start,
+        GameEvent.client_ts < end,
+    ]
+    if _is_postgres(db):
+        filters.append(func.jsonb_typeof(GameEvent.payload["minutes"]) == "number")
     result = await db.execute(
-        select(day, func.coalesce(func.sum(minutes), 0.0))
-        .where(
-            GameEvent.user_id == user_id,
-            GameEvent.type == "focus_phase_completed",
-            GameEvent.client_event_id.not_like("server:%"),
-            GameEvent.client_ts >= start,
-            GameEvent.client_ts < end,
-        )
-        .group_by(day)
+        select(day, func.coalesce(func.sum(minutes), 0.0)).where(*filters).group_by(day)
     )
     return {_to_date(row_day): float(m or 0.0) for row_day, m in result.all()}

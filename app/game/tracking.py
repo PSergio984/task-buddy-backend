@@ -29,8 +29,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game_tracking as tracking_crud
 
-ACTIVITY_CONFIG_KEY = "activity_weights"
-
 # Default per-type points. Only positive-activity types score: a day with
 # nothing but lifecycle rows (session_started, phase_*) or failures stays 0.
 # focus_phase_completed is deliberately 0 — its minutes already land in
@@ -87,6 +85,10 @@ class ActivityRates:
                 clean = _finite_nonneg(value)
                 if clean is not None:
                     merged[str(name)] = clean
+            # Pinned: this type's contribution is its minutes (phase rows +
+            # client payload), never a per-event weight — a config override
+            # would silently reintroduce the double-count.
+            merged["focus_phase_completed"] = 0.0
             rates = cls(weights=merged, tier_thresholds=rates.tier_thresholds)
         raw_tiers = data.get("tier_thresholds")
         if isinstance(raw_tiers, (list, tuple)) and 1 <= len(raw_tiers) <= 8:
@@ -135,11 +137,13 @@ def build_days(
     while day <= end:
         minutes = focus_minutes_by_day.get(day, 0.0)
         counts = dict(event_counts_by_day.get(day, {}))
-        score = day_score(minutes, counts, rates)
+        # Tier tests the SAME rounded score the row ships — a client
+        # recomputing tier from score+thresholds must get this tier.
+        score = round(day_score(minutes, counts, rates), 2)
         days.append(
             {
                 "date": day,
-                "score": round(score, 2),
+                "score": score,
                 "focus_minutes": round(minutes, 2),
                 "events": counts,
                 "tier": tier_for(score, rates.tier_thresholds),
@@ -178,9 +182,10 @@ def summarize(days: list[dict], today: date) -> dict:
     """The profile stat set over the window's day rows.
 
     avg_hours_per_day divides by window length (zero days count — it's the
-    honest daily rate). weekly_total covers the trailing 7 days ending today,
-    clipped to the window. best_day is the highest-score day, earliest on
-    ties. speedrun_pbs is None until the #69 records feature exists (no PB
+    honest daily rate). weekly_total covers the 7 days ending at
+    server-today clipped to the window — a window ending earlier legitimately
+    reads lower. best_day is the highest-score day, earliest on ties.
+    speedrun_pbs is None until the #69 records feature exists (no PB
     table — FocusSession.speedrun is a per-session blob, not a leaderboard).
     """
     total_minutes = sum(row["focus_minutes"] for row in days)

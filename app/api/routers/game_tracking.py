@@ -2,7 +2,6 @@
 grid's per-day scores and the stat set — read-only aggregations over the
 event ledger and focus phases."""
 
-import logging
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Optional
 
@@ -22,8 +21,6 @@ from app.schemas.game_tracking import (
 )
 from app.security import get_confirmed_user
 
-logger = logging.getLogger(__name__)
-
 router = APIRouter(
     prefix="/game/activity",
     tags=["game"],
@@ -35,8 +32,22 @@ router = APIRouter(
 
 
 def _resolve_range(start: Optional[date], end: Optional[date]) -> tuple[date, date]:
-    """Defaults + bounds for the [start, end] UTC window (inclusive)."""
-    resolved_end = end or datetime.now(timezone.utc).date()
+    """Defaults + bounds for the [start, end] UTC window (inclusive).
+
+    `end` clamps to today — future tail days can never score, so leaving
+    them in the window would zero the current streak and dilute the
+    daily-hours average. `end` is bounds-checked because the defaulting
+    subtraction and the exclusive-upper-bound addition below both overflow
+    on extreme dates (mirrors get_timeline's guard).
+    """
+    today = datetime.now(timezone.utc).date()
+    if end is not None and not (
+        date.min + timedelta(days=tracking.DEFAULT_WINDOW_DAYS)
+        <= end
+        <= date.max - timedelta(days=1)
+    ):
+        raise HTTPException(status_code=400, detail="end date out of supported range")
+    resolved_end = min(end, today) if end is not None else today
     resolved_start = start or (resolved_end - timedelta(days=tracking.DEFAULT_WINDOW_DAYS - 1))
     if resolved_start > resolved_end:
         raise HTTPException(status_code=400, detail="start must be on or before end")
