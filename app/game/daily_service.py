@@ -15,10 +15,19 @@ Recurrence contract (JSONB `Daily.recurrence`):
   (Mon–Sun); the scheduled unit is the week, keyed by its Sunday.
 
 Payout contract: a daily with N items pays each item check 1/N of the base
-reward; the whole-daily (master) check pays the remaining fraction so a day
-never pays more than the base. Checking the last open item auto-completes
-the master mark. Streak increments once per completed schedulable day; the
-+1%/day gold bonus applies to the post-increment streak.
+reward; the whole-daily (master) check pays the remaining fraction. The day
+as a whole never pays more than the base amount — the scored ledger rows
+(not the mutable checklist rows, which a PATCH can replace mid-day) are the
+authoritative record of what the day already paid, and each check is
+clamped to the residual share/xp/gold.
+
+Checking the last open item auto-completes the master mark. Streak
+increments once per completed schedulable day; the +1%/day gold bonus
+applies to the post-increment streak.
+
+shortcut: checks on non-scheduled days still pay full share (no streak
+bump) — the spec is silent; Habitica only allows due-day checks. Flagged
+on #63 for a product call.
 """
 
 import random
@@ -38,8 +47,8 @@ MAX_DAILIES_PER_USER = 100
 
 # Sweep tunables — infra constants, deliberately not economy rates.
 SWEEP_BATCH_SIZE = 200
-GRACE_HOURS = 3  # a scheduled day is evaluated at next-day 03:00 (user tz)
-LOOKBACK_DAYS = 35  # bounds post-downtime catch-up; also covers 7 weekly units
+GRACE_HOURS = 3  # a scheduled day is evaluated at next-day 03:00 UTC
+LOOKBACK_DAYS = 35  # bounds post-downtime catch-up (~5 weekly units)
 FREEZE_WINDOW_UNITS = 7  # one miss absorbed per rolling 7 scheduled units
 
 _rng = random.Random()
@@ -115,7 +124,13 @@ def daily_anchor(daily: Daily) -> date:
 
 
 def week_end(day: date) -> date:
-    """The ISO week's Sunday — the unit key for times_per_week recurrences."""
+    """The ISO week's Sunday — the unit key for times_per_week recurrences.
+
+    shortcut: a mid-week anchor makes the anchor week's quota partially
+    unreachable (pre-anchor days can't accept checks) — a daily created
+    Wednesday asking 7/week can't be fully satisfied. Product call pending;
+    flagged on #63.
+    """
     return day + timedelta(days=6 - day.weekday())
 
 
@@ -180,9 +195,11 @@ def prior_units(rec: dict, anchor: date, unit: date, n: int) -> list[date]:
         return out
     d = unit - timedelta(days=1)
     scanned = 0
-    # The scan cap bounds pathological intervals (e.g. every 365 days: six
-    # prior units is ~6 years of day-steps) — still cheap, never unbounded.
-    while len(out) < n and d >= anchor and scanned < 3700:
+    # The scan cap covers the worst legal reach exactly: 6 units of an
+    # every_n_days interval=365 recurrence need ~2190 day-steps. An older
+    # anchor stops the walk first, so the cap only bounds the theoretical
+    # far-tail.
+    while len(out) < n and d >= anchor and scanned < 2200:
         if is_schedulable(rec, d, anchor):
             out.append(d)
         d -= timedelta(days=1)
@@ -285,6 +302,72 @@ async def _transition_marks(
     return share, first_completion, uncheck, reason
 
 
+async def _paid_totals(db: AsyncSession, daily: Daily, check_date: date) -> dict:
+    """What this (daily, check_date) already paid — share/xp/gold summed
+    over the day's scored daily_check ledger rows.
+
+    The ledger, not checklist state, is the authoritative "paid so far":
+    an items PATCH cascade-deletes the marks that used to prove it. A day's
+    payout never exceeds the whole-check amount — every new check is
+    clamped to the residual.
+    """
+    since = datetime.combine(check_date, time(0), tzinfo=timezone.utc)
+    events = await game_crud.list_daily_check_events(db, daily.user_id, since)
+    day_iso = check_date.isoformat()
+    paid = {"share": 0.0, "xp": 0.0, "gold": 0.0}
+    for ev in events:
+        p = ev.payload or {}
+        outcome = p.get("_outcome") or {}
+        if (
+            p.get("daily_id") != daily.id
+            or p.get("check_date") != day_iso
+            or not outcome.get("scored")
+        ):
+            continue
+        paid["share"] += float(p.get("share") or 0.0)
+        paid["xp"] += float(outcome.get("xp") or 0.0)
+        paid["gold"] += float(outcome.get("gold") or 0.0)
+    return paid
+
+
+async def _apply_share(
+    db: AsyncSession,
+    daily: Daily,
+    share: float,
+    check_date: date,
+    profile: GameProfile,
+    rates: GameRates,
+    today: date,
+    rng: random.Random,
+) -> tuple[dict, float]:
+    """Clamp `share` to the day's unpaid residual and score it.
+
+    Returns (outcome, effective_share) — the share actually paid, which the
+    ledger stores so _paid_totals sums stay exact.
+    """
+    paid = await _paid_totals(db, daily, check_date)
+    share = min(share, max(0.0, 1.0 - paid["share"]))
+    if share <= 0:
+        return _zero_outcome(daily), share
+    outcome = engine.apply_event(
+        profile,
+        "daily_check",
+        {
+            "difficulty": daily.difficulty,
+            "share": share,
+            "streak": daily.streak,
+            "paid_share": paid["share"],
+            "paid_xp": paid["xp"],
+            "paid_gold": paid["gold"],
+        },
+        rates,
+        rng.random(),
+        rng,
+        today,
+    )
+    return outcome, share
+
+
 async def score_check(
     db: AsyncSession,
     daily: Daily,
@@ -331,22 +414,17 @@ async def score_check(
         db, daily, len(items), item_id, check_date, done
     )
     if first_completion and is_schedulable_day(daily, check_date):
-        daily.streak += 1
+        # A day the sweep already charged as missed can't retro-credit the
+        # streak — the backfill check still pays share and marks completion.
+        if await game_crud.get_daily_miss(db, daily.id, check_date) is None:
+            daily.streak += 1
     if reason is not None:
         outcome: dict = {"scored": False, "reason": reason}
     elif uncheck:
         outcome = _zero_outcome(daily, uncheck=True)
-    elif share <= 0:
-        outcome = _zero_outcome(daily)
     else:
-        outcome = engine.apply_event(
-            profile,
-            "daily_check",
-            {"difficulty": daily.difficulty, "share": share, "streak": daily.streak},
-            rates,
-            rng.random(),
-            rng,
-            today,
+        outcome, share = await _apply_share(
+            db, daily, share, check_date, profile, rates, today, rng
         )
     payload = {
         **clean_extra(extra),

@@ -14,6 +14,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import game as game_crud
 from app.game import daily_service, daily_sweep, service
 from app.models.game import Daily, DailyCheck, DailyItem, DailyMiss, GameEvent, GameProfile
 from app.models.user import User
@@ -304,6 +305,24 @@ class TestDailyCrud:
         )
         assert len(items) == 2
 
+    async def test_patch_explicit_every_n_days_anchor(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # An explicit anchor is a real `date` on the schema — the PATCH dump
+        # must serialize it into the JSONB recurrence or commit fails.
+        daily = await _create(authenticated_async_client)
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}",
+            json={"recurrence": {"kind": "every_n_days", "interval": 5, "anchor": "2026-05-01"}},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["recurrence"] == {
+            "kind": "every_n_days",
+            "interval": 5,
+            "anchor": "2026-05-01",
+        }
+        assert (await _get_daily_row(db, daily["id"])).recurrence["anchor"] == "2026-05-01"
+
     async def test_patch_cannot_touch_streak(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
@@ -393,16 +412,23 @@ class TestDailyCheck:
         assert body["daily"]["completed_today"] is False
         assert body["daily"]["items"][0]["done_today"] is True
 
-        # Checking the remaining three completes the checklist: each still
-        # pays its quarter; the last one bumps the streak.
+        # Checking the remaining three completes the checklist; the last one
+        # bumps the streak. Residual accounting bounds the day at the
+        # whole-check amount: items 2-3 pay their quarter (2 xp each) and
+        # item 4's quarter is clamped to the 0-xp unpaid residual — the day
+        # can never pay more than a single whole check (per-fragment
+        # rounding can't inflate the total).
         for i in (1, 2, 3):
             body = await _check(
                 authenticated_async_client, daily["id"], daily_item_id=daily["items"][i]["id"]
             )
         assert body["daily"]["completed_today"] is True
         assert body["daily"]["streak"] == 1
-        # Total xp = 2 * 3 + round(6 * .25) with streak=1 still 2 -> 8.
-        assert body["profile"]["xp_today"] == 8
+        assert body["profile"]["xp_today"] == 6
+        # Gold settles at the whole-check amount for the final streak:
+        # fragments 2-3 were clamped to the unpaid gold residual, item 4's
+        # residual at streak 1 pays the remaining 1 (total ceil(1.01) = 2).
+        assert body["profile"]["gold_today"] == 2
 
     async def test_master_check_pays_remaining_share(
         self, authenticated_async_client: AsyncClient
@@ -417,6 +443,60 @@ class TestDailyCheck:
         # Master pays the unpaid half: another xp = round(6 * .5) = 3.
         assert body["profile"]["xp_today"] == 6
         assert body["daily"]["streak"] == 1
+
+    async def test_items_replaced_midday_master_pays_residual(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Replacing the checklist cascade-deletes the item marks — the
+        # scored ledger rows are the only remaining proof half the day
+        # already paid. The master check must still be clamped to the
+        # residual, not re-pay a full share.
+        daily = await _create(authenticated_async_client, items=[{"title": "a"}, {"title": "b"}])
+        first = await _check(
+            authenticated_async_client, daily["id"], daily_item_id=daily["items"][0]["id"]
+        )
+        assert first["profile"]["xp_today"] == 3  # half share
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}", json={"items": [{"title": "x"}, {"title": "y"}]}
+        )
+        assert response.status_code == 200, response.text
+        body = await _check(authenticated_async_client, daily["id"])
+        # Without the residual clamp the raw master share (2-0 done)/2 = 1.0
+        # would re-pay the whole day; the day totals exactly the whole check.
+        assert body["profile"]["xp_today"] == 6
+        assert body["profile"]["gold_today"] == 2  # whole-check at streak 1
+        assert body["daily"]["streak"] == 1
+        assert body["daily"]["completed_today"] is True
+
+    async def test_backfill_after_missed_day_pays_without_streak(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict
+    ) -> None:
+        # The sweep already charged yesterday as missed; the streak freeze
+        # preserved the streak — a backfill pays the share but can't
+        # retro-credit the streak a second time.
+        daily = await _create(authenticated_async_client)
+        yesterday = _today() - timedelta(days=1)
+        await db.execute(
+            update(Daily).where(Daily.id == daily["id"]).values(created_at=_at(1), streak=5)
+        )
+        db.add(
+            DailyMiss(
+                daily_id=daily["id"],
+                user_id=confirmed_user["id"],
+                scheduled_day=yesterday,
+                frozen=True,
+            )
+        )
+        await db.commit()
+        body = await _check(
+            authenticated_async_client, daily["id"], check_date=yesterday.isoformat()
+        )
+        assert body["profile"]["xp_today"] == 6  # share still pays
+        assert body["daily"]["streak"] == 5  # no retro streak credit
+        check = (
+            await db.execute(select(DailyCheck).where(DailyCheck.daily_id == daily["id"]))
+        ).scalar_one()
+        assert check.check_date == yesterday
 
     async def test_streak_bonus_scales_gold(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
@@ -743,6 +823,39 @@ class TestDailyCheckEventSync:
         assert stored["done"] is False
         assert stored["_outcome"]["uncheck"] is True
 
+    async def test_rejected_synced_check_leaves_no_mark_or_streak(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # score_check validates lazily: with streak already at the engine
+        # bound, apply_event raises AFTER the mark + streak bump staged —
+        # recording the event unscored must roll that state back too, or a
+        # rejected check would still write marks and streak at commit.
+        daily = await _create(authenticated_async_client)
+        await db.execute(update(Daily).where(Daily.id == daily["id"]).values(streak=10000))
+        await db.commit()
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={"events": [self._event("d-1", {"daily_id": daily["id"]})]},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 1
+        assert response.json()["profile"]["xp_today"] == 0
+        # No mark, no streak change — only the unscored ledger row lands.
+        marks = (
+            (await db.execute(select(DailyCheck).where(DailyCheck.daily_id == daily["id"])))
+            .scalars()
+            .all()
+        )
+        assert marks == []
+        assert (await _get_daily_row(db, daily["id"])).streak == 10000
+        stored = (
+            (await db.execute(select(GameEvent).where(GameEvent.client_event_id == "d-1")))
+            .scalar_one()
+            .payload
+        )
+        assert stored["_outcome"]["scored"] is False
+        assert "streak" in stored["_outcome"]["reason"]
+
     async def test_client_cannot_claim_daily_missed(
         self, authenticated_async_client: AsyncClient
     ) -> None:
@@ -895,3 +1008,85 @@ class TestDailySweep:
         assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 1
         misses = await self._miss_rows(db, daily.id)
         assert [m.scheduled_day for m in misses] == [yesterday]
+
+    async def test_freeze_window_reaches_past_lookback(self, db: AsyncSession) -> None:
+        """Sparse recurrences consult 6 prior *scheduled* units — up to ~42
+        days back for a weekly slot — so miss evidence must load from the
+        earliest consultable unit, not just the 35-day lookback. A miss that
+        far back still defeats yesterday's freeze."""
+        yesterday = _today() - timedelta(days=1)
+        _, daily = await _make_daily(
+            db,
+            created_days_ago=50,
+            streak=5,
+            recurrence={"kind": "weekdays", "days": [yesterday.weekday()]},
+        )
+        # 6 scheduled units before yesterday — beyond the old since-bound.
+        old_miss_day = yesterday - timedelta(days=42)
+        db.add(
+            DailyMiss(
+                daily_id=daily.id,
+                user_id=daily.user_id,
+                scheduled_day=old_miss_day,
+                frozen=True,
+            )
+        )
+        await db.commit()
+        # Due units in the window: today-1, -8, -15, -22, -29.
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 5
+        misses = {m.scheduled_day: m for m in await self._miss_rows(db, daily.id)}
+        assert misses[yesterday].frozen is False
+        assert (await _get_daily_row(db, daily.id)).streak == 0
+
+    async def test_one_bad_daily_does_not_wedge_the_tick(self, db: AsyncSession) -> None:
+        """A failing evaluation rolls back its own work and the tick moves
+        on — iterating post-rollback ORM objects must not be possible (the
+        expired-attribute MissingGreenlet wedge)."""
+        _, bad = await _make_daily(db, created_days_ago=1, email="bad@t.dev")
+        # Engine-level failure inside _evaluate_daily: unknown difficulty.
+        await db.execute(update(Daily).where(Daily.id == bad.id).values(difficulty="bogus"))
+        await db.commit()
+        _, good = await _make_daily(db, created_days_ago=1, email="good@t.dev")
+        recorded = await daily_sweep.run_daily_miss_sweep(now=_at(0, 4))
+        assert recorded == 1
+        # The bad daily's claim rolled back — the unit retries next tick.
+        assert await self._miss_rows(db, bad.id) == []
+        assert len(await self._miss_rows(db, good.id)) == 1
+
+    async def test_claim_conflict_skips_unit_and_continues(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """Losing the (daily, scheduled_day) insert race must not poison the
+        tick: the claimed unit is skipped, later units still land, and the
+        loser scores nothing for it. Simulates the overlap window by hiding
+        a committed miss from the sweep's pre-read — begin_nested and the
+        IntegrityError run for real (file-backed SQLite)."""
+        _, daily = await _make_daily(db, created_days_ago=2, streak=5)
+        first_day = _today() - timedelta(days=2)
+        db.add(
+            DailyMiss(
+                daily_id=daily.id,
+                user_id=daily.user_id,
+                scheduled_day=first_day,
+                frozen=True,
+            )
+        )
+        await db.commit()
+
+        async def _no_misses(db_: AsyncSession, daily_id: int, since: date) -> list:
+            return []
+
+        # The racing peer committed after our miss pre-read: the claim
+        # insert is what discovers the row.
+        monkeypatch.setattr(game_crud, "list_daily_misses", _no_misses)
+
+        recorded = await daily_sweep.run_daily_miss_sweep(now=_at(0, 4))
+        assert recorded == 1  # only the still-unclaimed unit
+        misses = sorted(await self._miss_rows(db, daily.id), key=lambda m: m.scheduled_day)
+        assert [m.scheduled_day for m in misses] == [first_day, _today() - timedelta(days=1)]
+        events = await self._events(db, daily.user_id, "daily_missed")
+        assert len(events) == 1  # the lost unit scored nothing
+        assert (await _profile(db, daily.user_id)).hp == 48
+        # The surviving unit saw the peer's miss in its freeze window —
+        # unfrozen, so the streak breaks.
+        assert (await _get_daily_row(db, daily.id)).streak == 0

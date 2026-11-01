@@ -251,3 +251,51 @@ async def test_concurrent_sweep_overlap_records_once(sessions):
             await s.execute(select(GameProfile.hp).where(GameProfile.user_id == uid))
         ).scalar_one()
         assert hp == pytest.approx(48.0)  # 2 hp loss applied exactly once
+
+
+@requires_postgres
+async def test_concurrent_sweep_overlap_multi_unit(sessions):
+    """Two racing sweeps on a daily with TWO due units: the claim loser must
+    keep evaluating later units (expunge the rejected miss instead of
+    re-flushing it) — exactly one miss row + event per unit results."""
+    uid = await _make_user(sessions, "race-s2@test.dev")
+    async with sessions() as s:
+        s.add(GameProfile(user_id=uid, hp=50.0))
+        daily = Daily(
+            user_id=uid,
+            title="d",
+            recurrence={"kind": "daily"},
+            streak=3,
+            created_at=datetime.now(timezone.utc) - timedelta(days=2),
+        )
+        s.add(daily)
+        await s.commit()
+        daily_id = daily.id
+    now = datetime.now(timezone.utc).replace(hour=12, minute=0, second=0, microsecond=0)
+    await asyncio.gather(
+        daily_sweep.run_daily_miss_sweep(now=now, session_factory=sessions),
+        daily_sweep.run_daily_miss_sweep(now=now, session_factory=sessions),
+    )
+    async with sessions() as s:
+        misses = (
+            (await s.execute(select(DailyMiss).where(DailyMiss.daily_id == daily_id)))
+            .scalars()
+            .all()
+        )
+        assert len(misses) == 2  # one per due unit, regardless of who claimed
+        events = (
+            (
+                await s.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == uid, GameEvent.type == "daily_missed"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) == 2
+        hp = (
+            await s.execute(select(GameProfile.hp).where(GameProfile.user_id == uid))
+        ).scalar_one()
+        assert hp == pytest.approx(46.0)  # 2 hp per miss, exactly once each

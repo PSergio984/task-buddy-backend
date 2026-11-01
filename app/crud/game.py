@@ -285,10 +285,14 @@ async def count_dailies(db: AsyncSession, user_id: int) -> int:
     return int(result.scalar_one())
 
 
-async def list_active_dailies(db: AsyncSession, after_id: int, limit: int) -> list[Daily]:
-    """One id-ordered page of active dailies for the miss sweep."""
+async def list_active_daily_ids(db: AsyncSession, after_id: int, limit: int) -> list[int]:
+    """One id-ordered page of active daily ids for the miss sweep.
+
+    Ids only: the sweep re-reads each row inside its per-daily try (a
+    post-rollback identity-map hit would be expired).
+    """
     result = await db.execute(
-        select(Daily)
+        select(Daily.id)
         .where(Daily.active.is_(True), Daily.id > after_id)
         .order_by(Daily.id)
         .limit(limit)
@@ -328,5 +332,34 @@ async def list_daily_misses(db: AsyncSession, daily_id: int, since: date) -> lis
     """Miss rows for one daily on/after `since` — sweep + freeze bookkeeping."""
     result = await db.execute(
         select(DailyMiss).where(DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day >= since)
+    )
+    return list(result.scalars().all())
+
+
+async def get_daily_miss(db: AsyncSession, daily_id: int, scheduled_day: date) -> DailyMiss | None:
+    """The miss row for one (daily, scheduled_day), if the sweep recorded one."""
+    result = await db.execute(
+        select(DailyMiss).where(
+            DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day == scheduled_day
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_daily_check_events(
+    db: AsyncSession, user_id: int, since: datetime
+) -> list[GameEvent]:
+    """The user's daily_check ledger rows since `since` (client_ts bound).
+
+    Server-side prefilter for paid-share accounting — callers narrow to a
+    (daily_id, check_date) pair via payload keys in Python, which keeps the
+    query portable across Postgres JSONB and SQLite JSON.
+    """
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id,
+            GameEvent.type == "daily_check",
+            GameEvent.client_ts >= since,
+        )
     )
     return list(result.scalars().all())

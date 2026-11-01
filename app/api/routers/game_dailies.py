@@ -172,7 +172,10 @@ async def update_daily(
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> DailyRead:
-    update_data = daily_in.model_dump(exclude_unset=True)
+    # mode="json": a nested date (every_n_days anchor) must serialize into
+    # the JSONB recurrence blob — python mode would leave datetime.date in
+    # the payload and fail JSON encoding at commit.
+    update_data = daily_in.model_dump(mode="json", exclude_unset=True)
     if not update_data:
         raise HTTPException(status_code=400, detail="No fields to update")
     today = datetime.now(timezone.utc).date()

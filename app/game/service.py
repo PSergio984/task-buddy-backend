@@ -87,23 +87,38 @@ async def _ingest_daily_check(
         unscored_reason = "item_unresolvable"
     else:
         items = await _daily_items(db, daily.id, items_cache)
+        # score_check validates lazily: a late ValueError (e.g. a streak
+        # outside engine bounds) can fire AFTER it staged mark adds and the
+        # streak bump — none flushed yet, so they sit in session.new/dirty.
+        # Undo that ORM state on rejection or the "unscored" check would
+        # still land at the batch's commit. The savepoint is the DB-level
+        # counterpart for any future post-flush raise.
+        staged = set(db.new)
         try:
-            await daily_service.score_check(
-                db,
-                daily,
-                items,
-                item_id,
-                event.client_ts.date(),
-                profile,
-                rates,
-                today,
-                eid=event.client_event_id,
-                client_ts=event.client_ts,
-                rng=rng,
-                extra=event.payload,
-                done=event.payload.get("done"),
-            )
+            async with db.begin_nested():
+                await daily_service.score_check(
+                    db,
+                    daily,
+                    items,
+                    item_id,
+                    event.client_ts.date(),
+                    profile,
+                    rates,
+                    today,
+                    eid=event.client_event_id,
+                    client_ts=event.client_ts,
+                    rng=rng,
+                    extra=event.payload,
+                    done=event.payload.get("done"),
+                )
         except ValueError as exc:
+            for obj in set(db.new) - staged:
+                db.expunge(obj)
+            # Flushed-dirty state (the streak bump, a flipped mark) reverts
+            # by expiring: pending changes are discarded and attributes
+            # lazy-reload from the pre-check committed row.
+            for obj in set(db.dirty):
+                db.expire(obj)
             unscored_reason = str(exc)
     if unscored_reason is not None:
         db.add(

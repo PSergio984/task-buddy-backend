@@ -373,27 +373,49 @@ def _streak_days(value: Any) -> int:
     return value
 
 
+def _nonnegative(value: Any, name: str) -> float:
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        raise ValueError(f"{name} must be a finite number >= 0")
+    return float(value)
+
+
 def _apply_daily_check(
     profile: GameProfile, payload: dict, rates: GameRates, rng_roll: float, today: date
 ) -> dict:
-    """Score one daily check share; the service layer computes `share` and
-    `streak` from stored state, so client payloads never reach here.
+    """Score one daily check share; the service layer computes `share`,
+    `streak` and the paid-* residuals from stored state, so client payloads
+    never reach here.
 
     Base reward mirrors a neutral habit click (delta=1): XP scales with
     INT, difficulty and crits; gold additionally grows +1% per streak day —
     applied to the streak the check leaves behind (post-increment), which is
     the value the UI displays alongside the reward.
+
+    Residual accounting: paid_share/paid_xp/paid_gold are what this
+    (daily, day) already paid. The day's total can never exceed the
+    whole-check amount under this roll — an items-replaced checklist or a
+    fragmented per-item payout can't mint extra rewards (per-fragment
+    ceil/round would otherwise inflate the total).
     """
     share = _fraction(payload.get("share"), "daily_check share")
     streak = _streak_days(payload.get("streak", 0))
+    paid_share = _nonnegative(payload.get("paid_share", 0), "daily_check paid_share")
+    paid_xp = _nonnegative(payload.get("paid_xp", 0), "daily_check paid_xp")
+    paid_gold = _nonnegative(payload.get("paid_gold", 0), "daily_check paid_gold")
+    share = min(share, max(0.0, 1.0 - paid_share))
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
     mult = crit_roll(rng_roll, profile.str_stat, rates)
-    xp = _round_half_up(
-        (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor * share
-    )
-    gold = math.ceil(
-        p * mult * (1 + rates.per_gold_pct * profile.per_stat) * (1 + 0.01 * streak) * share
-    )
+    xp_base = (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor
+    gold_base = p * mult * (1 + rates.per_gold_pct * profile.per_stat) * (1 + 0.01 * streak)
+    xp_whole = _round_half_up(xp_base)
+    gold_whole = math.ceil(gold_base)
+    xp = int(min(_round_half_up(xp_base * share), max(0.0, xp_whole - paid_xp)))
+    gold = min(math.ceil(gold_base * share), max(0.0, gold_whole - paid_gold))
     outcome: dict = {"scored": True, "crit": mult > 1.0, "share": share, "streak": streak}
     outcome.update(award_xp(profile, xp, rates, today))
     outcome.update(award_gold(profile, gold, rates, today))

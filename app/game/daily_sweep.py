@@ -9,9 +9,14 @@ streak freeze (streak preserved, HP still applies).
 Idempotent across overlapping deploys: the (daily_id, scheduled_day) unique
 constraint on tbl_daily_misses is the dedupe anchor. Two instances evaluate
 the same unit; whoever commits the miss row first wins, and the loser's
-savepoint-rolled insert skips all scoring. Correctness lives in Postgres —
-no process-memory state. Users have no timezone field yet, so day-ends are
-evaluated in UTC (the documented fallback).
+insert conflicts — its unit transaction rolls back and it moves on to the
+next unit. Correctness lives in Postgres — no process-memory state. Users
+have no timezone field yet, so day-ends are evaluated in UTC (the
+documented fallback).
+
+shortcut: an `active` gap is invisible to evaluation — a daily re-enabled
+after N days is evaluated across the whole lookback window in one tick
+(up to ~35 misses + HP). Spec is silent; flagged on #63 for a product call.
 """
 
 import logging
@@ -46,6 +51,100 @@ def _unit_satisfied(rec: dict, unit: date, done_days: set[date], anchor: date) -
     return unit in done_days
 
 
+async def _evaluate_unit(
+    db: AsyncSession,
+    daily: Daily,
+    unit: date,
+    rec: dict,
+    anchor: date,
+    missed_days: set[date],
+    now: datetime,
+    today: date,
+    rates,
+) -> bool:
+    """Claim + score one due unit, committed as its own transaction.
+
+    True = miss recorded; False = a racing instance claimed the unit first
+    (the unit rolls back and `daily` is left expired — the caller re-reads
+    it before the next unit). Claim insert, scoring and ledger row land
+    atomically, and a later unit's failure can't take this one back. (A
+    savepoint can't express this on aiosqlite: the driver's implicit BEGIN
+    only materializes on the first DML, so an outermost SAVEPOINT's RELEASE
+    would commit outright.)
+    """
+    # One miss per rolling 7 scheduled units is frozen: a miss in the
+    # prior 6 units means this one breaks the streak.
+    frozen = not any(
+        u in missed_days
+        for u in daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
+    )
+    miss = DailyMiss(daily_id=daily.id, user_id=daily.user_id, scheduled_day=unit, frozen=frozen)
+    # The insert IS the cross-instance claim. This flush emits ONLY the
+    # miss row — every other write is committed per-unit below — so an
+    # IntegrityError unambiguously means a racing instance committed this
+    # unit first. (Postgres aborts a conflicted transaction, so the unit
+    # must roll back rather than retry inside it.)
+    db.add(miss)
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        return False
+    missed_days.add(unit)
+    # FOR UPDATE serializes against a racing claim's scoring — two
+    # instances can win different units of the same daily, and the profile
+    # lock makes their HP losses additive, not lost-update.
+    profile = (
+        await db.execute(
+            select(GameProfile).where(GameProfile.user_id == daily.user_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    # A daily whose owner lacks a profile row still records the
+    # miss/streak change; only HP loss needs the row.
+    outcome: dict = {"scored": False}
+    if profile is not None:
+        outcome = engine.apply_event(
+            profile,
+            "daily_missed",
+            {"difficulty": daily.difficulty},
+            rates,
+            _rng.random(),
+            _rng,
+            today,
+        )
+    streak_before = daily.streak
+    if not frozen:
+        daily.streak = 0
+    miss.hp_lost = float(outcome.get("hp_lost", 0.0))
+    outcome = {
+        **outcome,
+        "frozen": frozen,
+        "streak_before": streak_before,
+        "streak_after": daily.streak,
+    }
+    db.add(
+        GameEvent(
+            user_id=daily.user_id,
+            # Deterministic server id — the ledger uq is the backstop if a
+            # miss row ever survives without its event (crash between flush
+            # and commit replays cleanly: the whole unit retries).
+            client_event_id=f"server:daily:{daily.id}:missed:{unit.isoformat()}",
+            type="daily_missed",
+            client_ts=now,
+            payload={
+                "daily_id": daily.id,
+                "scheduled_day": unit.isoformat(),
+                "frozen": frozen,
+                "_outcome": outcome,
+            },
+        )
+    )
+    # Per-unit commit: the claim, scoring and event land atomically, and a
+    # later unit's failure can't take this one back.
+    await db.commit()
+    return True
+
+
 async def _evaluate_daily(
     db: AsyncSession,
     daily: Daily,
@@ -58,6 +157,9 @@ async def _evaluate_daily(
     if rec is None:
         logger.warning("daily %s has malformed recurrence; sweep skipped it", daily.id)
         return 0
+    # Snapshot the id now: a rollback below expires `daily`, and touching
+    # an expired attribute raises MissingGreenlet mid-loop.
+    daily_id = daily.id
     anchor = daily_service.daily_anchor(daily)
     window_start = max(anchor, today - timedelta(days=daily_service.LOOKBACK_DAYS))
     units = [
@@ -67,86 +169,34 @@ async def _evaluate_daily(
     ]
     if not units:
         return 0
-    checks = await game_crud.list_daily_checks(db, [daily.id], window_start, today)
+    checks = await game_crud.list_daily_checks(db, [daily_id], window_start, today)
     done_days = {c.check_date for c in checks if c.daily_item_id is None and c.done}
-    miss_rows = await game_crud.list_daily_misses(db, daily.id, window_start)
+    # Freeze evidence must reach back 6 *scheduled units*, which for sparse
+    # recurrences (a weekday slot is ~7 days apart, every_n_days further)
+    # extends well past the lookback window — load misses from the earliest
+    # consultable prior unit or old misses go unseen and a freeze is granted
+    # that wasn't earned.
+    miss_since = window_start
+    for u in units:
+        priors = daily_service.prior_units(rec, anchor, u, daily_service.FREEZE_WINDOW_UNITS - 1)
+        if priors:
+            miss_since = min(miss_since, priors[-1])
+    miss_rows = await game_crud.list_daily_misses(db, daily_id, miss_since)
     missed_days = {m.scheduled_day for m in miss_rows}
-    profile: GameProfile | None = None
-    profile_fetched = False
     recorded = 0
     for unit in units:
         if unit in missed_days or _unit_satisfied(rec, unit, done_days, anchor):
             continue
-        prior = daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
-        # One miss per rolling 7 scheduled units is frozen: a miss in the
-        # prior 6 units means this one breaks the streak.
-        frozen = not any(u in missed_days for u in prior)
-        miss = DailyMiss(
-            daily_id=daily.id, user_id=daily.user_id, scheduled_day=unit, frozen=frozen
-        )
-        try:
-            # The insert IS the cross-instance claim: the loser of a racing
-            # pair hits the unique constraint, rolls back to the savepoint,
-            # and scores nothing.
-            async with db.begin_nested():
-                db.add(miss)
-                await db.flush()
-        except IntegrityError:
-            missed_days.add(unit)
+        if await _evaluate_unit(db, daily, unit, rec, anchor, missed_days, now, today, rates):
+            recorded += 1
             continue
         missed_days.add(unit)
-        if not profile_fetched:
-            # Lazily — a daily whose owner lacks a profile row still records
-            # the miss/streak change; only HP loss needs the row. FOR UPDATE
-            # matches every other scoring path's serialization point.
-            profile_fetched = True
-            profile = (
-                await db.execute(
-                    select(GameProfile)
-                    .where(GameProfile.user_id == daily.user_id)
-                    .with_for_update()
-                )
-            ).scalar_one_or_none()
-        outcome: dict = {"scored": False}
-        if profile is not None:
-            outcome = engine.apply_event(
-                profile,
-                "daily_missed",
-                {"difficulty": daily.difficulty},
-                rates,
-                _rng.random(),
-                _rng,
-                today,
-            )
-        streak_before = daily.streak
-        if not frozen:
-            daily.streak = 0
-        miss.hp_lost = float(outcome.get("hp_lost", 0.0))
-        outcome = {
-            **outcome,
-            "frozen": frozen,
-            "streak_before": streak_before,
-            "streak_after": daily.streak,
-        }
-        db.add(
-            GameEvent(
-                user_id=daily.user_id,
-                # Deterministic server id — the ledger uq is the backstop if
-                # a miss row ever survives without its event (crash between
-                # flush and commit replays cleanly: the whole unit retries).
-                client_event_id=f"server:daily:{daily.id}:missed:{unit.isoformat()}",
-                type="daily_missed",
-                client_ts=now,
-                payload={
-                    "daily_id": daily.id,
-                    "scheduled_day": unit.isoformat(),
-                    "frozen": frozen,
-                    "_outcome": outcome,
-                },
-            )
-        )
-        recorded += 1
-    await db.flush()
+        # The rollback expired `daily`; re-read it for the next unit — a
+        # mid-tick delete/deactivate ends this evaluation early.
+        fresh = await db.get(Daily, daily_id, populate_existing=True)
+        if fresh is None or not fresh.active:
+            return recorded
+        daily = fresh
     return recorded
 
 
@@ -159,6 +209,13 @@ async def run_daily_miss_sweep(
     `now` and `session_factory` are injectable for tests — day-ends are
     evaluated in UTC until a user timezone field exists (issue #63
     documented fallback).
+
+    Per-daily fault isolation: a failed evaluation rolls the whole session
+    back, which EXPIRES every loaded object (rollback is not
+    dirty-only, and expire_on_commit does not apply). Iterating
+    pre-fetched rows after a failure would lazy-refresh expired attributes
+    and raise MissingGreenlet, killing the tick — so the loop walks plain
+    int ids and re-reads each Daily with populate_existing inside the try.
     """
     if session_factory is None:
         from app.database import AsyncSessionLocal
@@ -171,21 +228,28 @@ async def run_daily_miss_sweep(
         rates = await load_rates(db)
         last_id = 0
         while True:
-            batch = await game_crud.list_active_dailies(db, last_id, daily_service.SWEEP_BATCH_SIZE)
-            if not batch:
+            batch_ids = await game_crud.list_active_daily_ids(
+                db, last_id, daily_service.SWEEP_BATCH_SIZE
+            )
+            if not batch_ids:
                 break
-            last_id = batch[-1].id
-            for daily in batch:
-                # Hoisted: a mid-evaluation rollback expires the ORM object —
-                # touching daily.id in the handler would lazy-load.
-                daily_id = daily.id
+            last_id = batch_ids[-1]
+            for daily_id in batch_ids:
                 try:
+                    # populate_existing: unconditional fresh read — an
+                    # identity-map hit on a post-rollback expired object
+                    # would otherwise raise MissingGreenlet on first access.
+                    daily = await db.get(Daily, daily_id, populate_existing=True)
+                    if daily is None or not daily.active:
+                        continue  # deleted or deactivated mid-tick
                     recorded += await _evaluate_daily(db, daily, now, today, rates)
+                    # Inside the try: a commit-level failure (deadlock, lost
+                    # connection) takes the same per-daily recovery path.
+                    await db.commit()
                 except Exception:
                     # One bad daily can't wedge the tick — its miss rows are
                     # uncommitted so the unit retries next pass.
                     await db.rollback()
                     logger.exception("daily miss evaluation failed for daily=%s", daily_id)
                     continue
-                await db.commit()
     return recorded
