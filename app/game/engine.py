@@ -32,6 +32,7 @@ _POSITIVE_FIELDS = frozenset(
         "lvl_curve_early",
         "lvl_curve_lvl5",
         "habit_drift_base",
+        "stopwatch_milestone_xp",
     }
 )
 
@@ -345,6 +346,26 @@ def _apply_stopwatch_milestone(
     outcome = {"scored": True, "type": "stopwatch_milestone", "crit": mult > 1.0}
     outcome.update(award_xp(profile, xp, rates, today))
     return outcome
+
+
+# Types only the session engine's wall-clock evaluation may author —
+# /game/events rejects them so clients can't claim milestone XP or forge
+# lifecycle history. focus_phase_completed stays client-authoritative: it's
+# the #60 offline-sync contract (a session run on-device reports its outcome
+# through the ledger, same trust class as habit_click).
+SERVER_EVENT_TYPES = frozenset(
+    {
+        "session_started",
+        "session_ended",
+        "session_abandoned",
+        "stopwatch_milestone",
+        "phase_completed",
+        "phase_started",
+        "phase_paused",
+        "phase_resumed",
+        "phase_skipped",
+    }
+)
 
 
 def apply_event(

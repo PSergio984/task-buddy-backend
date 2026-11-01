@@ -287,10 +287,13 @@ async def get_view(db: AsyncSession, user_id: int, session_id: int) -> _View:
 
 
 async def get_active_view(db: AsyncSession, user_id: int) -> _View | None:
+    # Cheap existence check first: prefetching the profile unconditionally
+    # would write-then-rollback a new profile row on every /active poll.
+    if await game_crud.get_active_session(db, user_id) is None:
+        return None
     profile = await game_crud.get_or_create_profile(db, user_id)
     session = await game_crud.get_active_session(db, user_id, for_update=True)
-    if session is None:
-        return None
+    assert session is not None  # it existed a line ago and only we can end it
     phases, _ = await _evaluate(db, session, user_id, datetime.now(timezone.utc))
     return session, phases, profile
 

@@ -58,5 +58,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     with op.batch_alter_table("tbl_focus_sessions") as batch:
         batch.drop_constraint("ck_focus_sessions_status", type_="check")
-    _update_economy(op.get_bind(), lambda v: v.pop("stopwatch_milestone_xp", None))
+    # stopwatch_milestone_xp is left in the economy row: setdefault may have
+    # preserved an operator-set value, and a leftover key is harmless config
+    # while popping one we didn't add would lose it.
     op.drop_column("tbl_focus_phases", "pause_started_at")

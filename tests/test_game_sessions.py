@@ -13,7 +13,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.game import session_service
-from app.models.game import FocusPhase, FocusSession, GameEvent
+from app.models.game import FocusPhase, FocusSession, GameEvent, GameProfile
 from app.models.user import User
 
 SESSIONS = "/api/v1/game/sessions"
@@ -161,6 +161,36 @@ class TestStart:
             },
         )
         assert response.status_code == 422
+
+    async def test_server_event_type_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Session-lifecycle types are server-authored — clients can't claim
+        milestone/phase XP through /game/events."""
+        response = await authenticated_async_client.post(
+            "/api/v1/game/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "c1",
+                        "type": "stopwatch_milestone",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"milestones": 3},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 422
+
+    async def test_active_poll_creates_no_profile(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """GET /active with no session must not write-then-rollback a profile
+        row on every poll."""
+        response = await authenticated_async_client.get(f"{SESSIONS}/active")
+        assert response.json() is None
+        profiles = await db.execute(select(GameProfile))
+        assert profiles.scalar_one_or_none() is None
 
     async def test_other_users_session_not_found(
         self, authenticated_async_client: AsyncClient, db: AsyncSession

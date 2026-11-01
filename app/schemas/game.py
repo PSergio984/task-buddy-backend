@@ -6,6 +6,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 
+from app.game.engine import SERVER_EVENT_TYPES
 from app.models.game import GameProfile
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
@@ -26,6 +27,15 @@ class GameEventIn(BaseModel):
         # otherwise squat a server id and suppress the real event via dedupe.
         if v.startswith("server:"):
             raise ValueError("client_event_id prefix 'server:' is reserved")
+        return v
+
+    @field_validator("type")
+    @classmethod
+    def no_server_event_type(cls, v: str) -> str:
+        # Session-lifecycle types are server-authored — a client claiming
+        # them could award itself milestone/phase XP or forge history.
+        if v in SERVER_EVENT_TYPES:
+            raise ValueError(f"event type '{v}' is server-authored")
         return v
 
     @field_validator("client_ts")
