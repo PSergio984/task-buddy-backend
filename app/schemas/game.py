@@ -47,7 +47,12 @@ class GameEventIn(BaseModel):
         # values are converted to UTC — SQLite drops the offset on write, and
         # re-labeling a local wall time as UTC mis-buckets the day views.
         aware = v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
-        return aware.astimezone(timezone.utc)
+        try:
+            return aware.astimezone(timezone.utc)
+        except OverflowError:
+            # The instant is representable locally but its UTC form isn't —
+            # reject as input error, not a server crash.
+            raise ValueError("client_ts out of representable range") from None
 
     @field_validator("payload")
     @classmethod
