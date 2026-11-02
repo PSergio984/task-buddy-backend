@@ -242,7 +242,9 @@ async def get_session(
         FocusSession.id == session_id, FocusSession.user_id == user_id
     )
     if for_update:
-        query = query.with_for_update()
+        # populate_existing is load-bearing (same as get_or_create_profile):
+        # a session already in the identity map would shadow the locked row.
+        query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -256,7 +258,9 @@ async def get_active_session(
         FocusSession.user_id == user_id, FocusSession.status == "active"
     )
     if for_update:
-        query = query.with_for_update()
+        # get_active_view probes unlocked first — without populate_existing
+        # the probe's identity-map copy would shadow the locked row here.
+        query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
