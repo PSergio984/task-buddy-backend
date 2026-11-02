@@ -51,6 +51,23 @@ class TestProfile:
         response = await async_client.get(f"{GAME}/profile")
         assert response.status_code == 401
 
+    async def test_profile_responses_include_server_time(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Every GameProfileRead response carries server_time so profile
+        writes join the client's server_time-ordered cache merge."""
+        get_resp = await authenticated_async_client.get(f"{GAME}/profile")
+        assert get_resp.status_code == 200, get_resp.text
+        datetime.fromisoformat(get_resp.json()["server_time"])
+
+        for path, body in (
+            (f"{GAME}/profile/retention", {"retention": "90d"}),
+            (f"{GAME}/profile/avatar", {"avatar_config": {"seed": "kiki"}}),
+        ):
+            response = await authenticated_async_client.patch(path, json=body)
+            assert response.status_code == 200, response.text
+            datetime.fromisoformat(response.json()["server_time"])
+
 
 class TestEventIngestion:
     async def test_focus_event_applies_scoring(

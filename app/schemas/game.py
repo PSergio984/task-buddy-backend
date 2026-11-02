@@ -137,6 +137,9 @@ class GameProfileRead(BaseModel):
     xp_today: int
     gold_today: float
     retention: str
+    # Stamped like the event/sync responses: profile writes must join the
+    # client's server_time-ordered cache merge.
+    server_time: datetime
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -146,7 +149,8 @@ class GameProfileRead(BaseModel):
         # flush would trigger an expired-attribute lazy load (async-unsafe).
         # Daily counters reset inside award_* only; a next-day read must
         # report zero rather than yesterday's earnings.
-        is_today = profile.totals_day == datetime.now(timezone.utc).date()
+        now = datetime.now(timezone.utc)
+        is_today = profile.totals_day == now.date()
         return cls(
             level=profile.level,
             xp=profile.xp,
@@ -167,6 +171,7 @@ class GameProfileRead(BaseModel):
             gold_today=profile.gold_today if is_today else 0.0,
             # Column default applies at flush; an unflushed profile reads None.
             retention=profile.retention or "forever",
+            server_time=now,
         )
 
 
