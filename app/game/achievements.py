@@ -13,6 +13,8 @@ aggregate columns (Daily.streak, Habit.counter); perfect_day counts whole-
 daily done checks per date against the user's active dailies.
 """
 
+import sys
+
 from sqlalchemy import Insert, func, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
@@ -133,13 +135,22 @@ def _scored_events(db: AsyncSession, user_id: int, event_type: str):
     )
 
 
+def _criteria_threshold(criteria: dict) -> int:
+    """Required numeric threshold; absent or malformed yields an unreachable
+    target so a threshold-kind row can never grant."""
+    try:
+        return int(criteria["threshold"])
+    except (KeyError, TypeError, ValueError):
+        return sys.maxsize
+
+
 async def _meets(
     db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict
 ) -> bool:
     """True when the criteria's live check passes. Unknown kinds never grant."""
     kind = criteria.get("kind")
     if kind == "level":
-        return profile.level >= int(criteria.get("threshold", 0))
+        return profile.level >= _criteria_threshold(criteria)
     if kind == "class":
         return profile.game_class is not None
     return await _meets_db(db, user_id, criteria)
@@ -148,7 +159,7 @@ async def _meets(
 async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
     """DB-backed criteria: firsts, ownership, focus totals, records, days."""
     kind = criteria.get("kind")
-    threshold = int(criteria.get("threshold", 0))
+    threshold = _criteria_threshold(criteria)
     if kind == "first":
         what = criteria.get("what")
         if what is None:
