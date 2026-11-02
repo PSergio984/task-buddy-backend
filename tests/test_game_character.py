@@ -8,7 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.game import achievements, character_service, service
+from app.game import achievements, character_service, engine, service
 from app.models.game import (
     Achievement,
     Daily,
@@ -21,6 +21,13 @@ from app.models.game import (
 
 GAME = "/api/v1/game"
 CHAR = "/api/v1/game/character"
+
+
+@pytest.fixture(autouse=True)
+def _no_crits(monkeypatch: pytest.MonkeyPatch) -> None:
+    """The events endpoint scores with the module's unseeded `_rng`; a crit
+    multiplies awards ~1.5-3x and flakes exact XP/gold/HP assertions."""
+    monkeypatch.setattr(engine, "crit_roll", lambda *args, **kwargs: 1.0)
 
 
 async def _ensure_profile(client: AsyncClient) -> dict:
@@ -1033,6 +1040,30 @@ class TestAchievements:
         assert profile["gold"] == pytest.approx(12.0)
         badges = await _badges(authenticated_async_client)
         assert badges["bool-level"]["earned_at"] is None
+
+    async def test_fractional_threshold_never_grants(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """criteria={'kind': 'level', 'threshold': 10.5} — int() truncates
+        to 10, which must not lower the bar into a reachable badge."""
+        await _ensure_profile(authenticated_async_client)
+        db.add(
+            Achievement(
+                key="frac-level",
+                name="broken",
+                description="level criteria with a fractional threshold",
+                criteria={"kind": "level", "threshold": 10.5},
+                gold_reward=5,
+            )
+        )
+        await db.commit()
+        profile = await _score_event(authenticated_async_client, "e-frac-thr")
+        assert profile["gold"] == pytest.approx(12.0)
+        badges = await _badges(authenticated_async_client)
+        assert badges["frac-level"]["earned_at"] is None
 
     async def test_registry_upserts_drifted_rows(
         self,

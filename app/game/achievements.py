@@ -196,9 +196,14 @@ def _criteria_threshold(criteria: dict) -> int:
     target so a threshold-kind row can never grant."""
     try:
         value = criteria["threshold"]
-        # int(True) is 1 — a bool or other non-numeric threshold would
-        # silently lower the bar into a grant-everything target.
-        if isinstance(value, bool) or not isinstance(value, (int, float)):
+        # int(True) is 1 and int(10.5) truncates — a bool, non-numeric, or
+        # non-integral threshold silently lowers the bar into a grant-
+        # everything target. is_integer() also rejects nan/inf.
+        if (
+            isinstance(value, bool)
+            or not isinstance(value, (int, float))
+            or not float(value).is_integer()
+        ):
             return sys.maxsize
         return int(value)
     except (KeyError, TypeError, ValueError, OverflowError):
