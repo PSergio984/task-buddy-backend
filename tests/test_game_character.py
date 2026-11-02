@@ -1010,6 +1010,30 @@ class TestAchievements:
         badges = await _badges(authenticated_async_client)
         assert badges["bad-level"]["earned_at"] is None
 
+    async def test_bool_threshold_never_grants(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """criteria={'kind': 'level', 'threshold': True} — int(True) is 1,
+        which must not lower the bar into a grant-everything badge."""
+        await _ensure_profile(authenticated_async_client)
+        db.add(
+            Achievement(
+                key="bool-level",
+                name="broken",
+                description="level criteria with a bool threshold",
+                criteria={"kind": "level", "threshold": True},
+                gold_reward=5,
+            )
+        )
+        await db.commit()
+        profile = await _score_event(authenticated_async_client, "e-bool-thr")
+        assert profile["gold"] == pytest.approx(12.0)
+        badges = await _badges(authenticated_async_client)
+        assert badges["bool-level"]["earned_at"] is None
+
     async def test_registry_upserts_drifted_rows(
         self,
         authenticated_async_client: AsyncClient,

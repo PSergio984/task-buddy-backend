@@ -195,8 +195,13 @@ def _criteria_threshold(criteria: dict) -> int:
     """Required numeric threshold; absent or malformed yields an unreachable
     target so a threshold-kind row can never grant."""
     try:
-        return int(criteria["threshold"])
-    except (KeyError, TypeError, ValueError):
+        value = criteria["threshold"]
+        # int(True) is 1 — a bool or other non-numeric threshold would
+        # silently lower the bar into a grant-everything target.
+        if isinstance(value, bool) or not isinstance(value, (int, float)):
+            return sys.maxsize
+        return int(value)
+    except (KeyError, TypeError, ValueError, OverflowError):
         return sys.maxsize
 
 
