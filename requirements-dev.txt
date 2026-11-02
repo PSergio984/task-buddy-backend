@@ -148,7 +148,7 @@ mypy-extensions==1.1.0
     # via
     #   black
     #   mypy
-nltk==3.10.3
+nltk==3.10.4
     # via task-buddy-backend (pyproject.toml)
 numpy==2.4.6
     # via task-buddy-backend (pyproject.toml)
