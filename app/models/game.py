@@ -98,6 +98,8 @@ class GameEvent(Base):
         # The catchup feed filters user_id + id > cursor; the uq above already
         # leads with user_id, so no standalone user_id index is needed.
         Index("ix_game_events_user_feed", "user_id", "id"),
+        # Issue #64 rider: ingest orders each batch by client_ts per user.
+        Index("ix_game_events_user_client_ts", "user_id", "client_ts"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
