@@ -7,7 +7,13 @@ from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.game.engine import SERVER_EVENT_TYPES
+from app.game.engine import (
+    SERVER_EVENT_TYPES,
+    STAT_COLUMN,
+    STAT_KEYS,
+    STAT_POINT_CAP,
+    level_stat_bonus,
+)
 from app.models.game import GameProfile, HabitDirection
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
@@ -106,6 +112,10 @@ class GameProfileRead(BaseModel):
     per_stat: int
     unspent_stat_points: int
     game_class: str | None
+    auto_allocate: bool
+    # Sheet display: allocated + level-derived base (floor(level/2), cap 50).
+    # Gear bonuses feed the engine directly and aren't folded in here.
+    base_stats: dict
     avatar_config: dict
     xp_today: int
     gold_today: float
@@ -133,6 +143,11 @@ class GameProfileRead(BaseModel):
             per_stat=profile.per_stat,
             unspent_stat_points=profile.unspent_stat_points,
             game_class=profile.game_class,
+            auto_allocate=bool(profile.auto_allocate),
+            base_stats={
+                key: getattr(profile, column) + level_stat_bonus(profile.level or 1)
+                for key, column in STAT_COLUMN.items()
+            },
             avatar_config=profile.avatar_config or {},
             xp_today=profile.xp_today if is_today else 0,
             gold_today=profile.gold_today if is_today else 0.0,
@@ -688,3 +703,34 @@ class DailyCheckResponse(BaseModel):
     profile: GameProfileRead
     status: Literal["applied", "duplicate"]
     server_time: datetime
+
+
+# --- Character sheet (issue #64) ---------------------------------------------
+
+
+class StatAllocateIn(BaseModel):
+    """Manual stat-point spend: {"str": 2, "int": 1} — the sum is debited
+    from unspent_stat_points, each stat capped at STAT_POINT_CAP."""
+
+    points: dict[str, Annotated[int, Field(ge=1, le=STAT_POINT_CAP)]] = Field(min_length=1)
+
+    @field_validator("points")
+    @classmethod
+    def known_stats(cls, v: dict[str, int]) -> dict[str, int]:
+        for key in v:
+            if key not in STAT_KEYS:
+                raise ValueError(f"unknown stat '{key}'")
+        return v
+
+
+class CharacterUpdateIn(BaseModel):
+    """Character settings; auto_allocate hands level-up points to the
+    affinity-based distributor instead of the unspent pool."""
+
+    auto_allocate: bool
+
+
+class ClassSelectIn(BaseModel):
+    """The level-10 class pick; respec re-opens this choice for gold."""
+
+    game_class: Literal["warrior", "mage", "healer", "rogue"]

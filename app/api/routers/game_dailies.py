@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.dependencies import get_db
-from app.game import daily_service, engine, service
+from app.game import character_service, daily_service, engine, service
 from app.limiter import limiter
 from app.models.game import Daily, DailyItem
 from app.models.user import User
@@ -276,6 +276,9 @@ async def check_daily(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await character_service.post_score(
+        db, user_id, profile, rates, profile.totals_day or today
+    )
     await db.commit()
     await db.refresh(daily)
     logger.info(

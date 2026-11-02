@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import habit_service
+from app.game import character_service, habit_service
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
@@ -222,6 +222,11 @@ async def _evaluate(
             seen,
             habits=bound_habits,
             auto_budget=auto_budget,
+        )
+    if profile is not None:
+        # Post-scoring hook (auto-distribute now, grant eval as it lands).
+        await character_service.post_score(
+            db, user_id, profile, rates, profile.totals_day or now.date()
         )
     await db.flush()
     return phases, steps

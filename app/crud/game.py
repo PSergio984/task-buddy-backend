@@ -17,8 +17,10 @@ from app.models.game import (
     GameConfig,
     GameEvent,
     GameProfile,
+    GearItem,
     Habit,
     SessionNote,
+    UserGear,
 )
 
 _RETENTION_DAYS = {"90d": 90, "1y": 365}
@@ -363,3 +365,16 @@ async def list_daily_check_events(
         )
     )
     return list(result.scalars().all())
+
+
+# --- Character sheet: gear + achievements (issue #64) ------------------------
+
+
+async def list_equipped_gear(db: AsyncSession, user_id: int) -> list[tuple[UserGear, GearItem]]:
+    """(user_gear, catalog-item) pairs for everything currently equipped."""
+    result = await db.execute(
+        select(UserGear, GearItem)
+        .join(GearItem, UserGear.gear_item_id == GearItem.id)
+        .where(UserGear.user_id == user_id, UserGear.equipped.is_(True))
+    )
+    return list(result.all())
