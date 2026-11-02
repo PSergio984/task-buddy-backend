@@ -85,6 +85,21 @@ class TestStart:
         response = await authenticated_async_client.post(SESSIONS, json={"mode": "timer"})
         assert response.status_code == 400
 
+    async def test_start_rejects_non_finite_minutes(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Session-start has no float fields — pydantic's int coercion already
+        rejects NaN/Infinity, same boundary guarantee the event-payload blob
+        check gives /game/events (coverage check from the tech-debt pass)."""
+        body = (
+            '{"mode": "timer", "phases": [{"kind": "focus", "minutes": NaN},'
+            ' {"kind": "focus", "minutes": 1e999}]}'
+        )
+        response = await authenticated_async_client.post(
+            SESSIONS, content=body, headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 422
+
     async def test_start_caps_phase_count(self, authenticated_async_client: AsyncClient) -> None:
         response = await authenticated_async_client.post(
             SESSIONS,
