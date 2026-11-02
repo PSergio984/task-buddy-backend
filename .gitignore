@@ -137,7 +137,8 @@ instance/
 .claude
 graphify-out/
 quality
-docs
+docs/*
+!docs/adr/
 .agent
 .agents
 .azure
