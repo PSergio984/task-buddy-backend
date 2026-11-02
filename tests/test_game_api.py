@@ -312,9 +312,7 @@ class TestEventsFeed:
 
 
 class TestAvatarConfig:
-    async def test_patch_avatar_round_trips(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_patch_avatar_round_trips(self, authenticated_async_client: AsyncClient) -> None:
         config = {
             "style": "pixel-art",
             "seed": "kiki",
@@ -339,9 +337,7 @@ class TestAvatarConfig:
         assert response.status_code == 200, response.text
         assert response.json()["avatar_config"] == {}
 
-    async def test_avatar_non_dict_rejected(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_avatar_non_dict_rejected(self, authenticated_async_client: AsyncClient) -> None:
         for bad in ("pixel-art", ["style"], 5):
             response = await authenticated_async_client.patch(
                 f"{GAME}/profile/avatar", json={"avatar_config": bad}
@@ -444,7 +440,5 @@ class TestAvatarConfig:
             assert after[field] == before[field]
 
     async def test_avatar_requires_auth(self, async_client: AsyncClient) -> None:
-        response = await async_client.patch(
-            f"{GAME}/profile/avatar", json={"avatar_config": {}}
-        )
+        response = await async_client.patch(f"{GAME}/profile/avatar", json={"avatar_config": {}})
         assert response.status_code == 401
