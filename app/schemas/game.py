@@ -171,7 +171,11 @@ class GameProfileRead(BaseModel):
             gold_today=profile.gold_today if is_today else 0.0,
             # Column default applies at flush; an unflushed profile reads None.
             retention=profile.retention or "forever",
-            server_time=now,
+            # Snapshot-time stamp (set at profile load/lock in
+            # get_or_create_profile), not response-build time — a build-time
+            # stamp would let a stale read outrank a fresher concurrent write.
+            # Falls back to build-time for profiles that bypass the helper.
+            server_time=getattr(profile, "_loaded_at", None) or now,
         )
 
 

@@ -93,6 +93,11 @@ class GameProfile(Base):
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()
     )
 
+    # get_or_create_profile stamps the transient `_loaded_at` attribute (NOT
+    # a column — deliberately unannotated so the mapper skips it) with the
+    # read/lock instant; GameProfileRead.server_time reads it via getattr.
+    # Unset on rows loaded outside the helper.
+
 
 class GameEvent(Base):
     """Immutable event ledger row; client_event_id is the idempotency key."""

@@ -62,6 +62,10 @@ async def get_or_create_profile(
     result = await db.execute(query)
     profile = result.scalar_one_or_none()
     if profile is not None:
+        # Stamp the read/lock instant: server_time-ordered merges must rank
+        # a snapshot by when its data was read, not when the response built —
+        # a concurrent write can commit during this request's later awaits.
+        profile._loaded_at = datetime.now(timezone.utc)  # type: ignore[attr-defined]
         return profile
     profile = GameProfile(user_id=user_id)
     db.add(profile)
@@ -71,6 +75,7 @@ async def get_or_create_profile(
         await db.rollback()
         result = await db.execute(query)
         profile = result.scalar_one()
+    profile._loaded_at = datetime.now(timezone.utc)  # type: ignore[attr-defined]
     return profile
 
 

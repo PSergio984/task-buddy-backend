@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.game import GameEvent, GameProfile
 from app.models.user import User
+from app.schemas.game import GameProfileRead
 
 GAME = "/api/v1/game"
 
@@ -67,6 +68,24 @@ class TestProfile:
             response = await authenticated_async_client.patch(path, json=body)
             assert response.status_code == 200, response.text
             datetime.fromisoformat(response.json()["server_time"])
+
+    async def test_server_time_is_snapshot_not_build_time(
+        self, authenticated_async_client: AsyncClient, confirmed_user: dict, db: AsyncSession
+    ) -> None:
+        """server_time reflects when the profile was read/locked, not when the
+        response was built — a stale snapshot must not outrank a newer write."""
+        await authenticated_async_client.get(f"{GAME}/profile")
+        profile = (
+            await db.execute(select(GameProfile).where(GameProfile.user_id == confirmed_user["id"]))
+        ).scalar_one()
+        past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        profile._loaded_at = past
+        read = GameProfileRead.from_profile(profile, xp_to_next=0)
+        assert read.server_time == past
+        # Unstamped profiles (bypassing get_or_create_profile) still stamp now.
+        profile._loaded_at = None
+        read2 = GameProfileRead.from_profile(profile, xp_to_next=0)
+        assert read2.server_time > past
 
 
 class TestEventIngestion:

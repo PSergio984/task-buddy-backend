@@ -10,7 +10,7 @@ The per-user daily LLM token budget was enforced by check-before-call: each LLM 
 - Locks held across the provider call and Redis-backed durable counters are rejected.
 - Reservation sizes are fixed per-endpoint config constants, set generously (~2× observed mean).
 - On success the counter reconciles by `actual − estimate`; on provider error it refunds fully; process death mid-call leaks the estimate until UTC day rollover (bounded, accepted).
-- The seam is explicit `reserve_llm_budget` / `reconcile_llm_usage` / `refund_llm_reservation` functions in one budget module, called at all four LLM endpoints (`/plan`, `/breakdown`, `/voice/plan`, `/tasks/{id}/knowledge/ask`); a budget ≤ 0 still disables the cap entirely.
+- The seam is explicit `reserve_llm_budget` / `reconcile_llm_usage` / `refund_llm_reservation` functions in one budget module, called at all five LLM endpoints (`/plan`, `/breakdown`, `/voice/plan`, `/tasks/{id}/knowledge/ask`, `/tasks/{id}/knowledge/ask/stream`); a budget ≤ 0 still disables the cap entirely.
 - Future LLM endpoints must follow the same reservation convention, documented for contributors.
 
 ## Considered Options
@@ -24,4 +24,4 @@ The per-user daily LLM token budget was enforced by check-before-call: each LLM 
 
 - Reservations use fixed per-endpoint estimate constants (~2× observed mean); precision is immaterial at the 200k/day cap.
 - On success the counter reconciles by `actual − estimate`; on provider error it refunds fully; if the process dies mid-call the estimate leaks until UTC day rollover — bounded, self-healing, accepted.
-- The gate lives as explicit `reserve_llm_budget` / `reconcile_llm_usage` / `refund_llm_reservation` functions in one budget module, called at the four LLM endpoints (`/plan`, `/breakdown`, `/voice/plan`, `/tasks/{id}/knowledge/ask`); future LLM endpoints must follow the same convention (documented in code-reference docs). A budget ≤ 0 still disables the cap entirely.
+- The gate lives as explicit `reserve_llm_budget` / `reconcile_llm_usage` / `refund_llm_reservation` functions in one budget module, called at the five LLM endpoints (`/plan`, `/breakdown`, `/voice/plan`, `/tasks/{id}/knowledge/ask`, `/tasks/{id}/knowledge/ask/stream`); future LLM endpoints must follow the same convention (documented in code-reference docs). A budget ≤ 0 still disables the cap entirely.
