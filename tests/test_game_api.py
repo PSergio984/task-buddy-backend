@@ -423,6 +423,27 @@ class TestAvatarConfig:
         )
         assert response.status_code == 200, response.text
 
+    async def test_avatar_nul_characters_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Postgres JSONB rejects NUL bytes inside stored strings -- an
+        # escaped "\u0000" passes the size/dumps probe but 500s at db.flush().
+        # The blob guard walks the parsed tree, so dict keys are covered too.
+        for bad in (
+            {"seed": "ki\x00ki"},
+            {"traits": {"hair": "sh\x00ort01"}},
+            {"moo\x00d": "happy"},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+        control = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {"seed": "kiki"}}
+        )
+        assert control.status_code == 200, control.text
+
     async def test_avatar_leaves_other_fields_untouched(
         self, authenticated_async_client: AsyncClient
     ) -> None:

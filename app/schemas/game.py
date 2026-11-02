@@ -23,6 +23,22 @@ def _check_json_blob(v: dict, field: str) -> None:
     # unboundedly, and reject non-finite floats — dumps would emit Infinity,
     # which Postgres JSONB accepts on write but JSONResponse.render 500s on
     # for every read (SQLite silently poisons the row instead).
+    def reject_nul(node: object) -> None:
+        # Postgres JSONB also rejects NUL bytes inside stored strings, but
+        # an escaped "\u0000" survives the dumps probe below — walk the
+        # parsed tree (keys too) to catch them before db.flush().
+        if isinstance(node, str):
+            if "\x00" in node:
+                raise ValueError(f"{field} contains a NUL character")
+        elif isinstance(node, dict):
+            for key, member in node.items():
+                reject_nul(key)
+                reject_nul(member)
+        elif isinstance(node, list):
+            for item in node:
+                reject_nul(item)
+
+    reject_nul(v)
     try:
         size = len(json.dumps(v, default=str, ensure_ascii=False, allow_nan=False).encode("utf-8"))
     except ValueError:
