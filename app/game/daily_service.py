@@ -361,6 +361,7 @@ async def _apply_share(
         today,
         stat_bonus=await character_service.gear_stat_bonus(db, daily.user_id),
     )
+    await character_service.resolve_death_gear(db, daily.user_id, outcome, rng)
     return outcome, share
 
 

@@ -259,6 +259,7 @@ async def ingest_events(
             today=today,
             stat_bonus=stat_bonus,
         )
+        await character_service.resolve_death_gear(db, user_id, outcome, rng)
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras
         # are cleaned of server-reserved markers — a forged auto/session_id

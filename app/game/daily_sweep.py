@@ -141,6 +141,7 @@ async def _evaluate_unit(
             today,
             stat_bonus=await character_service.gear_stat_bonus(db, daily.user_id),
         )
+        await character_service.resolve_death_gear(db, daily.user_id, outcome, _rng)
     streak_before = daily.streak
     if not frozen:
         daily.streak = 0

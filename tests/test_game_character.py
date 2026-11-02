@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.game import Daily, DailyCheck, GameProfile, UserAchievement
+from app.models.game import Daily, DailyCheck, GameEvent, GameProfile, UserAchievement
 
 GAME = "/api/v1/game"
 CHAR = "/api/v1/game/character"
@@ -771,3 +771,97 @@ class TestAchievements:
         assert response.json()["gold"] == pytest.approx(40.0)
         badges = await _badges(authenticated_async_client)
         assert badges["class-picked"]["earned_at"] is not None
+
+
+# --- Death cascade (issue #64) -------------------------------------------------
+
+
+async def _kill(client: AsyncClient, eid: str) -> None:
+    """A 500-damage event — fatal from any HP total."""
+    response = await client.post(
+        f"{GAME}/events",
+        json={
+            "events": [
+                {
+                    "client_event_id": eid,
+                    "type": "damage",
+                    "client_ts": "2026-01-01T00:00:00Z",
+                    "payload": {"amount": 500},
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200, response.text
+
+
+async def _outcome(db: AsyncSession, user_id: int, eid: str) -> dict:
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id, GameEvent.client_event_id == eid
+        )
+    )
+    return result.scalar_one().payload["_outcome"]
+
+
+class TestDeathCascade:
+    async def test_death_loses_the_only_losable_item(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(
+            db, confirmed_user["id"], level=8, xp=10, gold=200.0, hp=1.0, str_stat=2
+        )
+        await _buy(authenticated_async_client, "all-shield-1")
+        await _kill(authenticated_async_client, "e-death-1")
+
+        outcome = await _outcome(db, confirmed_user["id"], "e-death-1")
+        # Deterministic pick: the one losable item is the only candidate.
+        assert outcome["died"] is True
+        assert outcome["gear_lost"] is True
+        assert outcome["gear_lost_key"] == "all-shield-1"
+        assert outcome["stat_lost"] == "str_stat"
+
+        row = await _profile_row(db, confirmed_user["id"])
+        assert row.level == 7 and row.xp == 0 and row.gold == 0.0
+        assert row.str_stat == 1
+        items = await _gear(authenticated_async_client)
+        assert items["all-shield-1"]["owned"] is False
+
+    async def test_death_loses_exactly_one_of_two(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=200.0, hp=1.0)
+        await _buy(authenticated_async_client, "all-shield-1")
+        await _buy(authenticated_async_client, "all-body-1")
+        await _kill(authenticated_async_client, "e-death-2")
+
+        outcome = await _outcome(db, confirmed_user["id"], "e-death-2")
+        # Bounded randomness: the pick is always a real owned item, and
+        # exactly one row leaves the inventory.
+        assert outcome["gear_lost"] is True
+        assert outcome["gear_lost_key"] in {"all-shield-1", "all-body-1"}
+        items = await _gear(authenticated_async_client)
+        owned = {k for k, r in items.items() if r["owned"]}
+        assert len(owned) == 1
+        assert outcome["gear_lost_key"] not in owned
+
+    async def test_death_without_gear_reports_false(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], hp=1.0)
+        await _kill(authenticated_async_client, "e-death-3")
+        outcome = await _outcome(db, confirmed_user["id"], "e-death-3")
+        assert outcome["died"] is True
+        assert outcome["gear_lost"] is False
+        assert outcome["gear_lost_key"] is None

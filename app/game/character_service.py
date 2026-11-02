@@ -10,6 +10,7 @@ class's two affinity stats (primary breaks ties); classless users balance
 across all four. Points never exceed STAT_POINT_CAP.
 """
 
+import random
 from datetime import date
 
 from sqlalchemy import insert, select
@@ -179,6 +180,48 @@ async def list_catalog(db: AsyncSession, user_id: int) -> list[dict]:
         rows.append({"item": item, "owned": ug is not None,
                      "equipped": bool(ug and ug.equipped)})
     return rows
+
+
+async def lose_random_gear(
+    db: AsyncSession, user_id: int, rng: random.Random | None = None
+) -> str | None:
+    """Delete one random LOSABLE owned item; returns its catalog key.
+
+    The death cascade loses owned gear, not just worn pieces — Habitica's
+    revive picks from the whole losable pool. rng is injectable so tests
+    can pin the pick; None falls back to the module generator.
+    """
+    result = await db.execute(
+        select(UserGear, GearItem)
+        .join(GearItem, UserGear.gear_item_id == GearItem.id)
+        .where(UserGear.user_id == user_id, GearItem.losable.is_(True))
+    )
+    rows = list(result.all())
+    if not rows:
+        return None
+    picker = rng if rng is not None else random
+    user_gear, item = picker.choice(rows)
+    await db.delete(user_gear)
+    return item.key
+
+
+async def resolve_death_gear(
+    db: AsyncSession,
+    user_id: int,
+    outcome: dict,
+    rng: random.Random | None = None,
+) -> None:
+    """Finish the death cascade the pure engine flagged: pick the lost gear.
+
+    Mutates `outcome` in place — callers run this before the row lands in
+    the ledger so _outcome carries gear_lost/gear_lost_key, not the
+    engine's placeholder.
+    """
+    if not outcome.get("died"):
+        return
+    lost = await lose_random_gear(db, user_id, rng)
+    outcome["gear_lost"] = lost is not None
+    outcome["gear_lost_key"] = lost
 
 
 # --- Stat allocation --------------------------------------------------------

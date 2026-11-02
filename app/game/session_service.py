@@ -142,6 +142,7 @@ async def _persist_step(
             day,
             stat_bonus=await character_service.gear_stat_bonus(db, user_id),
         )
+        await character_service.resolve_death_gear(db, user_id, outcome, _rng)
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,

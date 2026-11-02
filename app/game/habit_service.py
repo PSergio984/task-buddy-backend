@@ -106,6 +106,7 @@ async def score_click(
         today=today,
         stat_bonus=stat_bonus,
     )
+    await character_service.resolve_death_gear(db, habit.user_id, outcome, rng)
     habit.counter += 1 if direction == "positive" else -1
     habit.value = float(outcome["new_value"])
     payload = {

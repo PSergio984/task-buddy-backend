@@ -241,8 +241,9 @@ def award_gold(profile: GameProfile, amount: float, rates: GameRates, today: dat
 
 def _death(profile: GameProfile, rates: GameRates, rng: random.Random | None) -> dict:
     """Habitica revive cascade: XP/gold to 0, level -1 (floor 1), -1 allocated
-    stat point, and one losable gear item (resolved by the caller once gear
-    exists — flagged in the outcome)."""
+    stat point, and one losable gear item (the engine is DB-free — callers
+    resolve the pick via character_service.resolve_death_gear, which flips
+    gear_lost and records gear_lost_key on this outcome)."""
     profile.level = max(1, profile.level - 1)
     profile.xp = 0
     profile.gold = 0.0
