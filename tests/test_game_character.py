@@ -1048,8 +1048,10 @@ class TestAchievements:
         db: AsyncSession,
     ) -> None:
         """criteria={'kind': 'level', 'threshold': 10.5} — int() truncates
-        to 10, which must not lower the bar into a reachable badge."""
+        to 10, which must not lower the bar into a reachable badge. Level 10
+        makes this discriminating: the truncated threshold would grant."""
         await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10)
         db.add(
             Achievement(
                 key="frac-level",
@@ -1061,7 +1063,8 @@ class TestAchievements:
         )
         await db.commit()
         profile = await _score_event(authenticated_async_client, "e-frac-thr")
-        assert profile["gold"] == pytest.approx(12.0)
+        # 12.0 baseline + 25 for the legit level-10 badge; no frac-level grant.
+        assert profile["gold"] == pytest.approx(37.0)
         badges = await _badges(authenticated_async_client)
         assert badges["frac-level"]["earned_at"] is None
 
