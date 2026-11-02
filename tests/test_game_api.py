@@ -318,7 +318,7 @@ class TestAvatarConfig:
         config = {
             "style": "pixel-art",
             "seed": "kiki",
-            "traits": {"hair": ["short01"], "eyes": ["variant01"]},
+            "traits": {"hair": "short01", "eyes": "variant01"},
             "costume": {"slot": "cape", "color": "crimson"},
         }
         response = await authenticated_async_client.patch(
@@ -361,6 +361,70 @@ class TestAvatarConfig:
                 f"{GAME}/profile/avatar", json={"avatar_config": bad}
             )
             assert response.status_code == 422, bad
+
+    async def test_avatar_non_string_members_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # traits/costume are Record<string,string> client-side — array/null/
+        # number members render nothing and get silently dropped on the next
+        # picker save, so the envelope rejects them instead of storing loss.
+        for bad in (
+            {"traits": {"hair": ["short01"]}},
+            {"traits": {"hair": None}},
+            {"traits": {"hair": 5}},
+            {"costume": {"slot": ["cape"]}},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_non_finite_member_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # 1e999 parses to float inf — the member-type check alone catches it.
+        body = (
+            '{"avatar_config": {"style": "pixel-art", "seed": "kiki", "traits": {"hair": 1e999}}}'
+        )
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_non_finite_unmodeled_key_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Non-finite floats under keys the picker doesn't model reach the
+        # dumps probe — Postgres JSONB accepts NaN on write but
+        # JSONResponse.render would 500 on every profile read afterwards.
+        body = '{"avatar_config": {"seed": "kiki", "mood": NaN}}'
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_oversize_blob_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # The blob is echoed on every GET /profile + event sync — cap bytes.
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            json={"avatar_config": {"seed": "x" * (20 * 1024)}},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_large_but_valid_blob_accepted(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            json={"avatar_config": {"seed": "x" * 16000}},
+        )
+        assert response.status_code == 200, response.text
 
     async def test_avatar_leaves_other_fields_untouched(
         self, authenticated_async_client: AsyncClient

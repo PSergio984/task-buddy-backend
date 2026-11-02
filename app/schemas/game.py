@@ -18,6 +18,19 @@ _Difficulty = Literal["trivial", "easy", "medium", "hard"]
 _REMINDER_TIME_RE = re.compile(r"([01]\d|2[0-3]):[0-5]\d")
 
 
+def _check_json_blob(v: dict, field: str) -> None:
+    # Shared stored-blob guard: cap bytes so JSONB columns can't grow
+    # unboundedly, and reject non-finite floats — dumps would emit Infinity,
+    # which Postgres JSONB accepts on write but JSONResponse.render 500s on
+    # for every read (SQLite silently poisons the row instead).
+    try:
+        size = len(json.dumps(v, default=str, ensure_ascii=False, allow_nan=False).encode("utf-8"))
+    except ValueError:
+        raise ValueError(f"{field} contains a non-finite number") from None
+    if size > _PAYLOAD_MAX_BYTES:
+        raise ValueError(f"{field} exceeds 16 KB")
+
+
 class GameEventIn(BaseModel):
     """One queued client event submitted for authoritative application."""
 
@@ -67,16 +80,8 @@ class GameEventIn(BaseModel):
         if any(key.startswith("_") for key in v):
             raise ValueError("payload keys starting with '_' are reserved")
         # Cap bytes so a batch can't grow the ledger unboundedly, and reject
-        # non-finite floats in unused fields — dumps would emit Infinity,
-        # which JSONB rejects with a 500 at insert time.
-        try:
-            size = len(
-                json.dumps(v, default=str, ensure_ascii=False, allow_nan=False).encode("utf-8")
-            )
-        except ValueError:
-            raise ValueError("payload contains a non-finite number") from None
-        if size > _PAYLOAD_MAX_BYTES:
-            raise ValueError("payload exceeds 16 KB")
+        # non-finite floats in unused fields.
+        _check_json_blob(v, "payload")
         return v
 
 
@@ -266,7 +271,9 @@ class AvatarConfigIn(BaseModel):
     """Replacement avatar_config blob: DiceBear {style, seed, traits, costume}.
 
     Stored as given — the picker owns the option vocabulary, so the API only
-    shapes the envelope (forward-compatible with new DiceBear traits).
+    shapes the envelope (forward-compatible with new DiceBear traits). The
+    content allowlist is enforced client-side in src/lib/avatar.ts;
+    envelope-only validation here is deliberate.
     """
 
     avatar_config: dict
@@ -278,8 +285,16 @@ class AvatarConfigIn(BaseModel):
             if key in v and not isinstance(v[key], str):
                 raise ValueError(f"avatar_config.{key} must be a string")
         for key in ("traits", "costume"):
-            if key in v and not isinstance(v[key], dict):
-                raise ValueError(f"avatar_config.{key} must be an object")
+            if key in v:
+                if not isinstance(v[key], dict):
+                    raise ValueError(f"avatar_config.{key} must be an object")
+                # Members are Record<string,string> client-side — a stored
+                # array/number member renders nothing and is silently dropped
+                # on the next picker save.
+                if any(not isinstance(member, str) for member in v[key].values()):
+                    raise ValueError(f"avatar_config.{key} members must be strings")
+        # The blob is echoed on every GET /profile — same guard as payloads.
+        _check_json_blob(v, "avatar_config")
         return v
 
 
