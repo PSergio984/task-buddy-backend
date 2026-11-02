@@ -93,10 +93,24 @@ async def _evaluate_unit(
         await db.rollback()
         missed_days.add(unit)
         return False
-    missed_days.add(unit)
-    # A check committing between the daily pre-read and this claim would
-    # land a day that's both missed (HP + streak reset) and done — re-read
-    # satisfaction inside the unit transaction before committing the miss.
+    # FOR UPDATE serializes against a racing claim's scoring — two
+    # instances can win different units of the same daily, and the profile
+    # lock makes their HP losses additive, not lost-update. Acquired
+    # BEFORE the completion re-read: check-writers hold this same lock
+    # while writing marks (check endpoint + event ingest), so every
+    # committed check is visible below and any uncommitted one waits
+    # behind us — no gap where a check can slip in missed-and-done.
+    profile = (
+        await db.execute(
+            select(GameProfile).where(GameProfile.user_id == daily.user_id).with_for_update()
+        )
+    ).scalar_one_or_none()
+    # A check committed between the daily pre-read and the lock would land
+    # a day that's both missed (HP + streak reset) and done — re-read
+    # satisfaction under the lock before committing the miss. A suppressed
+    # unit must NOT enter missed_days: the caller feeds the set into the
+    # rolling-7 freeze window of later units, and a phantom miss there
+    # would deny a real freeze.
     fresh_from = unit - timedelta(days=6) if rec["kind"] == "times_per_week" else unit
     fresh_checks = await game_crud.list_daily_checks(db, [daily.id], fresh_from, unit)
     fresh_done = {c.check_date for c in fresh_checks if c.daily_item_id is None and c.done}
@@ -104,14 +118,7 @@ async def _evaluate_unit(
         await db.rollback()
         done_days.update(fresh_done)
         return False
-    # FOR UPDATE serializes against a racing claim's scoring — two
-    # instances can win different units of the same daily, and the profile
-    # lock makes their HP losses additive, not lost-update.
-    profile = (
-        await db.execute(
-            select(GameProfile).where(GameProfile.user_id == daily.user_id).with_for_update()
-        )
-    ).scalar_one_or_none()
+    missed_days.add(unit)
     # A daily whose owner lacks a profile row still records the
     # miss/streak change; only HP loss needs the row.
     outcome: dict = {"scored": False}

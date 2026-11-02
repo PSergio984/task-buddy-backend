@@ -1155,8 +1155,8 @@ class TestDailySweep:
         self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
     ) -> None:
         """A check committing between the daily pre-read and the unit's
-        claim must suppress the miss — the unit transaction re-reads
-        completion before committing."""
+        profile lock must suppress the miss — the unit transaction re-reads
+        completion under the lock before committing."""
         _, daily = await _make_daily(db, created_days_ago=1, streak=5)
         yesterday = _today() - timedelta(days=1)
         real_list = game_crud.list_daily_checks
@@ -1165,8 +1165,9 @@ class TestDailySweep:
         async def _wrapped(*args, **kwargs):
             calls["n"] += 1
             if calls["n"] == 2:
-                # Second call = the unit's fresh re-read: a check lands in
-                # a separate committed transaction between the two reads.
+                # Second call = the unit's re-read under the profile lock:
+                # a check lands in a separate committed transaction
+                # between the pre-read and the lock.
                 from app.database import AsyncSessionLocal
 
                 async with AsyncSessionLocal() as s:
@@ -1185,3 +1186,44 @@ class TestDailySweep:
         assert await self._miss_rows(db, daily.id) == []
         assert (await _get_daily_row(db, daily.id)).streak == 5
         assert (await _profile(db, daily.user_id)).hp == 50
+
+    async def test_suppressed_unit_does_not_steal_a_freeze(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A suppressed unit must not enter the freeze window: a genuine
+        miss right after it still freezes the streak."""
+        _, daily = await _make_daily(db, created_days_ago=2, streak=5)
+        checked_day = _today() - timedelta(days=2)
+        real_list = game_crud.list_daily_checks
+        calls = {"n": 0}
+
+        async def _wrapped(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                # Unit day-2's re-read: satisfaction appears between the
+                # pre-read and the re-read. Staged inside the unit
+                # transaction — SQLite can't model a mid-transaction
+                # external commit (snapshot isolation hides it, and a
+                # second writer deadlocks on the open claim insert); the
+                # exercised path — re-read, suppression, missed_days
+                # accounting — is identical either way.
+                args[0].add(
+                    DailyCheck(
+                        daily_id=daily.id,
+                        daily_item_id=None,
+                        check_date=checked_day,
+                    )
+                )
+                await args[0].flush()
+            return await real_list(*args, **kwargs)
+
+        monkeypatch.setattr(game_crud, "list_daily_checks", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 1
+        misses = await self._miss_rows(db, daily.id)
+        assert len(misses) == 1
+        assert misses[0].scheduled_day == _today() - timedelta(days=1)
+        # The suppressed day-2 unit is not a real miss — no prior miss in
+        # the rolling-7 window, so day-1 freezes instead of breaking.
+        assert misses[0].frozen is True
+        assert (await _get_daily_row(db, daily.id)).streak == 5
+        assert (await _profile(db, daily.user_id)).hp == 48
