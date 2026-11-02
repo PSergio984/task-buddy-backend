@@ -733,6 +733,70 @@ class TestGearCostume:
         assert items["all-shield-1"]["equipped"] is False
         assert items["all-shield-1"]["costume"] is True
 
+    async def test_costume_survives_respec(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Respec (class -> None) strips the worn warrior piece via
+        unequip_mismatched but leaves the costume flag — the look is
+        class-agnostic, so toggling it stays legal while re-equipping
+        the cross-class piece is still rejected."""
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "warrior-weapon-1"})
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "warrior-weapon-1"})
+        assert (await authenticated_async_client.post(f"{CHAR}/respec")).status_code == 200
+        items = await _gear(authenticated_async_client)
+        assert items["warrior-weapon-1"]["equipped"] is False
+        assert items["warrior-weapon-1"]["costume"] is True
+        # Classless now: equip is class-locked, costume is not.
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
+        )
+        assert response.status_code == 400
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-weapon-1", "costume": False}
+        )
+        assert response.status_code == 200, response.text
+        items = {r["key"]: r for r in response.json()["items"]}
+        assert items["warrior-weapon-1"]["costume"] is False
+
+    async def test_costume_gear_contributes_no_stat_bonus(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Mirror of TestGearScoring.test_equipped_int_boosts_xp with the
+        costume flag in place of equipped: gear_stat_bonus reads worn
+        pieces only, so the look scores nothing."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=200.0)
+        await _buy(authenticated_async_client, "mage-weapon-1")  # int +3
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "mage-weapon-1"}
+        )
+        items = {r["key"]: r for r in response.json()["items"]}
+        assert items["mage-weapon-1"]["costume"] is True
+        assert items["mage-weapon-1"]["equipped"] is False
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-costume-xp",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        # Equipped it would pay 11 (see TestGearScoring); costume-only pays base 10.
+        assert response.json()["profile"]["xp"] == 10
+
 
 class TestGearScoring:
     async def test_equipped_int_boosts_xp(
