@@ -67,6 +67,7 @@ def effective_stat(
     """
     return int(getattr(profile, column)) + (bonus or {}).get(_COLUMN_STAT[column], 0)
 
+
 # Config fields used as divisors or multiplicands — non-positive/non-finite
 # overrides would crash or loop, so from_dict drops them back to defaults.
 _POSITIVE_FIELDS = frozenset(
@@ -376,7 +377,10 @@ def _apply_habit_click(
         * rates.habit_xp_factor
     )
     gold = math.ceil(
-        delta * p * mult * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
+        delta
+        * p
+        * mult
+        * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
     )
     outcome = {
         "scored": True,
@@ -592,9 +596,7 @@ def apply_event(
         # Abandon reasons carry the session's difficulty for HP scaling.
         return _apply_damage(profile, payload, rates, rng, stat_bonus)
     if event_type == "stopwatch_milestone":
-        return _apply_stopwatch_milestone(
-            profile, payload, rates, rng_roll, rng, day, stat_bonus
-        )
+        return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day, stat_bonus)
     if event_type == "daily_check":
         return _apply_daily_check(profile, payload, rates, rng_roll, day, stat_bonus)
     if event_type == "daily_missed":

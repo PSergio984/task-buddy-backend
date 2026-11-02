@@ -40,9 +40,7 @@ def upgrade() -> None:
     )
     # Anyone already holding a class passed the gate — keep them unlocked.
     op.execute(
-        _profiles.update()
-        .where(_profiles.c.game_class.is_not(None))
-        .values(class_unlocked=True)
+        _profiles.update().where(_profiles.c.game_class.is_not(None)).values(class_unlocked=True)
     )
 
 

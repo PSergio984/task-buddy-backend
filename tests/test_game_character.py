@@ -30,9 +30,7 @@ async def _ensure_profile(client: AsyncClient) -> dict:
 
 
 async def _set_profile(db: AsyncSession, user_id: int, **fields) -> None:
-    await db.execute(
-        update(GameProfile).where(GameProfile.user_id == user_id).values(**fields)
-    )
+    await db.execute(update(GameProfile).where(GameProfile.user_id == user_id).values(**fields))
     await db.commit()
 
 
@@ -99,9 +97,7 @@ class TestAllocate:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], unspent_stat_points=5, str_stat=100
-        )
+        await _set_profile(db, confirmed_user["id"], unspent_stat_points=5, str_stat=100)
         response = await authenticated_async_client.post(
             f"{CHAR}/allocate", json={"points": {"str": 1}}
         )
@@ -119,9 +115,7 @@ class TestAllocate:
             await authenticated_async_client.post(f"{CHAR}/allocate", json={"points": {}})
         ).status_code == 422
         assert (
-            await authenticated_async_client.post(
-                f"{CHAR}/allocate", json={"points": {"str": 0}}
-            )
+            await authenticated_async_client.post(f"{CHAR}/allocate", json={"points": {"str": 0}})
         ).status_code == 422
 
     async def test_allocate_requires_auth(self, async_client: AsyncClient) -> None:
@@ -139,9 +133,7 @@ class TestAutoAllocate:
         await _ensure_profile(authenticated_async_client)
         await _set_profile(db, confirmed_user["id"], unspent_stat_points=4)
 
-        response = await authenticated_async_client.patch(
-            f"{CHAR}", json={"auto_allocate": True}
-        )
+        response = await authenticated_async_client.patch(f"{CHAR}", json={"auto_allocate": True})
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["auto_allocate"] is True
@@ -167,9 +159,7 @@ class TestAutoAllocate:
             unspent_stat_points=5,
             game_class="warrior",
         )
-        response = await authenticated_async_client.patch(
-            f"{CHAR}", json={"auto_allocate": True}
-        )
+        response = await authenticated_async_client.patch(f"{CHAR}", json={"auto_allocate": True})
         assert response.status_code == 200, response.text
         body = response.json()
         assert body["unspent_stat_points"] == 0
@@ -206,10 +196,7 @@ class TestAutoAllocate:
         assert profile["level"] == 2
         assert profile["unspent_stat_points"] == 0
         allocated = (
-            profile["str_stat"]
-            + profile["int_stat"]
-            + profile["con_stat"]
-            + profile["per_stat"]
+            profile["str_stat"] + profile["int_stat"] + profile["con_stat"] + profile["per_stat"]
         )
         assert allocated == 1
 
@@ -257,9 +244,7 @@ class TestClassSelect:
         )
         assert response.status_code == 400
 
-    async def test_unknown_class_rejected(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_unknown_class_rejected(self, authenticated_async_client: AsyncClient) -> None:
         response = await authenticated_async_client.post(
             f"{CHAR}/class", json={"game_class": "bard"}
         )
@@ -307,9 +292,7 @@ class TestRespec:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=10, game_class="mage", gold=50.0
-        )
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=50.0)
         response = await authenticated_async_client.post(f"{CHAR}/respec")
         assert response.status_code == 400
 
@@ -320,12 +303,8 @@ class TestRespec:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=10, game_class="mage", gold=200.0
-        )
-        assert (
-            await authenticated_async_client.post(f"{CHAR}/respec")
-        ).status_code == 200
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=200.0)
+        assert (await authenticated_async_client.post(f"{CHAR}/respec")).status_code == 200
         response = await authenticated_async_client.post(
             f"{CHAR}/class", json={"game_class": "rogue"}
         )
@@ -352,9 +331,7 @@ class TestRespec:
         assert row.class_unlocked is True
         # Death zeroed the gold the respec needs; top the balance back up.
         await _set_profile(db, confirmed_user["id"], gold=200.0)
-        assert (
-            await authenticated_async_client.post(f"{CHAR}/respec")
-        ).status_code == 200
+        assert (await authenticated_async_client.post(f"{CHAR}/respec")).status_code == 200
         response = await authenticated_async_client.post(
             f"{CHAR}/class", json={"game_class": "rogue"}
         )
@@ -391,13 +368,9 @@ class TestGearCatalog:
         assert klasses == {"warrior", "mage", "healer", "rogue", "all"}
         # Every one of the seven slots is fillable for any class.
         warrior_slots = {r["slot"] for r in items.values() if r["klass"] in ("warrior", "all")}
-        assert warrior_slots == {
-            "weapon", "shield", "head", "armor", "body", "back", "eyewear"
-        }
+        assert warrior_slots == {"weapon", "shield", "head", "armor", "body", "back", "eyewear"}
 
-    async def test_catalog_is_idempotent(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_catalog_is_idempotent(self, authenticated_async_client: AsyncClient) -> None:
         first = await _gear(authenticated_async_client)
         second = await _gear(authenticated_async_client)
         assert [r["key"] for r in second.values()] == [r["key"] for r in first.values()]
@@ -437,9 +410,7 @@ class TestGearCatalog:
         rows = [dict(r) for r in character_service.GEAR_CATALOG]
         await db.execute(character_service._insert_missing(db, rows))
         await db.commit()
-        count = (
-            await db.execute(select(func.count()).select_from(GearItem))
-        ).scalar_one()
+        count = (await db.execute(select(func.count()).select_from(GearItem))).scalar_one()
         assert count == len(rows)
 
 
@@ -502,9 +473,7 @@ class TestGearBuy:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=10, game_class="mage", gold=500.0
-        )
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=500.0)
         response = await authenticated_async_client.post(
             f"{GEAR}/buy", json={"key": "warrior-weapon-1"}
         )
@@ -523,9 +492,7 @@ class TestGearBuy:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=10, game_class="warrior", gold=500.0
-        )
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="warrior", gold=500.0)
         response = await authenticated_async_client.post(
             f"{GEAR}/buy", json={"key": "warrior-weapon-2"}
         )
@@ -534,9 +501,7 @@ class TestGearBuy:
         item = await _buy(authenticated_async_client, "warrior-weapon-2")
         assert item["owned"] is True
 
-    async def test_buy_unknown_key_404(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_buy_unknown_key_404(self, authenticated_async_client: AsyncClient) -> None:
         await _ensure_profile(authenticated_async_client)
         response = await authenticated_async_client.post(
             f"{GEAR}/buy", json={"key": "mystery-sword"}
@@ -545,9 +510,7 @@ class TestGearBuy:
 
 
 class TestGearEquip:
-    async def _setup_warrior(
-        self, client: AsyncClient, db: AsyncSession, user_id: int
-    ) -> None:
+    async def _setup_warrior(self, client: AsyncClient, db: AsyncSession, user_id: int) -> None:
         await _ensure_profile(client)
         await _set_profile(db, user_id, level=10, game_class="warrior", gold=600.0)
         await _buy(client, "warrior-weapon-1")
@@ -584,9 +547,7 @@ class TestGearEquip:
     ) -> None:
         await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
         await _buy(authenticated_async_client, "warrior-weapon-2")
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
-        )
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "warrior-weapon-1"})
         response = await authenticated_async_client.post(
             f"{GEAR}/equip", json={"key": "warrior-weapon-2"}
         )
@@ -614,12 +575,8 @@ class TestGearEquip:
         db: AsyncSession,
     ) -> None:
         await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
-        )
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "all-shield-1"}
-        )
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "warrior-weapon-1"})
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "all-shield-1"})
         response = await authenticated_async_client.post(f"{CHAR}/respec")
         assert response.status_code == 200, response.text
         items = await _gear(authenticated_async_client)
@@ -637,13 +594,9 @@ class TestGearScoring:
     ) -> None:
         """Equipped stats feed scoring: mage weapon INT raises XP earned."""
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=10, game_class="mage", gold=200.0
-        )
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=200.0)
         await _buy(authenticated_async_client, "mage-weapon-1")  # int +3
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "mage-weapon-1"}
-        )
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "mage-weapon-1"})
         response = await authenticated_async_client.post(
             f"{GAME}/events",
             json={
@@ -670,9 +623,7 @@ class TestGearScoring:
         await _ensure_profile(authenticated_async_client)
         await _set_profile(db, confirmed_user["id"], gold=150.0, hp=50.0)
         await _buy(authenticated_async_client, "all-shield-1")  # con +1
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "all-shield-1"}
-        )
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "all-shield-1"})
         response = await authenticated_async_client.post(
             f"{GAME}/events",
             json={
@@ -701,9 +652,7 @@ class TestGearScoring:
         await _ensure_profile(authenticated_async_client)
         await _set_profile(db, confirmed_user["id"], gold=100.0)
         await _buy(authenticated_async_client, "all-shield-1")  # con +1
-        await authenticated_async_client.post(
-            f"{GEAR}/equip", json={"key": "all-shield-1"}
-        )
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "all-shield-1"})
         now = datetime.now(timezone.utc)
         response = await authenticated_async_client.post(
             f"{GAME}/events",
@@ -763,16 +712,25 @@ async def _score_event(client: AsyncClient, eid: str) -> dict:
 
 
 class TestAchievements:
-    async def test_registry_seeds_15_badges(
-        self, authenticated_async_client: AsyncClient
-    ) -> None:
+    async def test_registry_seeds_15_badges(self, authenticated_async_client: AsyncClient) -> None:
         badges = await _badges(authenticated_async_client)
         assert len(badges) == 15
         assert {
-            "level-10", "level-25", "level-50",
-            "first-focus", "first-habit", "first-daily", "first-gear",
-            "class-picked", "focus-100", "focus-1000", "marathon",
-            "streak-7", "streak-21", "perfect-day", "clicker-50",
+            "level-10",
+            "level-25",
+            "level-50",
+            "first-focus",
+            "first-habit",
+            "first-daily",
+            "first-gear",
+            "class-picked",
+            "focus-100",
+            "focus-1000",
+            "marathon",
+            "streak-7",
+            "streak-21",
+            "perfect-day",
+            "clicker-50",
         } == set(badges)
         assert all(row["earned_at"] is None for row in badges.values())
 
@@ -982,9 +940,7 @@ class TestAchievements:
         rows = [dict(r) for r in achievements.ACHIEVEMENTS]
         await db.execute(achievements._insert_missing(db, rows))
         await db.commit()
-        count = (
-            await db.execute(select(func.count()).select_from(Achievement))
-        ).scalar_one()
+        count = (await db.execute(select(func.count()).select_from(Achievement))).scalar_one()
         assert count == len(rows)
 
 
@@ -1011,9 +967,7 @@ async def _kill(client: AsyncClient, eid: str) -> None:
 
 async def _outcome(db: AsyncSession, user_id: int, eid: str) -> dict:
     result = await db.execute(
-        select(GameEvent).where(
-            GameEvent.user_id == user_id, GameEvent.client_event_id == eid
-        )
+        select(GameEvent).where(GameEvent.user_id == user_id, GameEvent.client_event_id == eid)
     )
     return result.scalar_one().payload["_outcome"]
 
@@ -1026,9 +980,7 @@ class TestDeathCascade:
         db: AsyncSession,
     ) -> None:
         await _ensure_profile(authenticated_async_client)
-        await _set_profile(
-            db, confirmed_user["id"], level=8, xp=10, gold=200.0, hp=1.0, str_stat=2
-        )
+        await _set_profile(db, confirmed_user["id"], level=8, xp=10, gold=200.0, hp=1.0, str_stat=2)
         await _buy(authenticated_async_client, "all-shield-1")
         await _kill(authenticated_async_client, "e-death-1")
 

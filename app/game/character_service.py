@@ -27,54 +27,222 @@ from app.models.game import GameProfile, GearItem, UserGear
 # rule: tier N requires owning the same slot+klass piece at tier N-1.
 GEAR_CATALOG: list[dict] = [
     # key, name, slot, klass, tier, stats, cost
-    {"key": "warrior-weapon-1", "name": "Training Sword", "slot": "weapon",
-     "klass": "warrior", "tier": 1, "stats": {"str": 3}, "cost": 100},
-    {"key": "warrior-weapon-2", "name": "Broad Sword", "slot": "weapon",
-     "klass": "warrior", "tier": 2, "stats": {"str": 6}, "cost": 250},
-    {"key": "warrior-armor-1", "name": "Leather Armor", "slot": "armor",
-     "klass": "warrior", "tier": 1, "stats": {"con": 3}, "cost": 90},
-    {"key": "warrior-armor-2", "name": "Chain Mail", "slot": "armor",
-     "klass": "warrior", "tier": 2, "stats": {"con": 5}, "cost": 220},
-    {"key": "warrior-head-1", "name": "Iron Helm", "slot": "head",
-     "klass": "warrior", "tier": 1, "stats": {"str": 2}, "cost": 60},
-    {"key": "mage-weapon-1", "name": "Apprentice Staff", "slot": "weapon",
-     "klass": "mage", "tier": 1, "stats": {"int": 3}, "cost": 100},
-    {"key": "mage-weapon-2", "name": "Wizard Staff", "slot": "weapon",
-     "klass": "mage", "tier": 2, "stats": {"int": 6}, "cost": 250},
-    {"key": "mage-armor-1", "name": "Magician Robe", "slot": "armor",
-     "klass": "mage", "tier": 1, "stats": {"per": 3}, "cost": 90},
-    {"key": "mage-armor-2", "name": "Archmage Robe", "slot": "armor",
-     "klass": "mage", "tier": 2, "stats": {"per": 5}, "cost": 220},
-    {"key": "mage-head-1", "name": "Magician Hat", "slot": "head",
-     "klass": "mage", "tier": 1, "stats": {"int": 2}, "cost": 60},
-    {"key": "healer-weapon-1", "name": "Novice Rod", "slot": "weapon",
-     "klass": "healer", "tier": 1, "stats": {"int": 3}, "cost": 100},
-    {"key": "healer-weapon-2", "name": "Acolyte Rod", "slot": "weapon",
-     "klass": "healer", "tier": 2, "stats": {"int": 6}, "cost": 250},
-    {"key": "healer-armor-1", "name": "Priest Robe", "slot": "armor",
-     "klass": "healer", "tier": 1, "stats": {"con": 3}, "cost": 90},
-    {"key": "healer-armor-2", "name": "Royal Vestments", "slot": "armor",
-     "klass": "healer", "tier": 2, "stats": {"con": 5}, "cost": 220},
-    {"key": "healer-head-1", "name": "Circlet", "slot": "head",
-     "klass": "healer", "tier": 1, "stats": {"con": 2}, "cost": 60},
-    {"key": "rogue-weapon-1", "name": "Short Dagger", "slot": "weapon",
-     "klass": "rogue", "tier": 1, "stats": {"per": 3}, "cost": 100},
-    {"key": "rogue-weapon-2", "name": "Hidden Blade", "slot": "weapon",
-     "klass": "rogue", "tier": 2, "stats": {"per": 6}, "cost": 250},
-    {"key": "rogue-armor-1", "name": "Oiled Leather", "slot": "armor",
-     "klass": "rogue", "tier": 1, "stats": {"str": 3}, "cost": 90},
-    {"key": "rogue-armor-2", "name": "Umbral Armor", "slot": "armor",
-     "klass": "rogue", "tier": 2, "stats": {"str": 5}, "cost": 220},
-    {"key": "rogue-head-1", "name": "Hood", "slot": "head",
-     "klass": "rogue", "tier": 1, "stats": {"per": 2}, "cost": 60},
-    {"key": "all-shield-1", "name": "Wooden Shield", "slot": "shield",
-     "klass": "all", "tier": 1, "stats": {"con": 1}, "cost": 50},
-    {"key": "all-body-1", "name": "Plain Shirt", "slot": "body",
-     "klass": "all", "tier": 1, "stats": {"con": 1}, "cost": 40},
-    {"key": "all-back-1", "name": "Traveler Cloak", "slot": "back",
-     "klass": "all", "tier": 1, "stats": {"per": 1}, "cost": 40},
-    {"key": "all-eyewear-1", "name": "Spectacles", "slot": "eyewear",
-     "klass": "all", "tier": 1, "stats": {"int": 1}, "cost": 30},
+    {
+        "key": "warrior-weapon-1",
+        "name": "Training Sword",
+        "slot": "weapon",
+        "klass": "warrior",
+        "tier": 1,
+        "stats": {"str": 3},
+        "cost": 100,
+    },
+    {
+        "key": "warrior-weapon-2",
+        "name": "Broad Sword",
+        "slot": "weapon",
+        "klass": "warrior",
+        "tier": 2,
+        "stats": {"str": 6},
+        "cost": 250,
+    },
+    {
+        "key": "warrior-armor-1",
+        "name": "Leather Armor",
+        "slot": "armor",
+        "klass": "warrior",
+        "tier": 1,
+        "stats": {"con": 3},
+        "cost": 90,
+    },
+    {
+        "key": "warrior-armor-2",
+        "name": "Chain Mail",
+        "slot": "armor",
+        "klass": "warrior",
+        "tier": 2,
+        "stats": {"con": 5},
+        "cost": 220,
+    },
+    {
+        "key": "warrior-head-1",
+        "name": "Iron Helm",
+        "slot": "head",
+        "klass": "warrior",
+        "tier": 1,
+        "stats": {"str": 2},
+        "cost": 60,
+    },
+    {
+        "key": "mage-weapon-1",
+        "name": "Apprentice Staff",
+        "slot": "weapon",
+        "klass": "mage",
+        "tier": 1,
+        "stats": {"int": 3},
+        "cost": 100,
+    },
+    {
+        "key": "mage-weapon-2",
+        "name": "Wizard Staff",
+        "slot": "weapon",
+        "klass": "mage",
+        "tier": 2,
+        "stats": {"int": 6},
+        "cost": 250,
+    },
+    {
+        "key": "mage-armor-1",
+        "name": "Magician Robe",
+        "slot": "armor",
+        "klass": "mage",
+        "tier": 1,
+        "stats": {"per": 3},
+        "cost": 90,
+    },
+    {
+        "key": "mage-armor-2",
+        "name": "Archmage Robe",
+        "slot": "armor",
+        "klass": "mage",
+        "tier": 2,
+        "stats": {"per": 5},
+        "cost": 220,
+    },
+    {
+        "key": "mage-head-1",
+        "name": "Magician Hat",
+        "slot": "head",
+        "klass": "mage",
+        "tier": 1,
+        "stats": {"int": 2},
+        "cost": 60,
+    },
+    {
+        "key": "healer-weapon-1",
+        "name": "Novice Rod",
+        "slot": "weapon",
+        "klass": "healer",
+        "tier": 1,
+        "stats": {"int": 3},
+        "cost": 100,
+    },
+    {
+        "key": "healer-weapon-2",
+        "name": "Acolyte Rod",
+        "slot": "weapon",
+        "klass": "healer",
+        "tier": 2,
+        "stats": {"int": 6},
+        "cost": 250,
+    },
+    {
+        "key": "healer-armor-1",
+        "name": "Priest Robe",
+        "slot": "armor",
+        "klass": "healer",
+        "tier": 1,
+        "stats": {"con": 3},
+        "cost": 90,
+    },
+    {
+        "key": "healer-armor-2",
+        "name": "Royal Vestments",
+        "slot": "armor",
+        "klass": "healer",
+        "tier": 2,
+        "stats": {"con": 5},
+        "cost": 220,
+    },
+    {
+        "key": "healer-head-1",
+        "name": "Circlet",
+        "slot": "head",
+        "klass": "healer",
+        "tier": 1,
+        "stats": {"con": 2},
+        "cost": 60,
+    },
+    {
+        "key": "rogue-weapon-1",
+        "name": "Short Dagger",
+        "slot": "weapon",
+        "klass": "rogue",
+        "tier": 1,
+        "stats": {"per": 3},
+        "cost": 100,
+    },
+    {
+        "key": "rogue-weapon-2",
+        "name": "Hidden Blade",
+        "slot": "weapon",
+        "klass": "rogue",
+        "tier": 2,
+        "stats": {"per": 6},
+        "cost": 250,
+    },
+    {
+        "key": "rogue-armor-1",
+        "name": "Oiled Leather",
+        "slot": "armor",
+        "klass": "rogue",
+        "tier": 1,
+        "stats": {"str": 3},
+        "cost": 90,
+    },
+    {
+        "key": "rogue-armor-2",
+        "name": "Umbral Armor",
+        "slot": "armor",
+        "klass": "rogue",
+        "tier": 2,
+        "stats": {"str": 5},
+        "cost": 220,
+    },
+    {
+        "key": "rogue-head-1",
+        "name": "Hood",
+        "slot": "head",
+        "klass": "rogue",
+        "tier": 1,
+        "stats": {"per": 2},
+        "cost": 60,
+    },
+    {
+        "key": "all-shield-1",
+        "name": "Wooden Shield",
+        "slot": "shield",
+        "klass": "all",
+        "tier": 1,
+        "stats": {"con": 1},
+        "cost": 50,
+    },
+    {
+        "key": "all-body-1",
+        "name": "Plain Shirt",
+        "slot": "body",
+        "klass": "all",
+        "tier": 1,
+        "stats": {"con": 1},
+        "cost": 40,
+    },
+    {
+        "key": "all-back-1",
+        "name": "Traveler Cloak",
+        "slot": "back",
+        "klass": "all",
+        "tier": 1,
+        "stats": {"per": 1},
+        "cost": 40,
+    },
+    {
+        "key": "all-eyewear-1",
+        "name": "Spectacles",
+        "slot": "eyewear",
+        "klass": "all",
+        "tier": 1,
+        "stats": {"int": 1},
+        "cost": 30,
+    },
 ]
 
 
@@ -89,16 +257,8 @@ def _insert_missing(db: AsyncSession, rows: list[dict]) -> Insert:
     (dialect switch per the budget.py precedent; both backends expose
     on_conflict_do_nothing)."""
     if db.get_bind().dialect.name == "postgresql":
-        return (
-            postgres_insert(GearItem)
-            .values(rows)
-            .on_conflict_do_nothing(index_elements=["key"])
-        )
-    return (
-        sqlite_insert(GearItem)
-        .values(rows)
-        .on_conflict_do_nothing(index_elements=["key"])
-    )
+        return postgres_insert(GearItem).values(rows).on_conflict_do_nothing(index_elements=["key"])
+    return sqlite_insert(GearItem).values(rows).on_conflict_do_nothing(index_elements=["key"])
 
 
 async def seed_gear_catalog(db: AsyncSession) -> None:
@@ -112,9 +272,7 @@ async def seed_gear_catalog(db: AsyncSession) -> None:
     Persists on the caller's first committed write: GET-path inserts roll
     back on seedless DBs (acceptable — self-heals on the first write).
     """
-    existing = {
-        row.key: row for row in (await db.execute(select(GearItem))).scalars().all()
-    }
+    existing = {row.key: row for row in (await db.execute(select(GearItem))).scalars().all()}
     for seed in GEAR_CATALOG:
         item = existing.get(seed["key"])
         if item is not None and any(getattr(item, f) != seed[f] for f in _SEED_FIELDS):
@@ -201,14 +359,11 @@ async def set_equipped(
 async def list_catalog(db: AsyncSession, user_id: int) -> list[dict]:
     """Catalog rows merged with the user's owned/equipped flags."""
     await seed_gear_catalog(db)
-    owned = {
-        ug.gear_item_id: ug for ug in await game_crud.list_user_gear(db, user_id)
-    }
+    owned = {ug.gear_item_id: ug for ug in await game_crud.list_user_gear(db, user_id)}
     rows = []
     for item in await game_crud.list_gear_catalog(db):
         ug = owned.get(item.id)
-        rows.append({"item": item, "owned": ug is not None,
-                     "equipped": bool(ug and ug.equipped)})
+        rows.append({"item": item, "owned": ug is not None, "equipped": bool(ug and ug.equipped)})
     return rows
 
 

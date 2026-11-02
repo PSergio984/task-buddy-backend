@@ -396,9 +396,7 @@ async def get_gear_item(db: AsyncSession, key: str) -> GearItem | None:
     return result.scalar_one_or_none()
 
 
-async def find_gear_item(
-    db: AsyncSession, *, slot: str, klass: str, tier: int
-) -> GearItem | None:
+async def find_gear_item(db: AsyncSession, *, slot: str, klass: str, tier: int) -> GearItem | None:
     """Ladder lookup: the piece one tier back in the same slot+class."""
     result = await db.execute(
         select(GearItem).where(
@@ -408,13 +406,9 @@ async def find_gear_item(
     return result.scalar_one_or_none()
 
 
-async def get_user_gear(
-    db: AsyncSession, user_id: int, gear_item_id: int
-) -> UserGear | None:
+async def get_user_gear(db: AsyncSession, user_id: int, gear_item_id: int) -> UserGear | None:
     result = await db.execute(
-        select(UserGear).where(
-            UserGear.user_id == user_id, UserGear.gear_item_id == gear_item_id
-        )
+        select(UserGear).where(UserGear.user_id == user_id, UserGear.gear_item_id == gear_item_id)
     )
     return result.scalar_one_or_none()
 

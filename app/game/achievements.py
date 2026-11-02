@@ -35,49 +35,111 @@ from app.models.game import (
 # Seeded content — gold_reward tiers: firsts 10, milestones 25-40, long-term
 # feats 50-100.
 ACHIEVEMENTS: list[dict] = [
-    {"key": "level-10", "name": "Novice", "description": "Reach level 10",
-     "criteria": {"kind": "level", "threshold": 10}, "gold_reward": 25},
-    {"key": "level-25", "name": "Veteran", "description": "Reach level 25",
-     "criteria": {"kind": "level", "threshold": 25}, "gold_reward": 50},
-    {"key": "level-50", "name": "Master", "description": "Reach level 50",
-     "criteria": {"kind": "level", "threshold": 50}, "gold_reward": 100},
-    {"key": "first-focus", "name": "First Steps",
-     "description": "Complete a focus phase",
-     "criteria": {"kind": "first", "what": "focus_phase_completed"},
-     "gold_reward": 10},
-    {"key": "first-habit", "name": "Habitual",
-     "description": "Score a habit click",
-     "criteria": {"kind": "first", "what": "habit_click"}, "gold_reward": 10},
-    {"key": "first-daily", "name": "Daily Grind",
-     "description": "Check off a daily",
-     "criteria": {"kind": "first", "what": "daily_check"}, "gold_reward": 10},
-    {"key": "first-gear", "name": "Geared Up",
-     "description": "Own a piece of gear",
-     "criteria": {"kind": "gear_owned", "threshold": 1}, "gold_reward": 10},
-    {"key": "class-picked", "name": "Specialist",
-     "description": "Choose a class", "criteria": {"kind": "class"},
-     "gold_reward": 15},
-    {"key": "focus-100", "name": "Focused",
-     "description": "Log 100 total focus minutes",
-     "criteria": {"kind": "focus_total", "threshold": 100}, "gold_reward": 25},
-    {"key": "focus-1000", "name": "Deep Diver",
-     "description": "Log 1000 total focus minutes",
-     "criteria": {"kind": "focus_total", "threshold": 1000}, "gold_reward": 75},
-    {"key": "marathon", "name": "Marathon Mind",
-     "description": "Complete one focus phase of 45+ minutes",
-     "criteria": {"kind": "phase_minutes", "threshold": 45}, "gold_reward": 40},
-    {"key": "streak-7", "name": "On a Roll",
-     "description": "Reach a 7-day daily streak",
-     "criteria": {"kind": "streak", "threshold": 7}, "gold_reward": 30},
-    {"key": "streak-21", "name": "Unstoppable",
-     "description": "Reach a 21-day daily streak",
-     "criteria": {"kind": "streak", "threshold": 21}, "gold_reward": 80},
-    {"key": "perfect-day", "name": "Perfect Day",
-     "description": "Check every daily in one day",
-     "criteria": {"kind": "perfect_day"}, "gold_reward": 50},
-    {"key": "clicker-50", "name": "Persistent",
-     "description": "Reach +50 on one habit's counter",
-     "criteria": {"kind": "habit_counter", "threshold": 50}, "gold_reward": 35},
+    {
+        "key": "level-10",
+        "name": "Novice",
+        "description": "Reach level 10",
+        "criteria": {"kind": "level", "threshold": 10},
+        "gold_reward": 25,
+    },
+    {
+        "key": "level-25",
+        "name": "Veteran",
+        "description": "Reach level 25",
+        "criteria": {"kind": "level", "threshold": 25},
+        "gold_reward": 50,
+    },
+    {
+        "key": "level-50",
+        "name": "Master",
+        "description": "Reach level 50",
+        "criteria": {"kind": "level", "threshold": 50},
+        "gold_reward": 100,
+    },
+    {
+        "key": "first-focus",
+        "name": "First Steps",
+        "description": "Complete a focus phase",
+        "criteria": {"kind": "first", "what": "focus_phase_completed"},
+        "gold_reward": 10,
+    },
+    {
+        "key": "first-habit",
+        "name": "Habitual",
+        "description": "Score a habit click",
+        "criteria": {"kind": "first", "what": "habit_click"},
+        "gold_reward": 10,
+    },
+    {
+        "key": "first-daily",
+        "name": "Daily Grind",
+        "description": "Check off a daily",
+        "criteria": {"kind": "first", "what": "daily_check"},
+        "gold_reward": 10,
+    },
+    {
+        "key": "first-gear",
+        "name": "Geared Up",
+        "description": "Own a piece of gear",
+        "criteria": {"kind": "gear_owned", "threshold": 1},
+        "gold_reward": 10,
+    },
+    {
+        "key": "class-picked",
+        "name": "Specialist",
+        "description": "Choose a class",
+        "criteria": {"kind": "class"},
+        "gold_reward": 15,
+    },
+    {
+        "key": "focus-100",
+        "name": "Focused",
+        "description": "Log 100 total focus minutes",
+        "criteria": {"kind": "focus_total", "threshold": 100},
+        "gold_reward": 25,
+    },
+    {
+        "key": "focus-1000",
+        "name": "Deep Diver",
+        "description": "Log 1000 total focus minutes",
+        "criteria": {"kind": "focus_total", "threshold": 1000},
+        "gold_reward": 75,
+    },
+    {
+        "key": "marathon",
+        "name": "Marathon Mind",
+        "description": "Complete one focus phase of 45+ minutes",
+        "criteria": {"kind": "phase_minutes", "threshold": 45},
+        "gold_reward": 40,
+    },
+    {
+        "key": "streak-7",
+        "name": "On a Roll",
+        "description": "Reach a 7-day daily streak",
+        "criteria": {"kind": "streak", "threshold": 7},
+        "gold_reward": 30,
+    },
+    {
+        "key": "streak-21",
+        "name": "Unstoppable",
+        "description": "Reach a 21-day daily streak",
+        "criteria": {"kind": "streak", "threshold": 21},
+        "gold_reward": 80,
+    },
+    {
+        "key": "perfect-day",
+        "name": "Perfect Day",
+        "description": "Check every daily in one day",
+        "criteria": {"kind": "perfect_day"},
+        "gold_reward": 50,
+    },
+    {
+        "key": "clicker-50",
+        "name": "Persistent",
+        "description": "Reach +50 on one habit's counter",
+        "criteria": {"kind": "habit_counter", "threshold": 50},
+        "gold_reward": 35,
+    },
 ]
 
 
@@ -92,15 +154,9 @@ def _insert_missing(db: AsyncSession, rows: list[dict]) -> Insert:
     on_conflict_do_nothing)."""
     if db.get_bind().dialect.name == "postgresql":
         return (
-            postgres_insert(Achievement)
-            .values(rows)
-            .on_conflict_do_nothing(index_elements=["key"])
+            postgres_insert(Achievement).values(rows).on_conflict_do_nothing(index_elements=["key"])
         )
-    return (
-        sqlite_insert(Achievement)
-        .values(rows)
-        .on_conflict_do_nothing(index_elements=["key"])
-    )
+    return sqlite_insert(Achievement).values(rows).on_conflict_do_nothing(index_elements=["key"])
 
 
 async def seed_achievements(db: AsyncSession) -> None:
@@ -114,9 +170,7 @@ async def seed_achievements(db: AsyncSession) -> None:
     Persists on the caller's first committed write: GET-path inserts roll
     back on seedless DBs (acceptable — self-heals on the first write).
     """
-    existing = {
-        row.key: row for row in (await db.execute(select(Achievement))).scalars().all()
-    }
+    existing = {row.key: row for row in (await db.execute(select(Achievement))).scalars().all()}
     for seed in ACHIEVEMENTS:
         item = existing.get(seed["key"])
         if item is not None and any(getattr(item, f) != seed[f] for f in _SEED_FIELDS):
@@ -145,9 +199,7 @@ def _criteria_threshold(criteria: dict) -> int:
         return sys.maxsize
 
 
-async def _meets(
-    db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict
-) -> bool:
+async def _meets(db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict) -> bool:
     """True when the criteria's live check passes. Unknown kinds never grant."""
     if not isinstance(criteria, dict):
         # Out-of-band writes can store non-dict criteria — never grant.
@@ -175,9 +227,7 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
         return result.first() is not None
     if kind == "gear_owned":
         result = await db.execute(
-            select(func.count())
-            .select_from(UserGear)
-            .where(UserGear.user_id == user_id)
+            select(func.count()).select_from(UserGear).where(UserGear.user_id == user_id)
         )
         return int(result.scalar_one()) >= threshold
     if kind == "focus_total":
@@ -199,14 +249,10 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
         )
         return float(result.scalar_one() or 0.0) >= threshold
     if kind == "streak":
-        result = await db.execute(
-            select(func.max(Daily.streak)).where(Daily.user_id == user_id)
-        )
+        result = await db.execute(select(func.max(Daily.streak)).where(Daily.user_id == user_id))
         return int(result.scalar_one() or 0) >= threshold
     if kind == "habit_counter":
-        result = await db.execute(
-            select(func.max(Habit.counter)).where(Habit.user_id == user_id)
-        )
+        result = await db.execute(select(func.max(Habit.counter)).where(Habit.user_id == user_id))
         return int(result.scalar_one() or 0) >= threshold
     if kind == "perfect_day":
         active = int(
@@ -235,9 +281,7 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
     return False
 
 
-async def evaluate(
-    db: AsyncSession, user_id: int, profile: GameProfile
-) -> list[Achievement]:
+async def evaluate(db: AsyncSession, user_id: int, profile: GameProfile) -> list[Achievement]:
     """Grant every met-but-unearned achievement; return the newly granted.
 
     The profile lock the caller holds serializes evaluation, so the
@@ -251,11 +295,11 @@ async def evaluate(
     earned_ids = set(
         (
             await db.execute(
-                select(UserAchievement.achievement_id).where(
-                    UserAchievement.user_id == user_id
-                )
+                select(UserAchievement.achievement_id).where(UserAchievement.user_id == user_id)
             )
-        ).scalars().all()
+        )
+        .scalars()
+        .all()
     )
     pending = [
         row
@@ -283,7 +327,4 @@ async def list_for_user(db: AsyncSession, user_id: int) -> list[dict]:
         )
         .order_by(Achievement.id)
     )
-    return [
-        {"achievement": ach, "earned_at": earned_at}
-        for ach, earned_at in result.all()
-    ]
+    return [{"achievement": ach, "earned_at": earned_at} for ach, earned_at in result.all()]

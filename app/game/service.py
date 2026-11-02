@@ -229,9 +229,7 @@ async def ingest_events(
                     extra=event.payload,
                     stat_bonus=stat_bonus,
                 )
-                stat_bonus = await _refresh_bonus_on_gear_loss(
-                    db, user_id, outcome, stat_bonus
-                )
+                stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
             else:
                 # Record applied-but-unscored instead of scoring a claim the
                 # server can't verify, or wedging the batch on a 400:
@@ -272,9 +270,7 @@ async def ingest_events(
                 today,
                 rng,
             )
-            stat_bonus = await _refresh_bonus_on_gear_loss(
-                db, user_id, daily_outcome, stat_bonus
-            )
+            stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, daily_outcome, stat_bonus)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
@@ -289,9 +285,7 @@ async def ingest_events(
             stat_bonus=stat_bonus,
         )
         await character_service.resolve_death_gear(db, user_id, outcome, rng)
-        stat_bonus = await _refresh_bonus_on_gear_loss(
-            db, user_id, outcome, stat_bonus
-        )
+        stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras
         # are cleaned of server-reserved markers — a forged auto/session_id
