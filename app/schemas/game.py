@@ -7,7 +7,11 @@ from typing import Annotated, Literal, Optional
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
-from app.game.engine import SERVER_EVENT_TYPES
+from app.game.engine import (
+    SERVER_EVENT_TYPES,
+    STAT_KEYS,
+    STAT_POINT_CAP,
+)
 from app.models.game import GameProfile, HabitDirection
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
@@ -106,6 +110,8 @@ class GameProfileRead(BaseModel):
     per_stat: int
     unspent_stat_points: int
     game_class: str | None
+    class_unlocked: bool
+    auto_allocate: bool
     avatar_config: dict
     xp_today: int
     gold_today: float
@@ -133,6 +139,8 @@ class GameProfileRead(BaseModel):
             per_stat=profile.per_stat,
             unspent_stat_points=profile.unspent_stat_points,
             game_class=profile.game_class,
+            class_unlocked=bool(profile.class_unlocked),
+            auto_allocate=bool(profile.auto_allocate),
             avatar_config=profile.avatar_config or {},
             xp_today=profile.xp_today if is_today else 0,
             gold_today=profile.gold_today if is_today else 0.0,
@@ -688,3 +696,110 @@ class DailyCheckResponse(BaseModel):
     profile: GameProfileRead
     status: Literal["applied", "duplicate"]
     server_time: datetime
+
+
+# --- Character sheet (issue #64) ---------------------------------------------
+
+
+class StatAllocateIn(BaseModel):
+    """Manual stat-point spend: {"str": 2, "int": 1} — the sum is debited
+    from unspent_stat_points, each stat capped at STAT_POINT_CAP."""
+
+    points: dict[str, Annotated[int, Field(ge=1, le=STAT_POINT_CAP)]] = Field(min_length=1)
+
+    @field_validator("points")
+    @classmethod
+    def known_stats(cls, v: dict[str, int]) -> dict[str, int]:
+        for key in v:
+            if key not in STAT_KEYS:
+                raise ValueError(f"unknown stat '{key}'")
+        return v
+
+
+class CharacterUpdateIn(BaseModel):
+    """Character settings; auto_allocate hands level-up points to the
+    affinity-based distributor instead of the unspent pool."""
+
+    auto_allocate: bool
+
+
+class ClassSelectIn(BaseModel):
+    """The level-10 class pick; respec re-opens this choice for gold."""
+
+    game_class: Literal["warrior", "mage", "healer", "rogue"]
+
+
+class GearItemRead(BaseModel):
+    """One catalog row merged with the viewer's owned/equipped flags."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    name: str
+    slot: str
+    klass: str
+    tier: int
+    stats: dict
+    cost: int
+    losable: bool
+    owned: bool
+    equipped: bool
+
+    @classmethod
+    def from_row(cls, row: dict) -> "GearItemRead":
+        item = row["item"]
+        return cls(
+            key=item.key,
+            name=item.name,
+            slot=item.slot,
+            klass=item.klass,
+            tier=item.tier,
+            stats=item.stats or {},
+            cost=item.cost,
+            losable=bool(item.losable),
+            owned=row["owned"],
+            equipped=row["equipped"],
+        )
+
+
+class GearListResponse(BaseModel):
+    """Post-mutation catalog plus authoritative totals for the HUD —
+    buy/equip change gold/stats, so the profile rides along (sibling of
+    HabitClickResponse/DailyCheckResponse)."""
+
+    items: list[GearItemRead]
+    profile: GameProfileRead
+
+
+class GearBuyIn(BaseModel):
+    """Buy one catalog item for gold."""
+
+    key: str = Field(min_length=1, max_length=64)
+
+
+class GearEquipIn(BaseModel):
+    """Wear (equipped=true) or remove (false) an owned item; one per slot."""
+
+    key: str = Field(min_length=1, max_length=64)
+    equipped: bool = True
+
+
+class AchievementRead(BaseModel):
+    """One registry row; earned_at is None until the badge is granted."""
+
+    key: str
+    name: str
+    description: str | None
+    gold_reward: int
+    earned_at: datetime | None
+
+    @classmethod
+    def from_row(cls, row: dict) -> "AchievementRead":
+        ach = row["achievement"]
+        return cls(
+            key=ach.key,
+            name=ach.name,
+            description=ach.description,
+            gold_reward=ach.gold_reward,
+            earned_at=row["earned_at"],
+        )

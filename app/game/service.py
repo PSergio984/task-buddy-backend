@@ -13,7 +13,7 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import daily_service, engine, habit_service
+from app.game import character_service, daily_service, engine, habit_service
 from app.game.engine import GameRates
 from app.models.game import Daily, DailyItem, GameEvent, GameProfile, Habit
 from app.schemas.game import GameEventIn, GameEventResult
@@ -69,7 +69,7 @@ async def _ingest_daily_check(
     rates: GameRates,
     today,
     rng: random.Random,
-) -> None:
+) -> dict | None:
     """Score one synced daily_check (or record it unscored).
 
     The check day comes from the client's own timestamp — the same
@@ -77,10 +77,14 @@ async def _ingest_daily_check(
     score_check rejections (daily_inactive / check_date_out_of_range /
     item_unresolvable) are recorded applied-but-unscored like habit failures,
     so the batch never wedges and the eid stays consumed.
+
+    Returns the engine outcome (None when recorded unscored) so the caller
+    can spot a mid-batch death that cost gear.
     """
     daily = _daily_for_event(event, dailies_by_id)
     item_id = event.payload.get("daily_item_id")
     unscored_reason: str | None = None
+    outcome: dict | None = None
     if daily is None:
         unscored_reason = "daily_unresolvable"
     elif item_id is not None and (not isinstance(item_id, int) or isinstance(item_id, bool)):
@@ -98,7 +102,7 @@ async def _ingest_daily_check(
         staged = set(db.new)
         dirty_before = set(db.dirty)
         try:
-            await daily_service.score_check(
+            outcome = await daily_service.score_check(
                 db,
                 daily,
                 items,
@@ -137,6 +141,33 @@ async def _ingest_daily_check(
                 client_ts=event.client_ts,
             )
         )
+    return outcome
+
+
+async def _refresh_bonus_on_gear_loss(
+    db: AsyncSession,
+    user_id: int,
+    outcome: dict | None,
+    stat_bonus: dict[str, int],
+) -> dict[str, int]:
+    """Re-resolve equipped-stat totals when an outcome cost the user gear.
+
+    The batch-level stat_bonus is a snapshot taken before the loop: a death
+    that deletes an item mid-batch must not let its stats keep scoring
+    later events (negative clicks and daily misses can kill, too).
+    """
+    if outcome is not None and outcome.get("gear_lost"):
+        return await character_service.gear_stat_bonus(db, user_id)
+    return stat_bonus
+
+
+def _auto_distribute(profile: GameProfile) -> None:
+    """Spend unspent points as each event lands — post_score's distribute
+    step applied per event, so a mid-batch level-up feeds the NEXT event's
+    stats and can't dodge the death cascade's stat pick. Cheap no-op when
+    auto-allocation is off or nothing is pending."""
+    if profile.auto_allocate:
+        character_service.distribute_unspent(profile)
 
 
 async def ingest_events(
@@ -179,6 +210,9 @@ async def ingest_events(
     # otherwise multiply into tens of thousands of writes inside this
     # profile-locked transaction (see habit_service.MAX_AUTO_CLICKS_PER_EVAL).
     auto_budget = habit_service.MAX_AUTO_CLICKS_PER_EVAL
+    # Gear resolves once per batch — EXCEPT after a death that deletes an
+    # item, which re-resolves below so the lost piece stops scoring.
+    stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     for idx, event in ordered:
         if event.client_event_id in seen:
             status_by_idx[idx] = "duplicate"
@@ -191,7 +225,7 @@ async def ingest_events(
                 and direction in ("positive", "negative")
                 and habit_service.direction_allows(habit, direction)
             ):
-                await habit_service.score_click(
+                outcome = await habit_service.score_click(
                     db,
                     habit,
                     direction,
@@ -202,7 +236,9 @@ async def ingest_events(
                     client_ts=event.client_ts,
                     rng=rng,
                     extra=event.payload,
+                    stat_bonus=stat_bonus,
                 )
+                stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
             else:
                 # Record applied-but-unscored instead of scoring a claim the
                 # server can't verify, or wedging the batch on a 400:
@@ -228,11 +264,12 @@ async def ingest_events(
                         client_ts=event.client_ts,
                     )
                 )
+            _auto_distribute(profile)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
         if event.type == "daily_check":
-            await _ingest_daily_check(
+            daily_outcome = await _ingest_daily_check(
                 db,
                 user_id,
                 event,
@@ -243,12 +280,23 @@ async def ingest_events(
                 today,
                 rng,
             )
+            stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, daily_outcome, stat_bonus)
+            _auto_distribute(profile)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
         outcome = engine.apply_event(
-            profile, event.type, event.payload, rates, rng_roll=rng.random(), rng=rng, today=today
+            profile,
+            event.type,
+            event.payload,
+            rates,
+            rng_roll=rng.random(),
+            rng=rng,
+            today=today,
+            stat_bonus=stat_bonus,
         )
+        await character_service.resolve_death_gear(db, user_id, outcome, rng)
+        stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras
         # are cleaned of server-reserved markers — a forged auto/session_id
@@ -278,8 +326,13 @@ async def ingest_events(
                 habits=bound_habits,
                 budget=auto_budget,
             )
+        _auto_distribute(profile)
         seen.add(event.client_event_id)
         status_by_idx[idx] = "applied"
+    if "applied" in status_by_idx.values():
+        # Post-scoring hook (auto-distribute now, grant eval as it lands):
+        # runs once per batch holding ≥1 applied event, under the profile lock.
+        await character_service.post_score(db, user_id, profile)
     await db.flush()
     results = [
         GameEventResult(client_event_id=e.client_event_id, status=status_by_idx[i])

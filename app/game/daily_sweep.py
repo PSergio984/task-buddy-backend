@@ -28,7 +28,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.crud import game as game_crud
-from app.game import daily_service, engine
+from app.game import character_service, daily_service, engine
 from app.game.service import load_rates
 from app.models.game import Daily, DailyMiss, GameEvent, GameProfile
 
@@ -139,7 +139,9 @@ async def _evaluate_unit(
             _rng.random(),
             _rng,
             today,
+            stat_bonus=await character_service.gear_stat_bonus(db, daily.user_id),
         )
+        await character_service.resolve_death_gear(db, daily.user_id, outcome, _rng)
     streak_before = daily.streak
     if not frozen:
         daily.streak = 0

@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.dependencies import get_db
-from app.game import engine, habit_service, service
+from app.game import character_service, engine, habit_service, service
 from app.limiter import limiter
 from app.models.game import Habit, HabitDirection
 from app.models.user import User
@@ -212,6 +212,7 @@ async def click_habit(
         eid=eid,
         client_ts=now,
     )
+    await character_service.post_score(db, user_id, profile)
     await db.commit()
     # updated_at is an onupdate column — expired post-commit, refetch it.
     await db.refresh(habit)

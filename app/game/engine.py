@@ -2,8 +2,11 @@
 
 Pure functions over a GameProfile instance — no DB access, so the combinatorial
 rules (curve, crits, shields, drift, death cascade, caps) are unit-testable
-directly. Every award/loss in the game flows through here; all tunables come
-from a GameRates loaded out of game_config, never hardcoded constants.
+directly. Every *scored* award/loss in the game flows through here; all
+tunables come from a GameRates loaded out of game_config, never hardcoded
+constants. One deliberate exception: achievement gold grants in
+achievements.evaluate bypass award_gold entirely — badges must pay out
+even on a capped day, so they don't touch gold_today/the daily cap.
 
 Formulas verified against Habitica's common scoring code, see
 research/habitica-formulas.md (wayfinder #49 research).
@@ -21,6 +24,50 @@ from app.models.game import GameProfile
 _ALLOCATED_STATS = ("str_stat", "int_stat", "con_stat", "per_stat")
 _death_rng = random.Random()
 
+# --- Character sheet rules (issue #64) --------------------------------------
+# Short stat keys as they appear in gear stat blobs and API payloads.
+STAT_KEYS = ("str", "int", "con", "per")
+# Column <-> short key maps; the columns hold the ALLOCATED pool only.
+STAT_COLUMN = {"str": "str_stat", "int": "int_stat", "con": "con_stat", "per": "per_stat"}
+_COLUMN_STAT = {v: k for k, v in STAT_COLUMN.items()}
+# Cap on TOTAL allocated points (Habitica's MAX_STAT_POINTS — in Habitica it
+# emerges from the level cap; with no level cap here it's enforced directly).
+STAT_POINT_CAP = 100
+# Class pick unlocks at this level; respec re-opens the choice for gold.
+CLASS_MIN_LEVEL = 10
+# Class -> its two affinity stats, primary first. Classes are affinities
+# only (no MP/skills per the spec): affinity drives auto-allocation order
+# and which gear ladder is buyable.
+CLASSES: dict[str, tuple[str, str]] = {
+    "warrior": ("str", "con"),
+    "mage": ("int", "per"),
+    "healer": ("con", "int"),
+    "rogue": ("per", "str"),
+}
+
+
+def level_stat_bonus(level: int) -> int:
+    """Level-derived base per stat: floor(min(level, 100) / 2).
+
+    Habitica's capByLevel — max +50 at level 100. Sheet data only:
+    scoring stays on allocated + gear so the economy the earlier
+    tickets pinned is stable.
+    """
+    return min(level, 100) // 2
+
+
+def effective_stat(
+    profile: GameProfile, column: str, bonus: Mapping[str, int] | None = None
+) -> int:
+    """The stat the engine scores with: allocated + gear bonus.
+
+    `bonus` is keyed by short stat name ("str"/"int"/"con"/"per"). The
+    level-derived base is deliberately excluded — it's sheet data, not an
+    economy input (see level_stat_bonus).
+    """
+    return int(getattr(profile, column)) + (bonus or {}).get(_COLUMN_STAT[column], 0)
+
+
 # Config fields used as divisors or multiplicands — non-positive/non-finite
 # overrides would crash or loop, so from_dict drops them back to defaults.
 _POSITIVE_FIELDS = frozenset(
@@ -36,7 +83,7 @@ _POSITIVE_FIELDS = frozenset(
 )
 
 # Rates where zero is meaningful (0 disables the award) but negatives aren't.
-_NONNEGATIVE_FIELDS = frozenset({"stopwatch_milestone_xp"})
+_NONNEGATIVE_FIELDS = frozenset({"stopwatch_milestone_xp", "respec_gold_cost"})
 
 # Fields that must stay integral: daily_xp_cap feeds an Integer column, and
 # lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
@@ -66,6 +113,7 @@ class GameRates:
     daily_xp_cap: int = 500
     daily_gold_cap: float = 150.0
     stopwatch_milestone_xp: float = 25.0  # XP per 25/50/75-min stopwatch chunk
+    respec_gold_cost: float = 100.0  # gold price of a class/stat respec
     # Level curve: 25*lvl below 5, fixed 150 at 5, quadratic afterwards.
     lvl_curve_early: float = 25.0
     lvl_curve_lvl5: float = 150.0
@@ -197,8 +245,9 @@ def award_gold(profile: GameProfile, amount: float, rates: GameRates, today: dat
 
 def _death(profile: GameProfile, rates: GameRates, rng: random.Random | None) -> dict:
     """Habitica revive cascade: XP/gold to 0, level -1 (floor 1), -1 allocated
-    stat point, and one losable gear item (resolved by the caller once gear
-    exists — flagged in the outcome)."""
+    stat point, and one losable gear item (the engine is DB-free — callers
+    resolve the pick via character_service.resolve_death_gear, which flips
+    gear_lost and records gear_lost_key on this outcome)."""
     profile.level = max(1, profile.level - 1)
     profile.xp = 0
     profile.gold = 0.0
@@ -209,7 +258,8 @@ def _death(profile: GameProfile, rates: GameRates, rng: random.Random | None) ->
         picker = rng if rng is not None else _death_rng
         stat_lost = picker.choice(allocated)
         setattr(profile, stat_lost, getattr(profile, stat_lost) - 1)
-    # gear_lost stays False until the gear resolver lands with the character ticket.
+    # gear_lost stays False here — resolve_death_gear overwrites it at the
+    # DB layer once it picks (and flushes) the lost item.
     return {"died": True, "stat_lost": stat_lost, "gear_lost": False}
 
 
@@ -218,9 +268,13 @@ def apply_hp_loss(
     amount: float,
     rates: GameRates,
     rng: random.Random | None = None,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     """Reduce HP by max(1, floor(amount * CON-shield)); triggers death at 0."""
-    shield = max(rates.con_shield_floor, 1 - profile.con_stat / rates.con_shield_divisor)
+    shield = max(
+        rates.con_shield_floor,
+        1 - effective_stat(profile, "con_stat", stat_bonus) / rates.con_shield_divisor,
+    )
     loss = max(1.0, float(math.floor(amount * shield)))
     profile.hp -= loss
     outcome: dict = {"hp_lost": loss, "died": False}
@@ -246,16 +300,29 @@ def _finite_positive(value: Any, name: str) -> float:
 
 
 def _apply_focus_phase(
-    profile: GameProfile, payload: dict, rates: GameRates, rng_roll: float, today: date
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    today: date,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     minutes = _finite_positive(payload.get("minutes"), "focus_phase_completed minutes")
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
-    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    mult = crit_roll(rng_roll, effective_stat(profile, "str_stat", stat_bonus), rates)
     xp = _round_half_up(
-        minutes * rates.xp_per_minute * p * (1 + rates.int_xp_pct * profile.int_stat) * mult
+        minutes
+        * rates.xp_per_minute
+        * p
+        * (1 + rates.int_xp_pct * effective_stat(profile, "int_stat", stat_bonus))
+        * mult
     )
     gold = math.ceil(
-        minutes * rates.gold_per_minute * p * (1 + rates.per_gold_pct * profile.per_stat) * mult
+        minutes
+        * rates.gold_per_minute
+        * p
+        * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
+        * mult
     )
     outcome: dict = {"scored": True, "crit": mult > 1.0}
     outcome.update(award_xp(profile, xp, rates, today))
@@ -270,6 +337,7 @@ def _apply_habit_click(
     rng_roll: float,
     rng: random.Random | None,
     today: date,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     direction = payload.get("direction")
     if direction not in ("positive", "negative"):
@@ -295,16 +363,25 @@ def _apply_habit_click(
     if direction == "negative":
         # Negative clicks only cost HP — never XP or gold.
         base = delta * p * rates.hp_loss_base
-        outcome = apply_hp_loss(profile, base, rates, rng)
+        outcome = apply_hp_loss(profile, base, rates, rng, stat_bonus)
         outcome.update(
             {"scored": True, "delta": -delta, "new_value": clamp_habit_value(value - delta, rates)}
         )
         return outcome
-    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    mult = crit_roll(rng_roll, effective_stat(profile, "str_stat", stat_bonus), rates)
     xp = _round_half_up(
-        delta * (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor
+        delta
+        * (1 + rates.int_xp_pct * effective_stat(profile, "int_stat", stat_bonus))
+        * p
+        * mult
+        * rates.habit_xp_factor
     )
-    gold = math.ceil(delta * p * mult * (1 + rates.per_gold_pct * profile.per_stat))
+    gold = math.ceil(
+        delta
+        * p
+        * mult
+        * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
+    )
     outcome = {
         "scored": True,
         "crit": mult > 1.0,
@@ -317,13 +394,17 @@ def _apply_habit_click(
 
 
 def _apply_damage(
-    profile: GameProfile, payload: dict, rates: GameRates, rng: random.Random | None
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng: random.Random | None,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     if "amount" in payload:
         base = _finite_positive(payload["amount"], "damage amount")
     else:
         base = rates.hp_loss_base * _difficulty_mult(payload.get("difficulty", "easy"), rates)
-    outcome = apply_hp_loss(profile, base, rates, rng)
+    outcome = apply_hp_loss(profile, base, rates, rng, stat_bonus)
     outcome["scored"] = True
     return outcome
 
@@ -335,6 +416,7 @@ def _apply_stopwatch_milestone(
     rng_roll: float,
     rng: random.Random | None,
     today: date,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     """One fixed XP chunk per milestone crossed (25/50/75 min), claimed on
     stop — no per-minute accrual, so marathons can't farm."""
@@ -346,7 +428,7 @@ def _apply_stopwatch_milestone(
         or milestones > 100
     ):
         raise ValueError("stopwatch_milestone requires integer milestones in [1, 100]")
-    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    mult = crit_roll(rng_roll, effective_stat(profile, "str_stat", stat_bonus), rates)
     xp = _round_half_up(milestones * rates.stopwatch_milestone_xp * mult)
     outcome = {"scored": True, "type": "stopwatch_milestone", "crit": mult > 1.0}
     outcome.update(award_xp(profile, xp, rates, today))
@@ -389,7 +471,12 @@ def _nonnegative(value: Any, name: str) -> float:
 
 
 def _apply_daily_check(
-    profile: GameProfile, payload: dict, rates: GameRates, rng_roll: float, today: date
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    today: date,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     """Score one daily check share; the service layer computes `share`,
     `streak` and the paid-* residuals from stored state, so client payloads
@@ -413,9 +500,19 @@ def _apply_daily_check(
     paid_gold = _nonnegative(payload.get("paid_gold", 0), "daily_check paid_gold")
     share = min(share, max(0.0, 1.0 - paid_share))
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
-    mult = crit_roll(rng_roll, profile.str_stat, rates)
-    xp_base = (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor
-    gold_base = p * mult * (1 + rates.per_gold_pct * profile.per_stat) * (1 + 0.01 * streak)
+    mult = crit_roll(rng_roll, effective_stat(profile, "str_stat", stat_bonus), rates)
+    xp_base = (
+        (1 + rates.int_xp_pct * effective_stat(profile, "int_stat", stat_bonus))
+        * p
+        * mult
+        * rates.habit_xp_factor
+    )
+    gold_base = (
+        p
+        * mult
+        * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
+        * (1 + 0.01 * streak)
+    )
     xp_whole = _round_half_up(xp_base)
     gold_whole = math.ceil(gold_base)
     xp = int(min(_round_half_up(xp_base * share), max(0.0, xp_whole - paid_xp)))
@@ -427,11 +524,15 @@ def _apply_daily_check(
 
 
 def _apply_daily_missed(
-    profile: GameProfile, payload: dict, rates: GameRates, rng: random.Random | None
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng: random.Random | None,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     """HP loss for a scheduled-but-unchecked daily; same shape as damage."""
     base = rates.hp_loss_base * _difficulty_mult(payload.get("difficulty", "easy"), rates)
-    outcome = apply_hp_loss(profile, base, rates, rng)
+    outcome = apply_hp_loss(profile, base, rates, rng, stat_bonus)
     outcome["scored"] = True
     return outcome
 
@@ -469,6 +570,7 @@ def apply_event(
     rng_roll: float = 1.0,
     rng: random.Random | None = None,
     today: date | None = None,
+    stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     """Score one event against the profile.
 
@@ -476,24 +578,27 @@ def apply_event(
     injectable so scoring is deterministic in tests. rng drives the death
     cascade's stat pick (same idea, seedable). today is the UTC day used for
     daily-cap bookkeeping; one value per event so a midnight-straddling award
-    can't split xp/gold across two day counters. Event types without a scoring
-    rule are stored in the ledger but move no totals (later build tickets
-    register their own types here).
+    can't split xp/gold across two day counters. stat_bonus carries the
+    caller-resolved gear totals (short stat keys) — scoring reads effective
+    stats (allocated + gear) while the death cascade still picks from the
+    allocated pool. Event types without a scoring rule are stored
+    in the ledger but move no totals (later build tickets register their own
+    types here).
     """
     day = today or datetime.now(timezone.utc).date()
     if event_type == "focus_phase_completed":
-        return _apply_focus_phase(profile, payload, rates, rng_roll, day)
+        return _apply_focus_phase(profile, payload, rates, rng_roll, day, stat_bonus)
     if event_type == "habit_click":
-        return _apply_habit_click(profile, payload, rates, rng_roll, rng, day)
+        return _apply_habit_click(profile, payload, rates, rng_roll, rng, day, stat_bonus)
     if event_type == "damage":
-        return _apply_damage(profile, payload, rates, rng)
+        return _apply_damage(profile, payload, rates, rng, stat_bonus)
     if event_type == "session_abandoned":
         # Abandon reasons carry the session's difficulty for HP scaling.
-        return _apply_damage(profile, payload, rates, rng)
+        return _apply_damage(profile, payload, rates, rng, stat_bonus)
     if event_type == "stopwatch_milestone":
-        return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day)
+        return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day, stat_bonus)
     if event_type == "daily_check":
-        return _apply_daily_check(profile, payload, rates, rng_roll, day)
+        return _apply_daily_check(profile, payload, rates, rng_roll, day, stat_bonus)
     if event_type == "daily_missed":
-        return _apply_daily_missed(profile, payload, rates, rng)
+        return _apply_daily_missed(profile, payload, rates, rng, stat_bonus)
     return {"scored": False}

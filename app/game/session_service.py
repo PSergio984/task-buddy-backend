@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import habit_service
+from app.game import character_service, habit_service
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
@@ -132,7 +132,17 @@ async def _persist_step(
         # earnings already booked on the newer day.
         step_day = at.date()
         day = max(step_day, profile.totals_day) if profile.totals_day else step_day
-        outcome = apply_event(profile, event_type, payload, rates, _rng.random(), _rng, day)
+        outcome = apply_event(
+            profile,
+            event_type,
+            payload,
+            rates,
+            _rng.random(),
+            _rng,
+            day,
+            stat_bonus=await character_service.gear_stat_bonus(db, user_id),
+        )
+        await character_service.resolve_death_gear(db, user_id, outcome, _rng)
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,
@@ -142,13 +152,14 @@ async def _persist_step(
     )
     db.add(row)
     # Focus-bound habits +click once per completed focus phase (resolve #44).
+    spent = 0
     if (
         event_type == "focus_phase_completed"
         and outcome.get("scored")
         and profile is not None
         and day is not None
     ):
-        return await habit_service.auto_click_bound(
+        spent = await habit_service.auto_click_bound(
             db,
             user_id,
             profile,
@@ -161,7 +172,11 @@ async def _persist_step(
             server_extra={"session_id": session.id},
             budget=auto_budget,
         )
-    return 0
+    # Points earned mid-evaluation are spent before the NEXT step scores —
+    # the /events ingest loop's per-event ordering applied per step.
+    if profile is not None and profile.auto_allocate:
+        character_service.distribute_unspent(profile)
+    return spent
 
 
 async def _evaluate(
@@ -223,6 +238,9 @@ async def _evaluate(
             habits=bound_habits,
             auto_budget=auto_budget,
         )
+    if profile is not None:
+        # Post-scoring hook (auto-distribute now, grant eval as it lands).
+        await character_service.post_score(db, user_id, profile)
     await db.flush()
     return phases, steps
 

@@ -38,9 +38,9 @@ from app.crud import game_tracking as tracking_crud
 DEFAULT_WEIGHTS: dict[str, float] = {
     "focus_phase_completed": 0.0,
     "habit_click": 2.0,
-    # Dead until the dailies scorer lands (#63): no write path emits
-    # scored:true daily_check rows yet. Any future emitter MUST stamp
-    # _outcome.scored=True or the row is filtered before weighting.
+    # Live since #63: daily_service.score_check emits scored daily_check
+    # rows. Any future emitter MUST stamp _outcome.scored=True or the row
+    # is filtered before weighting.
     "daily_check": 3.0,
     "stopwatch_milestone": 1.0,
     "damage": 0.0,

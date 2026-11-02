@@ -14,7 +14,9 @@ from app.game.engine import (
     award_xp,
     clamp_habit_value,
     crit_roll,
+    effective_stat,
     habit_delta,
+    level_stat_bonus,
     xp_to_next_level,
 )
 from app.models.game import GameProfile
@@ -204,12 +206,59 @@ class TestDeathCascade:
             assert (profile.int_stat, profile.str_stat) in {(2, 3), (3, 2)}
         assert results == {"int_stat", "str_stat"}  # both picks reachable
 
-    def test_death_reports_no_gear_lost_yet(self, rates: GameRates) -> None:
-        # The gear resolver lands in a later ticket; until then nothing is lost.
+    def test_death_engine_leaves_gear_flag_unset(self, rates: GameRates) -> None:
+        # The engine is DB-free — gear_lost stays False here; callers flip
+        # it via character_service.resolve_death_gear against real rows.
         profile = make_profile(level=8, hp=1.0)
         outcome = apply_hp_loss(profile, 10.0, rates, rng=random.Random(0))
         assert outcome["died"] is True
         assert outcome["gear_lost"] is False
+
+
+class TestEffectiveStats:
+    """Issue #64: scoring reads allocated + gear (stat_bonus); the
+    level-derived base is sheet data, not an economy input."""
+
+    def test_level_bonus_floor_and_cap(self) -> None:
+        assert level_stat_bonus(1) == 0
+        assert level_stat_bonus(3) == 1
+        assert level_stat_bonus(50) == 25
+        assert level_stat_bonus(100) == 50
+        assert level_stat_bonus(150) == 50  # capByLevel
+
+    def test_effective_stat_allocated_plus_gear(self) -> None:
+        profile = make_profile(int_stat=10)
+        assert effective_stat(profile, "int_stat") == 10
+        assert effective_stat(profile, "int_stat", {"int": 4}) == 14
+        assert effective_stat(profile, "int_stat", {"str": 4}) == 10
+
+    def test_stat_bonus_feeds_scoring(self, rates: GameRates) -> None:
+        profile = make_profile()
+        apply_event(
+            profile,
+            "focus_phase_completed",
+            {"minutes": 10, "difficulty": "easy"},
+            rates,
+            rng_roll=1.0,
+            stat_bonus={"int": 40},
+        )
+        # xp = 10 * (1 + 0.025*40) = 20 — gear INT counts like allocated.
+        assert profile.xp == 20
+
+    def test_stat_bonus_feeds_con_shield(self, rates: GameRates) -> None:
+        profile = make_profile()
+        apply_hp_loss(profile, 4.0, rates, stat_bonus={"con": 125})
+        # shield = 1 - 125/250 = 0.5 -> loss floor(4*0.5) = 2
+        assert profile.hp == pytest.approx(48.0)
+
+    def test_death_ignores_gear_bonus_pool(self, rates: GameRates) -> None:
+        # The cascade picks from ALLOCATED stats only — a gear-only profile
+        # has nothing to lose but the level/gold/XP penalties still apply.
+        profile = make_profile(level=8, xp=10, gold=20.0, hp=1.0)
+        outcome = apply_hp_loss(profile, 10.0, rates, stat_bonus={"str": 50})
+        assert outcome["died"] is True
+        assert outcome["stat_lost"] is None
+        assert profile.str_stat == 0
 
 
 class TestApplyEvent:
