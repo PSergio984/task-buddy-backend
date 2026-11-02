@@ -877,6 +877,63 @@ class TestAchievements:
         assert badges["streak-21"]["earned_at"] is None
         assert badges["perfect-day"]["earned_at"] is not None
 
+    async def test_perfect_day_counts_only_due_dailies(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """A daily not due that date can't block (or satisfy) the badge:
+        the day's requirement is the recurrence-DUE subset, not all active."""
+        await _ensure_profile(authenticated_async_client)
+        check_day = datetime.now(timezone.utc).date() - timedelta(days=1)
+        off_day = check_day - timedelta(days=1)
+        every_day = Daily(
+            user_id=confirmed_user["id"],
+            title="d",
+            recurrence={"kind": "daily"},
+            active=True,
+            created_at=datetime.now(timezone.utc) - timedelta(days=10),
+        )
+        # A weekday daily due on neither check day.
+        off_schedule = Daily(
+            user_id=confirmed_user["id"],
+            title="m",
+            recurrence={"kind": "weekdays", "days": [(check_day.weekday() + 3) % 7]},
+            active=True,
+            created_at=datetime.now(timezone.utc) - timedelta(days=10),
+        )
+        db.add_all([every_day, off_schedule])
+        await db.flush()
+        # Only the off-schedule daily checked on off_day — covers no due
+        # daily (every_day was due and unchecked), so no badge yet.
+        db.add(
+            DailyCheck(
+                daily_id=off_schedule.id,
+                daily_item_id=None,
+                check_date=off_day,
+                done=True,
+            )
+        )
+        await db.commit()
+        await _score_event(authenticated_async_client, "e-ach-pd1")
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is None
+        # check_day: every due daily done (the unchecked weekday one isn't
+        # due that date) -> perfect.
+        db.add(
+            DailyCheck(
+                daily_id=every_day.id,
+                daily_item_id=None,
+                check_date=check_day,
+                done=True,
+            )
+        )
+        await db.commit()
+        await _score_event(authenticated_async_client, "e-ach-pd2")
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is not None
+
     async def test_gear_buy_grants_first_gear(
         self,
         authenticated_async_client: AsyncClient,

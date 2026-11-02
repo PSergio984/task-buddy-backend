@@ -11,10 +11,11 @@ Sources: the scored ledger row is canonical for firsts and focus totals
 (offline claims and server-side sessions both write focus_phase_completed
 with `minutes` and `_outcome.scored`); streak/record reads use the live
 aggregate columns (Daily.streak, Habit.counter); perfect_day counts whole-
-daily done checks per date against the user's active dailies.
+daily done checks per date against the dailies due that date.
 """
 
 import sys
+from datetime import date
 
 from sqlalchemy import Insert, func, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
@@ -199,6 +200,55 @@ def _criteria_threshold(criteria: dict) -> int:
         return sys.maxsize
 
 
+def _daily_due_on(daily: Daily, day: date) -> bool:
+    """Whether `day` was a scheduled (due) day for the daily's recurrence.
+
+    daily_service is imported lazily — it imports character_service, which
+    imports this module, so a top-level import would cycle.
+    """
+    from app.game import daily_service
+
+    rec = daily_service.parse_recurrence(daily.recurrence)
+    # A blob too malformed to parse can't be proven NOT due — it stays
+    # required, matching the old all-active count.
+    return rec is None or daily_service.is_schedulable(rec, day, daily_service.daily_anchor(daily))
+
+
+async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
+    """Whether some date's whole-daily done marks cover every daily due it.
+
+    The per-date requirement is the recurrence-DUE subset of active dailies —
+    an off-schedule daily can neither block the badge (unchecked) nor satisfy
+    it (checked on a day it wasn't due).
+    """
+    dailies = (
+        (await db.execute(select(Daily).where(Daily.user_id == user_id, Daily.active.is_(True))))
+        .scalars()
+        .all()
+    )
+    if not dailies:
+        return False
+    done_by_date: dict[date, set[int]] = {}
+    result = await db.execute(
+        select(DailyCheck.check_date, DailyCheck.daily_id)
+        .join(Daily, DailyCheck.daily_id == Daily.id)
+        .where(
+            Daily.user_id == user_id,
+            Daily.active.is_(True),
+            DailyCheck.daily_item_id.is_(None),
+            DailyCheck.done.is_(True),
+        )
+        .distinct()
+    )
+    for check_date, daily_id in result.all():
+        done_by_date.setdefault(check_date, set()).add(daily_id)
+    for check_date, done_ids in done_by_date.items():
+        due = {d.id for d in dailies if _daily_due_on(d, check_date)}
+        if due and due <= done_ids:
+            return True
+    return False
+
+
 async def _meets(db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict) -> bool:
     """True when the criteria's live check passes. Unknown kinds never grant."""
     if not isinstance(criteria, dict):
@@ -255,29 +305,7 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
         result = await db.execute(select(func.max(Habit.counter)).where(Habit.user_id == user_id))
         return int(result.scalar_one() or 0) >= threshold
     if kind == "perfect_day":
-        active = int(
-            (
-                await db.execute(
-                    select(func.count())
-                    .select_from(Daily)
-                    .where(Daily.user_id == user_id, Daily.active.is_(True))
-                )
-            ).scalar_one()
-        )
-        if active == 0:
-            return False
-        result = await db.execute(
-            select(func.count(func.distinct(DailyCheck.daily_id)))
-            .join(Daily, DailyCheck.daily_id == Daily.id)
-            .where(
-                Daily.user_id == user_id,
-                Daily.active.is_(True),
-                DailyCheck.daily_item_id.is_(None),
-                DailyCheck.done.is_(True),
-            )
-            .group_by(DailyCheck.check_date)
-        )
-        return any(count >= active for count in result.scalars().all())
+        return await _perfect_day(db, user_id)
     return False
 
 
