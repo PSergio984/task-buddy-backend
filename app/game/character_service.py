@@ -202,6 +202,10 @@ async def lose_random_gear(
     picker = rng if rng is not None else random
     user_gear, item = picker.choice(rows)
     await db.delete(user_gear)
+    # autoflush is off project-wide: without a flush the dead row stays
+    # visible to this transaction's own gear queries, so later events in
+    # the same batch would still score with the lost item's stats.
+    await db.flush()
     return str(item.key)
 
 

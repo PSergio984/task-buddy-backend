@@ -1,6 +1,6 @@
 """API tests for the character sheet: stat allocation, class, respec (#64)."""
 
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 import pytest
 from httpx import AsyncClient
@@ -629,6 +629,47 @@ class TestGearScoring:
         assert response.status_code == 200, response.text
         # shield = 1 - 1/250 -> floor(4 * 0.996) = 3 lost.
         assert response.json()["profile"]["hp"] == pytest.approx(47.0)
+
+    async def test_lost_gear_stops_scoring_mid_batch(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Death mid-batch deletes the item AND its stat contribution: the
+        follow-up damage scores without the lost shield's CON bonus."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=100.0)
+        await _buy(authenticated_async_client, "all-shield-1")  # con +1
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "all-shield-1"}
+        )
+        now = datetime.now(timezone.utc)
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-kill",
+                        "type": "damage",
+                        "client_ts": now.isoformat(),
+                        "payload": {"amount": 500},
+                    },
+                    {
+                        "client_event_id": "e-hit",
+                        "type": "damage",
+                        "client_ts": (now + timedelta(minutes=1)).isoformat(),
+                        "payload": {"amount": 4},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        outcome = await _outcome(db, confirmed_user["id"], "e-kill")
+        assert outcome["gear_lost_key"] == "all-shield-1"
+        # Revive refills to 50; the hit loses the full 4 — a stale snapshot
+        # would still shield for 1 - 1/250 and land only 3.
+        assert response.json()["profile"]["hp"] == pytest.approx(46.0)
 
 
 # --- Achievements (issue #64) --------------------------------------------------
