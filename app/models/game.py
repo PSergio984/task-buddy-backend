@@ -67,6 +67,11 @@ class GameProfile(Base):
         Integer, default=0, server_default="0", nullable=False
     )
     game_class: Mapped[str | None] = mapped_column(String, nullable=True)
+    # Sticky class-pick unlock: once a pick lands, respec/death-level-drops
+    # can't trap the user below the level-10 gate — re-pick stays allowed.
+    class_unlocked: Mapped[bool] = mapped_column(
+        Boolean, default=False, server_default="0", nullable=False
+    )
     auto_allocate: Mapped[bool] = mapped_column(
         Boolean, default=False, server_default="0", nullable=False
     )

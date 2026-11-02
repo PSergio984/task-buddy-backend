@@ -112,6 +112,7 @@ class GameProfileRead(BaseModel):
     per_stat: int
     unspent_stat_points: int
     game_class: str | None
+    class_unlocked: bool
     auto_allocate: bool
     # Sheet display: allocated + level-derived base (floor(level/2), cap 50).
     # Gear bonuses feed the engine directly and aren't folded in here.
@@ -143,6 +144,7 @@ class GameProfileRead(BaseModel):
             per_stat=profile.per_stat,
             unspent_stat_points=profile.unspent_stat_points,
             game_class=profile.game_class,
+            class_unlocked=bool(profile.class_unlocked),
             auto_allocate=bool(profile.auto_allocate),
             base_stats={
                 key: getattr(profile, column) + level_stat_bonus(profile.level or 1)

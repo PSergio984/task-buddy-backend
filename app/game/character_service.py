@@ -282,14 +282,20 @@ def distribute_unspent(profile: GameProfile) -> int:
 
 
 def select_class(profile: GameProfile, klass: str) -> None:
-    """Set the user's class; gated on the level-10 unlock and a clean slate."""
+    """Set the user's class; gated on the level-10 unlock and a clean slate.
+
+    The unlock is sticky: a first pick flips class_unlocked, which respec
+    and death level-drops never clear — a classed-then-deleveled user can
+    still re-pick below level 10 after paying for the respec.
+    """
     if klass not in engine.CLASSES:
         raise ValueError(f"unknown class '{klass}'")
     if profile.game_class is not None:
         raise ValueError("respec first to change class")
-    if profile.level < engine.CLASS_MIN_LEVEL:
+    if not profile.class_unlocked and profile.level < engine.CLASS_MIN_LEVEL:
         raise ValueError(f"class unlocks at level {engine.CLASS_MIN_LEVEL}")
     profile.game_class = klass
+    profile.class_unlocked = True
 
 
 def respec(profile: GameProfile, rates: GameRates) -> float:

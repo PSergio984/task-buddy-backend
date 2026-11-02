@@ -323,6 +323,35 @@ class TestRespec:
         assert response.status_code == 200
         assert response.json()["game_class"] == "rogue"
 
+    async def test_respec_repick_survives_death_level_drop(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Class at 10 -> death to 9 -> respec -> re-pick still succeeds:
+        class_unlocked makes the first pick's gate pass sticky."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10, gold=200.0)
+        response = await authenticated_async_client.post(
+            f"{CHAR}/class", json={"game_class": "mage"}
+        )
+        assert response.status_code == 200, response.text
+        await _kill(authenticated_async_client, "e-unlock-death")
+        row = await _profile_row(db, confirmed_user["id"])
+        assert row.level == 9 and row.game_class == "mage"
+        assert row.class_unlocked is True
+        # Death zeroed the gold the respec needs; top the balance back up.
+        await _set_profile(db, confirmed_user["id"], gold=200.0)
+        assert (
+            await authenticated_async_client.post(f"{CHAR}/respec")
+        ).status_code == 200
+        response = await authenticated_async_client.post(
+            f"{CHAR}/class", json={"game_class": "rogue"}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["game_class"] == "rogue"
+
 
 # --- Gear (issue #64) ---------------------------------------------------------
 
