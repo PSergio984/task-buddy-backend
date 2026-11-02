@@ -99,7 +99,7 @@ async def _meets(
     """True when the criteria's live check passes. Unknown kinds never grant."""
     kind = criteria.get("kind")
     if kind == "level":
-        return profile.level >= criteria.get("threshold", 0)
+        return profile.level >= int(criteria.get("threshold", 0))
     if kind == "class":
         return profile.game_class is not None
     return await _meets_db(db, user_id, criteria)
@@ -108,7 +108,7 @@ async def _meets(
 async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
     """DB-backed criteria: firsts, ownership, focus totals, records, days."""
     kind = criteria.get("kind")
-    threshold = criteria.get("threshold", 0)
+    threshold = int(criteria.get("threshold", 0))
     if kind == "first":
         result = await db.execute(_scored_events(db, user_id, criteria["what"]).limit(1))
         return result.first() is not None

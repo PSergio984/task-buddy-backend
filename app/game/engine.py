@@ -62,7 +62,7 @@ def effective_stat(
     level-derived base is deliberately excluded — it's sheet data, not an
     economy input (see level_stat_bonus).
     """
-    return getattr(profile, column) + (bonus or {}).get(_COLUMN_STAT[column], 0)
+    return int(getattr(profile, column)) + (bonus or {}).get(_COLUMN_STAT[column], 0)
 
 # Config fields used as divisors or multiplicands — non-positive/non-finite
 # overrides would crash or loop, so from_dict drops them back to defaults.

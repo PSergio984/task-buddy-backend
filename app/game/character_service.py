@@ -202,7 +202,7 @@ async def lose_random_gear(
     picker = rng if rng is not None else random
     user_gear, item = picker.choice(rows)
     await db.delete(user_gear)
-    return item.key
+    return str(item.key)
 
 
 async def resolve_death_gear(

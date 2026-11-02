@@ -380,7 +380,7 @@ async def list_equipped_gear(db: AsyncSession, user_id: int) -> list[tuple[UserG
         .join(GearItem, UserGear.gear_item_id == GearItem.id)
         .where(UserGear.user_id == user_id, UserGear.equipped.is_(True))
     )
-    return list(result.all())
+    return list(result.tuples().all())
 
 
 async def list_gear_catalog(db: AsyncSession) -> list[GearItem]:
