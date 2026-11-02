@@ -289,10 +289,15 @@ class AvatarConfigIn(BaseModel):
                 if not isinstance(v[key], dict):
                     raise ValueError(f"avatar_config.{key} must be an object")
                 # Members are Record<string,string> client-side — a stored
-                # array/number member renders nothing and is silently dropped
-                # on the next picker save.
-                if any(not isinstance(member, str) for member in v[key].values()):
-                    raise ValueError(f"avatar_config.{key} members must be strings")
+                # array/number/empty member renders nothing and is silently
+                # dropped on the next picker save.
+                if any(
+                    not isinstance(member, str) or not member
+                    for member in v[key].values()
+                ):
+                    raise ValueError(
+                        f"avatar_config.{key} members must be non-empty strings"
+                    )
         # The blob is echoed on every GET /profile — same guard as payloads.
         _check_json_blob(v, "avatar_config")
         return v

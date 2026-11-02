@@ -366,12 +366,13 @@ class TestAvatarConfig:
         self, authenticated_async_client: AsyncClient
     ) -> None:
         # traits/costume are Record<string,string> client-side — array/null/
-        # number members render nothing and get silently dropped on the next
-        # picker save, so the envelope rejects them instead of storing loss.
+        # number/empty members render nothing and get silently dropped on the
+        # next picker save, so the envelope rejects them instead of storing loss.
         for bad in (
             {"traits": {"hair": ["short01"]}},
             {"traits": {"hair": None}},
             {"traits": {"hair": 5}},
+            {"traits": {"badge": ""}},
             {"costume": {"slot": ["cape"]}},
         ):
             response = await authenticated_async_client.patch(
