@@ -780,3 +780,24 @@ class GearEquipIn(BaseModel):
 
     key: str = Field(min_length=1, max_length=64)
     equipped: bool = True
+
+
+class AchievementRead(BaseModel):
+    """One registry row; earned_at is None until the badge is granted."""
+
+    key: str
+    name: str
+    description: str | None
+    gold_reward: int
+    earned_at: datetime | None
+
+    @classmethod
+    def from_row(cls, row: dict) -> "AchievementRead":
+        ach = row["achievement"]
+        return cls(
+            key=ach.key,
+            name=ach.name,
+            description=ach.description,
+            gold_reward=ach.gold_reward,
+            earned_at=row["earned_at"],
+        )

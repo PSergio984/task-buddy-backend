@@ -129,7 +129,9 @@ class TestEventIngestion:
         response = await authenticated_async_client.post(f"{GAME}/events", json=batch)
         assert response.status_code == 200
         assert response.json()["profile"]["xp"] == 0
-        assert response.json()["profile"]["gold"] == 0
+        # The kill zeroes the 2 phase gold; the first-focus badge (+10) was
+        # earned when the reward scored, so it lands post-death at batch end.
+        assert response.json()["profile"]["gold"] == 10
 
         # reversed timestamps: death first, then the reward lands on the fresh sheet
         batch2 = {

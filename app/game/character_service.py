@@ -16,7 +16,7 @@ from sqlalchemy import insert, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import engine
+from app.game import achievements, engine
 from app.game.engine import GameRates
 from app.models.game import GameProfile, GearItem, UserGear
 
@@ -296,3 +296,6 @@ async def post_score(
     """
     if profile.auto_allocate:
         distribute_unspent(profile)
+    # Grants run under the same profile lock so concurrent scoring paths
+    # can't double-award; evaluation is a no-op when nothing new qualifies.
+    await achievements.evaluate(db, user_id, profile)

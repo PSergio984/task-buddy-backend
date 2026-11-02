@@ -9,10 +9,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import RATE_LIMIT_GAME_EVENTS
 from app.crud import game as game_crud
 from app.dependencies import get_db
-from app.game import character_service, engine, service
+from app.game import achievements, character_service, engine, service
 from app.limiter import limiter
 from app.models.user import User
 from app.schemas.game import (
+    AchievementRead,
     CharacterUpdateIn,
     ClassSelectIn,
     GameProfileRead,
@@ -102,6 +103,8 @@ async def pick_class(
     await character_service.unequip_mismatched(db, user_id, profile.game_class)
     if profile.auto_allocate:
         character_service.distribute_unspent(profile)
+    # 'class-picked' qualifies here, not just on the next scored event.
+    await achievements.evaluate(db, user_id, profile)
     await db.commit()
     rates = await service.load_rates(db)
     logger.info("class picked: user=%s class=%s", user_id, profile.game_class)
@@ -169,6 +172,8 @@ async def buy_gear(
         await character_service.buy_gear(db, user_id, profile, item)
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    # 'first-gear' grants on the buy, not on the next scored event.
+    await achievements.evaluate(db, user_id, profile)
     await db.commit()
     logger.info("gear bought: user=%s key=%s", user_id, body.key)
     return _catalog_read(await character_service.list_catalog(db, user_id))
@@ -193,3 +198,16 @@ async def equip_gear(
     await db.commit()
     logger.info("gear equipped: user=%s key=%s on=%s", user_id, body.key, body.equipped)
     return _catalog_read(await character_service.list_catalog(db, user_id))
+
+
+@router.get("/achievements", response_model=list[AchievementRead])
+@limiter.limit("60/minute")
+async def list_achievements(
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[AchievementRead]:
+    """Every badge in the registry; earned_at fills once granted."""
+    rows = await achievements.list_for_user(db, current_user.id)
+    return [AchievementRead.from_row(row) for row in rows]

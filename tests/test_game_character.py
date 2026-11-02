@@ -1,11 +1,13 @@
 """API tests for the character sheet: stat allocation, class, respec (#64)."""
 
+from datetime import date
+
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.game import GameProfile
+from app.models.game import Daily, DailyCheck, GameProfile, UserAchievement
 
 GAME = "/api/v1/game"
 CHAR = "/api/v1/game/character"
@@ -376,7 +378,8 @@ class TestGearBuy:
         assert item["owned"] is True
         assert item["equipped"] is False
         row = await _profile_row(db, confirmed_user["id"])
-        assert row.gold == pytest.approx(100.0)
+        # 150 - 50 cost + 10 first-gear badge.
+        assert row.gold == pytest.approx(110.0)
 
     async def test_buy_rejects_insufficient_gold(
         self,
@@ -597,3 +600,174 @@ class TestGearScoring:
         assert response.status_code == 200, response.text
         # shield = 1 - 1/250 -> floor(4 * 0.996) = 3 lost.
         assert response.json()["profile"]["hp"] == pytest.approx(47.0)
+
+
+# --- Achievements (issue #64) --------------------------------------------------
+
+BADGES = "/api/v1/game/achievements"
+
+
+async def _badges(client: AsyncClient) -> dict[str, dict]:
+    response = await client.get(BADGES)
+    assert response.status_code == 200, response.text
+    return {row["key"]: row for row in response.json()}
+
+
+async def _score_event(client: AsyncClient, eid: str) -> dict:
+    """One 10-min focus phase through ingest — triggers post-score eval."""
+    response = await client.post(
+        f"{GAME}/events",
+        json={
+            "events": [
+                {
+                    "client_event_id": eid,
+                    "type": "focus_phase_completed",
+                    "client_ts": "2026-01-01T00:00:00Z",
+                    "payload": {"minutes": 10, "difficulty": "easy"},
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200, response.text
+    return response.json()["profile"]
+
+
+class TestAchievements:
+    async def test_registry_seeds_15_badges(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        badges = await _badges(authenticated_async_client)
+        assert len(badges) == 15
+        assert {
+            "level-10", "level-25", "level-50",
+            "first-focus", "first-habit", "first-daily", "first-gear",
+            "class-picked", "focus-100", "focus-1000", "marathon",
+            "streak-7", "streak-21", "perfect-day", "clicker-50",
+        } == set(badges)
+        assert all(row["earned_at"] is None for row in badges.values())
+
+    async def test_scored_event_grants_first_focus(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        profile = await _score_event(authenticated_async_client, "e-ach-1")
+        # Badge gold lands on the same profile read.
+        assert profile["gold"] == pytest.approx(12.0)  # 2 phase + 10 badge
+        badges = await _badges(authenticated_async_client)
+        assert badges["first-focus"]["earned_at"] is not None
+        assert badges["focus-100"]["earned_at"] is None  # 10 < 100 minutes
+
+    async def test_grants_are_idempotent(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _score_event(authenticated_async_client, "e-ach-2a")
+        await _score_event(authenticated_async_client, "e-ach-2b")
+        row = await _profile_row(db, confirmed_user["id"])
+        # Two scored phases (4 gold) + ONE first-focus reward (10) — no dup.
+        assert row.gold == pytest.approx(14.0)
+        result = await db.execute(
+            select(func.count())
+            .select_from(UserAchievement)
+            .where(UserAchievement.user_id == confirmed_user["id"])
+        )
+        assert result.scalar_one() == 1
+
+    async def test_level_tier_grants(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10)
+        profile = await _score_event(authenticated_async_client, "e-ach-3")
+        assert profile["gold"] == pytest.approx(10 * 0.2 * 1 + 10 + 25)
+        badges = await _badges(authenticated_async_client)
+        assert badges["level-10"]["earned_at"] is not None
+        assert badges["level-25"]["earned_at"] is None
+
+    async def test_marathon_grants_on_long_phase(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-ach-4",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"minutes": 50, "difficulty": "easy"},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200
+        badges = await _badges(authenticated_async_client)
+        assert badges["marathon"]["earned_at"] is not None
+        assert badges["first-focus"]["earned_at"] is not None
+
+    async def test_streak_and_perfect_day(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        daily = Daily(user_id=confirmed_user["id"], title="d", streak=8, active=True)
+        db.add(daily)
+        await db.flush()
+        db.add(
+            DailyCheck(
+                daily_id=daily.id,
+                daily_item_id=None,
+                check_date=date(2025, 12, 31),
+                done=True,
+            )
+        )
+        await db.commit()
+        await _score_event(authenticated_async_client, "e-ach-5")
+        badges = await _badges(authenticated_async_client)
+        assert badges["streak-7"]["earned_at"] is not None
+        assert badges["streak-21"]["earned_at"] is None
+        assert badges["perfect-day"]["earned_at"] is not None
+
+    async def test_gear_buy_grants_first_gear(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=100.0)
+        await _buy(authenticated_async_client, "all-shield-1")
+        badges = await _badges(authenticated_async_client)
+        assert badges["first-gear"]["earned_at"] is not None
+
+    async def test_class_pick_grants_badge(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10)
+        response = await authenticated_async_client.post(
+            f"{CHAR}/class", json={"game_class": "rogue"}
+        )
+        assert response.status_code == 200
+        # level-10 + class-picked grant at the pick (25 + 15 gold).
+        assert response.json()["gold"] == pytest.approx(40.0)
+        badges = await _badges(authenticated_async_client)
+        assert badges["class-picked"]["earned_at"] is not None
