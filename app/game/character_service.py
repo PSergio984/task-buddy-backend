@@ -356,14 +356,51 @@ async def set_equipped(
     user_gear.equipped = on
 
 
+async def set_costume(db: AsyncSession, user_id: int, key: str, on: bool) -> None:
+    """Flag or clear an owned item's costume look; ValueError when illegal.
+
+    One costume per slot — flagging bumps the slot's current costume. No
+    class lock: the flag is visual only, and owned pieces were legitimately
+    bought under some class.
+    """
+    item = await game_crud.get_gear_item(db, key)
+    if item is None:
+        raise ValueError(f"unknown gear item '{key}'")
+    user_gear = await game_crud.get_user_gear(db, user_id, item.id)
+    if user_gear is None:
+        raise ValueError("item not owned")
+    if on:
+        # One per slot: bump the current costume, then take the slot.
+        result = await db.execute(
+            select(UserGear)
+            .join(GearItem, UserGear.gear_item_id == GearItem.id)
+            .where(
+                UserGear.user_id == user_id,
+                UserGear.costume.is_(True),
+                GearItem.slot == item.slot,
+                UserGear.id != user_gear.id,
+            )
+        )
+        for other in result.scalars():
+            other.costume = False
+    user_gear.costume = on
+
+
 async def list_catalog(db: AsyncSession, user_id: int) -> list[dict]:
-    """Catalog rows merged with the user's owned/equipped flags."""
+    """Catalog rows merged with the user's owned/equipped/costume flags."""
     await seed_gear_catalog(db)
     owned = {ug.gear_item_id: ug for ug in await game_crud.list_user_gear(db, user_id)}
     rows = []
     for item in await game_crud.list_gear_catalog(db):
         ug = owned.get(item.id)
-        rows.append({"item": item, "owned": ug is not None, "equipped": bool(ug and ug.equipped)})
+        rows.append(
+            {
+                "item": item,
+                "owned": ug is not None,
+                "equipped": bool(ug and ug.equipped),
+                "costume": bool(ug and ug.costume),
+            }
+        )
     return rows
 
 

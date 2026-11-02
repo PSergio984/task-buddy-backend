@@ -791,7 +791,7 @@ class ClassSelectIn(BaseModel):
 
 
 class GearItemRead(BaseModel):
-    """One catalog row merged with the viewer's owned/equipped flags."""
+    """One catalog row merged with the viewer's owned/equipped/costume flags."""
 
     model_config = ConfigDict(from_attributes=True)
 
@@ -805,6 +805,7 @@ class GearItemRead(BaseModel):
     losable: bool
     owned: bool
     equipped: bool
+    costume: bool
 
     @classmethod
     def from_row(cls, row: dict) -> "GearItemRead":
@@ -820,6 +821,7 @@ class GearItemRead(BaseModel):
             losable=bool(item.losable),
             owned=row["owned"],
             equipped=row["equipped"],
+            costume=row["costume"],
         )
 
 
@@ -843,6 +845,14 @@ class GearEquipIn(BaseModel):
 
     key: str = Field(min_length=1, max_length=64)
     equipped: bool = True
+
+
+class GearCostumeIn(BaseModel):
+    """Show (costume=true) or hide (false) an owned item's look; one per
+    slot. Visual only — independent of the equipped flag."""
+
+    key: str = Field(min_length=1, max_length=64)
+    costume: bool = True
 
 
 class AchievementRead(BaseModel):
