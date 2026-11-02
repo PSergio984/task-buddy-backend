@@ -161,6 +161,15 @@ async def _refresh_bonus_on_gear_loss(
     return stat_bonus
 
 
+def _auto_distribute(profile: GameProfile) -> None:
+    """Spend unspent points as each event lands — post_score's distribute
+    step applied per event, so a mid-batch level-up feeds the NEXT event's
+    stats and can't dodge the death cascade's stat pick. Cheap no-op when
+    auto-allocation is off or nothing is pending."""
+    if profile.auto_allocate:
+        character_service.distribute_unspent(profile)
+
+
 async def ingest_events(
     db: AsyncSession,
     user_id: int,
@@ -255,6 +264,7 @@ async def ingest_events(
                         client_ts=event.client_ts,
                     )
                 )
+            _auto_distribute(profile)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
@@ -271,6 +281,7 @@ async def ingest_events(
                 rng,
             )
             stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, daily_outcome, stat_bonus)
+            _auto_distribute(profile)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
@@ -315,6 +326,7 @@ async def ingest_events(
                 habits=bound_habits,
                 budget=auto_budget,
             )
+        _auto_distribute(profile)
         seen.add(event.client_event_id)
         status_by_idx[idx] = "applied"
     if "applied" in status_by_idx.values():

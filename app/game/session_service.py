@@ -152,13 +152,14 @@ async def _persist_step(
     )
     db.add(row)
     # Focus-bound habits +click once per completed focus phase (resolve #44).
+    spent = 0
     if (
         event_type == "focus_phase_completed"
         and outcome.get("scored")
         and profile is not None
         and day is not None
     ):
-        return await habit_service.auto_click_bound(
+        spent = await habit_service.auto_click_bound(
             db,
             user_id,
             profile,
@@ -171,7 +172,11 @@ async def _persist_step(
             server_extra={"session_id": session.id},
             budget=auto_budget,
         )
-    return 0
+    # Points earned mid-evaluation are spent before the NEXT step scores —
+    # the /events ingest loop's per-event ordering applied per step.
+    if profile is not None and profile.auto_allocate:
+        character_service.distribute_unspent(profile)
+    return spent
 
 
 async def _evaluate(

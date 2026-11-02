@@ -1,5 +1,6 @@
 """API tests for the character sheet: stat allocation, class, respec (#64)."""
 
+import random
 from datetime import date, datetime, timedelta, timezone
 
 import pytest
@@ -7,7 +8,7 @@ from httpx import AsyncClient
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.game import achievements, character_service
+from app.game import achievements, character_service, service
 from app.models.game import (
     Achievement,
     Daily,
@@ -199,6 +200,51 @@ class TestAutoAllocate:
             profile["str_stat"] + profile["int_stat"] + profile["con_stat"] + profile["per_stat"]
         )
         assert allocated == 1
+
+    async def test_batch_level_up_distributes_before_next_event(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """Mid-batch auto-distribute: a level-up point earned by event A is
+        allocated before event B in the SAME batch scores — sequential
+        single-request ordering. str_stat=1 pre-allocated so the point lands
+        on INT (+2.5% XP — a deterministic, crit-free signal)."""
+        monkeypatch.setattr(service, "_rng", random.Random(0))
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], auto_allocate=True, str_stat=1)
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-mid-a",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"minutes": 25, "difficulty": "easy"},
+                    },
+                    {
+                        "client_event_id": "e-mid-b",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:01:00Z",
+                        "payload": {"minutes": 20, "difficulty": "easy"},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        # Event A: xp 25 -> level 2 + one point, auto-allocated to INT before
+        # event B scores. B pays round(20 * 1.025) = 21 with the point in —
+        # scored without it, B would pay 20.
+        outcome = await _outcome(db, confirmed_user["id"], "e-mid-b")
+        assert outcome["xp"] == 21
+        profile = response.json()["profile"]
+        assert profile["level"] == 2
+        assert profile["xp"] == 21
+        assert profile["int_stat"] == 1
+        assert profile["unspent_stat_points"] == 0
 
 
 class TestClassSelect:
