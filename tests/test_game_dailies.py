@@ -15,7 +15,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import daily_service, daily_sweep, service
+from app.game import daily_service, daily_sweep, engine, service
 from app.models.game import Daily, DailyCheck, DailyItem, DailyMiss, GameEvent, GameProfile
 from app.models.user import User
 
@@ -1263,3 +1263,52 @@ class TestDailySweep:
         assert misses[0].frozen is True
         assert (await _get_daily_row(db, daily.id)).streak == 5
         assert (await _profile(db, daily.user_id)).hp == 48
+
+    async def test_external_hp_change_between_units_is_not_clobbered(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A writer committing between two unit transactions must not be
+        lost: the locked profile select uses populate_existing — without
+        it a profile still in the identity map keeps its stale attributes
+        and the second unit's HP write overwrites the external commit.
+
+        The keep-alive wrapper holds a strong reference to the profile
+        across units: the identity map is weak, so without it the object
+        is collected between units and the stale read can't manifest.
+        """
+        _, daily = await _make_daily(db, created_days_ago=2, streak=5)
+        keepalive: list[GameProfile] = []
+        real_apply = engine.apply_event
+
+        def _keepalive_apply(profile, *args, **kwargs):
+            keepalive.append(profile)
+            return real_apply(profile, *args, **kwargs)
+
+        monkeypatch.setattr(engine, "apply_event", _keepalive_apply)
+        real_eval = daily_sweep._evaluate_unit
+        calls = {"n": 0}
+
+        async def _wrapped(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                # Unit-1's transaction is fully committed and unit-2's
+                # has not begun — an external write lands in this gap in
+                # a separate committed transaction.
+                from app.database import AsyncSessionLocal
+
+                async with AsyncSessionLocal() as s:
+                    prof = (
+                        await s.execute(
+                            select(GameProfile).where(GameProfile.user_id == daily.user_id)
+                        )
+                    ).scalar_one()
+                    prof.hp = 40
+                    await s.commit()
+            return await real_eval(*args, **kwargs)
+
+        monkeypatch.setattr(daily_sweep, "_evaluate_unit", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 2
+        assert len(await self._miss_rows(db, daily.id)) == 2
+        # 50 -2 (unit 1) -> external 40 -> -2 (unit 2): the second loss
+        # lands on the committed 40, not the stale in-memory 48.
+        assert (await _profile(db, daily.user_id)).hp == 38

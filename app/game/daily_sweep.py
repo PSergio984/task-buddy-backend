@@ -100,9 +100,17 @@ async def _evaluate_unit(
     # while writing marks (check endpoint + event ingest), so every
     # committed check is visible below and any uncommitted one waits
     # behind us — no gap where a check can slip in missed-and-done.
+    # populate_existing is load-bearing here: expire_on_commit=False keeps
+    # the profile loaded across each unit's commit, so without it this
+    # SELECT takes the row lock but keeps stale attributes and the next
+    # loss overwrites a concurrent write — the lost update the lock is
+    # meant to prevent.
     profile = (
         await db.execute(
-            select(GameProfile).where(GameProfile.user_id == daily.user_id).with_for_update()
+            select(GameProfile)
+            .where(GameProfile.user_id == daily.user_id)
+            .with_for_update()
+            .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
     # A check committed between the daily pre-read and the lock would land
