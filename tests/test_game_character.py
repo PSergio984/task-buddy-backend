@@ -320,3 +320,280 @@ class TestRespec:
         )
         assert response.status_code == 200
         assert response.json()["game_class"] == "rogue"
+
+
+# --- Gear (issue #64) ---------------------------------------------------------
+
+GEAR = "/api/v1/game/gear"
+
+
+async def _gear(client: AsyncClient) -> dict[str, dict]:
+    """Catalog keyed by item key after one seeded GET."""
+    response = await client.get(GEAR)
+    assert response.status_code == 200, response.text
+    return {row["key"]: row for row in response.json()}
+
+
+async def _buy(client: AsyncClient, key: str) -> dict:
+    response = await client.post(f"{GEAR}/buy", json={"key": key})
+    assert response.status_code == 200, response.text
+    return {row["key"]: row for row in response.json()}[key]
+
+
+class TestGearCatalog:
+    async def test_catalog_seeds_and_covers_slots(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        items = await _gear(authenticated_async_client)
+        assert len(items) == 24
+        # All four class ladders present plus all-class fillers.
+        klasses = {row["klass"] for row in items.values()}
+        assert klasses == {"warrior", "mage", "healer", "rogue", "all"}
+        # Every one of the seven slots is fillable for any class.
+        warrior_slots = {r["slot"] for r in items.values() if r["klass"] in ("warrior", "all")}
+        assert warrior_slots == {
+            "weapon", "shield", "head", "armor", "body", "back", "eyewear"
+        }
+
+    async def test_catalog_is_idempotent(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        first = await _gear(authenticated_async_client)
+        second = await _gear(authenticated_async_client)
+        assert [r["key"] for r in second.values()] == [r["key"] for r in first.values()]
+
+
+class TestGearBuy:
+    async def test_buy_debits_gold_and_marks_owned(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=150.0)
+        item = await _buy(authenticated_async_client, "all-shield-1")
+        assert item["owned"] is True
+        assert item["equipped"] is False
+        row = await _profile_row(db, confirmed_user["id"])
+        assert row.gold == pytest.approx(100.0)
+
+    async def test_buy_rejects_insufficient_gold(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=10.0)
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "all-shield-1"}
+        )
+        assert response.status_code == 400
+        row = await _profile_row(db, confirmed_user["id"])
+        assert row.gold == pytest.approx(10.0)
+
+    async def test_buy_rejects_duplicate(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=500.0)
+        await _buy(authenticated_async_client, "all-shield-1")
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "all-shield-1"}
+        )
+        assert response.status_code == 400
+
+    async def test_buy_rejects_wrong_class(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(
+            db, confirmed_user["id"], level=10, game_class="mage", gold=500.0
+        )
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "warrior-weapon-1"}
+        )
+        assert response.status_code == 400
+        # Classless users can't buy class-locked pieces either.
+        await _set_profile(db, confirmed_user["id"], game_class=None)
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "warrior-weapon-1"}
+        )
+        assert response.status_code == 400
+
+    async def test_buy_enforces_ladder_order(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(
+            db, confirmed_user["id"], level=10, game_class="warrior", gold=500.0
+        )
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "warrior-weapon-2"}
+        )
+        assert response.status_code == 400
+        await _buy(authenticated_async_client, "warrior-weapon-1")
+        item = await _buy(authenticated_async_client, "warrior-weapon-2")
+        assert item["owned"] is True
+
+    async def test_buy_unknown_key_404(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "mystery-sword"}
+        )
+        assert response.status_code == 404
+
+
+class TestGearEquip:
+    async def _setup_warrior(
+        self, client: AsyncClient, db: AsyncSession, user_id: int
+    ) -> None:
+        await _ensure_profile(client)
+        await _set_profile(db, user_id, level=10, game_class="warrior", gold=600.0)
+        await _buy(client, "warrior-weapon-1")
+        await _buy(client, "all-shield-1")
+
+    async def test_equip_and_unequip(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1", "equipped": True}
+        )
+        assert response.status_code == 200, response.text
+        items = {r["key"]: r for r in response.json()}
+        assert items["warrior-weapon-1"]["equipped"] is True
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1", "equipped": False}
+        )
+        items = {r["key"]: r for r in response.json()}
+        assert items["warrior-weapon-1"]["equipped"] is False
+
+    async def test_equip_bumps_same_slot(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await _buy(authenticated_async_client, "warrior-weapon-2")
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
+        )
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-2"}
+        )
+        items = {r["key"]: r for r in response.json()}
+        # One per slot: the tier-1 sword yields to the tier-2.
+        assert items["warrior-weapon-2"]["equipped"] is True
+        assert items["warrior-weapon-1"]["equipped"] is False
+
+    async def test_equip_rejects_unowned(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-armor-1"}
+        )
+        assert response.status_code == 400
+
+    async def test_respec_unequips_class_locked_pieces(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
+        )
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "all-shield-1"}
+        )
+        response = await authenticated_async_client.post(f"{CHAR}/respec")
+        assert response.status_code == 200, response.text
+        items = await _gear(authenticated_async_client)
+        # Class piece stripped; the 'all' shield stays worn.
+        assert items["warrior-weapon-1"]["equipped"] is False
+        assert items["all-shield-1"]["equipped"] is True
+
+
+class TestGearScoring:
+    async def test_equipped_int_boosts_xp(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Equipped stats feed scoring: mage weapon INT raises XP earned."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(
+            db, confirmed_user["id"], level=10, game_class="mage", gold=200.0
+        )
+        await _buy(authenticated_async_client, "mage-weapon-1")  # int +3
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "mage-weapon-1"}
+        )
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-xp",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        # xp = round(10 * 1 * 1 * (1 + 0.025*3) * 1) = 11 — gear INT counts.
+        assert response.json()["profile"]["xp"] == 11
+
+    async def test_equipped_con_reduces_miss_damage(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], gold=150.0, hp=50.0)
+        await _buy(authenticated_async_client, "all-shield-1")  # con +1
+        await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "all-shield-1"}
+        )
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-dmg",
+                        "type": "damage",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"amount": 4},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        # shield = 1 - 1/250 -> floor(4 * 0.996) = 3 lost.
+        assert response.json()["profile"]["hp"] == pytest.approx(47.0)

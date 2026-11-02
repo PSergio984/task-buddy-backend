@@ -37,7 +37,7 @@ from typing import Any, TypeGuard
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import engine
+from app.game import character_service, engine
 from app.game.engine import GameRates
 from app.game.habit_service import clean_extra
 from app.models.game import Daily, DailyCheck, DailyItem, GameEvent, GameProfile
@@ -359,6 +359,7 @@ async def _apply_share(
         rng.random(),
         rng,
         today,
+        stat_bonus=await character_service.gear_stat_bonus(db, daily.user_id),
     )
     return outcome, share
 

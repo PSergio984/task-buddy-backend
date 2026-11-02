@@ -734,3 +734,49 @@ class ClassSelectIn(BaseModel):
     """The level-10 class pick; respec re-opens this choice for gold."""
 
     game_class: Literal["warrior", "mage", "healer", "rogue"]
+
+
+class GearItemRead(BaseModel):
+    """One catalog row merged with the viewer's owned/equipped flags."""
+
+    model_config = ConfigDict(from_attributes=True)
+
+    key: str
+    name: str
+    slot: str
+    klass: str
+    tier: int
+    stats: dict
+    cost: int
+    losable: bool
+    owned: bool
+    equipped: bool
+
+    @classmethod
+    def from_row(cls, row: dict) -> "GearItemRead":
+        item = row["item"]
+        return cls(
+            key=item.key,
+            name=item.name,
+            slot=item.slot,
+            klass=item.klass,
+            tier=item.tier,
+            stats=item.stats or {},
+            cost=item.cost,
+            losable=bool(item.losable),
+            owned=row["owned"],
+            equipped=row["equipped"],
+        )
+
+
+class GearBuyIn(BaseModel):
+    """Buy one catalog item for gold."""
+
+    key: str = Field(min_length=1, max_length=64)
+
+
+class GearEquipIn(BaseModel):
+    """Wear (equipped=true) or remove (false) an owned item; one per slot."""
+
+    key: str = Field(min_length=1, max_length=64)
+    equipped: bool = True

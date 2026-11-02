@@ -132,7 +132,16 @@ async def _persist_step(
         # earnings already booked on the newer day.
         step_day = at.date()
         day = max(step_day, profile.totals_day) if profile.totals_day else step_day
-        outcome = apply_event(profile, event_type, payload, rates, _rng.random(), _rng, day)
+        outcome = apply_event(
+            profile,
+            event_type,
+            payload,
+            rates,
+            _rng.random(),
+            _rng,
+            day,
+            stat_bonus=await character_service.gear_stat_bonus(db, user_id),
+        )
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,

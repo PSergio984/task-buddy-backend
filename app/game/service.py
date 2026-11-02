@@ -179,6 +179,8 @@ async def ingest_events(
     # otherwise multiply into tens of thousands of writes inside this
     # profile-locked transaction (see habit_service.MAX_AUTO_CLICKS_PER_EVAL).
     auto_budget = habit_service.MAX_AUTO_CLICKS_PER_EVAL
+    # Gear is resolved once per batch — equipment can't change mid-transaction.
+    stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     for idx, event in ordered:
         if event.client_event_id in seen:
             status_by_idx[idx] = "duplicate"
@@ -202,6 +204,7 @@ async def ingest_events(
                     client_ts=event.client_ts,
                     rng=rng,
                     extra=event.payload,
+                    stat_bonus=stat_bonus,
                 )
             else:
                 # Record applied-but-unscored instead of scoring a claim the
@@ -247,7 +250,14 @@ async def ingest_events(
             status_by_idx[idx] = "applied"
             continue
         outcome = engine.apply_event(
-            profile, event.type, event.payload, rates, rng_roll=rng.random(), rng=rng, today=today
+            profile,
+            event.type,
+            event.payload,
+            rates,
+            rng_roll=rng.random(),
+            rng=rng,
+            today=today,
+            stat_bonus=stat_bonus,
         )
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras

@@ -16,6 +16,9 @@ from app.schemas.game import (
     CharacterUpdateIn,
     ClassSelectIn,
     GameProfileRead,
+    GearBuyIn,
+    GearEquipIn,
+    GearItemRead,
     StatAllocateIn,
 )
 from app.security import get_confirmed_user
@@ -125,3 +128,68 @@ async def respec_class(
     await db.commit()
     logger.info("class respec: user=%s gold=%s", user_id, profile.gold)
     return _profile_read(profile, rates)
+
+
+# --- Gear ---------------------------------------------------------------------
+
+
+def _catalog_read(rows: list[dict]) -> list[GearItemRead]:
+    return [GearItemRead.from_row(row) for row in rows]
+
+
+@router.get("/gear", response_model=list[GearItemRead])
+@limiter.limit("60/minute")
+async def list_gear(
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[GearItemRead]:
+    """Full catalog with the viewer's owned/equipped flags merged in."""
+    return _catalog_read(await character_service.list_catalog(db, current_user.id))
+
+
+@router.post("/gear/buy", response_model=list[GearItemRead])
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def buy_gear(
+    body: GearBuyIn,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[GearItemRead]:
+    """Debit gold for a catalog item: class lock, ladder order, balance."""
+    user_id = current_user.id
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    await character_service.seed_gear_catalog(db)
+    item = await game_crud.get_gear_item(db, body.key)
+    if item is None:
+        raise HTTPException(status_code=404, detail=f"unknown gear item '{body.key}'")
+    try:
+        await character_service.buy_gear(db, user_id, profile, item)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
+    logger.info("gear bought: user=%s key=%s", user_id, body.key)
+    return _catalog_read(await character_service.list_catalog(db, user_id))
+
+
+@router.post("/gear/equip", response_model=list[GearItemRead])
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def equip_gear(
+    body: GearEquipIn,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> list[GearItemRead]:
+    """Wear or remove an owned item; equipping bumps the slot's occupant."""
+    user_id = current_user.id
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    try:
+        await character_service.set_equipped(db, user_id, profile, body.key, body.equipped)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
+    logger.info("gear equipped: user=%s key=%s on=%s", user_id, body.key, body.equipped)
+    return _catalog_read(await character_service.list_catalog(db, user_id))

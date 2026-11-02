@@ -55,7 +55,10 @@ async def get_or_create_profile(
     if for_update:
         # Postgres-only clause (dropped silently on SQLite — the test
         # backend serializes writes at the file level anyway).
-        query = query.with_for_update()
+        # populate_existing is load-bearing: expire_on_commit=False means a
+        # profile already in the identity map (e.g. an earlier read this
+        # request) would come back stale without the forced fresh read.
+        query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     profile = result.scalar_one_or_none()
     if profile is not None:
@@ -378,3 +381,44 @@ async def list_equipped_gear(db: AsyncSession, user_id: int) -> list[tuple[UserG
         .where(UserGear.user_id == user_id, UserGear.equipped.is_(True))
     )
     return list(result.all())
+
+
+async def list_gear_catalog(db: AsyncSession) -> list[GearItem]:
+    """Every catalog row, ordered for a stable client display."""
+    result = await db.execute(
+        select(GearItem).order_by(GearItem.klass, GearItem.slot, GearItem.tier)
+    )
+    return list(result.scalars().all())
+
+
+async def get_gear_item(db: AsyncSession, key: str) -> GearItem | None:
+    result = await db.execute(select(GearItem).where(GearItem.key == key))
+    return result.scalar_one_or_none()
+
+
+async def find_gear_item(
+    db: AsyncSession, *, slot: str, klass: str, tier: int
+) -> GearItem | None:
+    """Ladder lookup: the piece one tier back in the same slot+class."""
+    result = await db.execute(
+        select(GearItem).where(
+            GearItem.slot == slot, GearItem.klass == klass, GearItem.tier == tier
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def get_user_gear(
+    db: AsyncSession, user_id: int, gear_item_id: int
+) -> UserGear | None:
+    result = await db.execute(
+        select(UserGear).where(
+            UserGear.user_id == user_id, UserGear.gear_item_id == gear_item_id
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_user_gear(db: AsyncSession, user_id: int) -> list[UserGear]:
+    result = await db.execute(select(UserGear).where(UserGear.user_id == user_id))
+    return list(result.scalars().all())

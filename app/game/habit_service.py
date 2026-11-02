@@ -15,6 +15,7 @@ from typing import Any, Literal, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
+from app.game import character_service
 from app.game.engine import GameRates, apply_event
 from app.models.game import GameEvent, GameProfile, Habit, HabitDirection
 
@@ -76,6 +77,7 @@ async def score_click(
     rng: random.Random | None = None,
     extra: dict | None = None,
     server_extra: dict | None = None,
+    stat_bonus: dict | None = None,
 ) -> dict:
     """Apply one click through the engine; write back drift + counter; ledger row.
 
@@ -89,6 +91,8 @@ async def score_click(
     drift sequentially and a concurrently committed row update can't be lost.
     """
     rng = rng if rng is not None else _rng
+    if stat_bonus is None:
+        stat_bonus = await character_service.gear_stat_bonus(db, habit.user_id)
     await db.flush()
     await db.refresh(habit)
     before = float(habit.value)
@@ -100,6 +104,7 @@ async def score_click(
         rng_roll=rng.random(),
         rng=rng,
         today=today,
+        stat_bonus=stat_bonus,
     )
     habit.counter += 1 if direction == "positive" else -1
     habit.value = float(outcome["new_value"])
@@ -161,6 +166,8 @@ async def auto_click_bound(
     candidates = habits if habits is not None else await game_crud.list_habits(db, user_id)
     limit = MAX_AUTO_CLICKS_PER_EVAL if budget is None else budget
     digest = hashlib.sha1(source_eid.encode(), usedforsecurity=False).hexdigest()[:16]
+    # Resolve the gear bonus once — a fanout must not re-query per click.
+    stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     spent = 0
     for habit in candidates:
         if spent >= limit:
@@ -178,6 +185,7 @@ async def auto_click_bound(
             client_ts=client_ts,
             rng=rng,
             server_extra={**(server_extra or {}), "auto": True},
+            stat_bonus=stat_bonus,
         )
         spent += 1
     return spent
