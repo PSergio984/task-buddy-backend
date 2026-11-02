@@ -215,11 +215,6 @@ def eval_due(unit: date, now: datetime, grace_hours: int = GRACE_HOURS) -> bool:
     return now >= deadline
 
 
-def is_schedulable_day(daily: Daily, day: date) -> bool:
-    rec = parse_recurrence(daily.recurrence)
-    return rec is not None and is_schedulable(rec, day, daily_anchor(daily))
-
-
 # --- Check scoring ---------------------------------------------------------
 
 
@@ -413,10 +408,18 @@ async def score_check(
     share, first_completion, uncheck, reason = await _transition_marks(
         db, daily, len(items), item_id, check_date, done
     )
-    if first_completion and is_schedulable_day(daily, check_date):
-        # A day the sweep already charged as missed can't retro-credit the
+    rec = parse_recurrence(daily.recurrence)
+    if (
+        first_completion
+        and rec is not None
+        and is_schedulable(rec, check_date, daily_anchor(daily))
+    ):
+        # A unit the sweep already charged as missed can't retro-credit the
         # streak — the backfill check still pays share and marks completion.
-        if await game_crud.get_daily_miss(db, daily.id, check_date) is None:
+        # times_per_week keys its misses at the week's Sunday (the unit), so
+        # probe the unit containing check_date, not the raw day.
+        miss_day = week_end(check_date) if rec["kind"] == "times_per_week" else check_date
+        if await game_crud.get_daily_miss(db, daily.id, miss_day) is None:
             daily.streak += 1
     if reason is not None:
         outcome: dict = {"scored": False, "reason": reason}

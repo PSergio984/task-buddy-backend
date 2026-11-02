@@ -498,6 +498,42 @@ class TestDailyCheck:
         ).scalar_one()
         assert check.check_date == yesterday
 
+    async def test_backfill_after_missed_week_pays_without_streak(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict
+    ) -> None:
+        # A times_per_week miss is charged at the unit — the week's Sunday —
+        # not the missed day. A backfill landing mid-week inside a charged
+        # week still pays the share but can't retro-credit the streak, and
+        # neither can one landing exactly on the Sunday unit key.
+        daily = await _create(
+            authenticated_async_client, recurrence={"kind": "times_per_week", "count": 3}
+        )
+        sunday = daily_service.week_end(_today() - timedelta(days=7))
+        midweek = sunday - timedelta(days=3)
+        await db.execute(
+            update(Daily).where(Daily.id == daily["id"]).values(created_at=_at(14), streak=5)
+        )
+        db.add(
+            DailyMiss(
+                daily_id=daily["id"],
+                user_id=confirmed_user["id"],
+                scheduled_day=sunday,
+                frozen=True,
+            )
+        )
+        await db.commit()
+        body = await _check(authenticated_async_client, daily["id"], check_date=midweek.isoformat())
+        assert body["profile"]["xp_today"] == 6  # share still pays
+        assert body["daily"]["streak"] == 5  # no retro streak credit
+        check = (
+            await db.execute(select(DailyCheck).where(DailyCheck.daily_id == daily["id"]))
+        ).scalar_one()
+        assert check.check_date == midweek
+
+        body = await _check(authenticated_async_client, daily["id"], check_date=sunday.isoformat())
+        assert body["profile"]["xp_today"] == 12  # the second day pays too
+        assert body["daily"]["streak"] == 5
+
     async def test_streak_bonus_scales_gold(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
