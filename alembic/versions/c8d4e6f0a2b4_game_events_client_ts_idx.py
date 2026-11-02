@@ -1,13 +1,15 @@
 """game_events_client_ts_idx
 
 Revision ID: c8d4e6f0a2b4
-Revises: b64a2c1e9f03
+Revises: c4e7a91f2b05
 Create Date: 2026-06-01 00:00:01.000000
 
-Event-index rider for the character work (issue #64): ingest applies each
-batch in (user_id, client_ts) order — this composite index keeps that sort
-(and timeline reads that range-scan client_ts) off the seq-scan path.
-Schema-only and reversible; the model mirrors it in
+Event-index rider for the character work (issue #64): the (user_id,
+client_ts) composite keeps the ledger's client_ts range scans off the
+seq-scan path — daily_service._paid_totals (via list_daily_check_events),
+the timeline's get_events_between markers, and the tracking module's
+per-day activity buckets. Ingest's per-batch ordering happens in Python,
+not SQL. Schema-only and reversible; the model mirrors it in
 GameEvent.__table_args__.
 """
 
@@ -18,7 +20,7 @@ from alembic import op
 
 # revision identifiers, used by Alembic.
 revision: str = "c8d4e6f0a2b4"
-down_revision: Union[str, Sequence[str], None] = "b64a2c1e9f03"
+down_revision: Union[str, Sequence[str], None] = "c4e7a91f2b05"
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 

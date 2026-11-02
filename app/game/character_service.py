@@ -11,17 +11,16 @@ across all four. Points never exceed STAT_POINT_CAP.
 """
 
 import random
-from datetime import date
 
-from sqlalchemy import insert, select
+from sqlalchemy import Insert, select
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
 from app.game import achievements, engine
 from app.game.engine import GameRates
 from app.models.game import GameProfile, GearItem, UserGear
-
-GEAR_SLOTS = ("weapon", "shield", "head", "armor", "body", "back", "eyewear")
 
 # Seeded content (issue #64): a short ladder per class on weapon/armor/head,
 # plus all-class fillers so every one of the seven slots can be worn. Ladder
@@ -79,20 +78,51 @@ GEAR_CATALOG: list[dict] = [
 ]
 
 
+# Columns the seed literal owns — `key` is the match anchor, `losable`
+# stays a schema-level default (not catalog data).
+_SEED_FIELDS = ("name", "slot", "klass", "tier", "stats", "cost")
+
+
+def _insert_missing(db: AsyncSession, rows: list[dict]) -> Insert:
+    """INSERT ... ON CONFLICT (key) DO NOTHING for the active dialect —
+    a concurrent seeder's committed rows win instead of 500ing this txn
+    (dialect switch per the budget.py precedent; both backends expose
+    on_conflict_do_nothing)."""
+    if db.get_bind().dialect.name == "postgresql":
+        return (
+            postgres_insert(GearItem)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["key"])
+        )
+    return (
+        sqlite_insert(GearItem)
+        .values(rows)
+        .on_conflict_do_nothing(index_elements=["key"])
+    )
+
+
 async def seed_gear_catalog(db: AsyncSession) -> None:
-    """Insert missing GEAR_CATALOG rows; idempotent on key.
+    """Upsert GEAR_CATALOG rows; the code literal is the single source.
 
     Runtime seeding (not a data migration) so SQLite test schemas, which
-    never run Alembic, get the same catalog prod does on first read. A
-    plain select-then-insert keeps this portable (no dialect INSERT
-    variants) — concurrent double-inserts just lose to the unique key.
+    never run Alembic, get the same catalog prod does on first read.
+    Missing keys insert; rows whose fields drifted from the literal update
+    in place — a catalog edit can't silently die on an already-seeded DB.
+
+    Persists on the caller's first committed write: GET-path inserts roll
+    back on seedless DBs (acceptable — self-heals on the first write).
     """
-    existing = set(
-        (await db.execute(select(GearItem.key))).scalars().all()
-    )
+    existing = {
+        row.key: row for row in (await db.execute(select(GearItem))).scalars().all()
+    }
+    for seed in GEAR_CATALOG:
+        item = existing.get(seed["key"])
+        if item is not None and any(getattr(item, f) != seed[f] for f in _SEED_FIELDS):
+            for field in _SEED_FIELDS:
+                setattr(item, field, seed[field])
     missing = [row for row in GEAR_CATALOG if row["key"] not in existing]
     if missing:
-        await db.execute(insert(GearItem).values(missing))
+        await db.execute(_insert_missing(db, missing))
 
 
 # --- Gear -------------------------------------------------------------------
@@ -338,8 +368,6 @@ async def post_score(
     db: AsyncSession,
     user_id: int,
     profile: GameProfile,
-    rates: GameRates,
-    today: date,
 ) -> None:
     """Post-scoring hook shared by every profile-mutating path.
 

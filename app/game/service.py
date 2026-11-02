@@ -326,9 +326,7 @@ async def ingest_events(
     if "applied" in status_by_idx.values():
         # Post-scoring hook (auto-distribute now, grant eval as it lands):
         # runs once per scored batch under the profile lock.
-        await character_service.post_score(
-            db, user_id, profile, rates, profile.totals_day or today
-        )
+        await character_service.post_score(db, user_id, profile)
     await db.flush()
     results = [
         GameEventResult(client_event_id=e.client_event_id, status=status_by_idx[i])

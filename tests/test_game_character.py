@@ -7,7 +7,16 @@ from httpx import AsyncClient
 from sqlalchemy import func, select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.game import Daily, DailyCheck, GameEvent, GameProfile, UserAchievement
+from app.game import achievements, character_service
+from app.models.game import (
+    Achievement,
+    Daily,
+    DailyCheck,
+    GameEvent,
+    GameProfile,
+    GearItem,
+    UserAchievement,
+)
 
 GAME = "/api/v1/game"
 CHAR = "/api/v1/game/character"
@@ -368,7 +377,7 @@ async def _gear(client: AsyncClient) -> dict[str, dict]:
 async def _buy(client: AsyncClient, key: str) -> dict:
     response = await client.post(f"{GEAR}/buy", json={"key": key})
     assert response.status_code == 200, response.text
-    return {row["key"]: row for row in response.json()}[key]
+    return {row["key"]: row for row in response.json()["items"]}[key]
 
 
 class TestGearCatalog:
@@ -393,6 +402,46 @@ class TestGearCatalog:
         second = await _gear(authenticated_async_client)
         assert [r["key"] for r in second.values()] == [r["key"] for r in first.values()]
 
+    async def test_seed_upserts_drifted_rows(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A second ensure after a code-literal edit updates the DB row —
+        the GEAR_CATALOG literal is authoritative over already-seeded data."""
+        await _ensure_profile(authenticated_async_client)
+        await _gear(authenticated_async_client)
+        patched = [dict(row) for row in character_service.GEAR_CATALOG]
+        drifted = next(row for row in patched if row["key"] == "all-shield-1")
+        drifted["cost"] += 999
+        monkeypatch.setattr(character_service, "GEAR_CATALOG", patched)
+
+        items = await _gear(authenticated_async_client)
+        assert items["all-shield-1"]["cost"] == drifted["cost"]
+        # A real write commits the upsert — the stored row itself changed.
+        await _set_profile(db, confirmed_user["id"], gold=500.0)
+        await _buy(authenticated_async_client, "all-body-1")
+        row = (
+            await db.execute(select(GearItem).where(GearItem.key == "all-shield-1"))
+        ).scalar_one()
+        assert row.cost == drifted["cost"]
+
+    async def test_seed_insert_tolerates_race(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """Concurrency-shaped: the insert collides with rows a racing txn
+        already committed — ON CONFLICT DO NOTHING, not an IntegrityError."""
+        await _gear(authenticated_async_client)
+        rows = [dict(r) for r in character_service.GEAR_CATALOG]
+        await db.execute(character_service._insert_missing(db, rows))
+        await db.commit()
+        count = (
+            await db.execute(select(func.count()).select_from(GearItem))
+        ).scalar_one()
+        assert count == len(rows)
+
 
 class TestGearBuy:
     async def test_buy_debits_gold_and_marks_owned(
@@ -403,11 +452,18 @@ class TestGearBuy:
     ) -> None:
         await _ensure_profile(authenticated_async_client)
         await _set_profile(db, confirmed_user["id"], gold=150.0)
-        item = await _buy(authenticated_async_client, "all-shield-1")
+        response = await authenticated_async_client.post(
+            f"{GEAR}/buy", json={"key": "all-shield-1"}
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        item = {r["key"]: r for r in body["items"]}["all-shield-1"]
         assert item["owned"] is True
         assert item["equipped"] is False
-        row = await _profile_row(db, confirmed_user["id"])
+        # The debit lands on the response profile — no follow-up GET needed.
         # 150 - 50 cost + 10 first-gear badge.
+        assert body["profile"]["gold"] == pytest.approx(110.0)
+        row = await _profile_row(db, confirmed_user["id"])
         assert row.gold == pytest.approx(110.0)
 
     async def test_buy_rejects_insufficient_gold(
@@ -508,12 +564,16 @@ class TestGearEquip:
             f"{GEAR}/equip", json={"key": "warrior-weapon-1", "equipped": True}
         )
         assert response.status_code == 200, response.text
-        items = {r["key"]: r for r in response.json()}
+        body = response.json()
+        # Profile rides the mutation response — the HUD reads stats/gold
+        # without a follow-up GET.
+        assert body["profile"]["level"] == 10
+        items = {r["key"]: r for r in body["items"]}
         assert items["warrior-weapon-1"]["equipped"] is True
         response = await authenticated_async_client.post(
             f"{GEAR}/equip", json={"key": "warrior-weapon-1", "equipped": False}
         )
-        items = {r["key"]: r for r in response.json()}
+        items = {r["key"]: r for r in response.json()["items"]}
         assert items["warrior-weapon-1"]["equipped"] is False
 
     async def test_equip_bumps_same_slot(
@@ -530,7 +590,7 @@ class TestGearEquip:
         response = await authenticated_async_client.post(
             f"{GEAR}/equip", json={"key": "warrior-weapon-2"}
         )
-        items = {r["key"]: r for r in response.json()}
+        items = {r["key"]: r for r in response.json()["items"]}
         # One per slot: the tier-1 sword yields to the tier-2.
         assert items["warrior-weapon-2"]["equipped"] is True
         assert items["warrior-weapon-1"]["equipped"] is False
@@ -841,6 +901,68 @@ class TestAchievements:
         assert response.json()["gold"] == pytest.approx(40.0)
         badges = await _badges(authenticated_async_client)
         assert badges["class-picked"]["earned_at"] is not None
+
+    async def test_malformed_first_criteria_never_grants(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """criteria={'kind': 'first'} with no 'what' must skip, not KeyError."""
+        await _ensure_profile(authenticated_async_client)
+        db.add(
+            Achievement(
+                key="bad-first",
+                name="broken",
+                description="first-criteria without a what",
+                criteria={"kind": "first"},
+                gold_reward=5,
+            )
+        )
+        await db.commit()
+        profile = await _score_event(authenticated_async_client, "e-bad-crit")
+        # No 500 — and the malformed badge never grants.
+        assert profile["gold"] == pytest.approx(12.0)  # 2 phase + 10 first-focus
+        badges = await _badges(authenticated_async_client)
+        assert badges["bad-first"]["earned_at"] is None
+
+    async def test_registry_upserts_drifted_rows(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A second ensure after a code-literal edit updates the DB row —
+        the ACHIEVEMENTS literal is authoritative over already-seeded data."""
+        await _badges(authenticated_async_client)
+        patched = [dict(row) for row in achievements.ACHIEVEMENTS]
+        drifted = next(row for row in patched if row["key"] == "focus-100")
+        drifted["gold_reward"] += 555
+        monkeypatch.setattr(achievements, "ACHIEVEMENTS", patched)
+
+        badges = await _badges(authenticated_async_client)
+        assert badges["focus-100"]["gold_reward"] == drifted["gold_reward"]
+        # A real write commits the upsert — the stored row itself changed.
+        await _score_event(authenticated_async_client, "e-upsert-ach")
+        row = (
+            await db.execute(select(Achievement).where(Achievement.key == "focus-100"))
+        ).scalar_one()
+        assert row.gold_reward == drifted["gold_reward"]
+
+    async def test_registry_insert_tolerates_race(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """Concurrency-shaped: the insert collides with rows a racing txn
+        already committed — ON CONFLICT DO NOTHING, not an IntegrityError."""
+        await _badges(authenticated_async_client)
+        rows = [dict(r) for r in achievements.ACHIEVEMENTS]
+        await db.execute(achievements._insert_missing(db, rows))
+        await db.commit()
+        count = (
+            await db.execute(select(func.count()).select_from(Achievement))
+        ).scalar_one()
+        assert count == len(rows)
 
 
 # --- Death cascade (issue #64) -------------------------------------------------

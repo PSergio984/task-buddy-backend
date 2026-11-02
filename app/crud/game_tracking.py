@@ -7,8 +7,8 @@ not by loading raw rows: the result is bounded by the 366-day window, while
 the scanned rows are bounded by (user_id, ts range).
 
 Index assumptions: tbl_game_events is filtered on (user_id, client_ts) —
-ix_game_events_user_feed leads with user_id, and the per-user range is small
-enough for the residual scan. Focus phases are reached through
+ix_game_events_user_client_ts leads with user_id, and the per-user range is
+small enough for the residual scan. Focus phases are reached through
 tbl_focus_sessions.user_id (indexed) then the session_id index on phases.
 """
 

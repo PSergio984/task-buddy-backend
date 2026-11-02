@@ -2,8 +2,11 @@
 
 Pure functions over a GameProfile instance — no DB access, so the combinatorial
 rules (curve, crits, shields, drift, death cascade, caps) are unit-testable
-directly. Every award/loss in the game flows through here; all tunables come
-from a GameRates loaded out of game_config, never hardcoded constants.
+directly. Every *scored* award/loss in the game flows through here; all
+tunables come from a GameRates loaded out of game_config, never hardcoded
+constants. One deliberate exception: achievement gold grants in
+achievements.evaluate bypass award_gold entirely — badges must pay out
+even on a capped day, so they don't touch gold_today/the daily cap.
 
 Formulas verified against Habitica's common scoring code, see
 research/habitica-formulas.md (wayfinder #49 research).
@@ -46,9 +49,9 @@ CLASSES: dict[str, tuple[str, str]] = {
 def level_stat_bonus(level: int) -> int:
     """Level-derived base per stat: floor(min(level, 100) / 2).
 
-    Habitica's capByLevel — max +50 at level 100. Read-only sheet data
-    (surfaced as base_stats on the profile read): scoring stays on
-    allocated + gear so the economy the earlier tickets pinned is stable.
+    Habitica's capByLevel — max +50 at level 100. Sheet data only:
+    scoring stays on allocated + gear so the economy the earlier
+    tickets pinned is stable.
     """
     return min(level, 100) // 2
 

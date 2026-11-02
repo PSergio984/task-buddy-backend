@@ -9,10 +9,8 @@ from pydantic import BaseModel, ConfigDict, Field, field_validator, model_valida
 
 from app.game.engine import (
     SERVER_EVENT_TYPES,
-    STAT_COLUMN,
     STAT_KEYS,
     STAT_POINT_CAP,
-    level_stat_bonus,
 )
 from app.models.game import GameProfile, HabitDirection
 
@@ -114,9 +112,6 @@ class GameProfileRead(BaseModel):
     game_class: str | None
     class_unlocked: bool
     auto_allocate: bool
-    # Sheet display: allocated + level-derived base (floor(level/2), cap 50).
-    # Gear bonuses feed the engine directly and aren't folded in here.
-    base_stats: dict
     avatar_config: dict
     xp_today: int
     gold_today: float
@@ -146,10 +141,6 @@ class GameProfileRead(BaseModel):
             game_class=profile.game_class,
             class_unlocked=bool(profile.class_unlocked),
             auto_allocate=bool(profile.auto_allocate),
-            base_stats={
-                key: getattr(profile, column) + level_stat_bonus(profile.level or 1)
-                for key, column in STAT_COLUMN.items()
-            },
             avatar_config=profile.avatar_config or {},
             xp_today=profile.xp_today if is_today else 0,
             gold_today=profile.gold_today if is_today else 0.0,
@@ -769,6 +760,15 @@ class GearItemRead(BaseModel):
             owned=row["owned"],
             equipped=row["equipped"],
         )
+
+
+class GearListResponse(BaseModel):
+    """Post-mutation catalog plus authoritative totals for the HUD —
+    buy/equip change gold/stats, so the profile rides along (sibling of
+    HabitClickResponse/DailyCheckResponse)."""
+
+    items: list[GearItemRead]
+    profile: GameProfileRead
 
 
 class GearBuyIn(BaseModel):

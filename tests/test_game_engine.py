@@ -206,8 +206,9 @@ class TestDeathCascade:
             assert (profile.int_stat, profile.str_stat) in {(2, 3), (3, 2)}
         assert results == {"int_stat", "str_stat"}  # both picks reachable
 
-    def test_death_reports_no_gear_lost_yet(self, rates: GameRates) -> None:
-        # The gear resolver lands in a later ticket; until then nothing is lost.
+    def test_death_engine_leaves_gear_flag_unset(self, rates: GameRates) -> None:
+        # The engine is DB-free — gear_lost stays False here; callers flip
+        # it via character_service.resolve_death_gear against real rows.
         profile = make_profile(level=8, hp=1.0)
         outcome = apply_hp_loss(profile, 10.0, rates, rng=random.Random(0))
         assert outcome["died"] is True

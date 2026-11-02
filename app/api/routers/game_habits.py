@@ -212,9 +212,7 @@ async def click_habit(
         eid=eid,
         client_ts=now,
     )
-    await character_service.post_score(
-        db, user_id, profile, rates, profile.totals_day or now.date()
-    )
+    await character_service.post_score(db, user_id, profile)
     await db.commit()
     # updated_at is an onupdate column — expired post-commit, refetch it.
     await db.refresh(habit)

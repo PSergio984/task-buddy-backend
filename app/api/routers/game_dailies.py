@@ -276,9 +276,7 @@ async def check_daily(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    await character_service.post_score(
-        db, user_id, profile, rates, profile.totals_day or today
-    )
+    await character_service.post_score(db, user_id, profile)
     await db.commit()
     await db.refresh(daily)
     logger.info(

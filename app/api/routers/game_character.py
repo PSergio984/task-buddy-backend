@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.config import RATE_LIMIT_GAME_EVENTS
+from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.dependencies import get_db
 from app.game import achievements, character_service, engine, service
@@ -20,6 +20,7 @@ from app.schemas.game import (
     GearBuyIn,
     GearEquipIn,
     GearItemRead,
+    GearListResponse,
     StatAllocateIn,
 )
 from app.security import get_confirmed_user
@@ -141,7 +142,7 @@ def _catalog_read(rows: list[dict]) -> list[GearItemRead]:
 
 
 @router.get("/gear", response_model=list[GearItemRead])
-@limiter.limit("60/minute")
+@limiter.limit(RATE_LIMIT_GAME_READ)
 async def list_gear(
     request: Request,
     response: Response,
@@ -152,7 +153,7 @@ async def list_gear(
     return _catalog_read(await character_service.list_catalog(db, current_user.id))
 
 
-@router.post("/gear/buy", response_model=list[GearItemRead])
+@router.post("/gear/buy", response_model=GearListResponse)
 @limiter.limit(RATE_LIMIT_GAME_EVENTS)
 async def buy_gear(
     body: GearBuyIn,
@@ -160,7 +161,7 @@ async def buy_gear(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[GearItemRead]:
+) -> GearListResponse:
     """Debit gold for a catalog item: class lock, ladder order, balance."""
     user_id = current_user.id
     profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
@@ -175,11 +176,15 @@ async def buy_gear(
     # 'first-gear' grants on the buy, not on the next scored event.
     await achievements.evaluate(db, user_id, profile)
     await db.commit()
+    rates = await service.load_rates(db)
     logger.info("gear bought: user=%s key=%s", user_id, body.key)
-    return _catalog_read(await character_service.list_catalog(db, user_id))
+    return GearListResponse(
+        items=_catalog_read(await character_service.list_catalog(db, user_id)),
+        profile=_profile_read(profile, rates),
+    )
 
 
-@router.post("/gear/equip", response_model=list[GearItemRead])
+@router.post("/gear/equip", response_model=GearListResponse)
 @limiter.limit(RATE_LIMIT_GAME_EVENTS)
 async def equip_gear(
     body: GearEquipIn,
@@ -187,7 +192,7 @@ async def equip_gear(
     response: Response,
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
-) -> list[GearItemRead]:
+) -> GearListResponse:
     """Wear or remove an owned item; equipping bumps the slot's occupant."""
     user_id = current_user.id
     profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
@@ -196,12 +201,16 @@ async def equip_gear(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     await db.commit()
+    rates = await service.load_rates(db)
     logger.info("gear equipped: user=%s key=%s on=%s", user_id, body.key, body.equipped)
-    return _catalog_read(await character_service.list_catalog(db, user_id))
+    return GearListResponse(
+        items=_catalog_read(await character_service.list_catalog(db, user_id)),
+        profile=_profile_read(profile, rates),
+    )
 
 
 @router.get("/achievements", response_model=list[AchievementRead])
-@limiter.limit("60/minute")
+@limiter.limit(RATE_LIMIT_GAME_READ)
 async def list_achievements(
     request: Request,
     response: Response,

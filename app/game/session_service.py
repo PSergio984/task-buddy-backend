@@ -235,9 +235,7 @@ async def _evaluate(
         )
     if profile is not None:
         # Post-scoring hook (auto-distribute now, grant eval as it lands).
-        await character_service.post_score(
-            db, user_id, profile, rates, profile.totals_day or now.date()
-        )
+        await character_service.post_score(db, user_id, profile)
     await db.flush()
     return phases, steps
 

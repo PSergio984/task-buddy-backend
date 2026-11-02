@@ -13,7 +13,9 @@ aggregate columns (Daily.streak, Habit.counter); perfect_day counts whole-
 daily done checks per date against the user's active dailies.
 """
 
-from sqlalchemy import func, insert, select
+from sqlalchemy import Insert, func, select
+from sqlalchemy.dialects.postgresql import insert as postgres_insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.game import (
@@ -76,12 +78,50 @@ ACHIEVEMENTS: list[dict] = [
 ]
 
 
+# Columns the seed literal owns — `key` is the match anchor.
+_SEED_FIELDS = ("name", "description", "criteria", "gold_reward")
+
+
+def _insert_missing(db: AsyncSession, rows: list[dict]) -> Insert:
+    """INSERT ... ON CONFLICT (key) DO NOTHING for the active dialect —
+    a concurrent seeder's committed rows win instead of 500ing this txn
+    (dialect switch per the budget.py precedent; both backends expose
+    on_conflict_do_nothing)."""
+    if db.get_bind().dialect.name == "postgresql":
+        return (
+            postgres_insert(Achievement)
+            .values(rows)
+            .on_conflict_do_nothing(index_elements=["key"])
+        )
+    return (
+        sqlite_insert(Achievement)
+        .values(rows)
+        .on_conflict_do_nothing(index_elements=["key"])
+    )
+
+
 async def seed_achievements(db: AsyncSession) -> None:
-    """Insert missing ACHIEVEMENTS rows; idempotent on key."""
-    existing = set((await db.execute(select(Achievement.key))).scalars().all())
+    """Upsert ACHIEVEMENTS rows; the code literal is the single source.
+
+    Runtime seeding (not a data migration) so SQLite test schemas, which
+    never run Alembic, get the same registry prod does on first read.
+    Missing keys insert; rows whose fields drifted from the literal update
+    in place — a registry edit can't silently die on an already-seeded DB.
+
+    Persists on the caller's first committed write: GET-path inserts roll
+    back on seedless DBs (acceptable — self-heals on the first write).
+    """
+    existing = {
+        row.key: row for row in (await db.execute(select(Achievement))).scalars().all()
+    }
+    for seed in ACHIEVEMENTS:
+        item = existing.get(seed["key"])
+        if item is not None and any(getattr(item, f) != seed[f] for f in _SEED_FIELDS):
+            for field in _SEED_FIELDS:
+                setattr(item, field, seed[field])
     missing = [row for row in ACHIEVEMENTS if row["key"] not in existing]
     if missing:
-        await db.execute(insert(Achievement).values(missing))
+        await db.execute(_insert_missing(db, missing))
 
 
 def _scored_events(db: AsyncSession, user_id: int, event_type: str):
@@ -110,7 +150,13 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
     kind = criteria.get("kind")
     threshold = int(criteria.get("threshold", 0))
     if kind == "first":
-        result = await db.execute(_scored_events(db, user_id, criteria["what"]).limit(1))
+        what = criteria.get("what")
+        if what is None:
+            # Malformed "first" criteria (no event type to look for) —
+            # skip instead of raising KeyError; docstring already promises
+            # unknown/invalid criteria never grant.
+            return False
+        result = await db.execute(_scored_events(db, user_id, what).limit(1))
         return result.first() is not None
     if kind == "gear_owned":
         result = await db.execute(
