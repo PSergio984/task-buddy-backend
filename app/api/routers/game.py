@@ -16,6 +16,7 @@ from app.limiter import limiter
 from app.models.game import DiaryEntry, FocusPhase, SessionNote
 from app.models.user import User
 from app.schemas.game import (
+    AvatarConfigIn,
     DiaryEntryIn,
     DiaryEntryRead,
     DiaryEntryUpdate,
@@ -445,6 +446,22 @@ async def update_retention(
     """Set the diary/timeline read horizon: 90d, 1y, or forever."""
     profile = await game_crud.get_or_create_profile(db, current_user.id)
     profile.retention = retention_in.retention
+    await db.commit()
+    rates = await service.load_rates(db)
+    return _to_profile_read(profile, rates)
+
+
+@router.patch("/profile/avatar", response_model=GameProfileRead)
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def update_avatar(
+    avatar_in: AvatarConfigIn,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GameProfileRead:
+    """Replace the DiceBear avatar config blob (pickers + costume layer)."""
+    profile = await game_crud.update_avatar_config(db, current_user.id, avatar_in.avatar_config)
     await db.commit()
     rates = await service.load_rates(db)
     return _to_profile_read(profile, rates)

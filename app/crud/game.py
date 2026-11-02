@@ -74,6 +74,14 @@ async def get_or_create_profile(
     return profile
 
 
+async def update_avatar_config(db: AsyncSession, user_id: int, config: dict) -> GameProfile:
+    """Replace the user's avatar_config blob; creates the profile on first use."""
+    profile = await get_or_create_profile(db, user_id)
+    profile.avatar_config = config
+    await db.flush()
+    return profile
+
+
 async def existing_event_ids(
     db: AsyncSession, user_id: int, client_event_ids: list[str]
 ) -> set[str]:

@@ -311,3 +311,157 @@ class TestEventsFeed:
     async def test_events_unauthenticated(self, async_client: AsyncClient) -> None:
         response = await async_client.get(f"{GAME}/events")
         assert response.status_code == 401
+
+
+class TestAvatarConfig:
+    async def test_patch_avatar_round_trips(self, authenticated_async_client: AsyncClient) -> None:
+        config = {
+            "style": "pixel-art",
+            "seed": "kiki",
+            "traits": {"hair": "short01", "eyes": "variant01"},
+            "costume": {"slot": "cape", "color": "crimson"},
+        }
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": config}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["avatar_config"] == config
+
+        profile = await authenticated_async_client.get(f"{GAME}/profile")
+        assert profile.json()["avatar_config"] == config
+
+    async def test_avatar_empty_object_accepted(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {}}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["avatar_config"] == {}
+
+    async def test_avatar_non_dict_rejected(self, authenticated_async_client: AsyncClient) -> None:
+        for bad in ("pixel-art", ["style"], 5):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_wrong_member_types_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for bad in (
+            {"style": 5},
+            {"seed": ["kiki"]},
+            {"traits": ["hair"]},
+            {"costume": "cape"},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_non_string_members_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # traits/costume are Record<string,string> client-side — array/null/
+        # number/empty members render nothing and get silently dropped on the
+        # next picker save, so the envelope rejects them instead of storing loss.
+        for bad in (
+            {"traits": {"hair": ["short01"]}},
+            {"traits": {"hair": None}},
+            {"traits": {"hair": 5}},
+            {"traits": {"badge": ""}},
+            {"costume": {"slot": ["cape"]}},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_non_finite_member_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # 1e999 parses to float inf — the member-type check alone catches it.
+        body = (
+            '{"avatar_config": {"style": "pixel-art", "seed": "kiki", "traits": {"hair": 1e999}}}'
+        )
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_non_finite_unmodeled_key_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Non-finite floats under keys the picker doesn't model reach the
+        # dumps probe — Postgres JSONB accepts NaN on write but
+        # JSONResponse.render would 500 on every profile read afterwards.
+        body = '{"avatar_config": {"seed": "kiki", "mood": NaN}}'
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            content=body,
+            headers={"Content-Type": "application/json"},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_oversize_blob_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # The blob is echoed on every GET /profile + event sync — cap bytes.
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            json={"avatar_config": {"seed": "x" * (20 * 1024)}},
+        )
+        assert response.status_code == 422
+
+    async def test_avatar_large_but_valid_blob_accepted(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar",
+            json={"avatar_config": {"seed": "x" * 16000}},
+        )
+        assert response.status_code == 200, response.text
+
+    async def test_avatar_nul_characters_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Postgres JSONB rejects NUL bytes inside stored strings -- an
+        # escaped "\u0000" passes the size/dumps probe but 500s at db.flush().
+        # The blob guard walks the parsed tree, so dict keys are covered too.
+        for bad in (
+            {"seed": "ki\x00ki"},
+            {"traits": {"hair": "sh\x00ort01"}},
+            {"moo\x00d": "happy"},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+        control = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {"seed": "kiki"}}
+        )
+        assert control.status_code == 200, control.text
+
+    async def test_avatar_leaves_other_fields_untouched(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        await authenticated_async_client.post(
+            f"{GAME}/events", json={"events": [focus_event("e-1")]}
+        )
+        before = (await authenticated_async_client.get(f"{GAME}/profile")).json()
+
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {"seed": "kiki"}}
+        )
+        assert response.status_code == 200, response.text
+        after = response.json()
+        for field in ("level", "xp", "gold", "hp", "retention"):
+            assert after[field] == before[field]
+
+    async def test_avatar_requires_auth(self, async_client: AsyncClient) -> None:
+        response = await async_client.patch(f"{GAME}/profile/avatar", json={"avatar_config": {}})
+        assert response.status_code == 401
