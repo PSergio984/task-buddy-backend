@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.game import GameEvent, GameProfile
 from app.models.user import User
+from app.schemas.game import GameProfileRead
 
 GAME = "/api/v1/game"
 
@@ -50,6 +51,41 @@ class TestProfile:
     async def test_profile_requires_auth(self, async_client: AsyncClient) -> None:
         response = await async_client.get(f"{GAME}/profile")
         assert response.status_code == 401
+
+    async def test_profile_responses_include_server_time(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Every GameProfileRead response carries server_time so profile
+        writes join the client's server_time-ordered cache merge."""
+        get_resp = await authenticated_async_client.get(f"{GAME}/profile")
+        assert get_resp.status_code == 200, get_resp.text
+        datetime.fromisoformat(get_resp.json()["server_time"])
+
+        for path, body in (
+            (f"{GAME}/profile/retention", {"retention": "90d"}),
+            (f"{GAME}/profile/avatar", {"avatar_config": {"seed": "kiki"}}),
+        ):
+            response = await authenticated_async_client.patch(path, json=body)
+            assert response.status_code == 200, response.text
+            datetime.fromisoformat(response.json()["server_time"])
+
+    async def test_server_time_is_snapshot_not_build_time(
+        self, authenticated_async_client: AsyncClient, confirmed_user: dict, db: AsyncSession
+    ) -> None:
+        """server_time reflects when the profile was read/locked, not when the
+        response was built — a stale snapshot must not outrank a newer write."""
+        await authenticated_async_client.get(f"{GAME}/profile")
+        profile = (
+            await db.execute(select(GameProfile).where(GameProfile.user_id == confirmed_user["id"]))
+        ).scalar_one()
+        past = datetime(2020, 1, 1, tzinfo=timezone.utc)
+        profile._loaded_at = past
+        read = GameProfileRead.from_profile(profile, xp_to_next=0)
+        assert read.server_time == past
+        # Unstamped profiles (bypassing get_or_create_profile) still stamp now.
+        profile._loaded_at = None
+        read2 = GameProfileRead.from_profile(profile, xp_to_next=0)
+        assert read2.server_time > past
 
 
 class TestEventIngestion:

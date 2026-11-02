@@ -62,6 +62,10 @@ async def get_or_create_profile(
     result = await db.execute(query)
     profile = result.scalar_one_or_none()
     if profile is not None:
+        # Stamp the read/lock instant: server_time-ordered merges must rank
+        # a snapshot by when its data was read, not when the response built —
+        # a concurrent write can commit during this request's later awaits.
+        profile._loaded_at = datetime.now(timezone.utc)  # type: ignore[attr-defined]
         return profile
     profile = GameProfile(user_id=user_id)
     db.add(profile)
@@ -71,6 +75,7 @@ async def get_or_create_profile(
         await db.rollback()
         result = await db.execute(query)
         profile = result.scalar_one()
+    profile._loaded_at = datetime.now(timezone.utc)  # type: ignore[attr-defined]
     return profile
 
 
@@ -242,7 +247,9 @@ async def get_session(
         FocusSession.id == session_id, FocusSession.user_id == user_id
     )
     if for_update:
-        query = query.with_for_update()
+        # populate_existing is load-bearing (same as get_or_create_profile):
+        # a session already in the identity map would shadow the locked row.
+        query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 
@@ -256,7 +263,9 @@ async def get_active_session(
         FocusSession.user_id == user_id, FocusSession.status == "active"
     )
     if for_update:
-        query = query.with_for_update()
+        # get_active_view probes unlocked first — without populate_existing
+        # the probe's identity-map copy would shadow the locked row here.
+        query = query.with_for_update().execution_options(populate_existing=True)
     result = await db.execute(query)
     return result.scalar_one_or_none()
 

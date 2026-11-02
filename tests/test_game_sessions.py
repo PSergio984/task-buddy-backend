@@ -12,6 +12,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import game as game_crud
 from app.game import session_service
 from app.models.game import FocusPhase, FocusSession, GameEvent, GameProfile
 from app.models.user import User
@@ -83,6 +84,21 @@ class TestStart:
     ) -> None:
         response = await authenticated_async_client.post(SESSIONS, json={"mode": "timer"})
         assert response.status_code == 400
+
+    async def test_start_rejects_non_finite_minutes(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Session-start has no float fields — pydantic's int coercion already
+        rejects NaN/Infinity, same boundary guarantee the event-payload blob
+        check gives /game/events (coverage check from the tech-debt pass)."""
+        body = (
+            '{"mode": "timer", "phases": [{"kind": "focus", "minutes": NaN},'
+            ' {"kind": "focus", "minutes": 1e999}]}'
+        )
+        response = await authenticated_async_client.post(
+            SESSIONS, content=body, headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 422
 
     async def test_start_caps_phase_count(self, authenticated_async_client: AsyncClient) -> None:
         response = await authenticated_async_client.post(
@@ -406,3 +422,43 @@ class TestStopwatch:
         assert body["profile"]["xp_today"] == 50  # 2 milestones (25, 50)
         events = await db.execute(select(GameEvent).where(GameEvent.type == "stopwatch_milestone"))
         assert len(events.scalars().all()) == 2
+
+
+class TestSessionRowLock:
+    async def test_locked_reread_sees_external_commit(
+        self,
+        authenticated_async_client: AsyncClient,
+        db: AsyncSession,
+        confirmed_user: dict,
+    ) -> None:
+        """A session row already in the identity map must not shadow the
+        FOR UPDATE row: get_active_view probes unlocked first, so without
+        populate_existing the locked re-read returns the probe's stale copy
+        and an external commit lands invisible (same class as the profile
+        fix in get_or_create_profile)."""
+        session = await _start(authenticated_async_client)
+        sid, uid = session["id"], confirmed_user["id"]
+        from app.database import AsyncSessionLocal
+
+        # The probe load puts the row in db's identity map with stale attrs.
+        stale = await game_crud.get_active_session(db, uid)
+        assert stale is not None
+        await db.commit()  # next read gets a fresh snapshot; attrs stay loaded
+        async with AsyncSessionLocal() as s:
+            row = (await s.execute(select(FocusSession).where(FocusSession.id == sid))).scalar_one()
+            row.activity_label = "external-1"
+            await s.commit()
+
+        locked = await game_crud.get_session(db, sid, uid, for_update=True)
+        assert locked is not None
+        assert locked.activity_label == "external-1"
+        await db.commit()
+
+        async with AsyncSessionLocal() as s:
+            row = (await s.execute(select(FocusSession).where(FocusSession.id == sid))).scalar_one()
+            row.activity_label = "external-2"
+            await s.commit()
+
+        locked = await game_crud.get_active_session(db, uid, for_update=True)
+        assert locked is not None
+        assert locked.activity_label == "external-2"
