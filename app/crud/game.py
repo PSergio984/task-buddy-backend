@@ -2,11 +2,15 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import select
+from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.game import (
+    Daily,
+    DailyCheck,
+    DailyItem,
+    DailyMiss,
     DiaryEntry,
     FocusPhase,
     FocusSession,
@@ -261,4 +265,101 @@ async def get_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit | No
 async def list_habits(db: AsyncSession, user_id: int) -> list[Habit]:
     """All of the user's habits in creation order."""
     result = await db.execute(select(Habit).where(Habit.user_id == user_id).order_by(Habit.id))
+    return list(result.scalars().all())
+
+
+async def get_daily(db: AsyncSession, user_id: int, daily_id: int) -> Daily | None:
+    """One daily by id, scoped to its owner."""
+    result = await db.execute(select(Daily).where(Daily.id == daily_id, Daily.user_id == user_id))
+    return result.scalar_one_or_none()
+
+
+async def list_dailies(db: AsyncSession, user_id: int) -> list[Daily]:
+    """All of the user's dailies in creation order."""
+    result = await db.execute(select(Daily).where(Daily.user_id == user_id).order_by(Daily.id))
+    return list(result.scalars().all())
+
+
+async def count_dailies(db: AsyncSession, user_id: int) -> int:
+    result = await db.execute(select(func.count(Daily.id)).where(Daily.user_id == user_id))
+    return int(result.scalar_one())
+
+
+async def list_active_daily_ids(db: AsyncSession, after_id: int, limit: int) -> list[int]:
+    """One id-ordered page of active daily ids for the miss sweep.
+
+    Ids only: the sweep re-reads each row inside its per-daily try (a
+    post-rollback identity-map hit would be expired).
+    """
+    result = await db.execute(
+        select(Daily.id)
+        .where(Daily.active.is_(True), Daily.id > after_id)
+        .order_by(Daily.id)
+        .limit(limit)
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_items(db: AsyncSession, daily_ids: list[int]) -> list[DailyItem]:
+    """Checklist rows for the given dailies in position order."""
+    if not daily_ids:
+        return []
+    result = await db.execute(
+        select(DailyItem)
+        .where(DailyItem.daily_id.in_(daily_ids))
+        .order_by(DailyItem.daily_id, DailyItem.position, DailyItem.id)
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_checks(
+    db: AsyncSession, daily_ids: list[int], start: date, end: date
+) -> list[DailyCheck]:
+    """Check marks for the given dailies on check_date in [start, end]."""
+    if not daily_ids:
+        return []
+    result = await db.execute(
+        select(DailyCheck).where(
+            DailyCheck.daily_id.in_(daily_ids),
+            DailyCheck.check_date >= start,
+            DailyCheck.check_date <= end,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_daily_misses(db: AsyncSession, daily_id: int, since: date) -> list[DailyMiss]:
+    """Miss rows for one daily on/after `since` — sweep + freeze bookkeeping."""
+    result = await db.execute(
+        select(DailyMiss).where(DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day >= since)
+    )
+    return list(result.scalars().all())
+
+
+async def get_daily_miss(db: AsyncSession, daily_id: int, scheduled_day: date) -> DailyMiss | None:
+    """The miss row for one (daily, scheduled_day), if the sweep recorded one."""
+    result = await db.execute(
+        select(DailyMiss).where(
+            DailyMiss.daily_id == daily_id, DailyMiss.scheduled_day == scheduled_day
+        )
+    )
+    return result.scalar_one_or_none()
+
+
+async def list_daily_check_events(
+    db: AsyncSession, user_id: int, since: datetime
+) -> list[GameEvent]:
+    """The user's daily_check ledger rows since `since` (client_ts bound).
+
+    Server-side prefilter for paid-share accounting — callers narrow to a
+    (daily_id, check_date) pair via payload keys in Python, which keeps the
+    query portable across Postgres JSONB and SQLite JSON.
+    """
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id,
+            GameEvent.type == "daily_check",
+            GameEvent.client_ts >= since,
+        )
+    )
     return list(result.scalars().all())

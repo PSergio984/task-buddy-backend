@@ -244,6 +244,35 @@ class DailyItem(Base):
     position: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
 
 
+class DailyMiss(Base):
+    """One evaluated miss: a scheduled daily unit left unchecked past grace.
+
+    The (daily_id, scheduled_day) unique constraint is the sweep's dedupe
+    anchor — two overlapping sweeps (ADR 0001 rolling deploys) compute the
+    same unit day; the loser's insert fails and it scores nothing.
+    """
+
+    __tablename__ = "tbl_daily_misses"
+    __table_args__ = (
+        UniqueConstraint("daily_id", "scheduled_day", name="uq_daily_misses_daily_day"),
+    )
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    daily_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_dailies.id", ondelete="CASCADE"), nullable=False
+    )
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("tbl_users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
+    # The missed unit: the scheduled day itself, or the week-end (Sunday)
+    # for times_per_week recurrences.
+    scheduled_day: Mapped[date] = mapped_column(Date, nullable=False)
+    # True when the streak freeze absorbed this miss (streak preserved).
+    frozen: Mapped[bool] = mapped_column(Boolean, default=False, server_default="0", nullable=False)
+    hp_lost: Mapped[float] = mapped_column(Float, default=0.0, server_default="0", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
+
+
 class DailyCheck(Base):
     """One completion mark for a daily (or a sub-item) on a given date."""
 

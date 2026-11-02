@@ -17,6 +17,7 @@ from app.api.routers import (
     audit,
     breakdown,
     game,
+    game_dailies,
     game_habits,
     game_sessions,
     knowledge,
@@ -61,6 +62,25 @@ async def reminder_loop() -> None:
             await _process_reminders_async()
         except Exception:
             logger.exception("reminder loop tick failed")
+        await asyncio.sleep(60)
+
+
+async def dailies_loop() -> None:
+    """In-process daily-miss evaluator (issue #63, ADR 0001).
+
+    Scans active dailies every 60s and evaluates each scheduled unit whose
+    day-end + grace instant has passed: unchecked units cost HP and emit
+    daily_missed ledger events, with the streak freeze absorbing one miss
+    per rolling 7 scheduled units. Idempotent across overlapping deploys —
+    the (daily_id, scheduled_day) unique constraint dedupes racing ticks.
+    """
+    from app.game.daily_sweep import run_daily_miss_sweep
+
+    while True:
+        try:
+            await run_daily_miss_sweep()
+        except Exception:
+            logger.exception("dailies miss sweep tick failed")
         await asyncio.sleep(60)
 
 
@@ -114,6 +134,13 @@ async def lifespan(app: FastAPI):
         reminder_task.add_done_callback(_background_tasks.discard)
     except Exception:
         logger.exception("reminder loop failed to start")
+    # Daily-miss evaluator (same in-process pattern, issue #63).
+    try:
+        dailies_task = asyncio.create_task(dailies_loop())
+        _background_tasks.add(dailies_task)
+        dailies_task.add_done_callback(_background_tasks.discard)
+    except Exception:
+        logger.exception("dailies miss loop failed to start")
     try:
         yield
     finally:
@@ -180,6 +207,7 @@ app.include_router(stats.router, prefix="/api/v1")
 app.include_router(game.router, prefix="/api/v1")
 app.include_router(game_sessions.router, prefix="/api/v1")
 app.include_router(game_habits.router, prefix="/api/v1")
+app.include_router(game_dailies.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")

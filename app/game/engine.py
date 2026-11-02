@@ -353,11 +353,97 @@ def _apply_stopwatch_milestone(
     return outcome
 
 
+def _fraction(value: Any, name: str) -> float:
+    """Bounds a payout share to (0, 1] — the same JSON guards as
+    _finite_positive plus the upper clamp a proportional split needs."""
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or value <= 0
+        or value > 1
+    ):
+        raise ValueError(f"{name} must be a finite number in (0, 1]")
+    return float(value)
+
+
+def _streak_days(value: Any) -> int:
+    if not isinstance(value, int) or isinstance(value, bool) or value < 0:
+        raise ValueError("daily_check streak must be an integer >= 0")
+    # Saturate at the economy bound rather than rejecting: a legit streak
+    # past 10000 would otherwise make the daily unscorable — every check
+    # recorded unscored and its mark rolled back, forever. The +1%/day gold
+    # bonus simply caps at +10000%.
+    return min(value, 10000)
+
+
+def _nonnegative(value: Any, name: str) -> float:
+    if (
+        not isinstance(value, (int, float))
+        or isinstance(value, bool)
+        or not math.isfinite(value)
+        or value < 0
+    ):
+        raise ValueError(f"{name} must be a finite number >= 0")
+    return float(value)
+
+
+def _apply_daily_check(
+    profile: GameProfile, payload: dict, rates: GameRates, rng_roll: float, today: date
+) -> dict:
+    """Score one daily check share; the service layer computes `share`,
+    `streak` and the paid-* residuals from stored state, so client payloads
+    never reach here.
+
+    Base reward mirrors a neutral habit click (delta=1): XP scales with
+    INT, difficulty and crits; gold additionally grows +1% per streak day —
+    applied to the streak the check leaves behind (post-increment), which is
+    the value the UI displays alongside the reward.
+
+    Residual accounting: paid_share/paid_xp/paid_gold are what this
+    (daily, day) already paid. The day's total can never exceed the
+    whole-check amount under this roll — an items-replaced checklist or a
+    fragmented per-item payout can't mint extra rewards (per-fragment
+    ceil/round would otherwise inflate the total).
+    """
+    share = _fraction(payload.get("share"), "daily_check share")
+    streak = _streak_days(payload.get("streak", 0))
+    paid_share = _nonnegative(payload.get("paid_share", 0), "daily_check paid_share")
+    paid_xp = _nonnegative(payload.get("paid_xp", 0), "daily_check paid_xp")
+    paid_gold = _nonnegative(payload.get("paid_gold", 0), "daily_check paid_gold")
+    share = min(share, max(0.0, 1.0 - paid_share))
+    p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
+    mult = crit_roll(rng_roll, profile.str_stat, rates)
+    xp_base = (1 + rates.int_xp_pct * profile.int_stat) * p * mult * rates.habit_xp_factor
+    gold_base = p * mult * (1 + rates.per_gold_pct * profile.per_stat) * (1 + 0.01 * streak)
+    xp_whole = _round_half_up(xp_base)
+    gold_whole = math.ceil(gold_base)
+    xp = int(min(_round_half_up(xp_base * share), max(0.0, xp_whole - paid_xp)))
+    gold = min(math.ceil(gold_base * share), max(0.0, gold_whole - paid_gold))
+    outcome: dict = {"scored": True, "crit": mult > 1.0, "share": share, "streak": streak}
+    outcome.update(award_xp(profile, xp, rates, today))
+    outcome.update(award_gold(profile, gold, rates, today))
+    return outcome
+
+
+def _apply_daily_missed(
+    profile: GameProfile, payload: dict, rates: GameRates, rng: random.Random | None
+) -> dict:
+    """HP loss for a scheduled-but-unchecked daily; same shape as damage."""
+    base = rates.hp_loss_base * _difficulty_mult(payload.get("difficulty", "easy"), rates)
+    outcome = apply_hp_loss(profile, base, rates, rng)
+    outcome["scored"] = True
+    return outcome
+
+
 # Types only the session engine's wall-clock evaluation may author —
 # /game/events rejects them so clients can't claim milestone XP or forge
 # lifecycle history. focus_phase_completed stays client-authoritative: it's
 # the #60 offline-sync contract (a session run on-device reports its outcome
-# through the ledger, same trust class as habit_click).
+# through the ledger, same trust class as habit_click). daily_check likewise
+# stays client-authoritative (offline check-ins sync through /events);
+# daily_missed is sweep-authored only — a client claiming it could forge
+# miss/freeze history.
 SERVER_EVENT_TYPES = frozenset(
     {
         "session_started",
@@ -370,6 +456,7 @@ SERVER_EVENT_TYPES = frozenset(
         "phase_resumed",
         "phase_skipped",
         "phase_abandoned",
+        "daily_missed",
     }
 )
 
@@ -405,4 +492,8 @@ def apply_event(
         return _apply_damage(profile, payload, rates, rng)
     if event_type == "stopwatch_milestone":
         return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day)
+    if event_type == "daily_check":
+        return _apply_daily_check(profile, payload, rates, rng_roll, day)
+    if event_type == "daily_missed":
+        return _apply_daily_missed(profile, payload, rates, rng)
     return {"scored": False}
