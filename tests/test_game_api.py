@@ -309,3 +309,77 @@ class TestEventsFeed:
     async def test_events_unauthenticated(self, async_client: AsyncClient) -> None:
         response = await async_client.get(f"{GAME}/events")
         assert response.status_code == 401
+
+
+class TestAvatarConfig:
+    async def test_patch_avatar_round_trips(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        config = {
+            "style": "pixel-art",
+            "seed": "kiki",
+            "traits": {"hair": ["short01"], "eyes": ["variant01"]},
+            "costume": {"slot": "cape", "color": "crimson"},
+        }
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": config}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["avatar_config"] == config
+
+        profile = await authenticated_async_client.get(f"{GAME}/profile")
+        assert profile.json()["avatar_config"] == config
+
+    async def test_avatar_empty_object_accepted(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {}}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["avatar_config"] == {}
+
+    async def test_avatar_non_dict_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for bad in ("pixel-art", ["style"], 5):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_wrong_member_types_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        for bad in (
+            {"style": 5},
+            {"seed": ["kiki"]},
+            {"traits": ["hair"]},
+            {"costume": "cape"},
+        ):
+            response = await authenticated_async_client.patch(
+                f"{GAME}/profile/avatar", json={"avatar_config": bad}
+            )
+            assert response.status_code == 422, bad
+
+    async def test_avatar_leaves_other_fields_untouched(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        await authenticated_async_client.post(
+            f"{GAME}/events", json={"events": [focus_event("e-1")]}
+        )
+        before = (await authenticated_async_client.get(f"{GAME}/profile")).json()
+
+        response = await authenticated_async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {"seed": "kiki"}}
+        )
+        assert response.status_code == 200, response.text
+        after = response.json()
+        for field in ("level", "xp", "gold", "hp", "retention"):
+            assert after[field] == before[field]
+
+    async def test_avatar_requires_auth(self, async_client: AsyncClient) -> None:
+        response = await async_client.patch(
+            f"{GAME}/profile/avatar", json={"avatar_config": {}}
+        )
+        assert response.status_code == 401

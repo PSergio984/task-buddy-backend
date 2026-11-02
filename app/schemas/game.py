@@ -262,6 +262,27 @@ class RetentionIn(BaseModel):
     retention: Literal["90d", "1y", "forever"]
 
 
+class AvatarConfigIn(BaseModel):
+    """Replacement avatar_config blob: DiceBear {style, seed, traits, costume}.
+
+    Stored as given — the picker owns the option vocabulary, so the API only
+    shapes the envelope (forward-compatible with new DiceBear traits).
+    """
+
+    avatar_config: dict
+
+    @field_validator("avatar_config")
+    @classmethod
+    def check_shape(cls, v: dict) -> dict:
+        for key in ("style", "seed"):
+            if key in v and not isinstance(v[key], str):
+                raise ValueError(f"avatar_config.{key} must be a string")
+        for key in ("traits", "costume"):
+            if key in v and not isinstance(v[key], dict):
+                raise ValueError(f"avatar_config.{key} must be an object")
+        return v
+
+
 def _clean_title(v: Optional[str]) -> Optional[str]:
     if v is None:
         return None
