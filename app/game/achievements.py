@@ -2,7 +2,8 @@
 
 15 seeded badges across the spec's buckets — levels, streaks, focus totals,
 firsts, records, perfect days — each paying a tiered gold reward. Evaluation
-runs inside the post-score hook under the caller's profile lock; grants are
+runs inside the post-score hook and on direct calls (pick_class, buy_gear),
+always under the caller's profile lock; grants are
 idempotent via the (user_id, achievement_id) unique constraint plus the
 earned-set prefilter, so replays and retries award nothing twice.
 
@@ -148,6 +149,9 @@ async def _meets(
     db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict
 ) -> bool:
     """True when the criteria's live check passes. Unknown kinds never grant."""
+    if not isinstance(criteria, dict):
+        # Out-of-band writes can store non-dict criteria — never grant.
+        return False
     kind = criteria.get("kind")
     if kind == "level":
         return profile.level >= _criteria_threshold(criteria)

@@ -257,7 +257,8 @@ def _death(profile: GameProfile, rates: GameRates, rng: random.Random | None) ->
         picker = rng if rng is not None else _death_rng
         stat_lost = picker.choice(allocated)
         setattr(profile, stat_lost, getattr(profile, stat_lost) - 1)
-    # gear_lost stays False until the gear resolver lands with the character ticket.
+    # gear_lost stays False here — resolve_death_gear overwrites it at the
+    # DB layer once it picks (and flushes) the lost item.
     return {"died": True, "stat_lost": stat_lost, "gear_lost": False}
 
 

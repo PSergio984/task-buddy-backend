@@ -325,7 +325,7 @@ async def ingest_events(
         status_by_idx[idx] = "applied"
     if "applied" in status_by_idx.values():
         # Post-scoring hook (auto-distribute now, grant eval as it lands):
-        # runs once per scored batch under the profile lock.
+        # runs once per batch holding ≥1 applied event, under the profile lock.
         await character_service.post_score(db, user_id, profile)
     await db.flush()
     results = [
