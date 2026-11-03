@@ -145,6 +145,19 @@ class TestRecurrence:
         units = daily_service.scheduled_units(rec, anchor, anchor, date(2026, 5, 24))
         assert units == [date(2026, 5, 10), date(2026, 5, 17), date(2026, 5, 24)]
 
+    def test_times_per_week_skips_impossible_first_week(self) -> None:
+        rec = daily_service.parse_recurrence({"kind": "times_per_week", "count": 4})
+        anchor = date(2026, 5, 8)  # a Friday — its week offers only 3 check days
+        units = daily_service.scheduled_units(rec, anchor, anchor, date(2026, 5, 31))
+        # The unsatisfiable partial week (Sun 5/10) is skipped.
+        assert units == [date(2026, 5, 17), date(2026, 5, 24), date(2026, 5, 31)]
+        # …and is not a freeze-window prior either.
+        assert daily_service.prior_units(rec, anchor, date(2026, 5, 24), 6) == [date(2026, 5, 17)]
+        # A full-week floor keeps its first unit.
+        assert daily_service.scheduled_units(
+            rec, date(2026, 5, 4), date(2026, 5, 4), date(2026, 5, 10)
+        ) == [date(2026, 5, 10)]
+
     def test_malformed_blobs_parse_none(self) -> None:
         for blob in (
             None,
@@ -1127,6 +1140,25 @@ class TestDailySweep:
             hour=4, tzinfo=timezone.utc
         )
         assert await daily_sweep.run_daily_miss_sweep(now=now) == 0
+
+    async def test_times_per_week_impossible_first_week_not_charged(self, db: AsyncSession) -> None:
+        # Anchor last Friday: its week offers only Fri–Sun = 3 check days
+        # < count 4 — the first unit can never be satisfied, so it is
+        # skipped; the following week still charges its miss.
+        today = _today()
+        friday = today - timedelta(days=(today.weekday() - 4) % 7)
+        _, daily = await _make_daily(
+            db,
+            recurrence={"kind": "times_per_week", "count": 4},
+            created_days_ago=(today - friday).days,
+        )
+        second_sunday = friday + timedelta(days=9)
+        now = datetime.combine(second_sunday + timedelta(days=1), datetime.min.time()).replace(
+            hour=4, tzinfo=timezone.utc
+        )
+        assert await daily_sweep.run_daily_miss_sweep(now=now) == 1
+        misses = await self._miss_rows(db, daily.id)
+        assert [m.scheduled_day for m in misses] == [second_sunday]
 
     async def test_inactive_daily_is_skipped(self, db: AsyncSession) -> None:
         _, daily = await _make_daily(db, created_days_ago=1, active=False)

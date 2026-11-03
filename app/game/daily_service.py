@@ -173,14 +173,23 @@ def effective_anchor(rec: dict, anchor: date) -> date:
 
 
 def week_end(day: date) -> date:
-    """The ISO week's Sunday — the unit key for times_per_week recurrences.
-
-    shortcut: a mid-week anchor makes the anchor week's quota partially
-    unreachable (pre-anchor days can't accept checks) — a daily created
-    Wednesday asking 7/week can't be fully satisfied. Product call pending;
-    flagged on #63.
-    """
+    """The ISO week's Sunday — the unit key for times_per_week recurrences."""
     return day + timedelta(days=6 - day.weekday())
+
+
+def _first_week_unit(rec: dict, floor: date) -> date:
+    """The first satisfiable times_per_week unit.
+
+    A week whose schedulable span (floor→Sunday) holds fewer days than
+    `count` can never be satisfied — checks are once/day — so scheduling
+    it would manufacture an unavoidable miss. Skip that first unit; the
+    partial week's days still accept checks (toward nothing). Resolves
+    the product call flagged on #63 in the no-free-penalty direction.
+    """
+    first = week_end(floor)
+    if (first - floor).days + 1 < rec["count"]:
+        first += timedelta(days=7)
+    return first
 
 
 def is_schedulable(rec: dict, day: date, anchor: date) -> bool:
@@ -218,7 +227,7 @@ def scheduled_units(rec: dict, anchor: date, start: date, end: date) -> list[dat
         return []
     if rec["kind"] == "times_per_week":
         units = []
-        d = max(week_end(start), week_end(effective_anchor(rec, anchor)))
+        d = max(week_end(start), _first_week_unit(rec, effective_anchor(rec, anchor)))
         while d <= end:
             units.append(d)
             d += timedelta(days=7)
@@ -239,7 +248,7 @@ def prior_units(rec: dict, anchor: date, unit: date, n: int) -> list[date]:
     floor = effective_anchor(rec, anchor)
     if rec["kind"] == "times_per_week":
         d = unit - timedelta(days=7)
-        first = week_end(floor)
+        first = _first_week_unit(rec, floor)
         while len(out) < n and d >= first:
             out.append(d)
             d -= timedelta(days=7)
