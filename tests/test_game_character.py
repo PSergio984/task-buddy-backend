@@ -638,6 +638,166 @@ class TestGearEquip:
         assert items["all-shield-1"]["equipped"] is True
 
 
+class TestGearCostume:
+    async def _setup_warrior(self, client: AsyncClient, db: AsyncSession, user_id: int) -> None:
+        await _ensure_profile(client)
+        await _set_profile(db, user_id, level=10, game_class="warrior", gold=600.0)
+        await _buy(client, "warrior-weapon-1")
+        await _buy(client, "all-shield-1")
+
+    async def test_costume_on_and_off(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-weapon-1", "costume": True}
+        )
+        assert response.status_code == 200, response.text
+        body = response.json()
+        # Profile rides the mutation response, same as equip.
+        assert body["profile"]["level"] == 10
+        items = {r["key"]: r for r in body["items"]}
+        assert items["warrior-weapon-1"]["costume"] is True
+        # Costume is independent: flagging doesn't equip.
+        assert items["warrior-weapon-1"]["equipped"] is False
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-weapon-1", "costume": False}
+        )
+        items = {r["key"]: r for r in response.json()["items"]}
+        assert items["warrior-weapon-1"]["costume"] is False
+
+    async def test_costume_bumps_same_slot(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await _buy(authenticated_async_client, "warrior-weapon-2")
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "warrior-weapon-1"})
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-weapon-2"}
+        )
+        items = {r["key"]: r for r in response.json()["items"]}
+        # One costume per slot: the tier-1 look yields to the tier-2.
+        assert items["warrior-weapon-2"]["costume"] is True
+        assert items["warrior-weapon-1"]["costume"] is False
+
+    async def test_costume_rejects_unowned(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-armor-1"}
+        )
+        assert response.status_code == 400
+
+    async def test_costume_rejects_unknown_key(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "mystery-sword"}
+        )
+        assert response.status_code == 400
+
+    async def test_costume_and_equipped_coexist(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """The flags are independent: one item can be worn AND shown, and a
+        same-slot costume pick never disturbs the equipped piece."""
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await _buy(authenticated_async_client, "warrior-weapon-2")
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "warrior-weapon-1"})
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "warrior-weapon-1"})
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "warrior-weapon-2"})
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "all-shield-1"})
+        items = await _gear(authenticated_async_client)
+        # Costume moved to w2 in the same slot; the equip never did.
+        assert items["warrior-weapon-1"]["equipped"] is True
+        assert items["warrior-weapon-1"]["costume"] is False
+        assert items["warrior-weapon-2"]["equipped"] is False
+        assert items["warrior-weapon-2"]["costume"] is True
+        assert items["all-shield-1"]["equipped"] is False
+        assert items["all-shield-1"]["costume"] is True
+
+    async def test_costume_survives_respec(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Respec (class -> None) strips the worn warrior piece via
+        unequip_mismatched but leaves the costume flag — the look is
+        class-agnostic, so toggling it stays legal while re-equipping
+        the cross-class piece is still rejected."""
+        await self._setup_warrior(authenticated_async_client, db, confirmed_user["id"])
+        await authenticated_async_client.post(f"{GEAR}/equip", json={"key": "warrior-weapon-1"})
+        await authenticated_async_client.post(f"{GEAR}/costume", json={"key": "warrior-weapon-1"})
+        assert (await authenticated_async_client.post(f"{CHAR}/respec")).status_code == 200
+        items = await _gear(authenticated_async_client)
+        assert items["warrior-weapon-1"]["equipped"] is False
+        assert items["warrior-weapon-1"]["costume"] is True
+        # Classless now: equip is class-locked, costume is not.
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1"}
+        )
+        assert response.status_code == 400
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "warrior-weapon-1", "costume": False}
+        )
+        assert response.status_code == 200, response.text
+        items = {r["key"]: r for r in response.json()["items"]}
+        assert items["warrior-weapon-1"]["costume"] is False
+
+    async def test_costume_gear_contributes_no_stat_bonus(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Mirror of TestGearScoring.test_equipped_int_boosts_xp with the
+        costume flag in place of equipped: gear_stat_bonus reads worn
+        pieces only, so the look scores nothing."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=200.0)
+        await _buy(authenticated_async_client, "mage-weapon-1")  # int +3
+        response = await authenticated_async_client.post(
+            f"{GEAR}/costume", json={"key": "mage-weapon-1"}
+        )
+        items = {r["key"]: r for r in response.json()["items"]}
+        assert items["mage-weapon-1"]["costume"] is True
+        assert items["mage-weapon-1"]["equipped"] is False
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-costume-xp",
+                        "type": "focus_phase_completed",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        # Equipped it would pay 11 (see TestGearScoring); costume-only pays base 10.
+        assert response.json()["profile"]["xp"] == 10
+
+
 class TestGearScoring:
     async def test_equipped_int_boosts_xp(
         self,

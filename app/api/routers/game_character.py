@@ -18,6 +18,7 @@ from app.schemas.game import (
     ClassSelectIn,
     GameProfileRead,
     GearBuyIn,
+    GearCostumeIn,
     GearEquipIn,
     GearItemRead,
     GearListResponse,
@@ -203,6 +204,31 @@ async def equip_gear(
     await db.commit()
     rates = await service.load_rates(db)
     logger.info("gear equipped: user=%s key=%s on=%s", user_id, body.key, body.equipped)
+    return GearListResponse(
+        items=_catalog_read(await character_service.list_catalog(db, user_id)),
+        profile=_profile_read(profile, rates),
+    )
+
+
+@router.post("/gear/costume", response_model=GearListResponse)
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def costume_gear(
+    body: GearCostumeIn,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> GearListResponse:
+    """Show or hide an owned item's look; flagging bumps the slot's costume."""
+    user_id = current_user.id
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    try:
+        await character_service.set_costume(db, user_id, body.key, body.costume)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail=str(exc)) from exc
+    await db.commit()
+    rates = await service.load_rates(db)
+    logger.info("gear costume: user=%s key=%s on=%s", user_id, body.key, body.costume)
     return GearListResponse(
         items=_catalog_read(await character_service.list_catalog(db, user_id)),
         profile=_profile_read(profile, rates),
