@@ -14,11 +14,15 @@ in UTC.
 Trigger hooks live beside dispatch: notify_score_outcome (hp/death/level-up),
 notify_phase_end (quiet-exempt, freshness-gated), and run_reminder_tick —
 the 60s sweep for habit/daily reminder times plus the once-a-day streak-risk
-warning. run_reminder_tick assumes the same single-instance loop deployment
-as daily_sweep (overlapping instances could double-deliver — dedup anchors
-on committed feed rows, not a unique constraint). All hooks swallow their
-own failures: a notification error must never break scoring or the sweep's
-dedupe claim.
+warning. Scheduled times match through a REMINDER_LOOKBACK_MINUTES look-back:
+the loop's sleep(60)-after-work period plus restarts can skip a whole HH:MM
+minute, so an exact match would lose that reminder permanently — the matched
+scheduled time anchors the (entity+day+time) dedup instead. run_reminder_tick
+assumes the same single-instance loop deployment as daily_sweep: under that
+assumption a retried/overlapping tick can't re-deliver; overlapping
+INSTANCES still can (dedup anchors on committed feed rows, not a unique
+constraint). All hooks swallow their own failures: a notification error must
+never break scoring or the sweep's dedupe claim.
 """
 
 import asyncio
@@ -33,40 +37,27 @@ from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app import tasks
 from app.crud import game as game_crud
+from app.game.notification_kinds import KIND_KEYS as KIND_KEYS
 from app.models.game import Daily, GameNotificationPref, Habit
 from app.models.notification import Notification, NotificationType
 from app.models.user import User
 
 logger = logging.getLogger(__name__)
 
-# Local hour (prefs tz) at which the once-a-day streak-risk warning fires.
-STREAK_RISK_HOUR = 20
+# Minute-bucket look-back for scheduled reminder times: the tick's period is
+# sleep(60) AFTER the work, so drift (or a restart) can skip a whole HH:MM
+# minute — an exact match loses that reminder permanently. A scheduled time
+# up to this many minutes stale still fires on the same local day.
+REMINDER_LOOKBACK_MINUTES = 3
+# The once-a-day streak-risk warning is itself a scheduled "HH:MM" — matched
+# through the same look-back so an in_app:false user gets one push per local
+# day, not one per tick for the whole hour (no feed row anchors its dedup).
+STREAK_RISK_TIME = "20:00"
 # LOW_HP fires only on a downward crossing of this fraction of max_hp.
 LOW_HP_FRACTION = 0.25
 # A phase-end alert only fires when its client_ts is this fresh — offline
 # replayed batches and next-day session catch-ups must not burst alerts.
 PHASE_END_LIVE_SECONDS = 120
-
-# The channels the matrix gates. quiet hours suppress push + email only;
-# in_app is the feed row and is written whenever its channel is on.
-CHANNELS = ("in_app", "push", "email")
-
-# The kinds the prefs matrix covers; the task-reminder types predate it.
-GAME_KINDS = (
-    NotificationType.HABIT_REMINDER,
-    NotificationType.DAILY_REMINDER,
-    NotificationType.STREAK_RISK,
-    NotificationType.LOW_HP,
-    NotificationType.DAILY_MISSED,
-    NotificationType.DEATH,
-    NotificationType.PHASE_END,
-    NotificationType.LEVEL_UP,
-    NotificationType.ACHIEVEMENT,
-    NotificationType.RECORD,
-)
-
-# Prefs keys are the lowercase enum values (matches the model docstring).
-KIND_KEYS = frozenset(k.value.lower() for k in GAME_KINDS)
 
 DEFAULT_CHANNELS: dict[str, bool] = {"in_app": True, "push": True, "email": False}
 DEFAULT_QUIET: dict[str, str] = {"start": "22:00", "end": "08:00", "timezone": "UTC"}
@@ -74,8 +65,17 @@ DEFAULT_QUIET: dict[str, str] = {"start": "22:00", "end": "08:00", "timezone": "
 # Detached send tasks: the senders open their own AsyncSessionLocal, so
 # network I/O never extends a caller's transaction/lock hold. The set keeps
 # a reference — a fire-and-forget task can be GC'd mid-flight (main.py's
-# _background_tasks pattern).
+# _background_tasks pattern). In-flight sends are NOT drained at shutdown:
+# lifespan cancels only its own _background_tasks, so a process stop kills a
+# mid-flight send (accepted — senders are best-effort per ADR 0001).
 _send_tasks: set[asyncio.Task[None]] = set()
+
+# The row-less streak-risk bound: in_app:false leaves no feed row for
+# _already_notified to anchor, so without this every in-window tick pushes
+# again. Per-process user -> last-fired-local-day map (bounded by user
+# count); a restart refires once — the same bound the meta dedup accepts
+# for its rollback blind spot.
+_streak_risk_fired: dict[int, date] = {}
 
 
 async def _guarded_send(coro: Coroutine[Any, Any, None]) -> None:
@@ -129,6 +129,18 @@ def _parse_hhmm(value: Any) -> int | None:
     except (AttributeError, ValueError):
         return None
     return hour * 60 + minute if 0 <= hour <= 23 and 0 <= minute <= 59 else None
+
+
+def _recent_minutes(local: datetime) -> set[str]:
+    """The local HH:MM buckets this tick answers for: the current minute plus
+    REMINDER_LOOKBACK_MINUTES of look-back — never crossing the local day
+    boundary (yesterday's 23:5x belongs to yesterday's ticks; firing it at
+    00:0x would stamp today's dedup key and suppress tonight's real fire)."""
+    return {
+        back.strftime("%H:%M")
+        for m in range(REMINDER_LOOKBACK_MINUTES + 1)
+        if (back := local - timedelta(minutes=m)).date() == local.date()
+    }
 
 
 def pref_tz(quiet_hours: Any) -> timezone | ZoneInfo:
@@ -368,6 +380,11 @@ async def _streak_risk(
 ) -> bool:
     """The once-per-local-day 'streak at risk' warning; True when it fired."""
     try:
+        # The process-local bound lands before any DB read: in_app:false
+        # users leave no feed row for _already_notified, so every in-window
+        # tick would re-push without it.
+        if _streak_risk_fired.get(user_id) == day:
+            return False
         # shortcut: check_date is stamped on the client/UTC day while `day`
         # is the prefs-tz local day — a 20:00 check in a negative offset can
         # land on the NEXT UTC day, so an evening-checked user still reads
@@ -390,6 +407,7 @@ async def _streak_risk(
             meta={"day": day.isoformat()},
             now=now,
         )
+        _streak_risk_fired[user_id] = day
         return True
     except Exception:
         logger.exception("streak-risk dispatch failed: user=%s", user_id)
@@ -441,6 +459,92 @@ async def _completion_gates(
     return done_today, satisfied
 
 
+async def _habit_reminders(
+    db: AsyncSession,
+    user_id: int,
+    habits: list[Habit],
+    recent: set[str],
+    day: date,
+    now: datetime,
+) -> int:
+    """Fire due habit reminders for this tick's matched times."""
+    sent = 0
+    for habit in habits:
+        # Each scheduled time is its own dedup key — pass the matched time
+        # (not the tick's) so a late tick and a retried one collapse.
+        for t in dict.fromkeys(habit.reminder_times or ()):
+            if t in recent and await _reminder(
+                db,
+                user_id,
+                NotificationType.HABIT_REMINDER,
+                "habit_id",
+                habit.id,
+                f"Time to work on '{habit.title}'.",
+                t,
+                day,
+                now,
+            ):
+                sent += 1
+    return sent
+
+
+async def _daily_reminders(
+    db: AsyncSession,
+    user_id: int,
+    reminding: list[tuple[Daily, list[str]]],
+    done_today: set[int],
+    satisfied: set[int],
+    day: date,
+    now: datetime,
+) -> int:
+    """Fire matched daily reminders not already checked/quota-satisfied."""
+    sent = 0
+    for daily, times in reminding:
+        if daily.id in done_today or daily.id in satisfied:
+            continue
+        for t in times:
+            if await _reminder(
+                db,
+                user_id,
+                NotificationType.DAILY_REMINDER,
+                "daily_id",
+                daily.id,
+                f"'{daily.title}' is scheduled today.",
+                t,
+                day,
+                now,
+            ):
+                sent += 1
+    return sent
+
+
+def _risk_due(
+    due_today: list[Daily],
+    rec_by_id: dict[int, dict],
+    satisfied: set[int],
+    week_unit: date,
+) -> list[Daily]:
+    """Dailies streak-risk can still warn about: not week-satisfied, and not
+    in a times_per_week impossible first week — the sweep's _first_week_unit
+    skips that unit entirely (the days still take checks, so its reminders
+    fire), so warning toward the unreachable Sunday would be nightly spam."""
+    from app.game import daily_service
+
+    return [
+        d
+        for d in due_today
+        if d.id not in satisfied
+        and not (
+            rec_by_id[d.id]["kind"] == "times_per_week"
+            and week_unit
+            < daily_service._first_week_unit(
+                rec_by_id[d.id],
+                daily_service.effective_anchor(rec_by_id[d.id], daily_service.daily_anchor(d)),
+            )
+        )
+    ]
+
+
 async def _tick_user(
     db: AsyncSession,
     user_id: int,
@@ -456,25 +560,17 @@ async def _tick_user(
     from app.game import daily_service
 
     local = now.astimezone(tz)
-    hhmm = local.strftime("%H:%M")
+    recent = _recent_minutes(local)
     day = local.date()
-    sent = 0
-    for habit in habits:
-        if hhmm in habit.reminder_times and await _reminder(
-            db,
-            user_id,
-            NotificationType.HABIT_REMINDER,
-            "habit_id",
-            habit.id,
-            f"Time to work on '{habit.title}'.",
-            hhmm,
-            day,
-            now,
-        ):
-            sent += 1
+    sent = await _habit_reminders(db, user_id, habits, recent, day, now)
     due_today: list[Daily] = []
     rec_by_id: dict[int, dict] = {}
     for daily in user_dailies:
+        # The id pre-pass filters on active, but this per-user re-read can
+        # return a row deactivated in between — skip it like the sweep's
+        # populate_existing re-check does.
+        if not daily.active:
+            continue
         rec = daily_service.parse_recurrence(daily.recurrence)
         if rec is None or not daily_service.is_schedulable(
             rec, day, daily_service.daily_anchor(daily)
@@ -487,31 +583,23 @@ async def _tick_user(
     # DAILY_REMINDER, and a times_per_week daily whose current ISO-week
     # unit is already satisfied stays out of reminders AND the streak-risk
     # list (the week's quota is met; its deadline is Sunday, not tonight).
-    reminding = [d for d in due_today if d.reminder_times and hhmm in d.reminder_times]
+    reminding: list[tuple[Daily, list[str]]] = []
+    for daily in due_today:
+        matched = [t for t in dict.fromkeys(daily.reminder_times or ()) if t in recent]
+        if matched:
+            reminding.append((daily, matched))
     has_tpw = any(rec["kind"] == "times_per_week" for rec in rec_by_id.values())
+    risk_match = STREAK_RISK_TIME in recent
     done_today, satisfied = (
         await _completion_gates(db, due_today, rec_by_id, day, has_tpw)
-        if reminding or has_tpw
+        if reminding or (has_tpw and risk_match)
         else (set(), set())
     )
-    for daily in reminding:
-        if daily.id in done_today or daily.id in satisfied:
-            continue
-        if await _reminder(
-            db,
-            user_id,
-            NotificationType.DAILY_REMINDER,
-            "daily_id",
-            daily.id,
-            f"'{daily.title}' is scheduled today.",
-            hhmm,
-            day,
-            now,
-        ):
-            sent += 1
-    risk_due = [d for d in due_today if d.id not in satisfied]
-    if local.hour == STREAK_RISK_HOUR and risk_due:
-        sent += await _streak_risk(db, user_id, risk_due, user_dailies, day, now)
+    sent += await _daily_reminders(db, user_id, reminding, done_today, satisfied, day, now)
+    if risk_match:
+        risk_due = _risk_due(due_today, rec_by_id, satisfied, daily_service.week_end(day))
+        if risk_due:
+            sent += await _streak_risk(db, user_id, risk_due, user_dailies, day, now)
     return sent
 
 
@@ -521,13 +609,17 @@ async def run_reminder_tick(
 ) -> int:
     """One game-reminder pass over every user with habits/dailies.
 
-    Fires when the user's local HH:MM (prefs tz, UTC fallback) matches an
-    entity's reminder_times — habit reminders always, daily reminders only
-    when the recurrence schedules today, the daily isn't already checked,
-    and (times_per_week) the current week's quota isn't already met. At
-    local hour STREAK_RISK_HOUR a consolidated warning lists
-    scheduled-but-unchecked dailies. Dedup anchors on (user, kind,
-    entity+day+time) meta so overlapping ticks can't re-deliver. Returns
+    Fires when an entity's reminder_times lands inside the user's local
+    minute or the REMINDER_LOOKBACK_MINUTES look-back (prefs tz, UTC
+    fallback) — habit reminders always, daily reminders only when the
+    recurrence schedules today, the daily isn't already checked, and
+    (times_per_week) the current week's quota isn't already met. The
+    STREAK_RISK_TIME slot — matched through the same look-back — lists
+    scheduled-but-unchecked dailies once per local day. Dedup anchors on
+    (user, kind, entity+day+time) meta, so under the documented
+    single-instance deployment a retried/overlapping tick can't re-deliver
+    — overlapping INSTANCES still could (the feed row is the anchor, not a
+    unique constraint; the same assumption daily_sweep makes). Returns
     notifications dispatched; `now`/`session_factory` are injectable for
     tests (same contract as run_daily_miss_sweep).
 
@@ -542,22 +634,26 @@ async def run_reminder_tick(
         session_factory = AsyncSessionLocal
     now = game_crud.utc_aware(now or datetime.now(timezone.utc))
     async with session_factory() as db:
-        pref_rows = (await db.execute(select(GameNotificationPref))).scalars().all()
-        tz_by_user = {p.user_id: pref_tz(p.quiet_hours) for p in pref_rows}
-        # Everything the loop carries must be plain values — a per-user
-        # rollback below expires every ORM object in the session, so the
-        # pre-fetched rows themselves are dead weight by then.
+        # Column selects — the pre-pass carries plain values only (a
+        # per-user rollback below expires every ORM object anyway), same
+        # idea as the sweep's list_active_daily_ids.
+        pref_rows = (
+            await db.execute(select(GameNotificationPref.user_id, GameNotificationPref.quiet_hours))
+        ).all()
+        tz_by_user = {user_id: pref_tz(quiet_hours) for user_id, quiet_hours in pref_rows}
         habit_ids_by_user: dict[int, list[int]] = {}
-        for habit in (await db.execute(select(Habit))).scalars().all():
-            if habit.reminder_times:
-                habit_ids_by_user.setdefault(habit.user_id, []).append(habit.id)
+        for habit_id, user_id, reminder_times in (
+            await db.execute(select(Habit.id, Habit.user_id, Habit.reminder_times))
+        ).all():
+            if reminder_times:
+                habit_ids_by_user.setdefault(user_id, []).append(habit_id)
         # Streak-risk needs every active daily per user — reminder gating on
         # reminder_times is applied per row inside _tick_user.
         daily_ids_by_user: dict[int, list[int]] = {}
-        for daily in (
-            (await db.execute(select(Daily).where(Daily.active.is_(True)))).scalars().all()
-        ):
-            daily_ids_by_user.setdefault(daily.user_id, []).append(daily.id)
+        for daily_id, user_id in (
+            await db.execute(select(Daily.id, Daily.user_id).where(Daily.active.is_(True)))
+        ).all():
+            daily_ids_by_user.setdefault(user_id, []).append(daily_id)
         sent = 0
         for user_id in set(habit_ids_by_user) | set(daily_ids_by_user):
             try:

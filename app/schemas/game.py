@@ -16,7 +16,7 @@ from pydantic import (
     model_validator,
 )
 
-from app.game import notifications as game_notifications
+from app.game import notification_kinds
 from app.game.engine import (
     SERVER_EVENT_TYPES,
     STAT_KEYS,
@@ -917,6 +917,9 @@ class QuietHoursIn(BaseModel):
     end: str = "08:00"
     timezone: str = "UTC"
 
+    # A typo'd key ("timzone") must 422, not silently drop the block.
+    model_config = ConfigDict(extra="forbid")
+
     @field_validator("start", "end")
     @classmethod
     def check_hhmm(cls, v: str) -> str:
@@ -952,10 +955,10 @@ class NotificationPrefsIn(BaseModel):
     @classmethod
     def check_matrix(cls, v: dict[str, dict[str, StrictBool]]) -> dict[str, dict[str, StrictBool]]:
         for kind, channels in v.items():
-            if kind not in game_notifications.KIND_KEYS:
+            if kind not in notification_kinds.KIND_KEYS:
                 raise ValueError(f"unknown notification kind '{kind}'")
             for channel in channels:
-                if channel not in game_notifications.CHANNELS:
+                if channel not in notification_kinds.CHANNELS:
                     raise ValueError(f"unknown notification channel '{channel}'")
         return v
 

@@ -34,7 +34,7 @@ from email.message import EmailMessage
 
 import httpx
 from pywebpush import WebPushException, webpush
-from sqlalchemy import exists, select
+from sqlalchemy import delete, exists, select
 
 from app.config import config
 from app.database import AsyncSessionLocal
@@ -452,37 +452,58 @@ async def _send_push_notification_async(
         logger.error("VAPID_PRIVATE_KEY not configured, cannot send push notifications")
         return
 
+    # The subscription fetch is the only DB work the send needs — the pool
+    # checkout must NOT span the webpush loop: detached _fire_send fan-out
+    # would stall pool slots on network I/O (DB_POOL_SIZE + overflow <
+    # concurrent sends => QueuePoolTimeout, a permanently dropped push).
     async with AsyncSessionLocal() as db:
-        stmt = select(PushSubscription).where(PushSubscription.user_id == user_id)
-        result = await db.execute(stmt)
-        subscriptions = result.scalars().all()
-
-        if not subscriptions:
-            return
-
-        payload = json.dumps({"title": title, "body": message, "action_url": action_url})
-
-        for sub in subscriptions:
-            try:
-                # webpush is synchronous and performs network I/O, so we run it in a thread
-                # to avoid blocking the event loop.
-                await asyncio.to_thread(
-                    webpush,
-                    subscription_info={
-                        "endpoint": sub.endpoint,
-                        "keys": {"p256dh": sub.p256dh, "auth": sub.auth},
-                    },
-                    data=payload,
-                    vapid_private_key=config.VAPID_PRIVATE_KEY,
-                    vapid_claims={"sub": f"mailto:{config.VAPID_ADMIN_EMAIL}"},
+        subscriptions = [
+            (row.endpoint, row.p256dh, row.auth)
+            for row in (
+                await db.execute(
+                    select(
+                        PushSubscription.endpoint,
+                        PushSubscription.p256dh,
+                        PushSubscription.auth,
+                    ).where(PushSubscription.user_id == user_id)
                 )
-            except WebPushException as ex:
-                if ex.response is not None and ex.response.status_code == 410:
-                    logger.info("Push subscription expired for endpoint %s; deleting", sub.endpoint)
-                    await db.delete(sub)
-                else:
-                    logger.exception("Failed to send push notification to %s", sub.endpoint)
-            except Exception:
-                logger.exception("Unexpected error sending push notification to %s", sub.endpoint)
+            ).all()
+        ]
 
-        await db.commit()
+    if not subscriptions:
+        return
+
+    payload = json.dumps({"title": title, "body": message, "action_url": action_url})
+    dead_endpoints: list[str] = []
+
+    for endpoint, p256dh, auth in subscriptions:
+        try:
+            # webpush is synchronous and performs network I/O, so we run it in a thread
+            # to avoid blocking the event loop.
+            await asyncio.to_thread(
+                webpush,
+                subscription_info={
+                    "endpoint": endpoint,
+                    "keys": {"p256dh": p256dh, "auth": auth},
+                },
+                data=payload,
+                vapid_private_key=config.VAPID_PRIVATE_KEY,
+                vapid_claims={"sub": f"mailto:{config.VAPID_ADMIN_EMAIL}"},
+            )
+        except WebPushException as ex:
+            if ex.response is not None and ex.response.status_code == 410:
+                logger.info("Push subscription expired for endpoint %s; deleting", endpoint)
+                dead_endpoints.append(endpoint)
+            else:
+                logger.exception("Failed to send push notification to %s", endpoint)
+        except Exception:
+            logger.exception("Unexpected error sending push notification to %s", endpoint)
+
+    if dead_endpoints:
+        # 410 cleanup runs on a second short session — the send loop above
+        # is deliberately outside a pool checkout.
+        async with AsyncSessionLocal() as db:
+            await db.execute(
+                delete(PushSubscription).where(PushSubscription.endpoint.in_(dead_endpoints))
+            )
+            await db.commit()

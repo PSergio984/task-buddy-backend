@@ -45,6 +45,13 @@ def _mock_senders(mocker) -> dict[str, AsyncMock]:
     }
 
 
+@pytest.fixture(autouse=True)
+def _fresh_streak_state() -> None:
+    """The tick's streak-risk bound is process-local (user -> last fired
+    day) — tests share the process and reuse user ids, so reset it."""
+    notifications._streak_risk_fired.clear()
+
+
 async def _make_user(db: AsyncSession, email: str = "notif@t.dev") -> User:
     user = User(username=email.split("@")[0], email=email, password="x", confirmed=True)
     db.add(user)
@@ -368,12 +375,22 @@ async def test_streak_risk_fires_once_per_local_day(
     user = await _make_user(db)
     db.add(_daily(user.id, created_at=datetime(2026, 5, 1, tzinfo=timezone.utc)))
     await db.commit()
-    now = datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc)  # local hour 20
+    now = datetime(2026, 5, 15, 20, 0, tzinfo=timezone.utc)  # the "20:00" slot
 
     assert await notifications.run_reminder_tick(now=now, session_factory=TestSessionLocal) == 1
+    # A second tick still inside the look-back window must not re-deliver.
     assert (
         await notifications.run_reminder_tick(
-            now=now + timedelta(minutes=10), session_factory=TestSessionLocal
+            now=now + timedelta(minutes=2), session_factory=TestSessionLocal
+        )
+        == 0
+    )
+    # A restart drops the process-local bound — the committed feed row is
+    # the cross-restart dedup anchor.
+    notifications._streak_risk_fired.clear()
+    assert (
+        await notifications.run_reminder_tick(
+            now=now + timedelta(minutes=2), session_factory=TestSessionLocal
         )
         == 0
     )
@@ -392,7 +409,7 @@ async def test_streak_risk_silent_when_all_checked(
     await db.flush()
     db.add(DailyCheck(daily_id=daily.id, check_date=date(2026, 5, 15), done=True))
     await db.commit()
-    now = datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc)
+    now = datetime(2026, 5, 15, 20, 1, tzinfo=timezone.utc)  # inside the 20:00 window
 
     sent = await notifications.run_reminder_tick(now=now, session_factory=TestSessionLocal)
 
@@ -453,10 +470,11 @@ async def test_times_per_week_quota_met_stays_quiet(
         )
         == 0
     )
-    # Local 20:00 — a satisfied week must not list in streak-risk either.
+    # Inside the 20:00 look-back window — a satisfied week must not list
+    # in streak-risk either.
     assert (
         await notifications.run_reminder_tick(
-            now=datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc),
+            now=datetime(2026, 5, 15, 20, 1, tzinfo=timezone.utc),
             session_factory=TestSessionLocal,
         )
         == 0
@@ -494,9 +512,10 @@ async def test_times_per_week_unsatisfied_still_reminds(
     )
     assert len(await _notifs(db, user.id, NotificationType.DAILY_REMINDER)) == 1
 
+    # Inside the 20:00 look-back window — the unsatisfied daily lists.
     assert (
         await notifications.run_reminder_tick(
-            now=datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc),
+            now=datetime(2026, 5, 15, 20, 1, tzinfo=timezone.utc),
             session_factory=TestSessionLocal,
         )
         == 1
@@ -504,6 +523,181 @@ async def test_times_per_week_unsatisfied_still_reminds(
     rows = await _notifs(db, user.id, NotificationType.STREAK_RISK)
     assert len(rows) == 1
     assert "Meditate" in rows[0].message
+
+
+@pytest.mark.anyio
+async def test_reminder_lookback_fires_late_ticks(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """The loop's sleep(60)-after-work period can skip the exact minute —
+    a 07:30 reminder still fires when the tick lands at 07:31, deduped on
+    the scheduled time."""
+    user = await _make_user(db)
+    db.add(_habit(user.id, reminder_times=["07:30"]))
+    await db.commit()
+
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 31, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 1
+    )
+    rows = await _notifs(db, user.id, NotificationType.HABIT_REMINDER)
+    # The matched SCHEDULED time anchors the dedup key, not the tick's.
+    assert (rows[0].meta or {})["time"] == "07:30"
+
+    # A second tick still inside the window: dedup, no re-delivery.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 32, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    assert len(await _notifs(db, user.id, NotificationType.HABIT_REMINDER)) == 1
+
+
+@pytest.mark.anyio
+async def test_reminder_lookback_expiry_and_day_boundary(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """Outside the window nothing fires: 07:30 is stale at 07:34+, and a
+    23:59 schedule doesn't leak across the local day boundary into 00:0x."""
+    user = await _make_user(db)
+    db.add(_habit(user.id, reminder_times=["07:30"]))
+    db.add(Habit(user_id=user.id, title="Wind down", reminder_times=["23:59"]))
+    await db.commit()
+
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 34, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    # 00:01 the next day — yesterday's 23:59 is out of look-back reach.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 16, 0, 1, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    assert await _notifs(db, user.id, NotificationType.HABIT_REMINDER) == []
+
+
+@pytest.mark.anyio
+async def test_daily_deactivated_mid_tick_does_not_fire(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """The id pre-pass filters on active, but a daily deactivated before
+    its per-user re-read must skip — not fire once off a stale snapshot."""
+    user = await _make_user(db)
+    daily = _daily(
+        user.id,
+        reminder_times=["07:30"],
+        created_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    db.add(daily)
+    await db.commit()
+    daily_id = daily.id
+
+    # Flip active off after the dailies id pre-pass returns (session
+    # execute call 3: prefs, habits, then dailies) but before the per-user
+    # re-read — the _flaky_flush_after pattern.
+    calls = 0
+
+    def sneaky_factory() -> AsyncSession:
+        session = TestSessionLocal()
+        real_execute = session.execute
+
+        async def execute(*args, **kwargs):
+            nonlocal calls
+            calls += 1
+            result = await real_execute(*args, **kwargs)
+            if calls == 3:
+                async with TestSessionLocal() as other:
+                    row = await other.get(Daily, daily_id)
+                    assert row is not None
+                    row.active = False
+                    await other.commit()
+            return result
+
+        session.execute = execute  # type: ignore[method-assign]
+        return session
+
+    sent = await notifications.run_reminder_tick(
+        now=datetime(2026, 5, 15, 7, 30, tzinfo=timezone.utc),
+        session_factory=sneaky_factory,  # type: ignore[arg-type]
+    )
+
+    assert sent == 0
+    assert await _notifs(db, user.id, NotificationType.DAILY_REMINDER) == []
+
+
+@pytest.mark.anyio
+async def test_streak_risk_in_app_off_bounds_push_per_day(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """in_app:false + push:true — no feed row anchors the meta dedup, so
+    the process-local bound caps the warning at one push per local day
+    (before: every tick inside the hour pushed)."""
+    user = await _make_user(db)
+    await _pref(db, user.id, prefs={"streak_risk": {"in_app": False}})
+    db.add(_daily(user.id, created_at=datetime(2026, 5, 1, tzinfo=timezone.utc)))
+    await db.commit()
+
+    sent = 0
+    for minute in (0, 1, 2):
+        sent += await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 20, minute, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+    await _drain_sends()
+
+    assert sent == 1  # the warning did dispatch — the push channel is respected
+    assert _mock_senders["push"].call_count == 1
+    assert await _notifs(db, user.id, NotificationType.STREAK_RISK) == []
+
+
+@pytest.mark.anyio
+async def test_tpw_impossible_first_week_stays_off_streak_risk(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """A 5x/week daily created Friday can't satisfy its first week — the
+    sweep's _first_week_unit skips that unit entirely, so streak-risk must
+    not warn toward it either. Its reminder still fires: the days accept
+    checks."""
+    user = await _make_user(db)
+    db.add(
+        _daily(
+            user.id,
+            recurrence={"kind": "times_per_week", "count": 5},
+            reminder_times=["07:30"],
+            created_at=datetime(2026, 5, 15, tzinfo=timezone.utc),  # Friday
+        )
+    )
+    await db.commit()
+
+    # The day IS schedulable — the reminder fires.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 31, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 1
+    )
+    # But the unreachable week doesn't make the streak-risk list.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 20, 1, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    assert len(await _notifs(db, user.id, NotificationType.DAILY_REMINDER)) == 1
+    assert await _notifs(db, user.id, NotificationType.STREAK_RISK) == []
 
 
 # --- Prefs endpoints ---------------------------------------------------------
@@ -578,6 +772,18 @@ async def test_put_rejects_unknown_top_level_key(
     """extra='forbid': a `quite_hours` typo must 422, not silently drop."""
     response = await authenticated_async_client.put(
         PREFS_URL, json={"quite_hours": {"start": "23:00", "end": "07:00"}}
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_put_quiet_hours_typo_rejected(
+    authenticated_async_client: AsyncClient,
+) -> None:
+    """extra='forbid' on QuietHoursIn: a `timzone` typo must 422, not
+    silently drop the timezone."""
+    response = await authenticated_async_client.put(
+        PREFS_URL, json={"quiet_hours": {"timzone": "Asia/Manila"}}
     )
     assert response.status_code == 422
 

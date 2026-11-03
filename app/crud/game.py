@@ -477,8 +477,11 @@ async def save_notification_pref(
         await db.flush()
     except IntegrityError:
         await db.rollback()
-        pref = await get_notification_pref(db, user_id)
-        assert pref is not None  # the race winner's committed row
+        pref = (
+            await db.execute(
+                select(GameNotificationPref).where(GameNotificationPref.user_id == user_id)
+            )
+        ).scalar_one()  # the race winner's committed row
         pref.prefs = prefs
         pref.quiet_hours = quiet_hours
         await db.flush()
@@ -493,7 +496,8 @@ async def upsert_device_token(
 
     A losing first-register race hits the token unique constraint on
     flush — recover by re-selecting the winner's committed row, the
-    get_or_create_profile pattern.
+    get_or_create_profile pattern (the rollback also discards the caller's
+    earlier pending work, so this is only safe at transaction start).
     """
     result = await db.execute(select(GameDeviceToken).where(GameDeviceToken.token == token))
     row = result.scalar_one_or_none()

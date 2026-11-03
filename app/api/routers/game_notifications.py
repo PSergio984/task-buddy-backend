@@ -70,6 +70,8 @@ def _prefs_read(pref) -> NotificationPrefsRead:
         return NotificationPrefsRead(prefs=prefs, quiet_hours=QuietHoursIn(**quiet))
     except Exception:
         # ANY invalid stored shape degrades to the defaults — never a 500.
+        # Visible, not silent: a corrupt row means an out-of-band write.
+        logger.warning("corrupt game notification prefs row; serving defaults", exc_info=True)
         return _default_prefs_read()
 
 
