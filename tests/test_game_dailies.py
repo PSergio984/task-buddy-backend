@@ -145,6 +145,19 @@ class TestRecurrence:
         units = daily_service.scheduled_units(rec, anchor, anchor, date(2026, 5, 24))
         assert units == [date(2026, 5, 10), date(2026, 5, 17), date(2026, 5, 24)]
 
+    def test_times_per_week_skips_impossible_first_week(self) -> None:
+        rec = daily_service.parse_recurrence({"kind": "times_per_week", "count": 4})
+        anchor = date(2026, 5, 8)  # a Friday — its week offers only 3 check days
+        units = daily_service.scheduled_units(rec, anchor, anchor, date(2026, 5, 31))
+        # The unsatisfiable partial week (Sun 5/10) is skipped.
+        assert units == [date(2026, 5, 17), date(2026, 5, 24), date(2026, 5, 31)]
+        # …and is not a freeze-window prior either.
+        assert daily_service.prior_units(rec, anchor, date(2026, 5, 24), 6) == [date(2026, 5, 17)]
+        # A full-week floor keeps its first unit.
+        assert daily_service.scheduled_units(
+            rec, date(2026, 5, 4), date(2026, 5, 4), date(2026, 5, 10)
+        ) == [date(2026, 5, 10)]
+
     def test_malformed_blobs_parse_none(self) -> None:
         for blob in (
             None,
@@ -296,7 +309,11 @@ class TestDailyCrud:
         body = response.json()
         assert body["title"] == "New"
         assert body["active"] is False
-        assert body["recurrence"] == {"kind": "times_per_week", "count": 3}
+        assert body["recurrence"] == {
+            "kind": "times_per_week",
+            "count": 3,
+            "since": _today().isoformat(),
+        }
         assert [i["title"] for i in body["items"]] == ["x", "y"]
         items = (
             (await db.execute(select(DailyItem).where(DailyItem.daily_id == daily["id"])))
@@ -320,8 +337,49 @@ class TestDailyCrud:
             "kind": "every_n_days",
             "interval": 5,
             "anchor": "2026-05-01",
+            "since": _today().isoformat(),
         }
         assert (await _get_daily_row(db, daily["id"])).recurrence["anchor"] == "2026-05-01"
+
+    async def test_patch_every_n_days_without_anchor_keeps_stored(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # A recurrence PATCH that omits the anchor must preserve the stored
+        # phase — filling it with the PATCH day silently re-anchors the
+        # schedule (right on create, wrong on update).
+        daily = await _create(
+            authenticated_async_client,
+            recurrence={"kind": "every_n_days", "interval": 3, "anchor": "2020-01-01"},
+        )
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}",
+            json={"recurrence": {"kind": "every_n_days", "interval": 5}},
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["recurrence"]["anchor"] == "2020-01-01"
+        assert (await _get_daily_row(db, daily["id"])).recurrence["anchor"] == "2020-01-01"
+
+    async def test_identical_recurrence_patch_preserves_since(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # A schedule-identical PATCH must carry the stored `since` forward,
+        # not re-stamp it (re-stamping to today would orphan the days the
+        # current schedule already owns) or drop it (re-exposing the days
+        # the stamp excluded). Seeded back-dated so a re-stamp shows.
+        daily = await _create(authenticated_async_client)
+        since = (_today() - timedelta(days=10)).isoformat()
+        await db.execute(
+            update(Daily)
+            .where(Daily.id == daily["id"])
+            .values(recurrence={"kind": "weekdays", "days": [1, 3], "since": since})
+        )
+        await db.commit()
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}", json={"recurrence": {"kind": "weekdays", "days": [3, 1]}}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["recurrence"]["since"] == since
+        assert (await _get_daily_row(db, daily["id"])).recurrence["since"] == since
 
     async def test_patch_cannot_touch_streak(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
@@ -1083,6 +1141,25 @@ class TestDailySweep:
         )
         assert await daily_sweep.run_daily_miss_sweep(now=now) == 0
 
+    async def test_times_per_week_impossible_first_week_not_charged(self, db: AsyncSession) -> None:
+        # Anchor last Friday: its week offers only Fri–Sun = 3 check days
+        # < count 4 — the first unit can never be satisfied, so it is
+        # skipped; the following week still charges its miss.
+        today = _today()
+        friday = today - timedelta(days=(today.weekday() - 4) % 7)
+        _, daily = await _make_daily(
+            db,
+            recurrence={"kind": "times_per_week", "count": 4},
+            created_days_ago=(today - friday).days,
+        )
+        second_sunday = friday + timedelta(days=9)
+        now = datetime.combine(second_sunday + timedelta(days=1), datetime.min.time()).replace(
+            hour=4, tzinfo=timezone.utc
+        )
+        assert await daily_sweep.run_daily_miss_sweep(now=now) == 1
+        misses = await self._miss_rows(db, daily.id)
+        assert [m.scheduled_day for m in misses] == [second_sunday]
+
     async def test_inactive_daily_is_skipped(self, db: AsyncSession) -> None:
         _, daily = await _make_daily(db, created_days_ago=1, active=False)
         assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
@@ -1312,3 +1389,151 @@ class TestDailySweep:
         # 50 -2 (unit 1) -> external 40 -> -2 (unit 2): the second loss
         # lands on the committed 40, not the stale in-memory 48.
         assert (await _profile(db, daily.user_id)).hp == 38
+
+    async def test_recurrence_patch_is_not_retroactive(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession, confirmed_user: dict
+    ) -> None:
+        """A schedule PATCH stamps `since` on the stored blob: the lookback
+        window must not re-evaluate days that ran under the old recurrence —
+        pre-fix this PATCH charged ~35 retro misses (HP loss + streak wipe)."""
+        daily = await _create(
+            authenticated_async_client, recurrence={"kind": "weekdays", "days": [0, 2]}
+        )
+        # Mid-history: created 40 days ago with a real streak standing.
+        await db.execute(
+            update(Daily).where(Daily.id == daily["id"]).values(created_at=_at(40), streak=5)
+        )
+        await db.commit()
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}", json={"recurrence": {"kind": "daily"}}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["recurrence"]["since"] == _today().isoformat()
+        # No unit before the patch day is due under the new rule — and
+        # today's unit isn't past its grace instant yet either.
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
+        assert await self._miss_rows(db, daily["id"]) == []
+        assert (await _get_daily_row(db, daily["id"])).streak == 5
+        assert (await _profile(db, confirmed_user["id"])).hp == 50
+
+    async def test_freeze_reads_misses_committed_after_snapshot(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The freeze verdict must consult misses committed through the
+        profile lock, not the pre-eval snapshot: a racing instance's miss
+        for a window-adjacent unit lands between our snapshot and our
+        lock — scoring on the stale set would hand out a freeze the
+        streak didn't earn."""
+        _, daily = await _make_daily(db, created_days_ago=3, streak=5)
+        # Days -3 and -2 are already satisfied, so day-1 is the only unit
+        # evaluated; its rolling window spans both.
+        for d in (_today() - timedelta(days=3), _today() - timedelta(days=2)):
+            db.add(DailyCheck(daily_id=daily.id, daily_item_id=None, check_date=d))
+        await db.commit()
+        real_list = game_crud.list_daily_checks
+        calls = {"n": 0}
+
+        async def _wrapped(*args, **kwargs):
+            calls["n"] += 1
+            if calls["n"] == 2:
+                # The unit's under-lock re-read: a racing instance's day-2
+                # miss commits between our miss snapshot and our claim.
+                # Staged in-session — sqlite can't model a mid-transaction
+                # external commit; the exercised path (post-lock miss
+                # re-read -> freeze verdict) is identical either way.
+                args[0].add(
+                    DailyMiss(
+                        daily_id=daily.id,
+                        user_id=daily.user_id,
+                        scheduled_day=_today() - timedelta(days=2),
+                        frozen=True,
+                    )
+                )
+                await args[0].flush()
+            return await real_list(*args, **kwargs)
+
+        monkeypatch.setattr(game_crud, "list_daily_checks", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 1
+        misses = {m.scheduled_day: m for m in await self._miss_rows(db, daily.id)}
+        assert misses[_today() - timedelta(days=1)].frozen is False
+        assert (await _get_daily_row(db, daily.id)).streak == 0
+
+    async def test_later_committed_frozen_miss_denies_freeze(self, db: AsyncSession) -> None:
+        """The freeze verdict can't be backward-only: a racing instance
+        that commits a LATER unit's miss first has already spent this
+        rolling window's one freeze — the earlier unit evaluating after
+        must break the streak, not freeze a second miss in the window."""
+        _, daily = await _make_daily(db, created_days_ago=2, streak=5)
+        # Yesterday's unit is already committed frozen — as if a racing
+        # instance claimed it before we got to the earlier unit.
+        db.add(
+            DailyMiss(
+                daily_id=daily.id,
+                user_id=daily.user_id,
+                scheduled_day=_today() - timedelta(days=1),
+                frozen=True,
+            )
+        )
+        await db.commit()
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 1
+        misses = {m.scheduled_day: m for m in await self._miss_rows(db, daily.id)}
+        # Day-2's miss lands UNfrozen — yesterday's freeze already covers
+        # the window it sits in.
+        assert misses[_today() - timedelta(days=2)].frozen is False
+        assert (await _get_daily_row(db, daily.id)).streak == 0
+        assert (await _profile(db, daily.user_id)).hp == 48
+
+    async def test_deactivation_mid_eval_suppresses_miss(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """The unit re-reads `daily` under the profile lock: a PATCH
+        deactivating between the pre-read and the claim bails the unit
+        instead of scoring a miss on a stale active row."""
+        _, daily = await _make_daily(db, created_days_ago=1, streak=5)
+        real_eval = daily_sweep._evaluate_unit
+
+        async def _wrapped(*args, **kwargs):
+            # A PATCH lands between the daily pre-read and the unit txn —
+            # staged in-session: visible to the under-lock re-read either
+            # way, and sqlite can't model a mid-transaction external write.
+            await args[0].execute(update(Daily).where(Daily.id == daily.id).values(active=False))
+            return await real_eval(*args, **kwargs)
+
+        monkeypatch.setattr(daily_sweep, "_evaluate_unit", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
+        assert await self._miss_rows(db, daily.id) == []
+        assert (await _profile(db, daily.user_id)).hp == 50
+
+    async def test_recurrence_patch_mid_eval_suppresses_miss(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A schedule PATCH landing mid-eval stamps `since` on the stored
+        blob: the under-lock re-read must bail the unit instead of
+        committing a miss for a day the `since` contract excludes — the
+        retro-miss the stamp exists to forbid."""
+        _, daily = await _make_daily(db, created_days_ago=1, streak=5)
+        real_eval = daily_sweep._evaluate_unit
+
+        async def _wrapped(*args, **kwargs):
+            # The PATCH result (new schedule + today's `since`) is staged
+            # in-session like the deactivation test above: visible to the
+            # under-lock re-read either way, and sqlite can't model a
+            # mid-transaction external write.
+            await args[0].execute(
+                update(Daily)
+                .where(Daily.id == daily.id)
+                .values(
+                    recurrence={
+                        "kind": "times_per_week",
+                        "count": 2,
+                        "since": _today().isoformat(),
+                    }
+                )
+            )
+            return await real_eval(*args, **kwargs)
+
+        monkeypatch.setattr(daily_sweep, "_evaluate_unit", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
+        assert await self._miss_rows(db, daily.id) == []
+        assert (await _get_daily_row(db, daily.id)).streak == 5
+        assert (await _profile(db, daily.user_id)).hp == 50

@@ -589,6 +589,52 @@ class TestHabitEventSync:
             "reason": "habit_unresolvable",
         }
 
+    async def test_click_scoring_error_records_unscored_and_keeps_batch(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """A ValueError out of score_click (corrupt stored state — a bogus
+        difficulty reaches the engine's _difficulty_mult) must record the
+        click unscored like every other rejection: one poisoned row can't
+        400 the batch and wedge the client's retry queue."""
+        habit = await _create(authenticated_async_client)
+        await db.execute(update(Habit).where(Habit.id == habit["id"]).values(difficulty="bogus"))
+        await db.commit()
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "f-1",
+                        "type": "focus_phase_completed",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    },
+                    self._habit_event("h-1", {"habit_id": habit["id"], "direction": "positive"}),
+                    {
+                        "client_event_id": "f-2",
+                        "type": "focus_phase_completed",
+                        "client_ts": datetime.now(timezone.utc).isoformat(),
+                        "payload": {"minutes": 10, "difficulty": "easy"},
+                    },
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["applied"] == 3
+        # Both focus events applied — the failed click scored nothing and
+        # didn't take the batch down with it.
+        assert response.json()["profile"]["xp_today"] == 20
+        row = await _get_habit_row(db, habit["id"])
+        assert row.counter == 0
+        assert row.value == pytest.approx(0.0)
+        stored = (
+            (await db.execute(select(GameEvent).where(GameEvent.client_event_id == "h-1")))
+            .scalar_one()
+            .payload
+        )
+        assert stored["_outcome"]["scored"] is False
+        assert "difficulty" in stored["_outcome"]["reason"]
+
     async def test_two_synced_clicks_drift_sequentially(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:

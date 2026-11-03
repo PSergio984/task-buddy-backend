@@ -45,8 +45,9 @@ def _unit_satisfied(rec: dict, unit: date, done_days: set[date], anchor: date) -
     """
     if rec["kind"] == "times_per_week":
         week_start = unit - timedelta(days=6)
+        floor = daily_service.effective_anchor(rec, anchor)
         return bool(
-            sum(1 for d in done_days if week_start <= d <= unit and d >= anchor) >= rec["count"]
+            sum(1 for d in done_days if week_start <= d <= unit and d >= floor) >= rec["count"]
         )
     return unit in done_days
 
@@ -74,13 +75,7 @@ async def _evaluate_unit(
     aiosqlite: the driver's implicit BEGIN only materializes on the first
     DML, so an outermost SAVEPOINT's RELEASE would commit outright.)
     """
-    # One miss per rolling 7 scheduled units is frozen: a miss in the
-    # prior 6 units means this one breaks the streak.
-    frozen = not any(
-        u in missed_days
-        for u in daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
-    )
-    miss = DailyMiss(daily_id=daily.id, user_id=daily.user_id, scheduled_day=unit, frozen=frozen)
+    miss = DailyMiss(daily_id=daily.id, user_id=daily.user_id, scheduled_day=unit)
     # The insert IS the cross-instance claim. This flush emits ONLY the
     # miss row — every other write is committed per-unit below — so an
     # IntegrityError unambiguously means a racing instance committed this
@@ -113,6 +108,24 @@ async def _evaluate_unit(
             .execution_options(populate_existing=True)
         )
     ).scalar_one_or_none()
+    # `daily` is a pre-lock snapshot: a PATCH landing between the pre-read
+    # and the lock (deactivate, difficulty change) must not score a miss
+    # from stale fields — re-read under the lock. A now-inactive or deleted
+    # daily's claim rolls back unrecorded; next tick skips it entirely.
+    fresh_daily = await db.get(Daily, daily.id, populate_existing=True)
+    if fresh_daily is None or not fresh_daily.active:
+        await db.rollback()
+        return False
+    daily = fresh_daily
+    # A recurrence PATCH landing mid-eval stamps `since` — re-parse under
+    # the lock and bail if this unit now sits below the new schedule's
+    # floor. Committing anyway would record exactly the retro-miss the
+    # `since` contract forbids; remaining queued units bail the same way.
+    # A malformed blob skips like the daily-level guard.
+    fresh_rec = daily_service.parse_recurrence(daily.recurrence)
+    if fresh_rec is None or unit < daily_service.effective_anchor(fresh_rec, anchor):
+        await db.rollback()
+        return False
     # A check committed between the daily pre-read and the lock would land
     # a day that's both missed (HP + streak reset) and done — re-read
     # satisfaction under the lock before committing the miss. A suppressed
@@ -126,6 +139,32 @@ async def _evaluate_unit(
         await db.rollback()
         done_days.update(fresh_done)
         return False
+    # One miss per rolling 7 scheduled units is frozen: a miss in the
+    # prior 6 units means this one breaks the streak. Read under the lock,
+    # not from the pre-eval snapshot — a racing instance can commit a
+    # window-adjacent miss between our snapshot read and the lock, and
+    # scoring both units frozen would hand out a freeze the streak didn't
+    # earn.
+    priors = daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
+    fresh_miss_rows = await game_crud.list_daily_misses(
+        db, daily.id, priors[-1] if priors else unit
+    )
+    seen_missed = missed_days | {m.scheduled_day for m in fresh_miss_rows}
+    frozen = not any(u in seen_missed for u in priors)
+    if frozen:
+        # The verdict can't be backward-only: a racing instance can commit
+        # a LATER unit's miss first — a committed miss already frozen means
+        # this unit sits inside that miss's spent window, so a second
+        # freeze here would still hand out two in one rolling-7.
+        frozen = not any(
+            m.frozen
+            and unit
+            in daily_service.prior_units(
+                rec, anchor, m.scheduled_day, daily_service.FREEZE_WINDOW_UNITS - 1
+            )
+            for m in fresh_miss_rows
+        )
+    miss.frozen = frozen
     missed_days.add(unit)
     # A daily whose owner lacks a profile row still records the
     # miss/streak change; only HP loss needs the row.
@@ -221,9 +260,8 @@ async def _evaluate_daily(
     for unit in units:
         if unit in missed_days or _unit_satisfied(rec, unit, done_days, anchor):
             continue
-        # `daily` is re-read only after a rollback — its attributes (e.g.
-        # difficulty for scoring) can go stale across the unit commits if a
-        # PATCH lands mid-eval; harmless, next tick's pass self-corrects.
+        # `daily` is re-read under the profile lock inside each unit
+        # transaction — a mid-eval PATCH is caught there, not here.
         if await _evaluate_unit(
             db, daily, unit, rec, anchor, missed_days, done_days, now, today, rates
         ):
