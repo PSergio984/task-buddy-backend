@@ -293,8 +293,8 @@ async def test_habit_reminder_fires_at_matching_local_time(
     assert sent == 1
     rows = await _notifs(db, user.id, NotificationType.HABIT_REMINDER)
     assert len(rows) == 1
-    assert rows[0].meta["day"] == "2026-05-15"
-    assert rows[0].meta["time"] == "07:30"
+    assert (rows[0].meta or {})["day"] == "2026-05-15"
+    assert (rows[0].meta or {})["time"] == "07:30"
 
 
 @pytest.mark.anyio
@@ -379,7 +379,7 @@ async def test_streak_risk_fires_once_per_local_day(
     )
     rows = await _notifs(db, user.id, NotificationType.STREAK_RISK)
     assert len(rows) == 1
-    assert rows[0].meta["day"] == "2026-05-15"
+    assert (rows[0].meta or {})["day"] == "2026-05-15"
 
 
 @pytest.mark.anyio

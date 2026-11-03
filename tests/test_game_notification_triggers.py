@@ -43,7 +43,7 @@ async def test_daily_miss_sweep_emits_daily_missed(
     assert await daily_sweep.run_daily_miss_sweep(now=now) == 1
     rows = await _notifs(db, user.id, NotificationType.DAILY_MISSED)
     assert len(rows) == 1
-    assert rows[0].meta["daily_id"] is not None
+    assert (rows[0].meta or {})["daily_id"] is not None
 
 
 @pytest.mark.anyio
@@ -138,7 +138,7 @@ async def test_achievement_grants_emit_one_notification_each(
     assert any(a.key == "level-10" for a in granted)
     rows = await _notifs(db, user.id, NotificationType.ACHIEVEMENT)
     assert len(rows) == len(granted) >= 1
-    assert {r.meta["achievement_key"] for r in rows} == {a.key for a in granted}
+    assert {(r.meta or {})["achievement_key"] for r in rows} == {a.key for a in granted}
 
 
 @pytest.mark.anyio
@@ -182,7 +182,11 @@ async def test_phase_end_garbage_inputs_never_raise(
     now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
 
     await notifications.notify_phase_end(
-        db, user.id, client_ts="not-a-datetime", minutes=25, now=now  # type: ignore[arg-type]
+        db,
+        user.id,
+        client_ts="not-a-datetime",  # type: ignore[arg-type]
+        minutes=25,
+        now=now,
     )
     await notifications.notify_phase_end(db, user.id, client_ts=now, minutes=True, now=now)
     await notifications.notify_phase_end(db, user.id, client_ts=now, minutes=-5, now=now)
