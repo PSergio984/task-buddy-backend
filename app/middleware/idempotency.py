@@ -122,8 +122,11 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         # header can ride any POST). Idempotent endpoints are small JSON
         # mutations, so oversize calls get no dedup protection.
         content_length = request.headers.get("content-length")
-        if content_length is not None and int(content_length) > MAX_BODY_BYTES:
-            return await call_next(request)
+        try:
+            if content_length is not None and int(content_length) > MAX_BODY_BYTES:
+                return await call_next(request)
+        except ValueError:
+            pass  # malformed header — the buffered length check below still bounds
         body = await request.body()
         if len(body) > MAX_BODY_BYTES:
             return await call_next(request)
@@ -209,7 +212,10 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                     content={"detail": "Request already in progress with this idempotency key."},
                 )
 
-            if data.get("body_hash") != body_hash:
+            # Only compare when the entry HAS a hash — entries written before
+            # body_hash existed can't prove a match; treat them as replayable
+            # rather than 422ing a legit same-body retry within the 1h TTL.
+            if "body_hash" in data and data["body_hash"] != body_hash:
                 logger.warning(
                     "Idempotency key %s reused with a different body (user: %s)",
                     idempotency_key,

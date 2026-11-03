@@ -101,8 +101,17 @@ class TestEvaluate:
         phases[0].paused_seconds = 100
         steps = se.evaluate(s, phases, T0 + timedelta(seconds=250))
         assert s.status == "abandoned"
-        assert steps[0].reason == "pause_overflow"
+        # Never-started phases close out skipped — a dead session can't
+        # leave them 'pending' reading as still startable.
+        assert [st.kind for st in steps] == [
+            "phase_skipped",
+            "phase_skipped",
+            "session_abandoned",
+        ]
+        assert steps[-1].reason == "pause_overflow"
         assert phases[0].status == "abandoned"
+        assert phases[1].status == "skipped"
+        assert phases[2].status == "skipped"
 
     def test_pause_within_budget_no_steps(self):
         s = _session()
@@ -154,9 +163,28 @@ class TestVerbs:
     def test_fourth_pause_abandons(self):
         s, phases = _session(), _pomodoro()
         phases[0].pause_count = 3
-        step = se.pause(s, phases[0], T0 + timedelta(minutes=5))
+        steps = se.pause(s, phases, T0 + timedelta(minutes=5))
         assert s.status == "abandoned"
-        assert step.reason == "pause_overflow"
+        assert steps[-1].reason == "pause_overflow"
+        # The count-overflow abandon closes pending phases out too.
+        assert [p.status for p in phases] == ["abandoned", "skipped", "skipped"]
+
+    def test_resume_seconds_overflow_skips_pending(self):
+        """Resume after the seconds budget blew abandons — pending phases
+        must skip, not dangle (the third pause-overflow abandon path)."""
+        s, phases = _session(), _pomodoro()
+        phases[0].status = "paused"
+        phases[0].pause_started_at = T0
+        phases[0].paused_seconds = 100
+        steps = se.resume(s, phases, T0 + timedelta(seconds=250))  # 100+250 > 300
+        assert s.status == "abandoned"
+        assert [st.kind for st in steps] == [
+            "phase_skipped",
+            "phase_skipped",
+            "session_abandoned",
+        ]
+        assert steps[-1].reason == "pause_overflow"
+        assert [p.status for p in phases] == ["abandoned", "skipped", "skipped"]
 
     def test_advance_pending_starts_phase(self):
         s, phases = _session(), _pomodoro(("completed", "completed", "pending"))

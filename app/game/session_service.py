@@ -431,14 +431,14 @@ async def _action(
 
 async def pause(db: AsyncSession, user_id: int, session_id: int) -> _View:
     def verb(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[se.Step]:
-        return [se.pause(session, se._live(phases), now)]
+        return se.pause(session, phases, now)
 
     return await _action(db, user_id, session_id, verb)
 
 
 async def resume(db: AsyncSession, user_id: int, session_id: int) -> _View:
     def verb(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[se.Step]:
-        return [se.resume(session, se._live(phases), now)]
+        return se.resume(session, phases, now)
 
     return await _action(db, user_id, session_id, verb)
 

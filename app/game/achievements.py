@@ -224,12 +224,14 @@ def _daily_due_on(daily: Daily, day: date) -> bool:
     return rec is None or daily_service.is_schedulable(rec, day, daily_service.daily_anchor(daily))
 
 
-async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
+async def _perfect_day(db: AsyncSession, user_id: int, full_history: bool = False) -> bool:
     """Whether some date's whole-daily done marks cover every daily due it.
 
     The per-date requirement is the recurrence-DUE subset of active dailies —
     an off-schedule daily can neither block the badge (unchecked) nor satisfy
-    it (checked on a day it wasn't due).
+    it (checked on a day it wasn't due). `full_history` lifts the write-
+    recency bound for the due-shrinking reopen (PATCH/DELETE), which can
+    newly qualify a check written before the window.
     """
     dailies = (
         (await db.execute(select(Daily).where(Daily.user_id == user_id, Daily.active.is_(True))))
@@ -240,13 +242,13 @@ async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
         return False
     # Window the check scan by write recency: the badge needs SOME
     # qualifying day and eval runs on every daily write, so a check older
-    # than this bound either already granted when it landed or can never
-    # newly qualify — re-scanning deeper history buys nothing. Bounding
-    # created_at (not check_date) keeps backfilled marks eligible: a check
-    # written today for a years-old day still counts.
+    # than this bound either already granted when it landed or can only
+    # newly qualify through a due-shrinking edit — which passes
+    # full_history and re-scans everything. Bounding created_at (not
+    # check_date) keeps backfilled marks eligible: a check written today
+    # for a years-old day still counts.
     window_start = datetime.now(timezone.utc) - timedelta(days=370)
-    done_by_date: dict[date, set[int]] = {}
-    result = await db.execute(
+    checks = (
         select(DailyCheck.check_date, DailyCheck.daily_id)
         .join(Daily, DailyCheck.daily_id == Daily.id)
         .where(
@@ -254,10 +256,13 @@ async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
             Daily.active.is_(True),
             DailyCheck.daily_item_id.is_(None),
             DailyCheck.done.is_(True),
-            DailyCheck.created_at >= window_start,
         )
         .distinct()
     )
+    if not full_history:
+        checks = checks.where(DailyCheck.created_at >= window_start)
+    done_by_date: dict[date, set[int]] = {}
+    result = await db.execute(checks)
     for check_date, daily_id in result.all():
         done_by_date.setdefault(check_date, set()).add(daily_id)
     for check_date, done_ids in done_by_date.items():
@@ -267,7 +272,13 @@ async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
     return False
 
 
-async def _meets(db: AsyncSession, user_id: int, profile: GameProfile, criteria: dict) -> bool:
+async def _meets(
+    db: AsyncSession,
+    user_id: int,
+    profile: GameProfile,
+    criteria: dict,
+    full_history: bool = False,
+) -> bool:
     """True when the criteria's live check passes. Unknown kinds never grant."""
     if not isinstance(criteria, dict):
         # Out-of-band writes can store non-dict criteria — never grant.
@@ -277,10 +288,12 @@ async def _meets(db: AsyncSession, user_id: int, profile: GameProfile, criteria:
         return profile.level >= _criteria_threshold(criteria)
     if kind == "class":
         return profile.game_class is not None
-    return await _meets_db(db, user_id, criteria)
+    return await _meets_db(db, user_id, criteria, full_history)
 
 
-async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
+async def _meets_db(
+    db: AsyncSession, user_id: int, criteria: dict, full_history: bool = False
+) -> bool:
     """DB-backed criteria: firsts, ownership, focus totals, records, days."""
     kind = criteria.get("kind")
     threshold = _criteria_threshold(criteria)
@@ -323,7 +336,7 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
         result = await db.execute(select(func.max(Habit.counter)).where(Habit.user_id == user_id))
         return int(result.scalar_one() or 0) >= threshold
     if kind == "perfect_day":
-        return await _perfect_day(db, user_id)
+        return await _perfect_day(db, user_id, full_history)
     return False
 
 
@@ -331,6 +344,13 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
 # types lands. Evaluation runs inside the profile lock on EVERY scored
 # write, so a write that emitted none of a kind's trigger types can skip
 # its scan outright. Kinds not listed always run.
+#
+# The hint names types the WRITE emitted — including fanout rows the caller
+# never listed: auto_click_bound (service.py, session_service.py) writes
+# habit_click rows for a scored focus_phase_completed, so "habit_click"
+# lands without appearing in the hint. Gating a kind on a fanout-produced
+# type therefore requires unioning in what the fanout emits — otherwise a
+# satisfied criteria silently skips its scan.
 _EVENT_GATED_KINDS: dict[str, frozenset[str]] = {
     # A perfect day is built of daily marks/misses — habit clicks and focus
     # phases can't create one.
@@ -355,6 +375,7 @@ async def evaluate(
     user_id: int,
     profile: GameProfile,
     event_types: set[str] | None = None,
+    full_history: bool = False,
 ) -> list[Achievement]:
     """Grant every met-but-unearned achievement; return the newly granted.
 
@@ -362,6 +383,8 @@ async def evaluate(
     earned-set prefilter is authoritative — the unique constraint is only
     the belt-and-braces for it. `event_types` is the caller's hint of the
     ledger types this write emitted (None = no hint, run every check).
+    `full_history` lifts scan windows for due-shrinking edits that can
+    newly qualify checks written before the recency bound.
     """
     # autoflush is off project-wide: the caller's pending GameEvent rows
     # must hit the table before event-based criteria can see them.
@@ -386,7 +409,7 @@ async def evaluate(
         criteria = achievement.criteria or {}
         if not _event_relevant(criteria, event_types):
             continue
-        if await _meets(db, user_id, profile, criteria):
+        if await _meets(db, user_id, profile, criteria, full_history):
             db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id))
             profile.gold += achievement.gold_reward
             granted.append(achievement)

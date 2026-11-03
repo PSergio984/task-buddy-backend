@@ -1205,6 +1205,37 @@ class TestAchievements:
         badges = await _badges(authenticated_async_client)
         assert badges["perfect-day"]["earned_at"] is not None
 
+    async def test_perfect_day_reopen_sees_pre_window_checks(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """A check WRITTEN >370d ago is invisible to the bounded scan, but
+        the due-shrinking reopen (delete) must re-scan full history — the
+        day it checked can newly qualify once the blocking daily is gone."""
+        await _ensure_profile(authenticated_async_client)
+        checked = Daily(user_id=confirmed_user["id"], title="a", active=True)
+        unchecked = Daily(user_id=confirmed_user["id"], title="b", active=True)
+        db.add_all([checked, unchecked])
+        await db.flush()
+        db.add(
+            DailyCheck(
+                daily_id=checked.id,
+                daily_item_id=None,
+                check_date=date.today(),
+                done=True,
+                # Written before the 370d recency bound — only the
+                # unbounded reopen can see it.
+                created_at=datetime.now(timezone.utc) - timedelta(days=400),
+            )
+        )
+        await db.commit()
+        response = await authenticated_async_client.delete(f"{GAME}/dailies/{unchecked.id}")
+        assert response.status_code == 200, response.text
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is not None
+
     async def test_event_gated_scans_skip_unrelated_writes(
         self,
         authenticated_async_client: AsyncClient,
@@ -1217,10 +1248,10 @@ class TestAchievements:
         calls = 0
         real_perfect_day = achievements._perfect_day
 
-        async def spy(db: AsyncSession, user_id: int) -> bool:
+        async def spy(db: AsyncSession, user_id: int, full_history: bool = False) -> bool:
             nonlocal calls
             calls += 1
-            return await real_perfect_day(db, user_id)
+            return await real_perfect_day(db, user_id, full_history)
 
         monkeypatch.setattr(achievements, "_perfect_day", spy)
         # Applied habit_click write — emits no daily types, scan stays shut.

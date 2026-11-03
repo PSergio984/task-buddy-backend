@@ -206,8 +206,12 @@ async def update_daily(
     # from due sets it used to block. Reactivating/widening can't grant,
     # and no ledger row lands here, so reopen the daily gate explicitly —
     # the event-gated eval would otherwise wait for the next check.
+    # full_history: the qualifying check may have been WRITTEN before the
+    # scan's 370d recency bound — only the unbounded reopen can see it.
     if "recurrence" in update_data or update_data.get("active") is False:
-        await achievements.evaluate(db, user_id, profile, event_types={"daily_check"})
+        await achievements.evaluate(
+            db, user_id, profile, event_types={"daily_check"}, full_history=True
+        )
     await db.commit()
     await db.refresh(daily)
     logger.info("daily updated: user=%s daily=%s", user_id, daily.id)
@@ -230,8 +234,11 @@ async def delete_daily(
     await db.delete(daily)
     # Deleting shrinks the due-set for every past date — a day that was
     # short one unchecked daily may now be perfect. Same daily-gate reopen
-    # as PATCH: no ledger row lands on a delete.
-    await achievements.evaluate(db, user_id, profile, event_types={"daily_check"})
+    # as PATCH: no ledger row lands on a delete. full_history so a check
+    # written before the recency bound can newly qualify.
+    await achievements.evaluate(
+        db, user_id, profile, event_types={"daily_check"}, full_history=True
+    )
     await db.commit()
     logger.info("daily deleted: user=%s daily=%s", user_id, daily_id)
     return {"message": "Daily deleted successfully"}
