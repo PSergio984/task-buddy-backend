@@ -144,6 +144,41 @@ async def _ingest_daily_check(
     return outcome
 
 
+async def _apply_generic(
+    db: AsyncSession,
+    user_id: int,
+    event: GameEventIn,
+    profile: GameProfile,
+    rates: GameRates,
+    today,
+    rng: random.Random,
+    stat_bonus: dict[str, int],
+) -> tuple[dict, dict[str, int]]:
+    """Score one generic (non-habit/non-daily) event.
+
+    A ValueError from the engine's payload guards records applied-but-
+    unscored like the habit/daily paths — one malformed queued event must
+    not 400 the batch and wedge the client's retry queue forever. Returns
+    (outcome, stat_bonus) so a mid-batch death's gear loss stops scoring.
+    """
+    try:
+        outcome = engine.apply_event(
+            profile,
+            event.type,
+            event.payload,
+            rates,
+            rng_roll=rng.random(),
+            rng=rng,
+            today=today,
+            stat_bonus=stat_bonus,
+        )
+    except ValueError as exc:
+        return {"scored": False, "reason": str(exc)}, stat_bonus
+    await character_service.resolve_death_gear(db, user_id, outcome, rng)
+    stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
+    return outcome, stat_bonus
+
+
 async def _refresh_bonus_on_gear_loss(
     db: AsyncSession,
     user_id: int,
@@ -285,18 +320,9 @@ async def ingest_events(
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
-        outcome = engine.apply_event(
-            profile,
-            event.type,
-            event.payload,
-            rates,
-            rng_roll=rng.random(),
-            rng=rng,
-            today=today,
-            stat_bonus=stat_bonus,
+        outcome, stat_bonus = await _apply_generic(
+            db, user_id, event, profile, rates, today, rng, stat_bonus
         )
-        await character_service.resolve_death_gear(db, user_id, outcome, rng)
-        stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras
         # are cleaned of server-reserved markers — a forged auto/session_id

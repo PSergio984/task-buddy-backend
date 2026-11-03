@@ -128,7 +128,9 @@ class GameRates:
 
     @classmethod
     def from_dict(cls, data: Mapping[str, Any]) -> "GameRates":
-        if not data:
+        # JSONB can hold any JSON value — a non-object row falls back to
+        # defaults instead of crashing every scoring endpoint on .items().
+        if not isinstance(data, Mapping):
             return cls()
         known = set(cls.__dataclass_fields__)
         kwargs: dict[str, Any] = {}
