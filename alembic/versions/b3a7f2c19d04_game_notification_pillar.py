@@ -13,8 +13,9 @@ rides this ALTER so no second enum migration is needed) — and add the
 
 Postgres enum values are append-only (ALTER TYPE ... ADD VALUE IF NOT
 EXISTS); SQLite stores the column as varchar so the enum section is a
-dialect-guarded no-op there. Downgrade drops `meta` only — Postgres offers
-no enum-value removal short of recreating the type.
+dialect-guarded no-op there. Also adds the (user_id, type) index the 60s
+dedup probe scans. Downgrade drops `meta` and the index only — Postgres
+offers no enum-value removal short of recreating the type.
 """
 
 from collections.abc import Sequence
@@ -50,12 +51,29 @@ _NEW_KINDS = (
 
 def upgrade() -> None:
     if op.get_bind().dialect.name == "postgresql":
-        for kind in _NEW_KINDS:
-            op.execute(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{kind}'")
+        # ADD VALUE must commit before the new labels are usable — env.py
+        # wraps the whole upgrade in one transaction (same autocommit need
+        # as 742fdcbd5779, which indexed on a new label in the same run).
+        with op.get_context().autocommit_block():
+            for kind in _NEW_KINDS:
+                op.execute(f"ALTER TYPE notificationtype ADD VALUE IF NOT EXISTS '{kind}'")
     op.add_column("tbl_notifications", sa.Column("meta", _json_type, nullable=True))
+    # The dedup probe's two leading equality cols — the single-col
+    # ix_..._user_id leaves `type` filtered per row scanned.
+    op.create_index(
+        "ix_tbl_notifications_user_id_type",
+        "tbl_notifications",
+        ["user_id", "type"],
+    )
 
 
 def downgrade() -> None:
+    """Drop the dedup index and the meta column.
+
+    DATA LOSS: `meta` held the dispatcher's dedup keys and entity links —
+    dropping it permanently discards every game notification's dedup
+    identity, so a later re-upgrade can't tell prior sends from new ones."""
+    op.drop_index("ix_tbl_notifications_user_id_type", table_name="tbl_notifications")
     op.drop_column("tbl_notifications", "meta")
     # Postgres enum values can't be dropped without recreating the type —
     # the extra labels are inert, so downgrade leaves them in place.

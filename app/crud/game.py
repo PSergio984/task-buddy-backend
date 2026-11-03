@@ -1,5 +1,6 @@
 """CRUD operations for the game profile, event ledger, and config."""
 
+import logging
 from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import delete, func, select
@@ -25,6 +26,8 @@ from app.models.game import (
     SessionNote,
     UserGear,
 )
+
+logger = logging.getLogger(__name__)
 
 _RETENTION_DAYS = {"90d": 90, "1y": 365}
 
@@ -455,14 +458,30 @@ async def get_notification_pref(db: AsyncSession, user_id: int) -> GameNotificat
 async def save_notification_pref(
     db: AsyncSession, user_id: int, prefs: dict, quiet_hours: dict
 ) -> GameNotificationPref:
-    """Create-or-replace the user's prefs row (PUT semantics — whole object)."""
+    """Create-or-replace the user's prefs row (PUT semantics — whole object).
+
+    A losing first-PUT race hits the user_id unique constraint on flush —
+    recover by re-selecting the winner's committed row, the
+    get_or_create_profile pattern (the rollback also discards the caller's
+    earlier pending work, so this is only safe at transaction start).
+    """
     pref = await get_notification_pref(db, user_id)
-    if pref is None:
-        pref = GameNotificationPref(user_id=user_id)
-    pref.prefs = prefs
-    pref.quiet_hours = quiet_hours
+    if pref is not None:
+        pref.prefs = prefs
+        pref.quiet_hours = quiet_hours
+        await db.flush()
+        return pref
+    pref = GameNotificationPref(user_id=user_id, prefs=prefs, quiet_hours=quiet_hours)
     db.add(pref)
-    await db.flush()
+    try:
+        await db.flush()
+    except IntegrityError:
+        await db.rollback()
+        pref = await get_notification_pref(db, user_id)
+        assert pref is not None  # the race winner's committed row
+        pref.prefs = prefs
+        pref.quiet_hours = quiet_hours
+        await db.flush()
     return pref
 
 
@@ -470,15 +489,30 @@ async def upsert_device_token(
     db: AsyncSession, user_id: int, platform: str, token: str
 ) -> GameDeviceToken:
     """Register a device token, reassigning it to the caller when it exists —
-    same upsert-on-unique-key pattern as push subscriptions."""
+    same upsert-on-unique-key pattern as push subscriptions.
+
+    A losing first-register race hits the token unique constraint on
+    flush — recover by re-selecting the winner's committed row, the
+    get_or_create_profile pattern.
+    """
     result = await db.execute(select(GameDeviceToken).where(GameDeviceToken.token == token))
     row = result.scalar_one_or_none()
     if row is None:
         row = GameDeviceToken(user_id=user_id, platform=platform, token=token)
-    else:
-        row.user_id = user_id
-        row.platform = platform
-    db.add(row)
+        db.add(row)
+        try:
+            await db.flush()
+            return row
+        except IntegrityError:
+            await db.rollback()
+            row = (
+                await db.execute(select(GameDeviceToken).where(GameDeviceToken.token == token))
+            ).scalar_one()
+    if row.user_id != user_id:
+        # An ownership hand-off (client-side or race-won) stays audible.
+        logger.info("device token reassigned from user=%s to user=%s", row.user_id, user_id)
+    row.user_id = user_id
+    row.platform = platform
     await db.flush()
     return row
 

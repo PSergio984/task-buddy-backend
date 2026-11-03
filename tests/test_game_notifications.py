@@ -5,14 +5,17 @@ already patches); everything between the trigger and the sender runs for real
 against the SQLite test DB.
 """
 
+import asyncio
 from datetime import date, datetime, timedelta, timezone
 from unittest.mock import AsyncMock
 
 import pytest
 from httpx import AsyncClient
 from sqlalchemy import select
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.crud import game as game_crud
 from app.game import notifications
 from app.models.game import (
     Daily,
@@ -75,6 +78,13 @@ async def _notifs(
     return list((await db.execute(stmt)).scalars().all())
 
 
+async def _drain_sends() -> None:
+    """Let detached sender tasks finish — dispatch fires them off-transaction
+    (asyncio.create_task), so send assertions must await the module set."""
+    if notifications._send_tasks:
+        await asyncio.gather(*list(notifications._send_tasks))
+
+
 def _habit(user_id: int, **kw) -> Habit:
     return Habit(user_id=user_id, title="Drink water", **kw)
 
@@ -117,6 +127,7 @@ async def test_outside_quiet_window_sends(
     await notifications.dispatch_notification(
         db, user.id, NotificationType.LOW_HP, "t", "m", now=now
     )
+    await _drain_sends()
 
     _mock_senders["push"].assert_called_once()
 
@@ -132,6 +143,7 @@ async def test_exempt_notification_bypasses_quiet(
     await notifications.dispatch_notification(
         db, user.id, NotificationType.PHASE_END, "t", "m", exempt_quiet=True, now=now
     )
+    await _drain_sends()
 
     _mock_senders["push"].assert_called_once()
 
@@ -156,6 +168,7 @@ async def test_quiet_window_honors_pref_timezone(
     await notifications.dispatch_notification(
         db, user.id, NotificationType.LOW_HP, "t", "m", now=now
     )
+    await _drain_sends()
     _mock_senders["push"].assert_called_once()
 
 
@@ -230,10 +243,35 @@ async def test_defaults_used_without_pref_row(
         now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
     )
     await db.flush()
+    await _drain_sends()
 
     _mock_senders["push"].assert_called_once()
     _mock_senders["email"].assert_not_called()
     assert len(await _notifs(db, user.id, NotificationType.LEVEL_UP)) == 1
+
+
+@pytest.mark.anyio
+async def test_email_channel_sends_via_detached_task(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """matrix email:true invokes the Brevo sender — detached, with the
+    recipient resolved on the send task's own session."""
+    user = await _make_user(db)
+    await _pref(db, user.id, prefs={"low_hp": {"email": True}})
+    await db.commit()  # the detached task reads the user on its own session
+
+    await notifications.dispatch_notification(
+        db,
+        user.id,
+        NotificationType.LOW_HP,
+        "title",
+        "body",
+        now=datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc),
+    )
+    await _drain_sends()
+
+    _mock_senders["email"].assert_awaited_once()
+    assert _mock_senders["email"].call_args.args[0] == user.email
 
 
 # --- Reminder tick -----------------------------------------------------------
@@ -362,6 +400,112 @@ async def test_streak_risk_silent_when_all_checked(
     assert await _notifs(db, user.id, NotificationType.STREAK_RISK) == []
 
 
+@pytest.mark.anyio
+async def test_daily_reminder_skips_when_checked_today(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """A 07:00 check must not still get the 07:30 reminder — today's marks
+    are loaded once per user and a checked daily stays quiet."""
+    user = await _make_user(db)
+    daily = _daily(
+        user.id,
+        reminder_times=["07:30"],
+        created_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    db.add(daily)
+    await db.flush()
+    db.add(DailyCheck(daily_id=daily.id, check_date=date(2026, 5, 15), done=True))
+    await db.commit()
+
+    sent = await notifications.run_reminder_tick(
+        now=datetime(2026, 5, 15, 7, 30, tzinfo=timezone.utc),
+        session_factory=TestSessionLocal,
+    )
+
+    assert sent == 0
+    assert await _notifs(db, user.id, NotificationType.DAILY_REMINDER) == []
+
+
+@pytest.mark.anyio
+async def test_times_per_week_quota_met_stays_quiet(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """A 1x/week daily checked this week: no reminder at its time and no
+    streak-risk listing — the week's quota is met; the deadline is Sunday."""
+    user = await _make_user(db)
+    daily = _daily(
+        user.id,
+        recurrence={"kind": "times_per_week", "count": 1},
+        reminder_times=["07:30"],
+        created_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    db.add(daily)
+    await db.flush()
+    # Tuesday of the same ISO week (Mon 05-11 .. Sun 05-17) — quota met.
+    db.add(DailyCheck(daily_id=daily.id, check_date=date(2026, 5, 12), done=True))
+    await db.commit()
+
+    # Friday 07:30 local — the reminder time matches but the week is done.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 30, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    # Local 20:00 — a satisfied week must not list in streak-risk either.
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 0
+    )
+    assert await _notifs(db, user.id, NotificationType.DAILY_REMINDER) == []
+    assert await _notifs(db, user.id, NotificationType.STREAK_RISK) == []
+
+
+@pytest.mark.anyio
+async def test_times_per_week_unsatisfied_still_reminds(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """Same daily with the quota open: the reminder fires and the 20:00
+    tick lists it in streak-risk — last week's check doesn't count."""
+    user = await _make_user(db)
+    daily = _daily(
+        user.id,
+        recurrence={"kind": "times_per_week", "count": 2},
+        reminder_times=["07:30"],
+        created_at=datetime(2026, 5, 1, tzinfo=timezone.utc),
+    )
+    db.add(daily)
+    await db.flush()
+    # One this week (Tue) + one last week — count=2 stays open.
+    db.add(DailyCheck(daily_id=daily.id, check_date=date(2026, 5, 12), done=True))
+    db.add(DailyCheck(daily_id=daily.id, check_date=date(2026, 5, 8), done=True))
+    await db.commit()
+
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, 30, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 1
+    )
+    assert len(await _notifs(db, user.id, NotificationType.DAILY_REMINDER)) == 1
+
+    assert (
+        await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 20, 30, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+        == 1
+    )
+    rows = await _notifs(db, user.id, NotificationType.STREAK_RISK)
+    assert len(rows) == 1
+    assert "Meditate" in rows[0].message
+
+
 # --- Prefs endpoints ---------------------------------------------------------
 
 
@@ -425,6 +569,52 @@ async def test_put_non_bool_channel_rejected(authenticated_async_client: AsyncCl
         PREFS_URL, json={"prefs": {"low_hp": {"push": "yes"}}}
     )
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_put_rejects_unknown_top_level_key(
+    authenticated_async_client: AsyncClient,
+) -> None:
+    """extra='forbid': a `quite_hours` typo must 422, not silently drop."""
+    response = await authenticated_async_client.put(
+        PREFS_URL, json={"quite_hours": {"start": "23:00", "end": "07:00"}}
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_get_prefs_corrupt_stored_blobs_return_defaults(
+    authenticated_async_client: AsyncClient, confirmed_user: dict, db: AsyncSession
+) -> None:
+    """Out-of-band writes can store shapes PUT would reject — reads collapse
+    them to the default matrix, never a 500."""
+    pref = GameNotificationPref(
+        user_id=confirmed_user["id"],
+        prefs={"low_hp": "off"},  # truthy non-dict kind value
+        quiet_hours="nope",  # non-dict quiet blob
+    )
+    db.add(pref)
+    await db.commit()
+
+    response = await authenticated_async_client.get(PREFS_URL)
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert set(body["prefs"]) == notifications.KIND_KEYS
+    assert body["prefs"]["low_hp"] == {"in_app": True, "push": True, "email": False}
+    assert body["quiet_hours"] == {"start": "22:00", "end": "08:00", "timezone": "UTC"}
+
+    # Non-bool channel value and unknown channel key — same collapse.
+    pref.quiet_hours = {}
+    for blob in ({"low_hp": {"push": "yes"}}, {"streak_risk": {"carrier_pigeon": True}}):
+        pref.prefs = blob
+        await db.commit()
+        response = await authenticated_async_client.get(PREFS_URL)
+        assert response.status_code == 200, response.text
+        assert response.json()["prefs"]["low_hp"] == {
+            "in_app": True,
+            "push": True,
+            "email": False,
+        }
 
 
 # --- Device-token endpoints ---------------------------------------------------
@@ -514,3 +704,71 @@ async def test_read_all_marks_only_own_notifications(
     await db.refresh(theirs)
     assert mine.is_read is True
     assert theirs.is_read is False
+
+
+# --- Write-path race recovery -------------------------------------------------
+
+
+def _flaky_flush_after(db: AsyncSession, plant_winner):
+    """A db.flush side-effect: on the first call commit `plant_winner` on its
+    OWN session (the racing writer), then raise the unique-key IntegrityError
+    our losing insert would see. Later flushes run for real."""
+    real_flush = db.flush
+    attempts = 0
+
+    async def flaky_flush(*args, **kwargs):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            async with TestSessionLocal() as other_db:
+                other_db.add(plant_winner())
+                await other_db.commit()
+            raise IntegrityError("INSERT", {}, Exception("duplicate key"))
+        await real_flush(*args, **kwargs)
+
+    return flaky_flush
+
+
+@pytest.mark.anyio
+async def test_save_notification_pref_insert_race_recovers(db: AsyncSession, mocker) -> None:
+    """A concurrent first-PUT hits the user_id uq — rollback + reselect the
+    winner's row instead of surfacing an IntegrityError."""
+    user = await _make_user(db)
+    await db.commit()  # the racing writer's session needs the user row
+    user_id = user.id  # capture pre-call — the recovery rollback expires `user`
+    mocker.patch.object(
+        db,
+        "flush",
+        side_effect=_flaky_flush_after(
+            db, lambda: GameNotificationPref(user_id=user_id, prefs={}, quiet_hours={})
+        ),
+    )
+
+    pref = await game_crud.save_notification_pref(
+        db, user_id, prefs={"low_hp": {"push": False}}, quiet_hours={"start": "21:00"}
+    )
+
+    assert pref.prefs == {"low_hp": {"push": False}}
+    assert pref.quiet_hours == {"start": "21:00"}
+
+
+@pytest.mark.anyio
+async def test_upsert_device_token_insert_race_recovers(db: AsyncSession, mocker) -> None:
+    """Same unique-key race on first register — the winner's row comes back
+    reassigned to the caller, no 500."""
+    user = await _make_user(db)
+    other = await _make_user(db, "tokracer@t.dev")
+    await db.commit()
+    # Capture pre-call — the recovery rollback expires both user objects.
+    user_id, other_id = user.id, other.id
+    mocker.patch.object(
+        db,
+        "flush",
+        side_effect=_flaky_flush_after(
+            db, lambda: GameDeviceToken(user_id=other_id, platform="expo", token="tok-race")
+        ),
+    )
+
+    row = await game_crud.upsert_device_token(db, user_id, "expo", "tok-race")
+
+    assert row.user_id == user_id

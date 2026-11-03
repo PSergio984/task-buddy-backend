@@ -909,6 +909,8 @@ class QuietHoursIn(BaseModel):
     """The global quiet window: local wall-time bounds in the pref tz.
 
     `timezone` is the local-time answer until a real user tz lands (#63).
+    `start == end` is a degenerate window — it disables quiet hours
+    entirely (the gate evaluates never-quiet), not "quiet all day".
     """
 
     start: str = "22:00"
@@ -942,6 +944,9 @@ class NotificationPrefsIn(BaseModel):
 
     prefs: dict[str, dict[str, StrictBool]] = Field(default_factory=dict)
     quiet_hours: QuietHoursIn = Field(default_factory=QuietHoursIn)
+
+    # A typo'd key ("quite_hours") must 422, not silently drop the block.
+    model_config = ConfigDict(extra="forbid")
 
     @field_validator("prefs")
     @classmethod

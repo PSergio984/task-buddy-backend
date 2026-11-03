@@ -15,7 +15,7 @@ from app.game import achievements, daily_sweep, notifications, service
 from app.models.game import GameProfile
 from app.models.notification import NotificationType
 from app.schemas.game import GameEventIn
-from tests.test_game_notifications import _daily, _make_user, _notifs, _pref
+from tests.test_game_notifications import _daily, _drain_sends, _make_user, _notifs, _pref
 
 
 @pytest.fixture(autouse=True)
@@ -151,6 +151,7 @@ async def test_live_phase_end_fires_quiet_exempt(
 
     await notifications.notify_phase_end(db, user.id, client_ts=now, minutes=25, now=now)
     await db.flush()
+    await _drain_sends()
 
     rows = await _notifs(db, user.id, NotificationType.PHASE_END)
     assert len(rows) == 1
@@ -169,6 +170,29 @@ async def test_stale_phase_end_does_not_fire(
 
     assert await _notifs(db, user.id, NotificationType.PHASE_END) == []
     _mock_senders["push"].assert_not_called()
+
+
+@pytest.mark.anyio
+async def test_phase_end_garbage_inputs_never_raise(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """Client-shaped garbage degrades inside the never-raises contract: a
+    non-datetime client_ts stays silent; bool/negative minutes lose the count."""
+    user = await _make_user(db)
+    now = datetime(2026, 5, 15, 12, 0, tzinfo=timezone.utc)
+
+    await notifications.notify_phase_end(
+        db, user.id, client_ts="not-a-datetime", minutes=25, now=now  # type: ignore[arg-type]
+    )
+    await notifications.notify_phase_end(db, user.id, client_ts=now, minutes=True, now=now)
+    await notifications.notify_phase_end(db, user.id, client_ts=now, minutes=-5, now=now)
+    await db.flush()
+
+    rows = await _notifs(db, user.id, NotificationType.PHASE_END)
+    # The garbage ts logged + skipped; the two live calls still alert but
+    # carry the generic body — no "True minutes"/negative counts.
+    assert len(rows) == 2
+    assert all(r.message == "Focus phase complete." for r in rows)
 
 
 @pytest.mark.anyio

@@ -4,7 +4,6 @@ import logging
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, Response, status
-from pydantic import ValidationError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
@@ -35,23 +34,43 @@ router = APIRouter(
 )
 
 
+def _default_prefs_read() -> NotificationPrefsRead:
+    """The full default matrix — also the collapse target for corrupt rows."""
+    return NotificationPrefsRead(
+        prefs={
+            key: dict(game_notifications.DEFAULT_CHANNELS)
+            for key in sorted(game_notifications.KIND_KEYS)
+        },
+        quiet_hours=QuietHoursIn(),
+    )
+
+
 def _prefs_read(pref) -> NotificationPrefsRead:
     """Stored row -> the full effective matrix (defaults fill every gap).
 
     A stored blob that fails re-validation (only reachable via out-of-band
     writes — PUT validates) collapses to defaults instead of 500ing reads.
     """
-    stored = (pref.prefs if pref else None) or {}
-    prefs = {
-        key: {**game_notifications.DEFAULT_CHANNELS, **(stored.get(key) or {})}
-        for key in sorted(game_notifications.KIND_KEYS)
-    }
-    quiet = {**game_notifications.DEFAULT_QUIET, **((pref.quiet_hours or {}) if pref else {})}
     try:
-        quiet_model = QuietHoursIn(**quiet)
-    except ValidationError:
-        quiet_model = QuietHoursIn()
-    return NotificationPrefsRead(prefs=prefs, quiet_hours=quiet_model)
+        stored = pref.prefs if pref else None
+        quiet_stored = pref.quiet_hours if pref else None
+        # Per-kind merge mirrors _matrix_for in notifications.py — a
+        # missing/garbage kind entry collapses to that kind's defaults.
+        prefs: dict[str, dict] = {}
+        for key in sorted(game_notifications.KIND_KEYS):
+            override = stored.get(key) if isinstance(stored, dict) else None
+            prefs[key] = {
+                **game_notifications.DEFAULT_CHANNELS,
+                **(override if isinstance(override, dict) else {}),
+            }
+        quiet = {
+            **game_notifications.DEFAULT_QUIET,
+            **(quiet_stored if isinstance(quiet_stored, dict) else {}),
+        }
+        return NotificationPrefsRead(prefs=prefs, quiet_hours=QuietHoursIn(**quiet))
+    except Exception:
+        # ANY invalid stored shape degrades to the defaults — never a 500.
+        return _default_prefs_read()
 
 
 @router.get("/notification-prefs", response_model=NotificationPrefsRead)
