@@ -77,6 +77,12 @@ _send_tasks: set[asyncio.Task[None]] = set()
 # for its rollback blind spot.
 _streak_risk_fired: dict[int, date] = {}
 
+# Same blind spot for the two reminder kinds: in_app:false leaves no feed
+# row, so the look-back window would re-push on each of the ~4 in-window
+# ticks. Keyed by (user, kind, entity, hhmm) -> last-fired-local-day —
+# bounded by distinct reminder slots; restart refires once, as above.
+_reminder_fired: dict[tuple[int, NotificationType, int, str], date] = {}
+
 
 async def _guarded_send(coro: Coroutine[Any, Any, None]) -> None:
     """Keep a detached task's failure out of the event loop's
@@ -349,7 +355,13 @@ async def _reminder(
 ) -> bool:
     """Dedup + dispatch one reminder; True when it fired."""
     meta = {entity_key: entity_id, "day": day.isoformat(), "time": hhmm}
+    fired_key = (user_id, kind, entity_id, hhmm)
     try:
+        # The process-local bound lands before the probe: in_app:false
+        # users leave no feed row for _already_notified, so every
+        # in-window tick would re-push without it.
+        if _reminder_fired.get(fired_key) == day:
+            return False
         # The probe stays inside the try — a corrupt stored meta or a DB
         # hiccup must cost this one reminder, not the whole user pass.
         if await _already_notified(db, user_id, kind, meta):
@@ -364,6 +376,7 @@ async def _reminder(
             meta=meta,
             now=now,
         )
+        _reminder_fired[fired_key] = day
         return True
     except Exception:
         logger.exception("reminder dispatch failed: user=%s kind=%s", user_id, kind)

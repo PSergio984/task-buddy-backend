@@ -47,9 +47,10 @@ def _mock_senders(mocker) -> dict[str, AsyncMock]:
 
 @pytest.fixture(autouse=True)
 def _fresh_streak_state() -> None:
-    """The tick's streak-risk bound is process-local (user -> last fired
-    day) — tests share the process and reuse user ids, so reset it."""
+    """The tick's bounds are process-local (user/slot -> last fired day) —
+    tests share the process and reuse user ids, so reset them."""
     notifications._streak_risk_fired.clear()
+    notifications._reminder_fired.clear()
 
 
 async def _make_user(db: AsyncSession, email: str = "notif@t.dev") -> User:
@@ -659,6 +660,38 @@ async def test_streak_risk_in_app_off_bounds_push_per_day(
     assert sent == 1  # the warning did dispatch — the push channel is respected
     assert _mock_senders["push"].call_count == 1
     assert await _notifs(db, user.id, NotificationType.STREAK_RISK) == []
+
+
+@pytest.mark.anyio
+async def test_reminder_in_app_off_bounds_push_per_slot(
+    db: AsyncSession, _mock_senders: dict[str, AsyncMock]
+) -> None:
+    """in_app:false + push:true — no feed row anchors the meta dedup, so the
+    process-local bound caps a 07:30 habit reminder at one push even though
+    all four look-back ticks match it (before the bound: one push per tick)."""
+    user = await _make_user(db)
+    await _pref(
+        db,
+        user.id,
+        prefs={"habit_reminder": {"in_app": False}},
+        # 07:30 sits inside the default quiet window — use a window that
+        # doesn't cover it so the push channel is actually exercisable.
+        quiet={"start": "22:00", "end": "23:00", "timezone": "UTC"},
+    )
+    db.add(_habit(user.id, reminder_times=["07:30"]))
+    await db.commit()
+
+    sent = 0
+    for minute in (30, 31, 32, 33):
+        sent += await notifications.run_reminder_tick(
+            now=datetime(2026, 5, 15, 7, minute, tzinfo=timezone.utc),
+            session_factory=TestSessionLocal,
+        )
+    await _drain_sends()
+
+    assert sent == 1
+    assert _mock_senders["push"].call_count == 1
+    assert await _notifs(db, user.id, NotificationType.HABIT_REMINDER) == []
 
 
 @pytest.mark.anyio
