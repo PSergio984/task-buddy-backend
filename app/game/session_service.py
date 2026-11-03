@@ -14,7 +14,7 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import character_service, habit_service
+from app.game import character_service, habit_service, notifications
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
@@ -135,6 +135,7 @@ async def _persist_step(
         # earnings already booked on the newer day.
         step_day = at.date()
         day = max(step_day, profile.totals_day) if profile.totals_day else step_day
+        hp_before = profile.hp
         outcome = apply_event(
             profile,
             event_type,
@@ -146,6 +147,9 @@ async def _persist_step(
             stat_bonus=stat_bonus,
         )
         await character_service.resolve_death_gear(db, user_id, outcome, _rng)
+        await notifications.notify_score_outcome(db, user_id, profile, hp_before, outcome, now=now)
+        if event_type == "focus_phase_completed" and outcome.get("scored"):
+            await notifications.notify_phase_end(db, user_id, at, payload.get("minutes"), now=now)
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,

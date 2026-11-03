@@ -13,7 +13,13 @@ from typing import Literal
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import character_service, daily_service, engine, habit_service
+from app.game import (
+    character_service,
+    daily_service,
+    engine,
+    habit_service,
+    notifications,
+)
 from app.game.engine import GameRates
 from app.models.game import Daily, DailyItem, GameEvent, GameProfile, Habit
 from app.schemas.game import GameEventIn, GameEventResult
@@ -238,6 +244,7 @@ async def _apply_generic(
     not 400 the batch and wedge the client's retry queue forever. Returns
     (outcome, stat_bonus) so a mid-batch death's gear loss stops scoring.
     """
+    hp_before = profile.hp
     try:
         outcome = engine.apply_event(
             profile,
@@ -252,6 +259,11 @@ async def _apply_generic(
     except ValueError as exc:
         return {"scored": False, "reason": str(exc)}, stat_bonus
     await character_service.resolve_death_gear(db, user_id, outcome, rng)
+    await notifications.notify_score_outcome(db, user_id, profile, hp_before, outcome)
+    if event.type == "focus_phase_completed" and outcome.get("scored"):
+        await notifications.notify_phase_end(
+            db, user_id, event.client_ts, event.payload.get("minutes")
+        )
     stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
     return outcome, stat_bonus
 

@@ -40,7 +40,7 @@ from typing import Any, TypeGuard
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import character_service, engine
+from app.game import character_service, engine, notifications
 from app.game.engine import GameRates
 from app.game.habit_service import clean_extra
 from app.models.game import Daily, DailyCheck, DailyItem, GameEvent, GameProfile
@@ -414,6 +414,7 @@ async def _apply_share(
         return _zero_outcome(daily), share
     if stat_bonus is None:
         stat_bonus = await character_service.gear_stat_bonus(db, daily.user_id)
+    hp_before = profile.hp
     outcome = engine.apply_event(
         profile,
         "daily_check",
@@ -432,6 +433,7 @@ async def _apply_share(
         stat_bonus=stat_bonus,
     )
     await character_service.resolve_death_gear(db, daily.user_id, outcome, rng)
+    await notifications.notify_score_outcome(db, daily.user_id, profile, hp_before, outcome)
     return outcome, share
 
 

@@ -15,7 +15,7 @@ from typing import Any, Literal, cast
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import character_service
+from app.game import character_service, notifications
 from app.game.engine import GameRates, apply_event
 from app.models.game import GameEvent, GameProfile, Habit, HabitDirection
 
@@ -94,6 +94,7 @@ async def score_click(
     await db.flush()
     await db.refresh(habit)
     before = float(habit.value)
+    hp_before = profile.hp
     outcome = apply_event(
         profile,
         "habit_click",
@@ -105,6 +106,7 @@ async def score_click(
         stat_bonus=stat_bonus,
     )
     await character_service.resolve_death_gear(db, habit.user_id, outcome, rng)
+    await notifications.notify_score_outcome(db, habit.user_id, profile, hp_before, outcome)
     habit.counter += 1 if direction == "positive" else -1
     habit.value = float(outcome["new_value"])
     payload = {
