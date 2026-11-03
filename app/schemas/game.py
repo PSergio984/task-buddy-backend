@@ -932,7 +932,9 @@ class QuietHoursIn(BaseModel):
     def check_iana_tz(cls, v: str) -> str:
         try:
             ZoneInfo(v)
-        except (ZoneInfoNotFoundError, ValueError):
+        # OSError: directory-like names ("America") under a packaged tzdata —
+        # those are invalid zones too, and must surface as 422 not 500.
+        except (ZoneInfoNotFoundError, ValueError, OSError):
             raise ValueError(f"unknown IANA timezone '{v}'") from None
         return v
 

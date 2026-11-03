@@ -785,9 +785,19 @@ async def test_put_invalid_quiet_hours_rejected(authenticated_async_client: Asyn
         {"start": "25:00", "end": "08:00"},
         {"start": "22:00", "end": "8pm"},
         {"start": "22:00", "end": "08:00", "timezone": "Mars/Olympus"},
+        # Directory-like name: ZoneInfo raises OSError (IsADirectoryError)
+        # under a packaged tzdata, not ZoneInfoNotFoundError — still 422.
+        {"start": "22:00", "end": "08:00", "timezone": "America"},
     ):
         response = await authenticated_async_client.put(PREFS_URL, json={"quiet_hours": quiet})
         assert response.status_code == 422, quiet
+
+
+def test_pref_tz_directory_like_name_falls_back() -> None:
+    """Same OSError class one level down: a stored blob's 'America' raises
+    IsADirectoryError under packaged tzdata — the tick's fallback must
+    swallow it, not let it kill the pre-pass."""
+    assert notifications.pref_tz({"timezone": "America"}) is timezone.utc
 
 
 @pytest.mark.anyio

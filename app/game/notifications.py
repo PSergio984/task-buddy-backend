@@ -29,6 +29,7 @@ import asyncio
 import logging
 from collections.abc import Coroutine
 from datetime import date, datetime, timedelta, timezone
+from time import monotonic
 from typing import Any
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -154,7 +155,9 @@ def pref_tz(quiet_hours: Any) -> timezone | ZoneInfo:
     name = quiet_hours.get("timezone") if isinstance(quiet_hours, dict) else None
     try:
         return ZoneInfo(str(name or "UTC"))
-    except (ZoneInfoNotFoundError, ValueError):
+    # OSError covers directory-like names ("America" -> IsADirectoryError)
+    # when tzdata provides the tzdb — one corrupt blob must not kill the tick.
+    except (ZoneInfoNotFoundError, ValueError, OSError):
         return timezone.utc
 
 
@@ -668,6 +671,7 @@ async def run_reminder_tick(
         ).all():
             daily_ids_by_user.setdefault(user_id, []).append(daily_id)
         sent = 0
+        tick_started = monotonic()
         for user_id in set(habit_ids_by_user) | set(daily_ids_by_user):
             try:
                 # populate_existing: unconditional fresh reads — an
@@ -714,4 +718,14 @@ async def run_reminder_tick(
                 await db.rollback()
                 logger.exception("game reminder tick failed for user=%s", user_id)
                 continue
+        elapsed = monotonic() - tick_started
+        if elapsed > 60:
+            # Sustained ticks longer than the look-back window drop
+            # scheduled reminders silently — surface the drift early.
+            logger.warning(
+                "game reminder tick took %.1fs; reminders can be lost once "
+                "the tick exceeds the %d-minute look-back",
+                elapsed,
+                REMINDER_LOOKBACK_MINUTES,
+            )
     return sent
