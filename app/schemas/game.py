@@ -5,9 +5,18 @@ import re
 from collections.abc import Mapping
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal, Optional
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
-from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    Field,
+    StrictBool,
+    field_validator,
+    model_validator,
+)
 
+from app.game import notifications as game_notifications
 from app.game.engine import (
     SERVER_EVENT_TYPES,
     STAT_KEYS,
@@ -891,3 +900,76 @@ class AchievementRead(BaseModel):
             gold_reward=ach.gold_reward,
             earned_at=row["earned_at"],
         )
+
+
+# --- Notifications (issue #68) -----------------------------------------------
+
+
+class QuietHoursIn(BaseModel):
+    """The global quiet window: local wall-time bounds in the pref tz.
+
+    `timezone` is the local-time answer until a real user tz lands (#63).
+    """
+
+    start: str = "22:00"
+    end: str = "08:00"
+    timezone: str = "UTC"
+
+    @field_validator("start", "end")
+    @classmethod
+    def check_hhmm(cls, v: str) -> str:
+        if _REMINDER_TIME_RE.fullmatch(v) is None:
+            raise ValueError("quiet hours must be 'HH:MM' 24-hour strings")
+        return v
+
+    @field_validator("timezone")
+    @classmethod
+    def check_iana_tz(cls, v: str) -> str:
+        try:
+            ZoneInfo(v)
+        except (ZoneInfoNotFoundError, ValueError):
+            raise ValueError(f"unknown IANA timezone '{v}'") from None
+        return v
+
+
+class NotificationPrefsIn(BaseModel):
+    """Replacement prefs blob: {kind: {in_app, push, email}} + quiet window.
+
+    Kinds are the lowercase game NotificationType values; kinds/channels
+    outside the known sets are rejected, and non-bool flags never coerce.
+    Unmentioned kinds/channels simply fall back to defaults at dispatch.
+    """
+
+    prefs: dict[str, dict[str, StrictBool]] = Field(default_factory=dict)
+    quiet_hours: QuietHoursIn = Field(default_factory=QuietHoursIn)
+
+    @field_validator("prefs")
+    @classmethod
+    def check_matrix(cls, v: dict[str, dict[str, StrictBool]]) -> dict[str, dict[str, StrictBool]]:
+        for kind, channels in v.items():
+            if kind not in game_notifications.KIND_KEYS:
+                raise ValueError(f"unknown notification kind '{kind}'")
+            for channel in channels:
+                if channel not in game_notifications.CHANNELS:
+                    raise ValueError(f"unknown notification channel '{channel}'")
+        return v
+
+
+class NotificationPrefsRead(NotificationPrefsIn):
+    """The effective prefs as stored/served — same shape as the write body."""
+
+
+class DeviceTokenIn(BaseModel):
+    """Register (upsert) a push-delivery device token."""
+
+    platform: str = Field(min_length=1, max_length=32)
+    token: str = Field(min_length=1, max_length=512)
+
+
+class DeviceTokenRead(BaseModel):
+    id: int
+    platform: str
+    token: str
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

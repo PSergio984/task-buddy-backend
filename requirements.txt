@@ -291,6 +291,8 @@ typing-inspection==0.4.4
     #   fastapi
     #   pydantic
     #   pydantic-settings
+tzdata==2025.3
+    # via task-buddy-backend (pyproject.toml)
 urllib3==2.8.0
     # via
     #   requests

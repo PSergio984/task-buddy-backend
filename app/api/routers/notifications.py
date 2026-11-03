@@ -9,6 +9,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import (
     RATE_LIMIT_NOTIFICATION_LIST,
     RATE_LIMIT_NOTIFICATION_READ,
+    RATE_LIMIT_NOTIFICATION_READ_ALL,
     RATE_LIMIT_PUSH_SUBSCRIBE,
     config,
 )
@@ -61,6 +62,22 @@ async def list_notifications(
     return await notification_crud.get_notifications(
         db, user_id=current_user.id, skip=skip, limit=limit, is_read=is_read
     )
+
+
+@router.post("/read-all", status_code=status.HTTP_204_NO_CONTENT)
+@limiter.limit(RATE_LIMIT_NOTIFICATION_READ_ALL)
+async def mark_all_as_read(
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> None:
+    """
+    Mark every notification of the current user as read.
+    """
+    await notification_crud.mark_all_notifications_read(db, user_id=current_user.id)
+    await db.commit()
+    return None
 
 
 @router.patch("/{notification_id}/read", response_model=NotificationRead)

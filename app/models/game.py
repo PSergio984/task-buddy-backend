@@ -466,10 +466,7 @@ class SessionNote(Base):
 
 
 class GameNotificationPref(Base):
-    """Per-type x channel notification matrix plus the global quiet window.
-
-    Schema only — no readers/writers until the notifications feature (#68).
-    """
+    """Per-type x channel notification matrix plus the global quiet window."""
 
     __tablename__ = "tbl_game_notification_prefs"
 
@@ -477,9 +474,11 @@ class GameNotificationPref(Base):
     user_id: Mapped[int] = mapped_column(
         ForeignKey("tbl_users.id", ondelete="CASCADE"), unique=True, nullable=False
     )
-    # {"streak_risk": {"push": true, "email": false, ...}, ...}
+    # {"streak_risk": {"in_app": true, "push": true, "email": false}, ...}
     prefs: Mapped[dict] = mapped_column(JsonType, default=dict, nullable=False)
-    # {"start": "22:00", "end": "08:00"} — timer alerts exempt.
+    # {"start": "22:00", "end": "08:00", "timezone": "UTC"} — timer alerts
+    # exempt; the tz key is the local-time answer until #63 lands a real
+    # user timezone field.
     quiet_hours: Mapped[dict] = mapped_column(JsonType, default=dict, nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
@@ -490,7 +489,8 @@ class GameNotificationPref(Base):
 class GameDeviceToken(Base):
     """A push-delivery device token (Expo) registered for a user.
 
-    Schema only — no readers/writers until the notifications feature (#68).
+    Storage only — register/unregister endpoints landed with #68; no send
+    call consumes tokens until the Expo delivery ticket.
     """
 
     __tablename__ = "tbl_game_device_tokens"

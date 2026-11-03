@@ -2,7 +2,7 @@
 
 from typing import Optional
 
-from sqlalchemy import delete, select
+from sqlalchemy import delete, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -57,6 +57,17 @@ async def mark_notification_as_read(
         db.add(db_notification)
         await db.flush()
     return db_notification
+
+
+async def mark_all_notifications_read(db: AsyncSession, user_id: int) -> int:
+    """Mark every unread notification of the user read; returns rows touched."""
+    stmt = (
+        update(Notification)
+        .where(Notification.user_id == user_id, Notification.is_read.is_(False))
+        .values(is_read=True)
+    )
+    result: CursorResult = await db.execute(stmt)  # type: ignore[assignment]
+    return result.rowcount
 
 
 async def delete_notification(db: AsyncSession, notification_id: int, user_id: int) -> bool:

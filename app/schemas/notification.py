@@ -35,6 +35,8 @@ class NotificationRead(NotificationBase):
     user_id: int
     is_read: bool
     created_at: datetime
+    # Dedup keys + entity links the game dispatcher writes (#68).
+    meta: Optional[dict] = None
 
     model_config = ConfigDict(from_attributes=True)
 

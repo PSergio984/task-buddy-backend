@@ -2,7 +2,8 @@
 
 from datetime import date, datetime, timedelta, timezone
 
-from sqlalchemy import func, select
+from sqlalchemy import delete, func, select
+from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -15,7 +16,9 @@ from app.models.game import (
     FocusPhase,
     FocusSession,
     GameConfig,
+    GameDeviceToken,
     GameEvent,
+    GameNotificationPref,
     GameProfile,
     GearItem,
     Habit,
@@ -436,3 +439,55 @@ async def get_user_gear(db: AsyncSession, user_id: int, gear_item_id: int) -> Us
 async def list_user_gear(db: AsyncSession, user_id: int) -> list[UserGear]:
     result = await db.execute(select(UserGear).where(UserGear.user_id == user_id))
     return list(result.scalars().all())
+
+
+# --- Notification prefs + device tokens (issue #68) -------------------------
+
+
+async def get_notification_pref(db: AsyncSession, user_id: int) -> GameNotificationPref | None:
+    """The user's notification prefs row; None = defaults everywhere."""
+    result = await db.execute(
+        select(GameNotificationPref).where(GameNotificationPref.user_id == user_id)
+    )
+    return result.scalar_one_or_none()
+
+
+async def save_notification_pref(
+    db: AsyncSession, user_id: int, prefs: dict, quiet_hours: dict
+) -> GameNotificationPref:
+    """Create-or-replace the user's prefs row (PUT semantics — whole object)."""
+    pref = await get_notification_pref(db, user_id)
+    if pref is None:
+        pref = GameNotificationPref(user_id=user_id)
+    pref.prefs = prefs
+    pref.quiet_hours = quiet_hours
+    db.add(pref)
+    await db.flush()
+    return pref
+
+
+async def upsert_device_token(
+    db: AsyncSession, user_id: int, platform: str, token: str
+) -> GameDeviceToken:
+    """Register a device token, reassigning it to the caller when it exists —
+    same upsert-on-unique-key pattern as push subscriptions."""
+    result = await db.execute(select(GameDeviceToken).where(GameDeviceToken.token == token))
+    row = result.scalar_one_or_none()
+    if row is None:
+        row = GameDeviceToken(user_id=user_id, platform=platform, token=token)
+    else:
+        row.user_id = user_id
+        row.platform = platform
+    db.add(row)
+    await db.flush()
+    return row
+
+
+async def delete_device_token(db: AsyncSession, user_id: int, token: str) -> bool:
+    """Remove a token owned by the caller; False = not found/not theirs."""
+    result: CursorResult = await db.execute(  # type: ignore[assignment]
+        delete(GameDeviceToken).where(
+            GameDeviceToken.token == token, GameDeviceToken.user_id == user_id
+        )
+    )
+    return result.rowcount > 0
