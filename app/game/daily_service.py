@@ -367,7 +367,14 @@ async def _paid_totals(db: AsyncSession, daily: Daily, check_date: date) -> dict
     clamped to the residual.
     """
     since = datetime.combine(check_date, time(0), tzinfo=timezone.utc)
-    events = await game_crud.list_daily_check_events(db, daily.user_id, since)
+    # Upper bound: the end of the queried day, or now if later. Ingest
+    # stamps client_ts on the check's own day, so a same-day claim stamped
+    # ahead of the clock already paid — hiding it would double-pay the
+    # residual. Router backfills stamp now. Anything stamped beyond the
+    # day can't have scored for it, so excluding it is safe and bounds
+    # the scan against far-future garbage rows.
+    until = max(datetime.now(timezone.utc), since + timedelta(days=1))
+    events = await game_crud.list_daily_check_events(db, daily.user_id, since, until)
     day_iso = check_date.isoformat()
     paid = {"share": 0.0, "xp": 0.0, "gold": 0.0}
     for ev in events:
@@ -394,6 +401,7 @@ async def _apply_share(
     rates: GameRates,
     today: date,
     rng: random.Random,
+    stat_bonus: dict | None = None,
 ) -> tuple[dict, float]:
     """Clamp `share` to the day's unpaid residual and score it.
 
@@ -404,6 +412,8 @@ async def _apply_share(
     share = min(share, max(0.0, 1.0 - paid["share"]))
     if share <= 0:
         return _zero_outcome(daily), share
+    if stat_bonus is None:
+        stat_bonus = await character_service.gear_stat_bonus(db, daily.user_id)
     outcome = engine.apply_event(
         profile,
         "daily_check",
@@ -419,7 +429,7 @@ async def _apply_share(
         rng.random(),
         rng,
         today,
-        stat_bonus=await character_service.gear_stat_bonus(db, daily.user_id),
+        stat_bonus=stat_bonus,
     )
     await character_service.resolve_death_gear(db, daily.user_id, outcome, rng)
     return outcome, share
@@ -440,6 +450,7 @@ async def score_check(
     rng: random.Random | None = None,
     extra: dict | None = None,
     done: bool | None = None,
+    stat_bonus: dict | None = None,
 ) -> dict:
     """Apply one check/uncheck to a daily; write back state + ledger row.
 
@@ -489,7 +500,7 @@ async def score_check(
         outcome = _zero_outcome(daily, uncheck=True)
     else:
         outcome, share = await _apply_share(
-            db, daily, share, check_date, profile, rates, today, rng
+            db, daily, share, check_date, profile, rates, today, rng, stat_bonus
         )
     payload = {
         **clean_extra(extra),

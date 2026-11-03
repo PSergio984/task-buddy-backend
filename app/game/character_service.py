@@ -560,15 +560,17 @@ async def post_score(
     db: AsyncSession,
     user_id: int,
     profile: GameProfile,
+    event_types: set[str] | None = None,
 ) -> None:
     """Post-scoring hook shared by every profile-mutating path.
 
     Auto-distribute first so achievement eval sees the settled profile;
     the grant pass lands with the achievement slice. Callers hold the
-    profile lock.
+    profile lock. `event_types` is the set of ledger types this write
+    emitted — grant scans gated on types absent here are skipped.
     """
     if profile.auto_allocate:
         distribute_unspent(profile)
     # Grants run under the same profile lock so concurrent scoring paths
     # can't double-award; evaluation is a no-op when nothing new qualifies.
-    await achievements.evaluate(db, user_id, profile)
+    await achievements.evaluate(db, user_id, profile, event_types=event_types)

@@ -161,6 +161,7 @@ class FocusSession(Base):
     preset: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
     pause_budget_count: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     pause_budget_seconds: Mapped[int] = mapped_column(Integer, default=300, nullable=False)
+    # Per-session speedrun blob — schema landed ahead of the feature (#69).
     speedrun: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
@@ -465,7 +466,10 @@ class SessionNote(Base):
 
 
 class GameNotificationPref(Base):
-    """Per-type x channel notification matrix plus the global quiet window."""
+    """Per-type x channel notification matrix plus the global quiet window.
+
+    Schema only — no readers/writers until the notifications feature (#68).
+    """
 
     __tablename__ = "tbl_game_notification_prefs"
 
@@ -484,7 +488,10 @@ class GameNotificationPref(Base):
 
 
 class GameDeviceToken(Base):
-    """A push-delivery device token (Expo) registered for a user."""
+    """A push-delivery device token (Expo) registered for a user.
+
+    Schema only — no readers/writers until the notifications feature (#68).
+    """
 
     __tablename__ = "tbl_game_device_tokens"
 

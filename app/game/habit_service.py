@@ -57,8 +57,6 @@ def direction_allows(habit: Habit, direction: str) -> bool:
 
 def check_direction(habit: Habit, direction: Any) -> Literal["positive", "negative"]:
     """Validate a click direction against the habit; return it narrowed."""
-    if direction not in ("positive", "negative"):
-        raise ValueError("habit_click requires direction 'positive' or 'negative'")
     if not direction_allows(habit, direction):
         raise ValueError(f"habit does not accept {direction} clicks")
     return cast("Literal['positive', 'negative']", direction)
@@ -143,6 +141,7 @@ async def auto_click_bound(
     habits: list[Habit] | None = None,
     server_extra: dict | None = None,
     budget: int | None = None,
+    stat_bonus: dict | None = None,
 ) -> int:
     """One +click per focus-bound habit for a completed focus phase.
 
@@ -168,7 +167,9 @@ async def auto_click_bound(
     limit = MAX_AUTO_CLICKS_PER_EVAL if budget is None else budget
     digest = hashlib.sha1(source_eid.encode(), usedforsecurity=False).hexdigest()[:16]
     # Resolve the gear bonus once — a fanout must not re-query per click.
-    stat_bonus = await character_service.gear_stat_bonus(db, user_id)
+    # Callers that already resolved it this batch/evaluation pass it in.
+    if stat_bonus is None:
+        stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     spent = 0
     for habit in candidates:
         if spent >= limit:

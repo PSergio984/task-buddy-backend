@@ -39,8 +39,12 @@ router = APIRouter(
 )
 
 
-def _profile_read(profile, rates) -> GameProfileRead:
-    return GameProfileRead.from_profile(profile, engine.xp_to_next_level(profile.level, rates))
+async def _profile_read(db: AsyncSession, profile, rates) -> GameProfileRead:
+    return GameProfileRead.from_profile(
+        profile,
+        engine.xp_to_next_level(profile.level, rates),
+        await character_service.gear_stat_bonus(db, profile.user_id),
+    )
 
 
 @router.patch("/character", response_model=GameProfileRead)
@@ -60,7 +64,7 @@ async def update_character(
         character_service.distribute_unspent(profile)
     await db.commit()
     rates = await service.load_rates(db)
-    return _profile_read(profile, rates)
+    return await _profile_read(db, profile, rates)
 
 
 @router.post("/character/allocate", response_model=GameProfileRead)
@@ -82,7 +86,7 @@ async def allocate_stats(
     await db.commit()
     rates = await service.load_rates(db)
     logger.info("stats allocated: user=%s points=%s", user_id, body.points)
-    return _profile_read(profile, rates)
+    return await _profile_read(db, profile, rates)
 
 
 @router.post("/character/class", response_model=GameProfileRead)
@@ -106,11 +110,12 @@ async def pick_class(
     if profile.auto_allocate:
         character_service.distribute_unspent(profile)
     # 'class-picked' qualifies here, not just on the next scored event.
-    await achievements.evaluate(db, user_id, profile)
+    # No ledger row lands on a class pick, so event-gated scans skip.
+    await achievements.evaluate(db, user_id, profile, event_types=set())
     await db.commit()
     rates = await service.load_rates(db)
     logger.info("class picked: user=%s class=%s", user_id, profile.game_class)
-    return _profile_read(profile, rates)
+    return await _profile_read(db, profile, rates)
 
 
 @router.post("/character/respec", response_model=GameProfileRead)
@@ -132,7 +137,7 @@ async def respec_class(
     await character_service.unequip_mismatched(db, user_id, None)
     await db.commit()
     logger.info("class respec: user=%s gold=%s", user_id, profile.gold)
-    return _profile_read(profile, rates)
+    return await _profile_read(db, profile, rates)
 
 
 # --- Gear ---------------------------------------------------------------------
@@ -175,13 +180,14 @@ async def buy_gear(
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
     # 'first-gear' grants on the buy, not on the next scored event.
-    await achievements.evaluate(db, user_id, profile)
+    # No ledger row lands on a gear buy, so event-gated scans skip.
+    await achievements.evaluate(db, user_id, profile, event_types=set())
     await db.commit()
     rates = await service.load_rates(db)
     logger.info("gear bought: user=%s key=%s", user_id, body.key)
     return GearListResponse(
         items=_catalog_read(await character_service.list_catalog(db, user_id)),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
     )
 
 
@@ -206,7 +212,7 @@ async def equip_gear(
     logger.info("gear equipped: user=%s key=%s on=%s", user_id, body.key, body.equipped)
     return GearListResponse(
         items=_catalog_read(await character_service.list_catalog(db, user_id)),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
     )
 
 
@@ -231,7 +237,7 @@ async def costume_gear(
     logger.info("gear costume: user=%s key=%s on=%s", user_id, body.key, body.costume)
     return GearListResponse(
         items=_catalog_read(await character_service.list_catalog(db, user_id)),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
     )
 
 

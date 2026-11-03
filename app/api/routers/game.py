@@ -11,7 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.dependencies import get_db
-from app.game import engine, service
+from app.game import character_service, engine, service
 from app.limiter import limiter
 from app.models.game import DiaryEntry, FocusPhase, SessionNote
 from app.models.user import User
@@ -48,8 +48,12 @@ router = APIRouter(
 )
 
 
-def _to_profile_read(profile, rates) -> GameProfileRead:
-    return GameProfileRead.from_profile(profile, engine.xp_to_next_level(profile.level, rates))
+async def _to_profile_read(db: AsyncSession, profile, rates) -> GameProfileRead:
+    return GameProfileRead.from_profile(
+        profile,
+        engine.xp_to_next_level(profile.level, rates),
+        await character_service.gear_stat_bonus(db, profile.user_id),
+    )
 
 
 @router.get("/profile", response_model=GameProfileRead)
@@ -64,7 +68,7 @@ async def get_profile(
     profile = await game_crud.get_or_create_profile(db, current_user.id)
     rates = await service.load_rates(db)
     await db.commit()
-    return _to_profile_read(profile, rates)
+    return await _to_profile_read(db, profile, rates)
 
 
 @router.post("/events", response_model=GameSyncResponse)
@@ -93,7 +97,7 @@ async def post_events(
         len(results) - applied,
     )
     return GameSyncResponse(
-        profile=_to_profile_read(profile, rates),
+        profile=await _to_profile_read(db, profile, rates),
         results=results,
         applied=applied,
         duplicates=len(results) - applied,
@@ -177,6 +181,13 @@ async def create_diary_entry(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
+        detail = str(exc.orig)
+        # Only the one-standup unique maps to 409 — SQLite reports index
+        # violations by index name, Postgres by constraint name; FK/CK
+        # violations aren't the duplicate case and must surface as 500s.
+        is_unique = "unique" in detail.lower()
+        if not (is_unique and "diary_entries" in detail):
+            raise
         raise HTTPException(
             status_code=409, detail="A stand-up entry already exists for this date"
         ) from exc
@@ -325,6 +336,12 @@ async def attach_session_note(
         await db.flush()
     except IntegrityError as exc:
         await db.rollback()
+        detail = str(exc.orig)
+        # Same constraint-name gate as the diary insert above: only the
+        # one-note-per-session unique is a 409, never an FK/CK violation.
+        is_unique = "unique" in detail.lower()
+        if not (is_unique and "session_notes" in detail):
+            raise
         raise HTTPException(
             status_code=409, detail="A note already exists for this session"
         ) from exc
@@ -448,7 +465,7 @@ async def update_retention(
     profile.retention = retention_in.retention
     await db.commit()
     rates = await service.load_rates(db)
-    return _to_profile_read(profile, rates)
+    return await _to_profile_read(db, profile, rates)
 
 
 @router.patch("/profile/avatar", response_model=GameProfileRead)
@@ -464,4 +481,4 @@ async def update_avatar(
     profile = await game_crud.update_avatar_config(db, current_user.id, avatar_in.avatar_config)
     await db.commit()
     rates = await service.load_rates(db)
-    return _to_profile_read(profile, rates)
+    return await _to_profile_read(db, profile, rates)

@@ -10,7 +10,9 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
 - a 429 rate-limit response clears the lock and is never cached,
 - 4xx responses clear the lock and are never cached — a retry re-executes,
-- a changed body under the same key still replays the original response,
+- a changed body under the same key is rejected 422 instead of stale-replayed,
+- a pre-body_hash cache entry replays a same-key retry instead of 422ing,
+- a non-numeric Content-Length falls through to the buffered length check,
 - once the 1h cached response expires, the same key re-executes — with a fresh payload
   it succeeds, with the original body it hits the app's unique-name domain guard,
 - independent keys are independent (no accidental cross-key de-duplication),
@@ -18,6 +20,7 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
   and is replaced by the 1h cached response on success.
 """
 
+import hashlib
 import json
 import uuid
 from typing import Any, NamedTuple
@@ -131,10 +134,17 @@ def _lock_calls(fake: FakeRedis) -> list[SetCall]:
 
 
 def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
-    """Build a cache payload shaped like the one `_handle_response` stores for a successful finisher."""
+    """Build a cache payload shaped like the one `_handle_response` stores for
+    a successful finisher. `body_hash` must match the hash the middleware
+    computes over the retried request's raw body — httpx sends json= bodies
+    with compact separators, so serialize the same way."""
+    wire_body = json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
     return {
         "status_code": 201,
         "body": json.dumps({"id": 1, "name": payload["name"]}),
+        "body_hash": hashlib.sha256(wire_body).hexdigest(),
         "headers": {"content-type": "application/json"},
         "media_type": "application/json",
     }
@@ -233,10 +243,10 @@ async def test_retry_after_409_conflict_succeeds(
 
 
 @pytest.mark.anyio
-async def test_same_key_different_payload_replays_original(
+async def test_same_key_different_payload_returns_422(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any
 ) -> None:
-    """A changed body under the same key still returns the original cached response."""
+    """A changed body under the same key is a 422, not a stale replay."""
     _, _, headers = _scenario(mocker)
     payload = _payload()
 
@@ -246,14 +256,81 @@ async def test_same_key_different_payload_replays_original(
     assert first.status_code == 201
     assert await _project_count(db) == 1
 
-    # The cache key is user-scoped and body-independent — the middleware never reads
-    # the request body, so a retry with a different payload must not re-execute
+    # The request-body hash is cached with the response — a same-key retry
+    # carrying a different body is a client error: replaying the original
+    # response would silently drop the new request, and re-executing would
+    # defeat the dedup the key promised.
     second = await authenticated_async_client.post(
         "/api/v1/projects/", json=_payload(), headers=headers
     )
-    assert second.status_code == 201
-    assert second.json() == first.json(), "Replay must return the original response"
-    assert await _project_count(db) == 1, "Changed body must not re-execute the handler"
+    assert second.status_code == 422
+    assert second.headers["content-type"].startswith("application/problem+json")
+    assert await _project_count(db) == 1, "Mismatched body must not re-execute the handler"
+
+
+@pytest.mark.anyio
+async def test_legacy_cache_entry_without_body_hash_replays(
+    authenticated_async_client: AsyncClient, db: Any, mocker: Any, confirmed_user: dict[str, Any]
+) -> None:
+    """A cache entry written before body_hash existed carries no hash — a
+    same-key retry within the TTL must replay it, not 422 (deploy rollover:
+    entries from the old middleware survive inside their 1h TTL)."""
+    fake, key, headers = _scenario(mocker)
+    cache_key = _cache_key(confirmed_user["id"], key)
+    fake.store[cache_key] = json.dumps(
+        {
+            "status_code": 201,
+            "body": json.dumps({"id": 1, "name": "Project legacy"}),
+            "headers": {"content-type": "application/json"},
+            "media_type": "application/json",
+        }
+    )
+
+    response = await authenticated_async_client.post(
+        "/api/v1/projects/", json=_payload(), headers=headers
+    )
+    assert response.status_code == 201
+    assert response.json() == {"id": 1, "name": "Project legacy"}
+    assert await _project_count(db) == 0, "The cached response must replay, not re-execute"
+
+
+@pytest.mark.anyio
+async def test_malformed_content_length_does_not_500(mocker: Any) -> None:
+    """A non-numeric Content-Length must not 500 the middleware — the header
+    early-out treats it as absent and falls through to the buffered length
+    check. Tested at the method level: prometheus_instrumentator's own
+    int(Content-Length) parse would die on the same header end-to-end."""
+    from starlette.requests import Request
+
+    from app.middleware.idempotency import IdempotencyMiddleware
+
+    async def _noop_app(scope: Any, receive: Any, send: Any) -> None:
+        pass
+
+    _install_fake_redis(mocker)
+
+    async def receive() -> dict[str, Any]:
+        return {"type": "http.request", "body": b"{}", "more_body": False}
+
+    request = Request(
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/v1/projects/",
+            "headers": [(b"content-length", b"not-a-number")],
+        },
+        receive,
+    )
+    reached: list[bool] = []
+
+    async def call_next(req: Any) -> Response:
+        reached.append(True)
+        return Response(status_code=200)
+
+    middleware = IdempotencyMiddleware(app=_noop_app)
+    response = await middleware._execute_idempotent_request(request, call_next, "1", "k" * 8)
+    assert reached, "A bogus Content-Length must not short-circuit or raise"
+    assert response.status_code == 200
 
 
 @pytest.mark.anyio
@@ -556,7 +633,9 @@ async def test_sse_response_passes_through_unbuffered_and_unlocked() -> None:
             yield f'event: token\ndata: {{"text":"{token}"}}\n\n'
 
     stream = StreamingResponse(_chunks(), media_type="text/event-stream")
-    result = await IdempotencyMiddleware(app=_noop_app)._handle_response(fake, cache_key, stream)
+    result = await IdempotencyMiddleware(app=_noop_app)._handle_response(
+        fake, cache_key, stream, body_hash="unused-for-sse"
+    )
 
     assert result is stream, "The streaming response must pass through untouched"
     assert produced == [], "The body iterator must not be drained for caching"

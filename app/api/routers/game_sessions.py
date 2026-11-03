@@ -14,7 +14,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.dependencies import get_db
-from app.game import engine, session_service
+from app.game import character_service, engine, session_service
 from app.limiter import limiter
 from app.models.user import User
 from app.schemas.game import (
@@ -39,10 +39,14 @@ router = APIRouter(
 )
 
 
-def _profile_read(profile, rates) -> GameProfileRead | None:
+async def _profile_read(db: AsyncSession, profile, rates) -> GameProfileRead | None:
     if profile is None:
         return None
-    return GameProfileRead.from_profile(profile, engine.xp_to_next_level(profile.level, rates))
+    return GameProfileRead.from_profile(
+        profile,
+        engine.xp_to_next_level(profile.level, rates),
+        await character_service.gear_stat_bonus(db, profile.user_id),
+    )
 
 
 async def _respond(db, result) -> SessionActionResponse:
@@ -62,7 +66,7 @@ async def _respond(db, result) -> SessionActionResponse:
             ended_at=session.ended_at,
             phases=phases,
         ),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
         server_time=datetime.now(timezone.utc),
     )
 

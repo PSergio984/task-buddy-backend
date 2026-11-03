@@ -263,7 +263,10 @@ class TestPauseResume:
             await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
             await authenticated_async_client.post(f"{SESSIONS}/{sid}/resume")
         r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
-        assert r.json()["session"]["status"] == "abandoned"
+        body = r.json()["session"]
+        assert body["status"] == "abandoned"
+        # Pending phases close out skipped — not left startable on a dead session.
+        assert [p["status"] for p in body["phases"]] == ["abandoned", "skipped", "skipped"]
         profile = r.json()["profile"]
         assert profile["hp"] < profile["max_hp"]
 
@@ -294,9 +297,41 @@ class TestPauseResume:
         await db.commit()
         r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/resume")
         assert r.json()["session"]["status"] == "abandoned"
+        assert [p["status"] for p in r.json()["session"]["phases"]] == [
+            "abandoned",
+            "skipped",
+            "skipped",
+        ]
         events = await db.execute(select(GameEvent).where(GameEvent.type == "session_abandoned"))
         event = events.scalar_one()
         assert event.payload["reason"] == "pause_overflow"
+        # The skips land in the ledger too — phase rows alone don't tell
+        # the feed when the pending phases died.
+        skips = await db.execute(select(GameEvent).where(GameEvent.type == "phase_skipped"))
+        assert len(skips.scalars().all()) == 2
+
+    async def test_pause_overflow_on_eval_skips_pending(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """A session left paused past its seconds budget abandons on the next
+        evaluation — the pending focus phase must skip, not stay 'pending'
+        forever on a dead session."""
+        session = await _start(authenticated_async_client)
+        sid = session["id"]
+        await authenticated_async_client.post(f"{SESSIONS}/{sid}/pause")
+        await db.execute(
+            update(FocusPhase)
+            .where(FocusPhase.session_id == sid, FocusPhase.seq == 0)
+            .values(pause_started_at=_ago(400))
+        )
+        await db.commit()
+        r = await authenticated_async_client.get(f"{SESSIONS}/{sid}")
+        assert r.json()["session"]["status"] == "abandoned"
+        assert [p["status"] for p in r.json()["session"]["phases"]] == [
+            "abandoned",
+            "skipped",
+            "skipped",
+        ]
 
 
 class TestWallClockEvaluation:
@@ -325,13 +360,14 @@ class TestWallClockEvaluation:
         body = r.json()
         if body is not None:
             assert body["session"]["status"] == "ended"
-            assert body["session"]["phases"][2]["status"] == "pending"
+            # The untapped pending phase is closed out on session end.
+            assert body["session"]["phases"][2]["status"] == "skipped"
         else:
             # /active returns null once the session is no longer active —
             # fetch by id to confirm it ended cleanly.
             r2 = await authenticated_async_client.get(f"{SESSIONS}/{sid}")
             assert r2.json()["session"]["status"] == "ended"
-            assert r2.json()["session"]["phases"][2]["status"] == "pending"
+            assert r2.json()["session"]["phases"][2]["status"] == "skipped"
 
     async def test_completed_phase_pays_xp_and_gold(
         self, authenticated_async_client: AsyncClient, db: AsyncSession

@@ -12,7 +12,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.dependencies import get_db
-from app.game import character_service, daily_service, engine, service
+from app.game import achievements, character_service, daily_service, engine, service
 from app.limiter import limiter
 from app.models.game import Daily, DailyItem
 from app.models.user import User
@@ -39,8 +39,12 @@ router = APIRouter(
 )
 
 
-def _profile_read(profile, rates) -> GameProfileRead:
-    return GameProfileRead.from_profile(profile, engine.xp_to_next_level(profile.level, rates))
+async def _profile_read(db: AsyncSession, profile, rates) -> GameProfileRead:
+    return GameProfileRead.from_profile(
+        profile,
+        engine.xp_to_next_level(profile.level, rates),
+        await character_service.gear_stat_bonus(db, profile.user_id),
+    )
 
 
 async def _owned_daily(db: AsyncSession, user_id: int, daily_id: int) -> Daily:
@@ -183,7 +187,7 @@ async def update_daily(
     user_id = current_user.id
     # Serialize against in-flight checks: a PATCH mid-flight must not race a
     # scored check's streak/share read or strand on a deleted row.
-    await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
     daily = await _owned_daily(db, user_id, daily_id)
     items_in = update_data.pop("items", None)
     if "recurrence" in update_data:
@@ -197,6 +201,17 @@ async def update_daily(
         # mid-day replace can only widen the master's remaining share.
         await db.execute(delete(DailyItem).where(DailyItem.daily_id == daily.id))
         db.add_all(_item_rows(daily.id, items_in))
+    # Only due-SHRINKING edits can newly qualify a past day for
+    # perfect-day: a narrower recurrence or deactivation removes a daily
+    # from due sets it used to block. Reactivating/widening can't grant,
+    # and no ledger row lands here, so reopen the daily gate explicitly —
+    # the event-gated eval would otherwise wait for the next check.
+    # full_history: the qualifying check may have been WRITTEN before the
+    # scan's 370d recency bound — only the unbounded reopen can see it.
+    if "recurrence" in update_data or update_data.get("active") is False:
+        await achievements.evaluate(
+            db, user_id, profile, event_types={"daily_check"}, full_history=True
+        )
     await db.commit()
     await db.refresh(daily)
     logger.info("daily updated: user=%s daily=%s", user_id, daily.id)
@@ -214,9 +229,16 @@ async def delete_daily(
 ) -> dict:
     # Serialize against in-flight checks — same lock order as habits.
     user_id = current_user.id
-    await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
     daily = await _owned_daily(db, user_id, daily_id)
     await db.delete(daily)
+    # Deleting shrinks the due-set for every past date — a day that was
+    # short one unchecked daily may now be perfect. Same daily-gate reopen
+    # as PATCH: no ledger row lands on a delete. full_history so a check
+    # written before the recency bound can newly qualify.
+    await achievements.evaluate(
+        db, user_id, profile, event_types={"daily_check"}, full_history=True
+    )
     await db.commit()
     logger.info("daily deleted: user=%s daily=%s", user_id, daily_id)
     return {"message": "Daily deleted successfully"}
@@ -253,7 +275,7 @@ async def check_daily(
         if check_in.client_event_id in seen:
             return DailyCheckResponse(
                 daily=await _daily_read(db, daily, today),
-                profile=_profile_read(profile, rates),
+                profile=await _profile_read(db, profile, rates),
                 status="duplicate",
                 server_time=now,
             )
@@ -276,7 +298,7 @@ async def check_daily(
         )
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
-    await character_service.post_score(db, user_id, profile)
+    await character_service.post_score(db, user_id, profile, event_types={"daily_check"})
     await db.commit()
     await db.refresh(daily)
     logger.info(
@@ -288,7 +310,7 @@ async def check_daily(
     )
     return DailyCheckResponse(
         daily=await _daily_read(db, daily, today),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
         status="applied",
         server_time=now,
     )

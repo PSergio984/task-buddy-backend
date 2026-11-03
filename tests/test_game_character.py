@@ -592,6 +592,28 @@ class TestGearEquip:
         items = {r["key"]: r for r in response.json()["items"]}
         assert items["warrior-weapon-1"]["equipped"] is False
 
+    async def test_profile_exposes_effective_stats(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """str_effective = allocated + equipped gear; str_stat stays allocated-only."""
+        await _ensure_profile(authenticated_async_client)
+        await _set_profile(db, confirmed_user["id"], game_class="warrior", gold=200.0, str_stat=4)
+        await _buy(authenticated_async_client, "warrior-weapon-1")  # +3 str
+        response = await authenticated_async_client.post(
+            f"{GEAR}/equip", json={"key": "warrior-weapon-1", "equipped": True}
+        )
+        assert response.status_code == 200, response.text
+        # The mutation response carries the effective stats too.
+        assert response.json()["profile"]["str_effective"] == 7
+        profile = await _ensure_profile(authenticated_async_client)
+        assert profile["str_stat"] == 4
+        assert profile["str_effective"] == 7
+        # Stats with no gear bonus report effective == allocated.
+        assert profile["int_effective"] == profile["int_stat"]
+
     async def test_equip_bumps_same_slot(
         self,
         authenticated_async_client: AsyncClient,
@@ -924,6 +946,28 @@ async def _score_event(client: AsyncClient, eid: str) -> dict:
     return response.json()["profile"]
 
 
+async def _daily_write_event(client: AsyncClient, eid: str) -> None:
+    """One daily_check ledger row through ingest — the daily-gated criteria
+    (perfect_day) only scan on writes that emit daily types, so eval
+    triggers land here, not on focus events."""
+    response = await client.post(
+        f"{GAME}/events",
+        json={
+            "events": [
+                {
+                    "client_event_id": eid,
+                    "type": "daily_check",
+                    "client_ts": "2026-01-01T00:00:00Z",
+                    # Unresolvable id -> applied-but-unscored row; the type
+                    # still opens the daily-gated scans without touching marks.
+                    "payload": {"daily_id": 999999, "done": True},
+                }
+            ]
+        },
+    )
+    assert response.status_code == 200, response.text
+
+
 class TestAchievements:
     async def test_registry_seeds_15_badges(self, authenticated_async_client: AsyncClient) -> None:
         badges = await _badges(authenticated_async_client)
@@ -1038,7 +1082,7 @@ class TestAchievements:
             )
         )
         await db.commit()
-        await _score_event(authenticated_async_client, "e-ach-5")
+        await _daily_write_event(authenticated_async_client, "e-ach-5")
         badges = await _badges(authenticated_async_client)
         assert badges["streak-7"]["earned_at"] is not None
         assert badges["streak-21"]["earned_at"] is None
@@ -1083,7 +1127,7 @@ class TestAchievements:
             )
         )
         await db.commit()
-        await _score_event(authenticated_async_client, "e-ach-pd1")
+        await _daily_write_event(authenticated_async_client, "e-ach-pd1")
         badges = await _badges(authenticated_async_client)
         assert badges["perfect-day"]["earned_at"] is None
         # check_day: every due daily done (the unchecked weekday one isn't
@@ -1097,9 +1141,140 @@ class TestAchievements:
             )
         )
         await db.commit()
-        await _score_event(authenticated_async_client, "e-ach-pd2")
+        await _daily_write_event(authenticated_async_client, "e-ach-pd2")
         badges = await _badges(authenticated_async_client)
         assert badges["perfect-day"]["earned_at"] is not None
+
+    async def test_perfect_day_counts_backfilled_old_days(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """A check written now for a >370d-old day still qualifies — the
+        scan bound is on write recency (created_at), not the check date."""
+        await _ensure_profile(authenticated_async_client)
+        old_day = date.today() - timedelta(days=400)
+        daily = Daily(
+            user_id=confirmed_user["id"],
+            title="d",
+            streak=5,
+            active=True,
+            # The daily must already have existed on the backfilled day.
+            created_at=datetime.combine(old_day - timedelta(days=30), datetime.min.time()),
+        )
+        db.add(daily)
+        await db.flush()
+        db.add(
+            DailyCheck(
+                daily_id=daily.id,
+                daily_item_id=None,
+                check_date=old_day,
+                done=True,
+            )
+        )
+        await db.commit()
+        await _daily_write_event(authenticated_async_client, "e-ach-pd3")
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is not None
+
+    async def test_perfect_day_grants_on_daily_delete(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """Deleting the unchecked daily makes the checked day perfect —
+        the grant must land on the delete itself, not the next daily write."""
+        await _ensure_profile(authenticated_async_client)
+        checked = Daily(user_id=confirmed_user["id"], title="a", active=True)
+        unchecked = Daily(user_id=confirmed_user["id"], title="b", active=True)
+        db.add_all([checked, unchecked])
+        await db.flush()
+        db.add(
+            DailyCheck(
+                daily_id=checked.id,
+                daily_item_id=None,
+                check_date=date.today(),
+                done=True,
+            )
+        )
+        await db.commit()
+        response = await authenticated_async_client.delete(f"{GAME}/dailies/{unchecked.id}")
+        assert response.status_code == 200, response.text
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is not None
+
+    async def test_perfect_day_reopen_sees_pre_window_checks(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """A check WRITTEN >370d ago is invisible to the bounded scan, but
+        the due-shrinking reopen (delete) must re-scan full history — the
+        day it checked can newly qualify once the blocking daily is gone."""
+        await _ensure_profile(authenticated_async_client)
+        checked = Daily(user_id=confirmed_user["id"], title="a", active=True)
+        unchecked = Daily(user_id=confirmed_user["id"], title="b", active=True)
+        db.add_all([checked, unchecked])
+        await db.flush()
+        db.add(
+            DailyCheck(
+                daily_id=checked.id,
+                daily_item_id=None,
+                check_date=date.today(),
+                done=True,
+                # Written before the 370d recency bound — only the
+                # unbounded reopen can see it.
+                created_at=datetime.now(timezone.utc) - timedelta(days=400),
+            )
+        )
+        await db.commit()
+        response = await authenticated_async_client.delete(f"{GAME}/dailies/{unchecked.id}")
+        assert response.status_code == 200, response.text
+        badges = await _badges(authenticated_async_client)
+        assert badges["perfect-day"]["earned_at"] is not None
+
+    async def test_event_gated_scans_skip_unrelated_writes(
+        self,
+        authenticated_async_client: AsyncClient,
+        monkeypatch: pytest.MonkeyPatch,
+    ) -> None:
+        """A write emitting no daily types skips perfect_day's check scan
+        outright — the criterion can't newly pass, so the query never runs
+        inside the profile lock."""
+        await _ensure_profile(authenticated_async_client)
+        calls = 0
+        real_perfect_day = achievements._perfect_day
+
+        async def spy(db: AsyncSession, user_id: int, full_history: bool = False) -> bool:
+            nonlocal calls
+            calls += 1
+            return await real_perfect_day(db, user_id, full_history)
+
+        monkeypatch.setattr(achievements, "_perfect_day", spy)
+        # Applied habit_click write — emits no daily types, scan stays shut.
+        response = await authenticated_async_client.post(
+            f"{GAME}/events",
+            json={
+                "events": [
+                    {
+                        "client_event_id": "e-gate-1",
+                        "type": "habit_click",
+                        "client_ts": "2026-01-01T00:00:00Z",
+                        # Unresolvable habit -> applied-but-unscored; eval
+                        # still runs for the batch.
+                        "payload": {"habit_id": 999999, "direction": "positive"},
+                    }
+                ]
+            },
+        )
+        assert response.status_code == 200, response.text
+        assert calls == 0
+        # A daily write opens the gate — the scan runs once.
+        await _daily_write_event(authenticated_async_client, "e-gate-2")
+        assert calls == 1
 
     async def test_gear_buy_grants_first_gear(
         self,

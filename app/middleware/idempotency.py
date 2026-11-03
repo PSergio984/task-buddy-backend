@@ -1,3 +1,4 @@
+import hashlib
 import json
 import logging
 import re
@@ -18,6 +19,9 @@ logger = logging.getLogger(__name__)
 IDEMPOTENCY_HEADER = "X-Idempotency-Key"
 CACHE_PREFIX = "idempotency:"
 TTL = 3600  # 1 hour
+# Idempotent endpoints are small JSON mutations; bodies past this size
+# bypass caching instead of being buffered whole for hashing.
+MAX_BODY_BYTES = 1_048_576  # 1 MiB
 
 # Auth endpoints should NEVER be cached or subject to idempotency to avoid security risks
 EXCLUDED_PATHS = {
@@ -110,10 +114,27 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             return await call_next(request)
 
         cache_key = f"{CACHE_PREFIX}{user_id}:{idempotency_key}"
+        # Replays are only safe for an identical payload: the raw body hash
+        # is cached alongside the response and verified on every hit, so a
+        # reused key carrying a different body can't silently replay.
+        # Bodies past the cap bypass the cache entirely — buffering an
+        # unbounded upload just to hash it would be a memory DoS (the
+        # header can ride any POST). Idempotent endpoints are small JSON
+        # mutations, so oversize calls get no dedup protection.
+        content_length = request.headers.get("content-length")
+        try:
+            if content_length is not None and int(content_length) > MAX_BODY_BYTES:
+                return await call_next(request)
+        except ValueError:
+            pass  # malformed header — the buffered length check below still bounds
+        body = await request.body()
+        if len(body) > MAX_BODY_BYTES:
+            return await call_next(request)
+        body_hash = hashlib.sha256(body).hexdigest()
 
         # 1. Check if we have a cached response or an in-progress lock
         cached_response = await self._get_cached_response(
-            redis_client, cache_key, idempotency_key, user_id
+            redis_client, cache_key, idempotency_key, user_id, body_hash
         )
         if cached_response:
             return cached_response
@@ -122,7 +143,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if not await self._set_lock(redis_client, cache_key):
             # If lock acquisition fails, check again if it finished in the meantime
             cached_response = await self._get_cached_response(
-                redis_client, cache_key, idempotency_key, user_id
+                redis_client, cache_key, idempotency_key, user_id, body_hash
             )
             if cached_response:
                 return cached_response
@@ -136,7 +157,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         try:
             # 3. Process the request
             response = await call_next(request)
-            return await self._handle_response(redis_client, cache_key, response)
+            return await self._handle_response(redis_client, cache_key, response, body_hash)
         except Exception as e:
             # 4. Clean up lock on failure so user can retry
             await redis_client.delete(cache_key)
@@ -166,11 +187,18 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         return None
 
     async def _get_cached_response(
-        self, redis_client: Any, cache_key: str, idempotency_key: str, user_id: str
+        self,
+        redis_client: Any,
+        cache_key: str,
+        idempotency_key: str,
+        user_id: str,
+        body_hash: str,
     ) -> Optional[Response]:
         """
         Retrieve a cached response from Redis if it exists.
-        Returns a JSONResponse(409) if the request is still in progress.
+        Returns a JSONResponse(409) if the request is still in progress, or a
+        422 Problem Details when the key was used with a different body —
+        replaying the cached response would silently drop the new request.
         """
         try:
             cached_data = await redis_client.get(cache_key)
@@ -182,6 +210,26 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                 return JSONResponse(
                     status_code=409,
                     content={"detail": "Request already in progress with this idempotency key."},
+                )
+
+            # Only compare when the entry HAS a hash — entries written before
+            # body_hash existed can't prove a match; treat them as replayable
+            # rather than 422ing a legit same-body retry within the 1h TTL.
+            if "body_hash" in data and data["body_hash"] != body_hash:
+                logger.warning(
+                    "Idempotency key %s reused with a different body (user: %s)",
+                    idempotency_key,
+                    user_id,
+                )
+                return JSONResponse(
+                    status_code=422,
+                    content={
+                        "type": "about:blank",
+                        "title": "Unprocessable Content",
+                        "status": 422,
+                        "detail": "Idempotency key was already used with a different request body.",
+                    },
+                    media_type="application/problem+json",
                 )
 
             logger.info(
@@ -216,7 +264,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             return False
 
     async def _handle_response(
-        self, redis_client: Any, cache_key: str, response: Response
+        self, redis_client: Any, cache_key: str, response: Response, body_hash: str
     ) -> Response:
         """
         Finalize the response handling: cache successful responses and clean up locks for errors.
@@ -263,6 +311,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         cache_payload = {
             "status_code": response.status_code,
             "body": body_str,
+            "body_hash": body_hash,
             "headers": dict(response.headers),
             "media_type": response.media_type,
         }
