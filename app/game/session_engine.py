@@ -73,26 +73,42 @@ def _phase_end(phase: FocusPhase, now: datetime) -> datetime:
     return start + timedelta(seconds=phase.planned_seconds + (phase.paused_seconds or 0))
 
 
+def _skip_pending(phases: list[FocusPhase], at: datetime) -> list[Step]:
+    """Close never-started phases on a dead session; one skip Step each.
+
+    A phase left 'pending' on an ended/abandoned session reads as still
+    startable to every reader — skip steps keep the ledger honest.
+    """
+    steps = []
+    for phase in phases:
+        if phase.status == PENDING:
+            phase.status = SKIPPED
+            phase.ended_at = at
+            steps.append(Step("phase_skipped", phase_seq=phase.seq, at=at))
+    return steps
+
+
 def _resolve_no_live(
     session: FocusSession, phases: list[FocusPhase], last_end: datetime, now: datetime
-) -> Step | None:
+) -> list[Step]:
     """Nothing running: end when the plan is done, else grace-watch the
     pending phase (absent past break-end + grace -> clean end / abandon)."""
     if _next_pending(phases) is None:
         session.status = S_ENDED
         session.ended_at = last_end
-        return Step("session_ended", at=last_end)
+        return [Step("session_ended", at=last_end)]
     anchor = last_end
     if now < anchor + timedelta(seconds=GRACE_SECONDS):
-        return None  # still inside the grace window
+        return []  # still inside the grace window
     at = anchor + timedelta(seconds=GRACE_SECONDS)
+    skipped = _skip_pending(phases, at)
     if completed_focus_count(phases) == 0:
         session.status = S_ABANDONED
         session.ended_at = at
-        return Step("session_abandoned", reason="absence_grace", at=at)
+        return skipped + [Step("session_abandoned", reason="absence_grace", at=at)]
     session.status = S_ENDED
     session.ended_at = at
-    return Step("session_ended", at=at)
+    return skipped + [Step("session_ended", at=at)]
 
 
 def _check_pause_overflow(session: FocusSession, cur: FocusPhase, now: datetime) -> Step | None:
@@ -162,9 +178,7 @@ def evaluate(session: FocusSession, phases: list[FocusPhase], now: datetime) -> 
     while True:
         cur = _live(phases)
         if cur is None:
-            step = _resolve_no_live(session, phases, last_end, now)
-            if step is not None:
-                steps.append(step)
+            steps.extend(_resolve_no_live(session, phases, last_end, now))
             return steps
         if cur.kind == STOPWATCH:
             return steps  # open-ended; a paused stopwatch just sits
@@ -312,8 +326,8 @@ def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tupl
                     phase_seq=live.seq if live is not None else None,
                     at=now,
                 ),
-                scored,
+                scored + _skip_pending(phases, now),
             )
     session.status = S_ENDED
     session.ended_at = now
-    return Step("session_ended", at=now), scored
+    return Step("session_ended", at=now), scored + _skip_pending(phases, now)

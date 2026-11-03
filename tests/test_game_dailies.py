@@ -444,6 +444,43 @@ class TestDailyCheck:
         assert body["profile"]["xp_today"] == 6
         assert body["daily"]["streak"] == 1
 
+    async def test_same_day_future_stamped_payment_counts(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        """A scored ledger row stamped later TODAY (fast client clock)
+        already paid its share — the accounting window must reach the end
+        of the queried day, or the next check double-pays the residual."""
+        daily = await _create(authenticated_async_client)
+        today = _today()
+        db.add(
+            GameEvent(
+                user_id=confirmed_user["id"],
+                client_event_id="e-fast-clock",
+                type="daily_check",
+                # Stamped 23:00 today — ahead of now most of the day.
+                client_ts=_at(0, 23),
+                payload={
+                    "daily_id": daily["id"],
+                    "check_date": today.isoformat(),
+                    "done": True,
+                    "share": 0.6,
+                    "_outcome": {"scored": True, "xp": 4, "gold": 1},
+                },
+            )
+        )
+        await db.commit()
+        body = await _check(authenticated_async_client, daily["id"])
+        # Only the unpaid 0.4 residual may pay: xp = round(6 * .4) = 2.
+        # Hiding the stamped-ahead row would repay the full share (xp 6).
+        assert body["profile"]["xp_today"] == 2
+        event = (
+            await db.execute(select(GameEvent).where(GameEvent.client_event_id != "e-fast-clock"))
+        ).scalar_one()
+        assert event.payload["_outcome"]["share"] == pytest.approx(0.4)
+
     async def test_items_replaced_midday_master_pays_residual(
         self, authenticated_async_client: AsyncClient
     ) -> None:

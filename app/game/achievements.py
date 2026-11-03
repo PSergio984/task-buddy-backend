@@ -15,7 +15,7 @@ daily done checks per date against the dailies due that date.
 """
 
 import sys
-from datetime import date
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy import Insert, func, select
 from sqlalchemy.dialects.postgresql import insert as postgres_insert
@@ -238,6 +238,13 @@ async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
     )
     if not dailies:
         return False
+    # Window the check scan by write recency: the badge needs SOME
+    # qualifying day and eval runs on every daily write, so a check older
+    # than this bound either already granted when it landed or can never
+    # newly qualify — re-scanning deeper history buys nothing. Bounding
+    # created_at (not check_date) keeps backfilled marks eligible: a check
+    # written today for a years-old day still counts.
+    window_start = datetime.now(timezone.utc) - timedelta(days=370)
     done_by_date: dict[date, set[int]] = {}
     result = await db.execute(
         select(DailyCheck.check_date, DailyCheck.daily_id)
@@ -247,6 +254,7 @@ async def _perfect_day(db: AsyncSession, user_id: int) -> bool:
             Daily.active.is_(True),
             DailyCheck.daily_item_id.is_(None),
             DailyCheck.done.is_(True),
+            DailyCheck.created_at >= window_start,
         )
         .distinct()
     )
@@ -319,12 +327,41 @@ async def _meets_db(db: AsyncSession, user_id: int, criteria: dict) -> bool:
     return False
 
 
-async def evaluate(db: AsyncSession, user_id: int, profile: GameProfile) -> list[Achievement]:
+# Criteria kinds whose satisfaction can only move when one of these ledger
+# types lands. Evaluation runs inside the profile lock on EVERY scored
+# write, so a write that emitted none of a kind's trigger types can skip
+# its scan outright. Kinds not listed always run.
+_EVENT_GATED_KINDS: dict[str, frozenset[str]] = {
+    # A perfect day is built of daily marks/misses — habit clicks and focus
+    # phases can't create one.
+    "perfect_day": frozenset({"daily_check", "daily_missed"}),
+    # Focus aggregates only grow on scored focus_phase_completed rows.
+    "focus_total": frozenset({"focus_phase_completed"}),
+    "phase_minutes": frozenset({"focus_phase_completed"}),
+}
+
+
+def _event_relevant(criteria: dict, event_types: set[str] | None) -> bool:
+    """Whether this write's emitted event types can newly satisfy the criteria."""
+    if event_types is None or not isinstance(criteria, dict):
+        return True
+    kind = criteria.get("kind")
+    gate = _EVENT_GATED_KINDS.get(kind) if isinstance(kind, str) else None
+    return gate is None or bool(event_types & gate)
+
+
+async def evaluate(
+    db: AsyncSession,
+    user_id: int,
+    profile: GameProfile,
+    event_types: set[str] | None = None,
+) -> list[Achievement]:
     """Grant every met-but-unearned achievement; return the newly granted.
 
     The profile lock the caller holds serializes evaluation, so the
     earned-set prefilter is authoritative — the unique constraint is only
-    the belt-and-braces for it.
+    the belt-and-braces for it. `event_types` is the caller's hint of the
+    ledger types this write emitted (None = no hint, run every check).
     """
     # autoflush is off project-wide: the caller's pending GameEvent rows
     # must hit the table before event-based criteria can see them.
@@ -346,7 +383,10 @@ async def evaluate(db: AsyncSession, user_id: int, profile: GameProfile) -> list
     ]
     granted: list[Achievement] = []
     for achievement in pending:
-        if await _meets(db, user_id, profile, achievement.criteria or {}):
+        criteria = achievement.criteria or {}
+        if not _event_relevant(criteria, event_types):
+            continue
+        if await _meets(db, user_id, profile, criteria):
             db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id))
             profile.gold += achievement.gold_reward
             granted.append(achievement)

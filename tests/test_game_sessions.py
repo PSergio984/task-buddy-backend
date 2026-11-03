@@ -325,13 +325,14 @@ class TestWallClockEvaluation:
         body = r.json()
         if body is not None:
             assert body["session"]["status"] == "ended"
-            assert body["session"]["phases"][2]["status"] == "pending"
+            # The untapped pending phase is closed out on session end.
+            assert body["session"]["phases"][2]["status"] == "skipped"
         else:
             # /active returns null once the session is no longer active —
             # fetch by id to confirm it ended cleanly.
             r2 = await authenticated_async_client.get(f"{SESSIONS}/{sid}")
             assert r2.json()["session"]["status"] == "ended"
-            assert r2.json()["session"]["phases"][2]["status"] == "pending"
+            assert r2.json()["session"]["phases"][2]["status"] == "skipped"
 
     async def test_completed_phase_pays_xp_and_gold(
         self, authenticated_async_client: AsyncClient, db: AsyncSession

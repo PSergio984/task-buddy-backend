@@ -69,6 +69,7 @@ async def _ingest_daily_check(
     rates: GameRates,
     today,
     rng: random.Random,
+    stat_bonus: dict[str, int],
 ) -> dict | None:
     """Score one synced daily_check (or record it unscored).
 
@@ -116,6 +117,7 @@ async def _ingest_daily_check(
                 rng=rng,
                 extra=event.payload,
                 done=event.payload.get("done"),
+                stat_bonus=stat_bonus,
             )
         except ValueError as exc:
             for obj in set(db.new) - staged:
@@ -279,6 +281,7 @@ async def ingest_events(
                 rates,
                 today,
                 rng,
+                stat_bonus,
             )
             stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, daily_outcome, stat_bonus)
             _auto_distribute(profile)
@@ -325,6 +328,7 @@ async def ingest_events(
                 rng=rng,
                 habits=bound_habits,
                 budget=auto_budget,
+                stat_bonus=stat_bonus,
             )
         _auto_distribute(profile)
         seen.add(event.client_event_id)
@@ -332,7 +336,12 @@ async def ingest_events(
     if "applied" in status_by_idx.values():
         # Post-scoring hook (auto-distribute now, grant eval as it lands):
         # runs once per batch holding ≥1 applied event, under the profile lock.
-        await character_service.post_score(db, user_id, profile)
+        await character_service.post_score(
+            db,
+            user_id,
+            profile,
+            event_types={e.type for i, e in enumerate(events) if status_by_idx[i] == "applied"},
+        )
     await db.flush()
     results = [
         GameEventResult(client_event_id=e.client_event_id, status=status_by_idx[i])

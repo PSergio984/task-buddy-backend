@@ -369,19 +369,22 @@ async def get_daily_miss(db: AsyncSession, daily_id: int, scheduled_day: date) -
 
 
 async def list_daily_check_events(
-    db: AsyncSession, user_id: int, since: datetime
+    db: AsyncSession, user_id: int, since: datetime, until: datetime
 ) -> list[GameEvent]:
-    """The user's daily_check ledger rows since `since` (client_ts bound).
+    """The user's daily_check ledger rows in [since, until] (client_ts bound).
 
     Server-side prefilter for paid-share accounting — callers narrow to a
     (daily_id, check_date) pair via payload keys in Python, which keeps the
-    query portable across Postgres JSONB and SQLite JSON.
+    query portable across Postgres JSONB and SQLite JSON. The upper bound
+    keeps pathological far-future timestamps out of the scan; the caller
+    picks `until` so rows that legitimately scored can't fall outside it.
     """
     result = await db.execute(
         select(GameEvent).where(
             GameEvent.user_id == user_id,
             GameEvent.type == "daily_check",
             GameEvent.client_ts >= since,
+            GameEvent.client_ts <= until,
         )
     )
     return list(result.scalars().all())

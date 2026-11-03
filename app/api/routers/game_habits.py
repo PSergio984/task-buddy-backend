@@ -38,8 +38,12 @@ router = APIRouter(
 )
 
 
-def _profile_read(profile, rates) -> GameProfileRead:
-    return GameProfileRead.from_profile(profile, engine.xp_to_next_level(profile.level, rates))
+async def _profile_read(db: AsyncSession, profile, rates) -> GameProfileRead:
+    return GameProfileRead.from_profile(
+        profile,
+        engine.xp_to_next_level(profile.level, rates),
+        await character_service.gear_stat_bonus(db, profile.user_id),
+    )
 
 
 async def _owned_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit:
@@ -190,7 +194,7 @@ async def click_habit(
         if click_in.client_event_id in seen:
             return HabitClickResponse(
                 habit=HabitRead.model_validate(habit),
-                profile=_profile_read(profile, rates),
+                profile=await _profile_read(db, profile, rates),
                 status="duplicate",
                 server_time=datetime.now(timezone.utc),
             )
@@ -212,7 +216,7 @@ async def click_habit(
         eid=eid,
         client_ts=now,
     )
-    await character_service.post_score(db, user_id, profile)
+    await character_service.post_score(db, user_id, profile, event_types={"habit_click"})
     await db.commit()
     # updated_at is an onupdate column — expired post-commit, refetch it.
     await db.refresh(habit)
@@ -221,7 +225,7 @@ async def click_habit(
     )
     return HabitClickResponse(
         habit=HabitRead.model_validate(habit),
-        profile=_profile_read(profile, rates),
+        profile=await _profile_read(db, profile, rates),
         status="applied",
         server_time=now,
     )

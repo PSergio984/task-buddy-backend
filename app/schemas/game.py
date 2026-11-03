@@ -2,6 +2,7 @@
 
 import json
 import re
+from collections.abc import Mapping
 from datetime import date, datetime, timezone
 from typing import Annotated, Literal, Optional
 
@@ -11,6 +12,7 @@ from app.game.engine import (
     SERVER_EVENT_TYPES,
     STAT_KEYS,
     STAT_POINT_CAP,
+    effective_stat,
 )
 from app.models.game import GameProfile, HabitDirection
 
@@ -129,6 +131,12 @@ class GameProfileRead(BaseModel):
     int_stat: int
     con_stat: int
     per_stat: int
+    # Allocated + equipped-gear bonus — the stats the engine scores with;
+    # the sheet displays these (str_stat etc. stay the allocated pool).
+    str_effective: int
+    int_effective: int
+    con_effective: int
+    per_effective: int
     unspent_stat_points: int
     game_class: str | None
     class_unlocked: bool
@@ -144,7 +152,12 @@ class GameProfileRead(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     @classmethod
-    def from_profile(cls, profile: GameProfile, xp_to_next: int) -> "GameProfileRead":
+    def from_profile(
+        cls,
+        profile: GameProfile,
+        xp_to_next: int,
+        stat_bonus: Mapping[str, int] | None = None,
+    ) -> "GameProfileRead":
         # Read only exposed fields — touching server_default columns after a
         # flush would trigger an expired-attribute lazy load (async-unsafe).
         # Daily counters reset inside award_* only; a next-day read must
@@ -162,6 +175,10 @@ class GameProfileRead(BaseModel):
             int_stat=profile.int_stat,
             con_stat=profile.con_stat,
             per_stat=profile.per_stat,
+            str_effective=effective_stat(profile, "str_stat", stat_bonus),
+            int_effective=effective_stat(profile, "int_stat", stat_bonus),
+            con_effective=effective_stat(profile, "con_stat", stat_bonus),
+            per_effective=effective_stat(profile, "per_stat", stat_bonus),
             unspent_stat_points=profile.unspent_stat_points,
             game_class=profile.game_class,
             class_unlocked=bool(profile.class_unlocked),

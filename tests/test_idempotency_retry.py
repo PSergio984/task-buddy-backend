@@ -10,7 +10,7 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
 - a lost SET NX race whose finisher completed is served the cached response on re-check,
 - a 429 rate-limit response clears the lock and is never cached,
 - 4xx responses clear the lock and are never cached — a retry re-executes,
-- a changed body under the same key still replays the original response,
+- a changed body under the same key is rejected 422 instead of stale-replayed,
 - once the 1h cached response expires, the same key re-executes — with a fresh payload
   it succeeds, with the original body it hits the app's unique-name domain guard,
 - independent keys are independent (no accidental cross-key de-duplication),
@@ -18,6 +18,7 @@ Verifies the idempotency middleware against an in-memory Redis stand-in:
   and is replaced by the 1h cached response on success.
 """
 
+import hashlib
 import json
 import uuid
 from typing import Any, NamedTuple
@@ -131,10 +132,17 @@ def _lock_calls(fake: FakeRedis) -> list[SetCall]:
 
 
 def _cached_finisher_response(payload: dict[str, str]) -> dict[str, Any]:
-    """Build a cache payload shaped like the one `_handle_response` stores for a successful finisher."""
+    """Build a cache payload shaped like the one `_handle_response` stores for
+    a successful finisher. `body_hash` must match the hash the middleware
+    computes over the retried request's raw body — httpx sends json= bodies
+    with compact separators, so serialize the same way."""
+    wire_body = json.dumps(
+        payload, ensure_ascii=False, separators=(",", ":"), allow_nan=False
+    ).encode("utf-8")
     return {
         "status_code": 201,
         "body": json.dumps({"id": 1, "name": payload["name"]}),
+        "body_hash": hashlib.sha256(wire_body).hexdigest(),
         "headers": {"content-type": "application/json"},
         "media_type": "application/json",
     }
@@ -233,10 +241,10 @@ async def test_retry_after_409_conflict_succeeds(
 
 
 @pytest.mark.anyio
-async def test_same_key_different_payload_replays_original(
+async def test_same_key_different_payload_returns_422(
     authenticated_async_client: AsyncClient, db: Any, mocker: Any
 ) -> None:
-    """A changed body under the same key still returns the original cached response."""
+    """A changed body under the same key is a 422, not a stale replay."""
     _, _, headers = _scenario(mocker)
     payload = _payload()
 
@@ -246,14 +254,16 @@ async def test_same_key_different_payload_replays_original(
     assert first.status_code == 201
     assert await _project_count(db) == 1
 
-    # The cache key is user-scoped and body-independent — the middleware never reads
-    # the request body, so a retry with a different payload must not re-execute
+    # The request-body hash is cached with the response — a same-key retry
+    # carrying a different body is a client error: replaying the original
+    # response would silently drop the new request, and re-executing would
+    # defeat the dedup the key promised.
     second = await authenticated_async_client.post(
         "/api/v1/projects/", json=_payload(), headers=headers
     )
-    assert second.status_code == 201
-    assert second.json() == first.json(), "Replay must return the original response"
-    assert await _project_count(db) == 1, "Changed body must not re-execute the handler"
+    assert second.status_code == 422
+    assert second.headers["content-type"].startswith("application/problem+json")
+    assert await _project_count(db) == 1, "Mismatched body must not re-execute the handler"
 
 
 @pytest.mark.anyio
@@ -556,7 +566,9 @@ async def test_sse_response_passes_through_unbuffered_and_unlocked() -> None:
             yield f'event: token\ndata: {{"text":"{token}"}}\n\n'
 
     stream = StreamingResponse(_chunks(), media_type="text/event-stream")
-    result = await IdempotencyMiddleware(app=_noop_app)._handle_response(fake, cache_key, stream)
+    result = await IdempotencyMiddleware(app=_noop_app)._handle_response(
+        fake, cache_key, stream, body_hash="unused-for-sse"
+    )
 
     assert result is stream, "The streaming response must pass through untouched"
     assert produced == [], "The body iterator must not be drained for caching"

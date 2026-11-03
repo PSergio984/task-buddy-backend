@@ -101,23 +101,26 @@ async def _persist_step(
     seen: set[str],
     habits: list[Habit] | None = None,
     auto_budget: int = 0,
-) -> int:
+    stat_bonus: dict[str, int] | None = None,
+) -> tuple[int, dict | None]:
     """Write one transition's ledger row; score it when the engine knows how.
 
     `now` is the caller's evaluation instant — the same fallback used to build
     the dedupe id set, so a Step without `at` dedupes correctly on retry.
     `habits` is the caller's prefetched bound-habit list (auto-click fanout);
-    None means "no scored focus completion expected in this call". Returns
-    the auto-clicks spent so the caller can run a per-evaluation budget —
-    0 for any step that doesn't fan out.
+    None means "no scored focus completion expected in this call".
+    `stat_bonus` is the caller's per-evaluation gear resolution — a multi-phase
+    catch-up must not re-query equipped gear per scored step. Returns
+    (auto-clicks spent, the scoring outcome or None) so the caller can run a
+    per-evaluation budget and spot a gear loss.
     """
     event_type, payload = _event_for(step, session)
     if event_type is None:
-        return 0
+        return 0, None
     at = step.at or now
     eid = _event_id(session.id, step.kind, step.phase_seq, at, step.extra.get("n", i))
     if eid in seen:
-        return 0
+        return 0, None
     seen.add(eid)
     outcome = {"scored": False}
     day: date | None = None
@@ -140,7 +143,7 @@ async def _persist_step(
             _rng.random(),
             _rng,
             day,
-            stat_bonus=await character_service.gear_stat_bonus(db, user_id),
+            stat_bonus=stat_bonus,
         )
         await character_service.resolve_death_gear(db, user_id, outcome, _rng)
     row = GameEvent(
@@ -171,12 +174,13 @@ async def _persist_step(
             habits=habits,
             server_extra={"session_id": session.id},
             budget=auto_budget,
+            stat_bonus=stat_bonus,
         )
     # Points earned mid-evaluation are spent before the NEXT step scores —
     # the /events ingest loop's per-event ordering applied per step.
     if profile is not None and profile.auto_allocate:
         character_service.distribute_unspent(profile)
-    return spent
+    return spent, outcome
 
 
 async def _evaluate(
@@ -203,11 +207,12 @@ async def _evaluate(
     profile = (
         await game_crud.get_or_create_profile(db, user_id, for_update=True) if scored else None
     )
+    stat_bonus: dict[str, int] | None = None
     if profile is not None:
-        # The prefetch loaded this object before the FOR UPDATE — refresh so
-        # scoring applies to the values committed under the lock, not a stale
-        # snapshot a concurrent /events award may have already overwritten.
-        await db.refresh(profile)
+        # Gear resolves once per evaluation — a multi-phase catch-up must
+        # not re-query per scored step (the ingest batch caches the same
+        # way); a mid-loop gear loss re-resolves below.
+        stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     bound_habits: list[Habit] | None = None
     # One fanout budget per evaluation — a long catch-up (many scored
     # phases) times bound habits stays inside the profile lock briefly.
@@ -225,7 +230,7 @@ async def _evaluate(
     ]
     seen = await game_crud.existing_event_ids(db, user_id, ids)
     for i, step in enumerate(steps):
-        auto_budget -= await _persist_step(
+        spent, outcome = await _persist_step(
             db,
             session,
             user_id,
@@ -237,10 +242,20 @@ async def _evaluate(
             seen,
             habits=bound_habits,
             auto_budget=auto_budget,
+            stat_bonus=stat_bonus,
         )
+        auto_budget -= spent
+        if outcome is not None and outcome.get("gear_lost"):
+            # A mid-evaluation death deleted gear: re-resolve so the lost
+            # piece's stats stop scoring later steps — the ingest batch
+            # applies the same rule via _refresh_bonus_on_gear_loss.
+            stat_bonus = await character_service.gear_stat_bonus(db, user_id)
     if profile is not None:
         # Post-scoring hook (auto-distribute now, grant eval as it lands).
-        await character_service.post_score(db, user_id, profile)
+        # The emitted types gate the eval's heaviest scans — a session
+        # can't emit daily types, so perfect-day skips its check scan here.
+        emitted = {t for t in (_event_for(s, session)[0] for s in steps) if t is not None}
+        await character_service.post_score(db, user_id, profile, event_types=emitted)
     await db.flush()
     return phases, steps
 

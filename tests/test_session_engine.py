@@ -75,7 +75,9 @@ class TestEvaluate:
         steps = se.evaluate(s, phases, T0 + timedelta(minutes=36))
         assert s.status == "ended"
         assert steps[-1].kind == "session_ended"
-        assert phases[2].status == "pending"
+        # The untapped pending phase is closed out, not left startable.
+        assert steps[-2].kind == "phase_skipped"
+        assert phases[2].status == "skipped"
 
     def test_absence_grace_abandon_with_zero_completed(self):
         """Pending phase past grace with no completed focus -> abandon.
@@ -87,7 +89,8 @@ class TestEvaluate:
         steps = se.evaluate(s, phases, T0 + timedelta(seconds=400))
         assert s.status == "abandoned"
         assert steps == [
-            se.Step("session_abandoned", reason="absence_grace", at=T0 + timedelta(seconds=300))
+            se.Step("phase_skipped", phase_seq=0, at=T0 + timedelta(seconds=300)),
+            se.Step("session_abandoned", reason="absence_grace", at=T0 + timedelta(seconds=300)),
         ]
 
     def test_pause_overflow_abandons(self):
