@@ -117,6 +117,15 @@ async def _evaluate_unit(
         await db.rollback()
         return False
     daily = fresh_daily
+    # A recurrence PATCH landing mid-eval stamps `since` — re-parse under
+    # the lock and bail if this unit now sits below the new schedule's
+    # floor. Committing anyway would record exactly the retro-miss the
+    # `since` contract forbids; remaining queued units bail the same way.
+    # A malformed blob skips like the daily-level guard.
+    fresh_rec = daily_service.parse_recurrence(daily.recurrence)
+    if fresh_rec is None or unit < daily_service.effective_anchor(fresh_rec, anchor):
+        await db.rollback()
+        return False
     # A check committed between the daily pre-read and the lock would land
     # a day that's both missed (HP + streak reset) and done — re-read
     # satisfaction under the lock before committing the miss. A suppressed
@@ -137,12 +146,24 @@ async def _evaluate_unit(
     # scoring both units frozen would hand out a freeze the streak didn't
     # earn.
     priors = daily_service.prior_units(rec, anchor, unit, daily_service.FREEZE_WINDOW_UNITS - 1)
-    if priors:
-        fresh_miss_rows = await game_crud.list_daily_misses(db, daily.id, priors[-1])
-        seen_missed = missed_days | {m.scheduled_day for m in fresh_miss_rows}
-    else:
-        seen_missed = missed_days
+    fresh_miss_rows = await game_crud.list_daily_misses(
+        db, daily.id, priors[-1] if priors else unit
+    )
+    seen_missed = missed_days | {m.scheduled_day for m in fresh_miss_rows}
     frozen = not any(u in seen_missed for u in priors)
+    if frozen:
+        # The verdict can't be backward-only: a racing instance can commit
+        # a LATER unit's miss first — a committed miss already frozen means
+        # this unit sits inside that miss's spent window, so a second
+        # freeze here would still hand out two in one rolling-7.
+        frozen = not any(
+            m.frozen
+            and unit
+            in daily_service.prior_units(
+                rec, anchor, m.scheduled_day, daily_service.FREEZE_WINDOW_UNITS - 1
+            )
+            for m in fresh_miss_rows
+        )
     miss.frozen = frozen
     missed_days.add(unit)
     # A daily whose owner lacks a profile row still records the

@@ -59,6 +59,81 @@ async def _daily_items(
     return cache[daily_id]
 
 
+async def _ingest_habit_click(
+    db: AsyncSession,
+    user_id: int,
+    event: GameEventIn,
+    habits_by_id: dict[int, Habit],
+    profile: GameProfile,
+    rates: GameRates,
+    today,
+    rng: random.Random,
+    stat_bonus: dict[str, int],
+) -> dict | None:
+    """Score one synced habit_click (or record it unscored).
+
+    Unresolvable habits, direction mismatches and a ValueError out of
+    scoring (stored-but-corrupt state, e.g. a bogus difficulty reaching
+    the engine) are recorded applied-but-unscored like score_check
+    rejections — one poisoned row can't 400 the batch and wedge the
+    client's retry queue. Returns the outcome (None when recorded
+    unscored) so the caller can spot a mid-batch death that cost gear.
+    """
+    habit = _habit_for_event(event, habits_by_id)
+    direction: str | None = event.payload.get("direction")
+    unscored_reason: str | None = None
+    outcome: dict | None = None
+    if (
+        habit is not None
+        and direction in ("positive", "negative")
+        and habit_service.direction_allows(habit, direction)
+    ):
+        try:
+            outcome = await habit_service.score_click(
+                db,
+                habit,
+                direction,
+                profile,
+                rates,
+                today,
+                eid=event.client_event_id,
+                client_ts=event.client_ts,
+                rng=rng,
+                extra=event.payload,
+                stat_bonus=stat_bonus,
+            )
+        except ValueError as exc:
+            unscored_reason = str(exc)
+    else:
+        unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
+    if unscored_reason is not None:
+        # Record applied-but-unscored instead of scoring a claim the
+        # server can't verify, or wedging the batch on a 400:
+        # habit_unresolvable — no owned row (deleted/foreign/malformed
+        # /missing id); direction_mismatch — the queued click predates
+        # a direction PATCH or carries a malformed direction; a
+        # ValueError out of scoring records the engine's message.
+        # Consumer notes: the eid is permanently consumed — a client
+        # correcting a rejected click must resend it under a NEW
+        # client_event_id. Unscored rows keep client-claimed fields
+        # (value/difficulty) at the same top-level keys that are
+        # authoritative on scored rows — "_outcome.scored" is the
+        # discriminator readers must check.
+        db.add(
+            GameEvent(
+                user_id=user_id,
+                client_event_id=event.client_event_id,
+                type=event.type,
+                payload={
+                    **habit_service.clean_extra(event.payload),
+                    "_outcome": {"scored": False, "reason": unscored_reason},
+                },
+                client_ts=event.client_ts,
+            )
+        )
+    return outcome
+
+
 async def _ingest_daily_check(
     db: AsyncSession,
     user_id: int,
@@ -253,52 +328,18 @@ async def ingest_events(
             status_by_idx[idx] = "duplicate"
             continue
         if event.type == "habit_click":
-            habit = _habit_for_event(event, habits_by_id)
-            direction: str | None = event.payload.get("direction")
-            if (
-                habit is not None
-                and direction in ("positive", "negative")
-                and habit_service.direction_allows(habit, direction)
-            ):
-                outcome = await habit_service.score_click(
-                    db,
-                    habit,
-                    direction,
-                    profile,
-                    rates,
-                    today,
-                    eid=event.client_event_id,
-                    client_ts=event.client_ts,
-                    rng=rng,
-                    extra=event.payload,
-                    stat_bonus=stat_bonus,
-                )
-                stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
-            else:
-                # Record applied-but-unscored instead of scoring a claim the
-                # server can't verify, or wedging the batch on a 400:
-                # habit_unresolvable — no owned row (deleted/foreign/malformed
-                # /missing id); direction_mismatch — the queued click predates
-                # a direction PATCH or carries a malformed direction.
-                # Consumer notes: the eid is permanently consumed — a client
-                # correcting a rejected click must resend it under a NEW
-                # client_event_id. Unscored rows keep client-claimed fields
-                # (value/difficulty) at the same top-level keys that are
-                # authoritative on scored rows — "_outcome.scored" is the
-                # discriminator readers must check.
-                unscored_reason = "habit_unresolvable" if habit is None else "direction_mismatch"
-                db.add(
-                    GameEvent(
-                        user_id=user_id,
-                        client_event_id=event.client_event_id,
-                        type=event.type,
-                        payload={
-                            **habit_service.clean_extra(event.payload),
-                            "_outcome": {"scored": False, "reason": unscored_reason},
-                        },
-                        client_ts=event.client_ts,
-                    )
-                )
+            habit_outcome = await _ingest_habit_click(
+                db,
+                user_id,
+                event,
+                habits_by_id,
+                profile,
+                rates,
+                today,
+                rng,
+                stat_bonus,
+            )
+            stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, habit_outcome, stat_bonus)
             _auto_distribute(profile)
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"

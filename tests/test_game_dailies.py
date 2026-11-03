@@ -346,6 +346,28 @@ class TestDailyCrud:
         assert response.json()["recurrence"]["anchor"] == "2020-01-01"
         assert (await _get_daily_row(db, daily["id"])).recurrence["anchor"] == "2020-01-01"
 
+    async def test_identical_recurrence_patch_preserves_since(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # A schedule-identical PATCH must carry the stored `since` forward,
+        # not re-stamp it (re-stamping to today would orphan the days the
+        # current schedule already owns) or drop it (re-exposing the days
+        # the stamp excluded). Seeded back-dated so a re-stamp shows.
+        daily = await _create(authenticated_async_client)
+        since = (_today() - timedelta(days=10)).isoformat()
+        await db.execute(
+            update(Daily)
+            .where(Daily.id == daily["id"])
+            .values(recurrence={"kind": "weekdays", "days": [1, 3], "since": since})
+        )
+        await db.commit()
+        response = await authenticated_async_client.patch(
+            f"{DAILIES}/{daily['id']}", json={"recurrence": {"kind": "weekdays", "days": [3, 1]}}
+        )
+        assert response.status_code == 200, response.text
+        assert response.json()["recurrence"]["since"] == since
+        assert (await _get_daily_row(db, daily["id"])).recurrence["since"] == since
+
     async def test_patch_cannot_touch_streak(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
@@ -1404,6 +1426,31 @@ class TestDailySweep:
         assert misses[_today() - timedelta(days=1)].frozen is False
         assert (await _get_daily_row(db, daily.id)).streak == 0
 
+    async def test_later_committed_frozen_miss_denies_freeze(self, db: AsyncSession) -> None:
+        """The freeze verdict can't be backward-only: a racing instance
+        that commits a LATER unit's miss first has already spent this
+        rolling window's one freeze — the earlier unit evaluating after
+        must break the streak, not freeze a second miss in the window."""
+        _, daily = await _make_daily(db, created_days_ago=2, streak=5)
+        # Yesterday's unit is already committed frozen — as if a racing
+        # instance claimed it before we got to the earlier unit.
+        db.add(
+            DailyMiss(
+                daily_id=daily.id,
+                user_id=daily.user_id,
+                scheduled_day=_today() - timedelta(days=1),
+                frozen=True,
+            )
+        )
+        await db.commit()
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 1
+        misses = {m.scheduled_day: m for m in await self._miss_rows(db, daily.id)}
+        # Day-2's miss lands UNfrozen — yesterday's freeze already covers
+        # the window it sits in.
+        assert misses[_today() - timedelta(days=2)].frozen is False
+        assert (await _get_daily_row(db, daily.id)).streak == 0
+        assert (await _profile(db, daily.user_id)).hp == 48
+
     async def test_deactivation_mid_eval_suppresses_miss(
         self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
     ) -> None:
@@ -1423,4 +1470,38 @@ class TestDailySweep:
         monkeypatch.setattr(daily_sweep, "_evaluate_unit", _wrapped)
         assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
         assert await self._miss_rows(db, daily.id) == []
+        assert (await _profile(db, daily.user_id)).hp == 50
+
+    async def test_recurrence_patch_mid_eval_suppresses_miss(
+        self, db: AsyncSession, monkeypatch: pytest.MonkeyPatch
+    ) -> None:
+        """A schedule PATCH landing mid-eval stamps `since` on the stored
+        blob: the under-lock re-read must bail the unit instead of
+        committing a miss for a day the `since` contract excludes — the
+        retro-miss the stamp exists to forbid."""
+        _, daily = await _make_daily(db, created_days_ago=1, streak=5)
+        real_eval = daily_sweep._evaluate_unit
+
+        async def _wrapped(*args, **kwargs):
+            # The PATCH result (new schedule + today's `since`) is staged
+            # in-session like the deactivation test above: visible to the
+            # under-lock re-read either way, and sqlite can't model a
+            # mid-transaction external write.
+            await args[0].execute(
+                update(Daily)
+                .where(Daily.id == daily.id)
+                .values(
+                    recurrence={
+                        "kind": "times_per_week",
+                        "count": 2,
+                        "since": _today().isoformat(),
+                    }
+                )
+            )
+            return await real_eval(*args, **kwargs)
+
+        monkeypatch.setattr(daily_sweep, "_evaluate_unit", _wrapped)
+        assert await daily_sweep.run_daily_miss_sweep(now=_at(0, 4)) == 0
+        assert await self._miss_rows(db, daily.id) == []
+        assert (await _get_daily_row(db, daily.id)).streak == 5
         assert (await _profile(db, daily.user_id)).hp == 50
