@@ -192,7 +192,7 @@ async def update_daily(
     items_in = update_data.pop("items", None)
     if "recurrence" in update_data:
         update_data["recurrence"] = daily_service.recurrence_for_storage(
-            update_data["recurrence"], today
+            update_data["recurrence"], today, existing=daily.recurrence
         )
     for field, value in update_data.items():
         setattr(daily, field, value)

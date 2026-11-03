@@ -13,6 +13,9 @@ Recurrence contract (JSONB `Daily.recurrence`):
   days from the anchor (the write day when the client omits it)
 - {"kind": "times_per_week", "count": C} — C completed days per ISO week
   (Mon–Sun); the scheduled unit is the week, keyed by its Sunday.
+- Any kind may carry "since": "YYYY-MM-DD" — stamped by a schedule-changing
+  PATCH; days before it ran under the old recurrence and are never
+  evaluated under the new one.
 
 Payout contract: a daily with N items pays each item check 1/N of the base
 reward; the whole-daily (master) check pays the remaining fraction. The day
@@ -77,10 +80,21 @@ def parse_recurrence(raw: Any) -> dict | None:
 
     The write path validates through the schemas, but the stored JSONB is a
     trust boundary for the sweep: a bad blob must skip the daily, not crash
-    the tick.
+    the tick. A write-stamped `since` rides along normalized — it's the
+    floor below which the current recurrence never evaluates.
     """
     if not isinstance(raw, dict):
         return None
+    rec = _parse_schedule(raw)
+    if rec is not None:
+        since = _parse_date(raw.get("since"))
+        if since is not None:
+            rec["since"] = since
+    return rec
+
+
+def _parse_schedule(raw: dict) -> dict | None:
+    """The schedule-defining fields of a recurrence blob; None = malformed."""
     kind = raw.get("kind")
     if kind == "daily":
         return {"kind": "daily"}
@@ -109,38 +123,83 @@ def parse_recurrence(raw: Any) -> dict | None:
     return None
 
 
-def recurrence_for_storage(recurrence: dict, today: date) -> dict:
-    """The blob persisted on write: fills the every_n_days anchor with the
-    write day so phase never silently depends on creation time."""
+def _schedule_signature(rec: dict | None) -> dict:
+    """The schedule-defining keys of a normalized recurrence — `since` is
+    write-path bookkeeping, not part of the schedule itself."""
+    return {k: v for k, v in (rec or {}).items() if k != "since"}
+
+
+def recurrence_for_storage(recurrence: dict, today: date, existing: dict | None = None) -> dict:
+    """The blob persisted on write.
+
+    The every_n_days anchor defaults to the write day so phase never
+    silently depends on creation time; on PATCH (`existing` = the stored
+    blob) a missing anchor preserves the stored one — re-anchoring to the
+    PATCH day would silently shift the phase of a long-lived daily.
+
+    A schedule-changing PATCH stamps `since` = the write day: days before
+    it ran under the old recurrence — checks and misses there already
+    stand — so the new rule never re-evaluates them. A schedule-identical
+    PATCH carries a stored `since` forward instead of dropping it.
+    """
     rec = dict(recurrence)
+    rec.pop("since", None)
+    if existing is None:
+        # Create floors at the creation anchor — nothing to stamp.
+        if rec.get("kind") == "every_n_days" and not rec.get("anchor"):
+            rec["anchor"] = today.isoformat()
+        return rec
+    stored = parse_recurrence(existing)
     if rec.get("kind") == "every_n_days" and not rec.get("anchor"):
-        rec["anchor"] = today.isoformat()
+        rec["anchor"] = ((stored or {}).get("anchor") or today).isoformat()
+    if _schedule_signature(parse_recurrence(rec)) != _schedule_signature(stored):
+        rec["since"] = today.isoformat()
+    elif stored is not None and stored.get("since") is not None:
+        rec["since"] = stored["since"].isoformat()
     return rec
 
 
 def daily_anchor(daily: Daily) -> date:
-    """The earliest schedulable day: the daily's creation day (UTC)."""
+    """The daily's creation day (UTC) — the recurrence's base anchor."""
     return daily.created_at.date()
 
 
-def week_end(day: date) -> date:
-    """The ISO week's Sunday — the unit key for times_per_week recurrences.
+def effective_anchor(rec: dict, anchor: date) -> date:
+    """The earliest day `rec` can schedule: the daily's creation anchor,
+    raised by a PATCH-stamped `since` — days before the stamp ran under
+    the old recurrence and are never re-evaluated."""
+    since = _parse_date(rec.get("since"))
+    return max(anchor, since) if since is not None else anchor
 
-    shortcut: a mid-week anchor makes the anchor week's quota partially
-    unreachable (pre-anchor days can't accept checks) — a daily created
-    Wednesday asking 7/week can't be fully satisfied. Product call pending;
-    flagged on #63.
-    """
+
+def week_end(day: date) -> date:
+    """The ISO week's Sunday — the unit key for times_per_week recurrences."""
     return day + timedelta(days=6 - day.weekday())
+
+
+def _first_week_unit(rec: dict, floor: date) -> date:
+    """The first satisfiable times_per_week unit.
+
+    A week whose schedulable span (floor→Sunday) holds fewer days than
+    `count` can never be satisfied — checks are once/day — so scheduling
+    it would manufacture an unavoidable miss. Skip that first unit; the
+    partial week's days still accept checks (toward nothing). Resolves
+    the product call flagged on #63 in the no-free-penalty direction.
+    """
+    first = week_end(floor)
+    if (first - floor).days + 1 < rec["count"]:
+        first += timedelta(days=7)
+    return first
 
 
 def is_schedulable(rec: dict, day: date, anchor: date) -> bool:
     """Whether `day` accepts check-ins / is a scheduled day for `rec`.
 
     times_per_week has no fixed days — every day at/after the anchor is a
-    check-in day; its scheduled unit is the week, not the day.
+    check-in day; its scheduled unit is the week, not the day. A stored
+    `since` raises the floor: days before it belong to the old recurrence.
     """
-    if day < anchor:
+    if day < effective_anchor(rec, anchor):
         return False
     kind = rec["kind"]
     if kind == "daily":
@@ -168,7 +227,7 @@ def scheduled_units(rec: dict, anchor: date, start: date, end: date) -> list[dat
         return []
     if rec["kind"] == "times_per_week":
         units = []
-        d = max(week_end(start), week_end(anchor))
+        d = max(week_end(start), _first_week_unit(rec, effective_anchor(rec, anchor)))
         while d <= end:
             units.append(d)
             d += timedelta(days=7)
@@ -186,9 +245,10 @@ def prior_units(rec: dict, anchor: date, unit: date, n: int) -> list[date]:
     """The n scheduled units immediately before `unit`, newest first —
     the rolling window the streak-freeze rule inspects."""
     out: list[date] = []
+    floor = effective_anchor(rec, anchor)
     if rec["kind"] == "times_per_week":
         d = unit - timedelta(days=7)
-        first = week_end(anchor)
+        first = _first_week_unit(rec, floor)
         while len(out) < n and d >= first:
             out.append(d)
             d -= timedelta(days=7)
@@ -199,7 +259,7 @@ def prior_units(rec: dict, anchor: date, unit: date, n: int) -> list[date]:
     # every_n_days interval=365 recurrence need ~2190 day-steps. An older
     # anchor stops the walk first, so the cap only bounds the theoretical
     # far-tail.
-    while len(out) < n and d >= anchor and scanned < 2200:
+    while len(out) < n and d >= floor and scanned < 2200:
         if is_schedulable(rec, d, anchor):
             out.append(d)
         d -= timedelta(days=1)

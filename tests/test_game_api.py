@@ -7,7 +7,7 @@ from httpx import AsyncClient
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.models.game import GameEvent, GameProfile
+from app.models.game import GameConfig, GameEvent, GameProfile
 from app.models.user import User
 from app.schemas.game import GameProfileRead
 
@@ -189,23 +189,51 @@ class TestEventIngestion:
         assert response.status_code == 200
         assert response.json()["profile"]["hp"] == pytest.approx(46.0)
 
-    async def test_invalid_event_fails_batch(self, authenticated_async_client: AsyncClient) -> None:
+    async def test_invalid_event_recorded_unscored(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # A malformed claim can't wedge the client's retry queue: the batch
+        # commits, events on both sides still apply, and the bad eid is
+        # consumed with an applied-but-unscored ledger row (same pattern as
+        # unresolvable habit_click/daily_check events).
         response = await authenticated_async_client.post(
             f"{GAME}/events",
             json={
                 "events": [
-                    focus_event("e-1"),
+                    focus_event("e-1", minutes=10),
                     focus_event("e-bad", minutes=-3),
+                    focus_event("e-2", minutes=10),
                 ]
             },
         )
-        assert response.status_code == 400
+        assert response.status_code == 200, response.text
+        body = response.json()
+        assert body["applied"] == 3
+        assert body["duplicates"] == 0
+        # Both good events scored (10 xp each at default rates; a legit
+        # crit can only add) — the bad one moved nothing.
+        assert body["profile"]["xp_today"] >= 20
+        stored = (
+            (await db.execute(select(GameEvent).where(GameEvent.client_event_id == "e-bad")))
+            .scalar_one()
+            .payload
+        )
+        assert stored["_outcome"]["scored"] is False
+        assert "minutes" in stored["_outcome"]["reason"]
 
-        # transactional: nothing applied, nothing persisted
-        profile = await authenticated_async_client.get(f"{GAME}/profile")
-        assert profile.json()["xp"] == 0
-        result = await authenticated_async_client.get(f"{GAME}/events")
-        assert result.json()["events"] == []
+    async def test_bogus_economy_config_falls_back_to_defaults(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        # JSONB holds any JSON value — a non-object economy row must fall
+        # back to default rates, not 500 every scoring endpoint on .items().
+        db.add(GameConfig(key="economy", value="bogus"))
+        await db.commit()
+        response = await authenticated_async_client.post(
+            f"{GAME}/events", json={"events": [focus_event("e-1")]}
+        )
+        assert response.status_code == 200, response.text
+        # Default rates: 25 min * 1.0 xp/min (a legit crit can only add).
+        assert response.json()["profile"]["xp_today"] >= 25
 
     async def test_events_requires_auth(self, async_client: AsyncClient) -> None:
         response = await async_client.post(f"{GAME}/events", json={"events": [focus_event("e-1")]})
