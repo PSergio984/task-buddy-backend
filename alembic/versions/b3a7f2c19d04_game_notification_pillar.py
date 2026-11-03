@@ -72,8 +72,15 @@ def downgrade() -> None:
 
     DATA LOSS: `meta` held the dispatcher's dedup keys and entity links —
     dropping it permanently discards every game notification's dedup
-    identity, so a later re-upgrade can't tell prior sends from new ones."""
+    identity, so a later re-upgrade can't tell prior sends from new ones.
+    Also deletes every notification row typed by the new game kinds: the
+    rolled-back NotificationType enum has no members for them, and
+    SQLAlchemy would LookupError on load (GET /notifications/ 500s)."""
     op.drop_index("ix_tbl_notifications_user_id_type", table_name="tbl_notifications")
+    # Pre-#68 code can't load rows with the game kinds — drop them so the
+    # rolled-back enum never sees an unknown label.
+    kinds = ", ".join(f"'{kind}'" for kind in _NEW_KINDS)
+    op.execute(f"DELETE FROM tbl_notifications WHERE type IN ({kinds})")
     op.drop_column("tbl_notifications", "meta")
     # Postgres enum values can't be dropped without recreating the type —
     # the extra labels are inert, so downgrade leaves them in place.
