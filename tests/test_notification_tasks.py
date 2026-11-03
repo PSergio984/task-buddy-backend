@@ -16,6 +16,27 @@ from app.tasks import (
     _send_confirmation_email_async,
     _send_push_notification_async,
 )
+from tests.conftest import TestSessionLocal
+
+
+def _spy_sessions(mocker: Any, events: list[str]) -> None:
+    """Patch the sender's session factory to record open/close so tests can
+    assert the pool checkout wraps only the subscription fetch — never the
+    webpush network loop (the QueuePoolTimeout the split guards)."""
+
+    class _SpySession:
+        def __init__(self) -> None:
+            self._inner = TestSessionLocal()
+
+        async def __aenter__(self) -> Any:
+            events.append("open")
+            return await self._inner.__aenter__()
+
+        async def __aexit__(self, *exc: Any) -> Any:
+            events.append("close")
+            return await self._inner.__aexit__(*exc)
+
+    mocker.patch("app.tasks.AsyncSessionLocal", new=lambda: _SpySession())
 
 
 @pytest.mark.anyio
@@ -67,6 +88,61 @@ async def test_send_push_notification_410_gone(
     stmt = select(PushSubscription).where(PushSubscription.endpoint == endpoint)
     res = await db.execute(stmt)
     assert res.scalar_one_or_none() is None
+
+
+@pytest.mark.anyio
+async def test_push_sender_releases_session_before_webpush(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """The pool checkout wraps only the subscription fetch — the webpush
+    loop runs outside it, so detached fan-out can't stall pool slots on
+    network I/O."""
+    user_id = confirmed_user["id"]
+    db.add(
+        PushSubscription(
+            user_id=user_id, endpoint="https://example.com/pool", p256dh="p256", auth="a"
+        )
+    )
+    await db.commit()
+
+    events: list[str] = []
+    _spy_sessions(mocker, events)
+    mocker.patch("app.tasks.webpush", side_effect=lambda **kw: events.append("push"))
+    mocker.patch("app.tasks.config.VAPID_PRIVATE_KEY", "test_key")
+
+    await _send_push_notification_async(user_id, "Title", "Message")
+
+    assert events == ["open", "close", "push"]
+
+
+@pytest.mark.anyio
+async def test_push_sender_410_cleanup_uses_second_session(
+    db: AsyncSession, confirmed_user: dict[str, Any], mocker: Any
+) -> None:
+    """410 cleanup still lands — on a second short session opened after
+    the send loop, never inside it."""
+    user_id = confirmed_user["id"]
+    endpoint = "https://example.com/gone"
+    db.add(PushSubscription(user_id=user_id, endpoint=endpoint, p256dh="p256", auth="a"))
+    await db.commit()
+
+    events: list[str] = []
+    _spy_sessions(mocker, events)
+    mock_response = MagicMock()
+    mock_response.status_code = 410
+
+    def raise_410(**kw: Any) -> None:
+        events.append("push")
+        raise WebPushException("Gone", response=mock_response)
+
+    mocker.patch("app.tasks.webpush", side_effect=raise_410)
+    mocker.patch("app.tasks.config.VAPID_PRIVATE_KEY", "test_key")
+
+    await _send_push_notification_async(user_id, "Title", "Message")
+
+    assert events == ["open", "close", "push", "open", "close"]
+    stmt = select(PushSubscription).where(PushSubscription.endpoint == endpoint)
+    assert (await db.execute(stmt)).scalar_one_or_none() is None
 
 
 @pytest.mark.anyio

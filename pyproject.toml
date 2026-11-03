@@ -45,6 +45,7 @@ dependencies = [
     "opentelemetry-instrumentation-logging>=0.66b0",
     "opentelemetry-exporter-otlp-proto-grpc>=1.45.1",
     "prometheus-fastapi-instrumentator>=8.0.0",
+    "tzdata>=2024.1",  # zoneinfo needs a tzdb on hosts without one (Windows dev)
 ]
 
 [project.optional-dependencies]

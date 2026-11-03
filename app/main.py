@@ -20,6 +20,7 @@ from app.api.routers import (
     game_character,
     game_dailies,
     game_habits,
+    game_notifications,
     game_sessions,
     game_tracking,
     knowledge,
@@ -57,6 +58,7 @@ async def reminder_loop() -> None:
     process (no worker service): a crash only skips a tick, and the loop
     restarts with the process on the next boot.
     """
+    from app.game.notifications import run_reminder_tick
     from app.tasks import _process_reminders_async
 
     while True:
@@ -64,6 +66,12 @@ async def reminder_loop() -> None:
             await _process_reminders_async()
         except Exception:
             logger.exception("reminder loop tick failed")
+        # Game reminders share the tick — isolated so a failure on one side
+        # can't starve the other.
+        try:
+            await run_reminder_tick()
+        except Exception:
+            logger.exception("game reminder tick failed")
         await asyncio.sleep(60)
 
 
@@ -212,6 +220,7 @@ app.include_router(game_habits.router, prefix="/api/v1")
 app.include_router(game_dailies.router, prefix="/api/v1")
 app.include_router(game_character.router, prefix="/api/v1")
 app.include_router(game_tracking.router, prefix="/api/v1")
+app.include_router(game_notifications.router, prefix="/api/v1")
 app.include_router(notifications.router, prefix="/api/v1")
 app.include_router(realtime.router, prefix="/api/v1")
 app.include_router(sync.router, prefix="/api/v1")

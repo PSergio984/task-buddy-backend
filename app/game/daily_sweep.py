@@ -28,9 +28,10 @@ from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 
 from app.crud import game as game_crud
-from app.game import character_service, daily_service, engine
+from app.game import character_service, daily_service, engine, notifications
 from app.game.service import load_rates
 from app.models.game import Daily, DailyMiss, GameEvent, GameProfile
+from app.models.notification import NotificationType
 
 logger = logging.getLogger(__name__)
 
@@ -168,6 +169,7 @@ async def _evaluate_unit(
     missed_days.add(unit)
     # A daily whose owner lacks a profile row still records the
     # miss/streak change; only HP loss needs the row.
+    hp_before = profile.hp if profile is not None else 0.0
     outcome: dict = {"scored": False}
     if profile is not None:
         outcome = engine.apply_event(
@@ -212,10 +214,50 @@ async def _evaluate_unit(
             },
         )
     )
+    await _notify_miss(db, daily, unit, frozen, profile, hp_before, outcome, now)
     # Per-unit commit: the claim, scoring and event land atomically, and a
     # later unit's failure can't take this one back.
     await db.commit()
     return True
+
+
+async def _notify_miss(
+    db: AsyncSession,
+    daily: Daily,
+    unit: date,
+    frozen: bool,
+    profile: GameProfile | None,
+    hp_before: float,
+    outcome: dict,
+    now: datetime,
+) -> None:
+    """DAILY_MISSED + hp-outcome notifications for one recorded miss.
+
+    The rows ride the unit's atomic commit — a rollback replays the whole
+    evaluation and the in-app row can't outlive its miss. A notification
+    failure must never take the recorded miss back.
+    """
+    try:
+        body = f"'{daily.title}' was left unchecked"
+        body += " — a streak freeze absorbed it." if frozen else "."
+        if outcome.get("hp_lost"):
+            body += f" HP -{float(outcome['hp_lost']):.0f}."
+        await notifications.dispatch_notification(
+            db,
+            daily.user_id,
+            NotificationType.DAILY_MISSED,
+            "Daily missed",
+            body,
+            action_url="/dailies",
+            meta={"daily_id": daily.id, "day": unit.isoformat()},
+            now=now,
+        )
+        if profile is not None:
+            await notifications.notify_score_outcome(
+                db, daily.user_id, profile, hp_before, outcome, now=now
+            )
+    except Exception:
+        logger.exception("daily-missed notifications failed: daily=%s", daily.id)
 
 
 async def _evaluate_daily(

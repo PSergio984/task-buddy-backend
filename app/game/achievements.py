@@ -14,6 +14,7 @@ aggregate columns (Daily.streak, Habit.counter); perfect_day counts whole-
 daily done checks per date against the dailies due that date.
 """
 
+import logging
 import sys
 from datetime import date, datetime, timedelta, timezone
 
@@ -22,6 +23,7 @@ from sqlalchemy.dialects.postgresql import insert as postgres_insert
 from sqlalchemy.dialects.sqlite import insert as sqlite_insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.game import notifications
 from app.models.game import (
     Achievement,
     Daily,
@@ -32,6 +34,9 @@ from app.models.game import (
     UserAchievement,
     UserGear,
 )
+from app.models.notification import NotificationType
+
+logger = logging.getLogger(__name__)
 
 # Seeded content — gold_reward tiers: firsts 10, milestones 25-40, long-term
 # feats 50-100.
@@ -413,7 +418,27 @@ async def evaluate(
             db.add(UserAchievement(user_id=user_id, achievement_id=achievement.id))
             profile.gold += achievement.gold_reward
             granted.append(achievement)
+    if granted:
+        await _notify_grants(db, user_id, granted)
     return granted
+
+
+async def _notify_grants(db: AsyncSession, user_id: int, granted: list[Achievement]) -> None:
+    """One ACHIEVEMENT celebration per grant; a failure never breaks the eval."""
+    for achievement in granted:
+        try:
+            await notifications.dispatch_notification(
+                db,
+                user_id,
+                NotificationType.ACHIEVEMENT,
+                "Achievement unlocked",
+                f"{achievement.name} — {achievement.description} "
+                f"(+{achievement.gold_reward} gold).",
+                action_url="/game",
+                meta={"achievement_key": achievement.key},
+            )
+        except Exception:
+            logger.exception("achievement notification failed: key=%s", achievement.key)
 
 
 async def list_for_user(db: AsyncSession, user_id: int) -> list[dict]:
