@@ -969,9 +969,9 @@ async def _daily_write_event(client: AsyncClient, eid: str) -> None:
 
 
 class TestAchievements:
-    async def test_registry_seeds_15_badges(self, authenticated_async_client: AsyncClient) -> None:
+    async def test_registry_seeds_16_badges(self, authenticated_async_client: AsyncClient) -> None:
         badges = await _badges(authenticated_async_client)
-        assert len(badges) == 15
+        assert len(badges) == 16
         assert {
             "level-10",
             "level-25",
@@ -988,6 +988,7 @@ class TestAchievements:
             "streak-21",
             "perfect-day",
             "clicker-50",
+            "first-record",
         } == set(badges)
         assert all(row["earned_at"] is None for row in badges.values())
 

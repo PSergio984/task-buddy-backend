@@ -83,7 +83,9 @@ _POSITIVE_FIELDS = frozenset(
 )
 
 # Rates where zero is meaningful (0 disables the award) but negatives aren't.
-_NONNEGATIVE_FIELDS = frozenset({"stopwatch_milestone_xp", "respec_gold_cost"})
+_NONNEGATIVE_FIELDS = frozenset(
+    {"stopwatch_milestone_xp", "respec_gold_cost", "speedrun_win_xp_bonus"}
+)
 
 # Fields that must stay integral: daily_xp_cap feeds an Integer column, and
 # lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
@@ -113,6 +115,7 @@ class GameRates:
     daily_xp_cap: int = 500
     daily_gold_cap: float = 150.0
     stopwatch_milestone_xp: float = 25.0  # XP per 25/50/75-min stopwatch chunk
+    speedrun_win_xp_bonus: float = 25.0  # flat XP on a won/record speedrun
     respec_gold_cost: float = 100.0  # gold price of a class/stat respec
     # Level curve: 25*lvl below 5, fixed 150 at 5, quadratic afterwards.
     lvl_curve_early: float = 25.0
@@ -301,15 +304,16 @@ def _finite_positive(value: Any, name: str) -> float:
     return float(value)
 
 
-def _apply_focus_phase(
+def _focus_payout(
     profile: GameProfile,
+    minutes: float,
     payload: dict,
     rates: GameRates,
     rng_roll: float,
-    today: date,
-    stat_bonus: Mapping[str, int] | None = None,
-) -> dict:
-    minutes = _finite_positive(payload.get("minutes"), "focus_phase_completed minutes")
+    stat_bonus: Mapping[str, int] | None,
+) -> tuple[int, int, float]:
+    """The per-minute reward shared by focus phases and speedrun duration
+    XP: minutes x per-minute rates x difficulty x stat bonuses x crit."""
     p = _difficulty_mult(payload.get("difficulty", "easy"), rates)
     mult = crit_roll(rng_roll, effective_stat(profile, "str_stat", stat_bonus), rates)
     xp = _round_half_up(
@@ -326,6 +330,39 @@ def _apply_focus_phase(
         * (1 + rates.per_gold_pct * effective_stat(profile, "per_stat", stat_bonus))
         * mult
     )
+    return xp, gold, mult
+
+
+def _apply_focus_phase(
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    today: date,
+    stat_bonus: Mapping[str, int] | None = None,
+) -> dict:
+    minutes = _finite_positive(payload.get("minutes"), "focus_phase_completed minutes")
+    xp, gold, mult = _focus_payout(profile, minutes, payload, rates, rng_roll, stat_bonus)
+    outcome: dict = {"scored": True, "crit": mult > 1.0}
+    outcome.update(award_xp(profile, xp, rates, today))
+    outcome.update(award_gold(profile, gold, rates, today))
+    return outcome
+
+
+def _apply_speedrun_completed(
+    profile: GameProfile,
+    payload: dict,
+    rates: GameRates,
+    rng_roll: float,
+    today: date,
+    stat_bonus: Mapping[str, int] | None = None,
+) -> dict:
+    """Duration XP/gold on the focus formula, plus the flat win bonus on
+    time-boxed wins and beat-best record runs (payload["win_bonus"])."""
+    minutes = _finite_positive(payload.get("minutes"), "speedrun_completed minutes")
+    xp, gold, mult = _focus_payout(profile, minutes, payload, rates, rng_roll, stat_bonus)
+    if payload.get("win_bonus") is True:
+        xp += _round_half_up(rates.speedrun_win_xp_bonus)
     outcome: dict = {"scored": True, "crit": mult > 1.0}
     outcome.update(award_xp(profile, xp, rates, today))
     outcome.update(award_gold(profile, gold, rates, today))
@@ -560,6 +597,9 @@ SERVER_EVENT_TYPES = frozenset(
         "phase_skipped",
         "phase_abandoned",
         "daily_missed",
+        "speedrun_completed",
+        "speedrun_failed",
+        "record_set",
     }
 )
 
@@ -594,8 +634,9 @@ def apply_event(
         return _apply_habit_click(profile, payload, rates, rng_roll, rng, day, stat_bonus)
     if event_type == "damage":
         return _apply_damage(profile, payload, rates, rng, stat_bonus)
-    if event_type == "session_abandoned":
-        # Abandon reasons carry the session's difficulty for HP scaling.
+    if event_type in ("session_abandoned", "speedrun_failed"):
+        # Abandon reasons carry the session's difficulty for HP scaling;
+        # a blown deadline or abandoned run costs HP the same way.
         return _apply_damage(profile, payload, rates, rng, stat_bonus)
     if event_type == "stopwatch_milestone":
         return _apply_stopwatch_milestone(profile, payload, rates, rng_roll, rng, day, stat_bonus)
@@ -603,4 +644,10 @@ def apply_event(
         return _apply_daily_check(profile, payload, rates, rng_roll, day, stat_bonus)
     if event_type == "daily_missed":
         return _apply_daily_missed(profile, payload, rates, rng, stat_bonus)
+    if event_type == "speedrun_completed":
+        return _apply_speedrun_completed(profile, payload, rates, rng_roll, day, stat_bonus)
+    if event_type == "record_set":
+        # Marker row: it feeds the first-record achievement and the activity
+        # weight — the reward already rode the speedrun_completed payout.
+        return {"scored": True}
     return {"scored": False}

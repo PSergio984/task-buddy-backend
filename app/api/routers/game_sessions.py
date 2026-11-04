@@ -1,4 +1,4 @@
-"""Focus-session lifecycle: start / pause / resume / advance / stop / reads.
+"""Focus-session lifecycle: start / pause / resume / advance / stop / done / reads.
 
 Every call replays elapsed wall-clock transitions inside a locked transaction,
 so a session left mid-phase completes (or ends) itself deterministically — the
@@ -64,6 +64,7 @@ async def _respond(db, result) -> SessionActionResponse:
             pause_budget_seconds=session.pause_budget_seconds,
             started_at=session.started_at,
             ended_at=session.ended_at,
+            speedrun=session.speedrun,
             phases=phases,
         ),
         profile=await _profile_read(db, profile, rates),
@@ -194,5 +195,20 @@ async def stop(
 ) -> SessionActionResponse:
     """End now: mid-phase with 0 completed focus phases -> HP loss."""
     result = await _run(db, current_user.id, session_id, session_service.stop)
+    await db.commit()
+    return await _respond(db, result)
+
+
+@router.post("/{session_id}/done", response_model=SessionActionResponse)
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def done(
+    session_id: int,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> SessionActionResponse:
+    """User-declared finish — the speedrun win path (400 on other modes)."""
+    result = await _run(db, current_user.id, session_id, session_service.done)
     await db.commit()
     return await _respond(db, result)

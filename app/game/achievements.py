@@ -146,6 +146,13 @@ ACHIEVEMENTS: list[dict] = [
         "criteria": {"kind": "habit_counter", "threshold": 50},
         "gold_reward": 35,
     },
+    {
+        "key": "first-record",
+        "name": "Record Breaker",
+        "description": "Set a speedrun personal best",
+        "criteria": {"kind": "first", "what": "record_set"},
+        "gold_reward": 15,
+    },
 ]
 
 

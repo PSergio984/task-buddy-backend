@@ -29,7 +29,7 @@ ACTIVITY_CONFIG_KEY = "activity_weights"
 # Phase kinds that represent focus time; breaks never do. Completed is the
 # only status with real actual_seconds (skipped/abandoned phases didn't run
 # their course — mirroring session_engine, which scores completions only).
-_FOCUS_KINDS = ("focus", "stopwatch")
+_FOCUS_KINDS = ("focus", "stopwatch", "speedrun")
 _COMPLETED = "completed"
 
 
@@ -173,3 +173,46 @@ async def get_client_focus_minutes_by_day(
         select(day, func.coalesce(func.sum(minutes), 0.0)).where(*filters).group_by(day)
     )
     return {_to_date(row_day): float(m or 0.0) for row_day, m in result.all()}
+
+
+async def get_speedrun_pbs(db: AsyncSession, user_id: int) -> list[dict]:
+    """All-time per-label beat-your-best records (not window-scoped).
+
+    One row per activity label: best_seconds is the fastest completed
+    beat_best run, attempts counts every completed run, set_at is when the
+    standing record was set — records strictly improve, so the earliest
+    completed run at the best time owns it. The argmin is done in Python:
+    the row volume is per-user bounded and the two-dialect SQL for
+    argmin-by-group is far uglier.
+    """
+    result = await db.execute(
+        select(FocusSession.activity_label, FocusPhase.actual_seconds, FocusPhase.ended_at)
+        .join(FocusSession, FocusPhase.session_id == FocusSession.id)
+        .where(
+            FocusSession.user_id == user_id,
+            FocusSession.mode == "speedrun",
+            FocusSession.activity_label.is_not(None),
+            FocusSession.speedrun["type"].as_string() == "beat_best",
+            FocusPhase.kind == "speedrun",
+            FocusPhase.status == _COMPLETED,
+        )
+    )
+    best: dict[str, dict] = {}
+    for label, seconds, ended_at in result.all():
+        row = best.setdefault(
+            label,
+            {
+                "activity_label": label,
+                "best_seconds": seconds,
+                "attempts": 0,
+                "set_at": ended_at,
+            },
+        )
+        row["attempts"] += 1
+        if seconds < row["best_seconds"]:
+            row["best_seconds"] = seconds
+            row["set_at"] = ended_at
+        elif seconds == row["best_seconds"] and ended_at < row["set_at"]:
+            # A tie is not a new record — the earlier run already owned it.
+            row["set_at"] = ended_at
+    return sorted(best.values(), key=lambda row: row["activity_label"])

@@ -284,6 +284,32 @@ async def get_phases(db: AsyncSession, session_id: int) -> list[FocusPhase]:
     return list(result.scalars().all())
 
 
+async def get_speedrun_record(
+    db: AsyncSession, user_id: int, activity_label: str | None
+) -> int | None:
+    """The standing beat-your-best record for an activity label: the fastest
+    completed beat_best speedrun phase (None when the label has never run).
+
+    The record is derived, not stored: MIN(actual_seconds) over completed
+    speedrun phases of the user's beat_best sessions for the label. The
+    speedrun->>'type' extraction works on both dialects (JSON_EXTRACT on
+    SQLite, ->> on Postgres — same precedent as payload._outcome reads).
+    """
+    result = await db.execute(
+        select(func.min(FocusPhase.actual_seconds))
+        .join(FocusSession, FocusPhase.session_id == FocusSession.id)
+        .where(
+            FocusSession.user_id == user_id,
+            FocusSession.mode == "speedrun",
+            FocusSession.activity_label == activity_label,
+            FocusSession.speedrun["type"].as_string() == "beat_best",
+            FocusPhase.kind == "speedrun",
+            FocusPhase.status == "completed",
+        )
+    )
+    return result.scalar_one()
+
+
 async def get_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit | None:
     """One habit by id, scoped to its owner."""
     result = await db.execute(select(Habit).where(Habit.id == habit_id, Habit.user_id == user_id))

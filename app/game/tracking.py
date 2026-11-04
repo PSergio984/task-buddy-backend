@@ -45,6 +45,12 @@ DEFAULT_WEIGHTS: dict[str, float] = {
     "stopwatch_milestone": 1.0,
     "damage": 0.0,
     "session_abandoned": 0.0,
+    # speedrun_completed/failed weigh 0: the run's minutes already land in
+    # focus_minutes via the completed phase row (same no-double-count rule
+    # as focus_phase_completed). record_set scores like a milestone.
+    "speedrun_completed": 0.0,
+    "speedrun_failed": 0.0,
+    "record_set": 1.0,
 }
 
 # Score cutoffs for tiers 1..4 (tier 0 = no activity). 5 intensities like
@@ -183,15 +189,15 @@ def _streaks(days: list[dict], today: date) -> tuple[int, int]:
     return current, longest
 
 
-def summarize(days: list[dict], today: date) -> dict:
+def summarize(days: list[dict], today: date, speedrun_pbs: list[dict] | None = None) -> dict:
     """The profile stat set over the window's day rows.
 
     avg_hours_per_day divides by window length (zero days count — it's the
     honest daily rate). weekly_total covers the 7 days ending at
     server-today clipped to the window — a window ending earlier legitimately
     reads lower. best_day is the highest-score day, earliest on ties.
-    speedrun_pbs is None until the #69 records feature exists (no PB
-    table — FocusSession.speedrun is a per-session blob, not a leaderboard).
+    speedrun_pbs is caller-fetched: records are all-time, not window-scoped
+    (the PB board can't live inside the day-row aggregation).
     """
     total_minutes = sum(row["focus_minutes"] for row in days)
     total_hours = total_minutes / 60.0
@@ -207,5 +213,5 @@ def summarize(days: list[dict], today: date) -> dict:
         "longest_streak": longest,
         "best_day": ({"date": best["date"], "score": best["score"]} if best is not None else None),
         "weekly_total": round(weekly_total, 2),
-        "speedrun_pbs": None,
+        "speedrun_pbs": speedrun_pbs or [],
     }

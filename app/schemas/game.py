@@ -485,10 +485,25 @@ class SessionPhaseIn(BaseModel):
     minutes: int = Field(gt=0, le=600)
 
 
-class SessionStartIn(BaseModel):
-    """Open a focus session. mode=stopwatch ignores `phases` (open-ended)."""
+class SpeedrunIn(BaseModel):
+    """Speedrun variant config (mode="speedrun").
 
-    mode: Literal["timer", "stopwatch"] = "timer"
+    time_boxed runs a fixed countdown against budget_minutes; beat_best is
+    an open stopwatch against the activity label's standing record. The
+    mode-conditional requirements (budget required for time_boxed, no
+    budget on beat_best) are enforced service-side like the timer mode's
+    phases requirement — a model_validator would surface 422, not the
+    contract's 400.
+    """
+
+    kind: Literal["time_boxed", "beat_best"]
+    budget_minutes: int | None = Field(default=None, gt=0, le=600)
+
+
+class SessionStartIn(BaseModel):
+    """Open a focus session. mode=stopwatch/speedrun ignores `phases`."""
+
+    mode: Literal["timer", "stopwatch", "speedrun"] = "timer"
     phases: list[SessionPhaseIn] | None = Field(default=None, max_length=32)
     task_id: int | None = None
     tag_id: int | None = None
@@ -498,6 +513,7 @@ class SessionStartIn(BaseModel):
     auto_start_focus: bool = False
     pause_budget_count: int = Field(default=3, ge=0, le=20)
     pause_budget_seconds: int = Field(default=300, gt=0, le=3600)
+    speedrun: SpeedrunIn | None = None
 
 
 class SessionPhaseOut(BaseModel):
@@ -573,6 +589,7 @@ class FocusSessionOut(BaseModel):
     pause_budget_seconds: int
     started_at: datetime
     ended_at: datetime | None
+    speedrun: dict | None
     phases: list[SessionPhaseOut]
 
 

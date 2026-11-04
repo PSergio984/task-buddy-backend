@@ -345,6 +345,51 @@ async def notify_phase_end(
         logger.exception("phase-end notification failed: user=%s", user_id)
 
 
+def _mmss(seconds: Any) -> str:
+    """'12:34' render for a seconds count; garbage reads as '?' — the
+    notification body must never crash its own dispatch."""
+    if not isinstance(seconds, (int, float)) or isinstance(seconds, bool) or seconds < 0:
+        return "?"
+    total = int(seconds)
+    return f"{total // 60}:{total % 60:02d}"
+
+
+async def notify_record_set(
+    db: AsyncSession,
+    user_id: int,
+    payload: dict,
+    *,
+    now: datetime | None = None,
+) -> None:
+    """RECORD celebration for a new speedrun personal best. Never raises —
+    a notification failure must not break scoring or replay semantics."""
+    try:
+        label = payload.get("activity_label") or "Activity"
+        old = payload.get("old_seconds")
+        new = payload.get("new_seconds")
+        body = (
+            f"{label}: {_mmss(new)} (was {_mmss(old)})."
+            if isinstance(old, int) and not isinstance(old, bool)
+            else f"{label}: {_mmss(new)} — first record on the board."
+        )
+        await dispatch_notification(
+            db,
+            user_id,
+            NotificationType.RECORD,
+            "New personal best!",
+            body,
+            action_url="/game",
+            meta={
+                "activity_label": payload.get("activity_label"),
+                "old_seconds": old,
+                "new_seconds": new,
+            },
+            now=now,
+        )
+    except Exception:
+        logger.exception("record-set notification failed: user=%s", user_id)
+
+
 async def _reminder(
     db: AsyncSession,
     user_id: int,

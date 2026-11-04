@@ -577,7 +577,7 @@ class TestActivityStats:
             "score": 62.0,
         }
         assert body["weekly_total"] == pytest.approx(68.0)
-        assert body["speedrun_pbs"] is None
+        assert body["speedrun_pbs"] == []
 
     async def test_scoreless_today_does_not_break_current_streak(
         self,
@@ -633,7 +633,7 @@ class TestActivityStats:
         assert body["longest_streak"] == 0
         assert body["best_day"] is None
         assert body["weekly_total"] == 0
-        assert body["speedrun_pbs"] is None
+        assert body["speedrun_pbs"] == []
 
 
 def test_tier_computed_on_the_shipped_score() -> None:
