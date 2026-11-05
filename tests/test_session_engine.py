@@ -448,12 +448,43 @@ class TestSpeedrun:
         assert s.speedrun["result"] == "win"
         assert s.speedrun["margin_seconds"] == 599
 
-    def test_done_beat_best_one_second_still_records(self):
-        """elapsed==1 on a first beat_best run stays a record, and the blob
-        exposes the (null) prior it was judged against."""
+    def test_done_beat_best_sub_minute_finishes_without_record(self):
+        """A first run under MIN_RECORD_SECONDS completes as 'finished' —
+        no record_set step, no win bonus; the blob still exposes the (null)
+        prior it was judged against. The floor keeps a misclick-length run
+        off the label's board."""
         s = _speedrun_session(kind="beat_best", target=None)
         phases = [_speedrun_phase(planned=0)]
         steps = se.done(s, phases, T0 + timedelta(seconds=1), prior_record_seconds=None)
-        assert s.speedrun["result"] == "record"
+        assert s.status == "ended"
+        assert s.speedrun["result"] == "finished"
         assert s.speedrun["old_record_seconds"] is None
-        assert steps[2].extra["new_seconds"] == 1
+        kinds = [st.kind for st in steps]
+        assert kinds == ["phase_completed", "speedrun_completed", "session_ended"]
+        assert steps[1].extra["record"] is False
+        assert steps[1].extra["win_bonus"] is False
+
+    def test_done_beat_best_just_below_floor_has_no_record(self):
+        """Boundary: 59s is still under the floor even with a standing
+        record it would otherwise beat."""
+        s = _speedrun_session(kind="beat_best", target=300)
+        phases = [_speedrun_phase(planned=0)]
+        steps = se.done(s, phases, T0 + timedelta(seconds=59), prior_record_seconds=300)
+        assert s.speedrun["result"] == "finished"
+        assert "record_set" not in [st.kind for st in steps]
+
+    def test_done_beat_best_at_floor_still_records(self):
+        """Boundary: elapsed == MIN_RECORD_SECONDS is board-eligible — the
+        floor is inclusive (60 records where 59 doesn't)."""
+        s = _speedrun_session(kind="beat_best", target=None)
+        phases = [_speedrun_phase(planned=0)]
+        steps = se.done(
+            s,
+            phases,
+            T0 + timedelta(seconds=se.MIN_RECORD_SECONDS),
+            prior_record_seconds=None,
+        )
+        assert s.speedrun["result"] == "record"
+        kinds = [st.kind for st in steps]
+        assert kinds == ["phase_completed", "speedrun_completed", "record_set", "session_ended"]
+        assert steps[2].extra["new_seconds"] == se.MIN_RECORD_SECONDS

@@ -302,7 +302,7 @@ def _speedrun_plan(req: SessionStartIn) -> list[tuple[str, int]]:
         return [("speedrun", req.speedrun.budget_minutes * 60)]
     if req.speedrun.budget_minutes is not None:
         raise ValueError("budget_minutes is only valid for time-boxed speedruns")
-    if not req.activity_label:
+    if not (req.activity_label or "").strip():
         raise ValueError("activity_label is required for beat-your-best speedruns")
     return [("speedrun", 0)]
 
@@ -356,6 +356,9 @@ async def start_session(
     }
     if req.tag_id is not None:
         preset["tag_id"] = req.tag_id
+    # Labels persist stripped (blank -> NULL): a whitespace-padded "  5k "
+    # must key the same record board as "5k", and " " is no label at all.
+    activity_label = (req.activity_label or "").strip() or None
     speedrun_blob: dict | None = None
     if req.mode == "speedrun" and req.speedrun is not None:
         if req.speedrun.kind == "time_boxed" and req.speedrun.budget_minutes is not None:
@@ -366,14 +369,14 @@ async def start_session(
         elif req.speedrun.kind == "beat_best":
             # Snapshot the record at start so the client can show the target;
             # done() re-reads it inside the txn for the actual compare.
-            target = await game_crud.get_speedrun_record(db, user_id, req.activity_label)
+            target = await game_crud.get_speedrun_record(db, user_id, activity_label)
             speedrun_blob = {"type": "beat_best", "target_seconds": target}
     session = FocusSession(
         user_id=user_id,
         task_id=req.task_id,
         mode=req.mode,
         status="active",
-        activity_label=req.activity_label,
+        activity_label=activity_label,
         preset=preset,
         pause_budget_count=req.pause_budget_count,
         pause_budget_seconds=req.pause_budget_seconds,
@@ -545,13 +548,13 @@ async def done(db: AsyncSession, user_id: int, session_id: int) -> _View:
         # The clock ended it before the verb landed — return the final
         # state rather than erroring (same rule as _action).
         return session, phases, profile
-    # Type detection mirrors the engine's _speedrun_type (isinstance guard +
+    # Type detection mirrors the engine's speedrun_type (isinstance guard +
     # planned_seconds fallback) — a corrupt/typeless blob can't 500 the read
     # or skip it into a guaranteed record. live is None only when se.done
     # would raise anyway, so the read is safely skipped then.
-    live = se._live(phases)
+    live = se.live_phase(phases)
     prior_record = None
-    if live is not None and se._speedrun_type(session, live) == "beat_best":
+    if live is not None and se.speedrun_type(session, live) == "beat_best":
         prior_record = await game_crud.get_speedrun_record(db, user_id, session.activity_label)
     steps = se.done(session, phases, now, prior_record_seconds=prior_record)
     await _evaluate(db, session, user_id, now, need_steps=steps)

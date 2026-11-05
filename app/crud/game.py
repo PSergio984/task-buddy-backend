@@ -8,6 +8,7 @@ from sqlalchemy.engine import CursorResult
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.game.session_engine import MIN_RECORD_SECONDS
 from app.models.game import (
     Daily,
     DailyCheck,
@@ -291,8 +292,10 @@ async def get_speedrun_record(
     completed beat_best speedrun phase (None when the label has never run).
 
     The record is derived, not stored: MIN(actual_seconds) over completed
-    speedrun phases of the user's beat_best sessions for the label. The
-    speedrun->>'type' extraction works on both dialects (JSON_EXTRACT on
+    speedrun phases of the user's beat_best sessions for the label — only
+    runs at/above MIN_RECORD_SECONDS are board-eligible (the same floor
+    done() applies, so a sub-minute finish never reaches here as a record).
+    The speedrun->>'type' extraction works on both dialects (JSON_EXTRACT on
     SQLite, ->> on Postgres — same precedent as payload._outcome reads).
     """
     result = await db.execute(
@@ -305,6 +308,7 @@ async def get_speedrun_record(
             FocusSession.speedrun["type"].as_string() == "beat_best",
             FocusPhase.kind == "speedrun",
             FocusPhase.status == "completed",
+            FocusPhase.actual_seconds >= MIN_RECORD_SECONDS,
         )
     )
     return result.scalar_one()

@@ -64,7 +64,9 @@ async def _respond(db, result) -> SessionActionResponse:
             pause_budget_seconds=session.pause_budget_seconds,
             started_at=session.started_at,
             ended_at=session.ended_at,
-            speedrun=session.speedrun,
+            # A scalar-JSON blob (DB-surgery only — the API only ever writes
+            # dicts) can't 500 the read endpoints' response validation.
+            speedrun=session.speedrun if isinstance(session.speedrun, dict) else None,
             phases=phases,
         ),
         profile=await _profile_read(db, profile, rates),
@@ -193,7 +195,8 @@ async def stop(
     current_user: Annotated[User, Depends(get_confirmed_user)],
     db: Annotated[AsyncSession, Depends(get_db)],
 ) -> SessionActionResponse:
-    """End now: mid-phase with 0 completed focus phases -> HP loss."""
+    """End now: mid-phase with 0 completed focus phases -> HP loss;
+    speedrun: always abandon + HP."""
     result = await _run(db, current_user.id, session_id, session_service.stop)
     await db.commit()
     return await _respond(db, result)

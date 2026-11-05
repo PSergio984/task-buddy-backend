@@ -127,6 +127,32 @@ class TestStart:
         response = await authenticated_async_client.post(SESSIONS, json=body)
         assert response.status_code == 400, response.text
 
+    async def test_beat_best_whitespace_only_label_is_400(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """ " " is truthy but not a label — the required check strips, or a
+        blank label would mint an unkeyed board entry."""
+        r = await authenticated_async_client.post(
+            SESSIONS,
+            json={
+                "mode": "speedrun",
+                "activity_label": "   ",
+                "speedrun": {"kind": "beat_best"},
+            },
+        )
+        assert r.status_code == 400
+
+    async def test_beat_best_label_stores_and_matches_stripped(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """ "  5k " keys the same board as "5k" — the label persists stripped
+        and the start-time record lookup uses the stripped form."""
+        records = TestRecords()
+        await records._run_and_done(authenticated_async_client, db, "5k", 5 * 60)
+        session = await _start_beat_best(authenticated_async_client, "  5k  ")
+        assert session["activity_label"] == "5k"
+        assert session["speedrun"]["target_seconds"] == pytest.approx(5 * 60, abs=2)
+
     async def test_out_of_range_budget_is_422(
         self, authenticated_async_client: AsyncClient
     ) -> None:
@@ -274,6 +300,22 @@ class TestDone:
         r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/done")
         assert r.status_code == 200, r.text
         assert r.json()["session"]["speedrun"]["result"] == "win"
+
+    async def test_read_with_corrupt_speedrun_blob_returns_none(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """A scalar-JSON blob is only writable via DB surgery, but the read
+        endpoints must not 500 response validation on it — it ships null."""
+        session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
+        sid = session["id"]
+        await db.execute(
+            update(FocusSession).where(FocusSession.id == sid).values(speedrun="corrupt")
+        )
+        await db.commit()
+        r = await authenticated_async_client.get(f"{SESSIONS}/{sid}")
+        assert r.status_code == 200, r.text
+        assert r.json()["session"]["speedrun"] is None
+        assert r.json()["session"]["status"] == "active"
 
 
 class TestFail:
@@ -433,6 +475,72 @@ class TestRecords:
         assert phase_done[0].payload["_outcome"]["scored"] is False
 
 
+class TestRecordFloor:
+    """MIN_RECORD_SECONDS: sub-minute runs still finish (duration XP) but
+    can't hold the board — no record, no bonus, no board entry."""
+
+    async def test_sub_minute_first_run_finishes_without_record(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """55s on a fresh label completes as 'finished'; nothing reaches the
+        board. (55s rather than 59 keeps the wall-clock rewind off the
+        boundary flake window — the engine unit tests pin the exact edge.)"""
+        records = TestRecords()
+        body = await records._run_and_done(authenticated_async_client, db, "5k", 55)
+        assert body["session"]["status"] == "ended"
+        assert body["session"]["speedrun"]["result"] == "finished"
+        completed = (await _events(db, "speedrun_completed"))[0]
+        assert completed.payload["record"] is False
+        assert completed.payload["win_bonus"] is False
+        assert await _events(db, "record_set") == []
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats")).json()
+        assert stats["speedrun_pbs"] == []
+
+    async def test_floor_boundary_first_run_records(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """The floor is inclusive: a 60s first run is a record and owns the
+        board (elapsed only ever grows past the 60s rewind — no flake)."""
+        records = TestRecords()
+        body = await records._run_and_done(authenticated_async_client, db, "5k", 60)
+        assert body["session"]["speedrun"]["result"] == "record"
+        assert len(await _events(db, "record_set")) == 1
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats")).json()
+        pb = stats["speedrun_pbs"][0]
+        assert pb["activity_label"] == "5k"
+        assert pb["best_seconds"] == pytest.approx(60, abs=2)
+        assert pb["attempts"] == 1
+
+    async def test_sub_minute_run_leaves_standing_record(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """A sub-minute finish can't beat the standing record — and doesn't
+        count as an attempt on the board either."""
+        records = TestRecords()
+        await records._run_and_done(authenticated_async_client, db, "5k", 5 * 60)
+        body = await records._run_and_done(authenticated_async_client, db, "5k", 30)
+        assert body["session"]["speedrun"]["result"] == "finished"
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats")).json()
+        pb = stats["speedrun_pbs"][0]
+        assert pb["best_seconds"] == pytest.approx(5 * 60, abs=2)
+        assert pb["attempts"] == 1  # the 30s finish isn't board-eligible
+        assert [a["seconds"] for a in pb["recent_attempts"]] == pytest.approx([5 * 60], abs=2)
+        assert len(await _events(db, "record_set")) == 1
+
+    async def test_time_boxed_sub_minute_win_still_pays_bonus(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """The floor gates beat_best records only — a 10s time_boxed win
+        still pays the win bonus."""
+        session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
+        await _rewind_phase(db, session["id"], 10)
+        r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
+        body = r.json()
+        assert body["session"]["speedrun"]["result"] == "win"
+        completed = (await _events(db, "speedrun_completed"))[0]
+        assert completed.payload["win_bonus"] is True
+
+
 class TestTracking:
     async def test_pbs_aggregation_and_focus_minutes(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
@@ -454,6 +562,30 @@ class TestTracking:
         assert pb["set_at"] is not None
         # 15 minutes of completed speedrun phases count as focus time.
         assert r.json()["total_hours"] == pytest.approx(15 / 60, abs=0.02)
+
+    async def test_recent_attempts_newest_first_and_capped_at_five(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """Each PB row carries its last-5 attempt history, newest first;
+        the sixth run trims the oldest off."""
+        records = TestRecords()
+        await records._run_and_done(authenticated_async_client, db, "5k", 5 * 60)
+        await records._run_and_done(authenticated_async_client, db, "5k", 4 * 60 + 40)
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats")).json()
+        attempts = stats["speedrun_pbs"][0]["recent_attempts"]
+        assert [a["seconds"] for a in attempts] == pytest.approx([4 * 60 + 40, 5 * 60], abs=2)
+        assert all(a["ended_at"] for a in attempts)
+        for _ in range(4):
+            await records._run_and_done(authenticated_async_client, db, "5k", 4 * 60 + 20)
+        stats = (await authenticated_async_client.get(ACTIVITY + "/stats")).json()
+        pb = stats["speedrun_pbs"][0]
+        assert pb["attempts"] == 6  # the aggregate counts every eligible run
+        attempts = pb["recent_attempts"]
+        assert len(attempts) == 5
+        # The oldest run (5*60) fell off; the four newest lead.
+        assert [a["seconds"] for a in attempts] == pytest.approx(
+            [4 * 60 + 20] * 4 + [4 * 60 + 40], abs=2
+        )
 
 
 class TestForge:

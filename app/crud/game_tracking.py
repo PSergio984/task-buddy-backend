@@ -21,6 +21,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import InstrumentedAttribute
 from sqlalchemy.sql.elements import ColumnElement
 
+from app.game.session_engine import MIN_RECORD_SECONDS
 from app.models.game import FocusPhase, FocusSession, GameConfig, GameEvent
 
 # The tbl_game_config key carrying the activity weights + tier ladder.
@@ -119,7 +120,8 @@ async def get_event_counts_by_day(
 async def get_focus_minutes_by_day(
     db: AsyncSession, user_id: int, start: datetime, end: datetime
 ) -> dict[date, float]:
-    """Server-side focus minutes per day from completed focus/stopwatch phases.
+    """Server-side focus minutes per day from completed focus/stopwatch/speedrun
+    phases.
 
     Bucketed on the phase's ended_at — the completion instant is also what
     the ledger's focus_phase_completed carries, so both sources agree on
@@ -179,11 +181,14 @@ async def get_speedrun_pbs(db: AsyncSession, user_id: int) -> list[dict]:
     """All-time per-label beat-your-best records (not window-scoped).
 
     One row per activity label: best_seconds is the fastest completed
-    beat_best run, attempts counts every completed run, set_at is when the
-    standing record was set — records strictly improve, so the earliest
-    completed run at the best time owns it. The argmin is done in Python:
-    the row volume is per-user bounded and the two-dialect SQL for
-    argmin-by-group is far uglier.
+    beat_best run, attempts counts every board-eligible completed run,
+    set_at is when the standing record was set — records strictly improve,
+    so the earliest completed run at the best time owns it. recent_attempts
+    is the last 5 eligible completions newest-first — the attempt history
+    behind the aggregate. Board-eligible means at/above MIN_RECORD_SECONDS
+    (the same floor done() applies: sub-minute finishes never count).
+    The argmin is done in Python: the row volume is per-user bounded and
+    the two-dialect SQL for argmin-by-group is far uglier.
     """
     result = await db.execute(
         select(FocusSession.activity_label, FocusPhase.actual_seconds, FocusPhase.ended_at)
@@ -195,7 +200,9 @@ async def get_speedrun_pbs(db: AsyncSession, user_id: int) -> list[dict]:
             FocusSession.speedrun["type"].as_string() == "beat_best",
             FocusPhase.kind == "speedrun",
             FocusPhase.status == _COMPLETED,
+            FocusPhase.actual_seconds >= MIN_RECORD_SECONDS,
         )
+        .order_by(FocusPhase.ended_at.desc())
     )
     best: dict[str, dict] = {}
     for label, seconds, ended_at in result.all():
@@ -206,9 +213,12 @@ async def get_speedrun_pbs(db: AsyncSession, user_id: int) -> list[dict]:
                 "best_seconds": seconds,
                 "attempts": 0,
                 "set_at": ended_at,
+                "recent_attempts": [],
             },
         )
         row["attempts"] += 1
+        if len(row["recent_attempts"]) < 5:
+            row["recent_attempts"].append({"seconds": seconds, "ended_at": ended_at.isoformat()})
         if seconds < row["best_seconds"]:
             row["best_seconds"] = seconds
             row["set_at"] = ended_at

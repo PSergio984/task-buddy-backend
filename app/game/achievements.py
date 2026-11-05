@@ -1,6 +1,6 @@
 """Achievement registry and grant evaluation (issue #64).
 
-15 seeded badges across the spec's buckets — levels, streaks, focus totals,
+16 seeded badges across the spec's buckets — levels, streaks, focus totals,
 firsts, records, perfect days — each paying a tiered gold reward. Evaluation
 runs inside the post-score hook and on direct calls (pick_class, buy_gear),
 always under the caller's profile lock; grants are

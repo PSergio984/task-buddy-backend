@@ -39,6 +39,12 @@ FOCUS, BREAK, STOPWATCH, SPEEDRUN = "focus", "break", "stopwatch", "speedrun"
 
 MAX_MILESTONES = 100  # ~41 h of stopwatch; caps per-stop ledger rows
 
+# Board-eligibility floor: sub-minute completions still finish and earn
+# duration XP, but can't hold a label's beat_best board — a speedrun under
+# a minute isn't a serious recurring-activity attempt (anti-misclick +
+# anti-trivial-cheat: a first 5s "record" would brick the board's MIN).
+MIN_RECORD_SECONDS = 60
+
 
 @dataclass
 class Step:
@@ -55,7 +61,7 @@ class Step:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-def _live(phases: list[FocusPhase]) -> FocusPhase | None:
+def live_phase(phases: list[FocusPhase]) -> FocusPhase | None:
     return next((p for p in phases if p.status in (ACTIVE, PAUSED)), None)
 
 
@@ -171,7 +177,7 @@ def _complete_phase(
         steps.append(Step("phase_started", phase_seq=nxt.seq, at=end))
 
 
-def _speedrun_type(session: FocusSession, phase: FocusPhase) -> str:
+def speedrun_type(session: FocusSession, phase: FocusPhase) -> str:
     """The run variant: the start-time blob is authoritative, planned_seconds
     is the fallback (budget>0 means a countdown)."""
     blob = session.speedrun if isinstance(session.speedrun, dict) else {}
@@ -195,7 +201,7 @@ def _check_speedrun_deadline(
 ) -> list[Step] | None:
     """Time-boxed miss: the countdown is wall-clock — pauses never extend
     it. Returns the transition steps when the deadline passed, else None."""
-    if cur.planned_seconds <= 0:
+    if speedrun_type(session, cur) != "time_boxed":
         return None  # beat_best is open-ended; it just sits, paused or not
     started = _aware(cur.started_at) or now
     deadline = started + timedelta(seconds=cur.planned_seconds)
@@ -246,7 +252,7 @@ def evaluate(session: FocusSession, phases: list[FocusPhase], now: datetime) -> 
     last_end = max(ended, default=_aware(session.started_at) or now)
 
     while True:
-        cur = _live(phases)
+        cur = live_phase(phases)
         if cur is None:
             steps.extend(_resolve_no_live(session, phases, last_end, now))
             return steps
@@ -274,7 +280,7 @@ def pause(session: FocusSession, phases: list[FocusPhase], now: datetime) -> lis
     """Validate + apply a pause on the live phase; returns the pause Step,
     or skip Steps + a session_abandoned Step when the count budget is
     exceeded (a dead session can't leave pending phases startable-looking)."""
-    phase = _live(phases)
+    phase = live_phase(phases)
     if phase is None or phase.status != ACTIVE:
         raise ValueError("no running phase to pause")
     if phase.kind == BREAK:
@@ -305,7 +311,7 @@ def resume(session: FocusSession, phases: list[FocusPhase], now: datetime) -> li
     """Validate + apply a resume; banks paused seconds and returns the resume
     Step, or skip Steps + a session_abandoned Step when the seconds budget
     was already blown."""
-    phase = _live(phases)
+    phase = live_phase(phases)
     if phase is None or phase.status != PAUSED:
         raise ValueError("no paused phase to resume")
     extra = int((now - (_aware(phase.pause_started_at) or now)).total_seconds())
@@ -327,7 +333,7 @@ def resume(session: FocusSession, phases: list[FocusPhase], now: datetime) -> li
 
 def advance(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[Step]:
     """User tap: begin the pending focus phase, or skip a running break."""
-    live = _live(phases)
+    live = live_phase(phases)
     if live is not None and live.kind == BREAK and live.status == ACTIVE:
         live.status = SKIPPED
         live.ended_at = now
@@ -374,7 +380,8 @@ def _abandon_speedrun(
     live.ended_at = now
     session.status = S_ABANDONED
     session.ended_at = now
-    result = "miss" if _speedrun_type(session, live) == "time_boxed" else "abandoned"
+    stype = speedrun_type(session, live)
+    result = "miss" if stype == "time_boxed" else "abandoned"
     _speedrun_result(session, result, elapsed, reason=reason)
     return (
         Step(
@@ -384,7 +391,7 @@ def _abandon_speedrun(
             scored=True,
             reason=reason,
             extra={
-                "speedrun_type": _speedrun_type(session, live),
+                "speedrun_type": stype,
                 "elapsed_seconds": elapsed,
             },
         ),
@@ -396,12 +403,12 @@ def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tupl
     """End the session now. Returns (final_step, scored_steps) — a stopwatch
     stop may emit milestone steps before the end step."""
     scored: list[Step] = []
-    live = _live(phases)
+    live = live_phase(phases)
     if live is not None and live.kind == SPEEDRUN:
         started = _aware(live.started_at) or now
         _bank_open_pause(live, now)
         return _abandon_speedrun(
-            session, live, phases, now, int((now - started).total_seconds()), "abandon"
+            session, live, phases, now, max(0, int((now - started).total_seconds())), "abandon"
         )
     if live is not None and live.kind == STOPWATCH:
         started = _aware(live.started_at) or now
@@ -480,11 +487,14 @@ def done(
     time_boxed wins under its budget; beat_best always finishes — the
     caller-supplied prior record decides whether it's also a record run
     (the service re-reads the record inside the txn, so the engine stays
-    DB-free). The phase_completed step is deliberately unscored — it lands
-    in the ledger so the feed can reconstruct the run, while the
-    speedrun_completed step carries the actual reward.
+    DB-free). beat_best records are additionally gated at MIN_RECORD_SECONDS:
+    a sub-minute finish completes as "finished" without record, bonus or
+    board — an unbeatable 5s "record" would brick the label's board. The
+    phase_completed step is deliberately unscored — it lands in the ledger
+    so the feed can reconstruct the run, while the speedrun_completed step
+    carries the actual reward.
     """
-    live = _live(phases)
+    live = live_phase(phases)
     if live is None or live.kind != SPEEDRUN:
         raise ValueError("no live speedrun phase to finish")
     started = _aware(live.started_at) or now
@@ -495,7 +505,7 @@ def done(
         # be beaten again. Rejected before ANY mutation; the run stays live.
         raise ValueError("run too short")
     _bank_open_pause(live, now)
-    stype = _speedrun_type(session, live)
+    stype = speedrun_type(session, live)
     if stype == "time_boxed" and elapsed >= live.planned_seconds:
         # evaluate() owns this transition and would already have failed the
         # run — unreachable while the session is live; keep the guard so a
@@ -534,7 +544,9 @@ def done(
             )
         )
     else:
-        record = prior_record_seconds is None or elapsed < prior_record_seconds
+        record = elapsed >= MIN_RECORD_SECONDS and (
+            prior_record_seconds is None or elapsed < prior_record_seconds
+        )
         _speedrun_result(
             session,
             "record" if record else "finished",
