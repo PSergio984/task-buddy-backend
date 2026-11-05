@@ -76,6 +76,8 @@ def _event_for(step: se.Step, session: FocusSession) -> tuple[str | None, dict]:
             "difficulty": difficulty,
             "phase_seq": step.phase_seq,
         }
+    if kind in ("speedrun_completed", "speedrun_failed", "record_set"):
+        return _speedrun_event_for(step, payload, difficulty)
     if kind in (
         "phase_started",
         "phase_paused",
@@ -87,6 +89,21 @@ def _event_for(step: se.Step, session: FocusSession) -> tuple[str | None, dict]:
     if kind == "session_ended":
         return kind, payload
     return None, payload
+
+
+def _speedrun_event_for(step: se.Step, payload: dict, difficulty: str) -> tuple[str, dict]:
+    """Ledger payload for the speedrun step kinds — the engine puts the
+    run facts (elapsed, record, budget margin) in step.extra; this adds
+    the scoring fields (minutes/difficulty/reason) the event carries."""
+    kind = step.kind
+    if kind == "record_set":
+        return kind, {**payload, "phase_seq": step.phase_seq, **step.extra}
+    event = {**payload, "difficulty": difficulty, "phase_seq": step.phase_seq}
+    if kind == "speedrun_completed":
+        event["minutes"] = max(1, (step.extra.get("elapsed_seconds") or 0) // 60)
+    if kind == "speedrun_failed":
+        event["reason"] = step.reason
+    return kind, {**event, **step.extra}
 
 
 async def _persist_step(
@@ -128,6 +145,9 @@ async def _persist_step(
         "focus_phase_completed",
         "stopwatch_milestone",
         "session_abandoned",
+        "speedrun_completed",
+        "speedrun_failed",
+        "record_set",
     ):
         # Charge the transition's own UTC day so a midnight-straddling
         # session doesn't collapse rewards into the poll day's cap — but
@@ -150,6 +170,8 @@ async def _persist_step(
         await notifications.notify_score_outcome(db, user_id, profile, hp_before, outcome, now=now)
         if event_type == "focus_phase_completed" and outcome.get("scored"):
             await notifications.notify_phase_end(db, user_id, at, payload.get("minutes"), now=now)
+        if event_type == "record_set" and outcome.get("scored"):
+            await notifications.notify_record_set(db, user_id, payload, now=now)
     row = GameEvent(
         user_id=user_id,
         client_event_id=eid,
@@ -264,8 +286,33 @@ async def _evaluate(
     return phases, steps
 
 
+def _speedrun_plan(req: SessionStartIn) -> list[tuple[str, int]]:
+    """The one-phase speedrun plan: a countdown budget for time_boxed, or
+    an open-ended run (planned_seconds 0) for beat_best.
+
+    The combo checks live here (ValueError -> 400) rather than in a
+    model_validator, whose failures surface as 422 — the same seam as the
+    timer mode's phases requirement.
+    """
+    if req.speedrun is None:
+        raise ValueError("speedrun config is required for speedrun mode")
+    if req.speedrun.kind == "time_boxed":
+        if req.speedrun.budget_minutes is None:
+            raise ValueError("budget_minutes is required for time-boxed speedruns")
+        return [("speedrun", req.speedrun.budget_minutes * 60)]
+    if req.speedrun.budget_minutes is not None:
+        raise ValueError("budget_minutes is only valid for time-boxed speedruns")
+    if not (req.activity_label or "").strip():
+        raise ValueError("activity_label is required for beat-your-best speedruns")
+    return [("speedrun", 0)]
+
+
 def _plan(req: SessionStartIn) -> list[tuple[str, int]]:
     """Phase plan before any DB work — a bad request can't churn a rollback."""
+    if req.mode == "speedrun":
+        return _speedrun_plan(req)
+    if req.speedrun is not None:
+        raise ValueError("speedrun config is only valid for speedrun mode")
     if req.mode == "stopwatch":
         return [("stopwatch", 0)]
     if not req.phases:
@@ -309,15 +356,31 @@ async def start_session(
     }
     if req.tag_id is not None:
         preset["tag_id"] = req.tag_id
+    # Labels persist stripped (blank -> NULL): a whitespace-padded "  5k "
+    # must key the same record board as "5k", and " " is no label at all.
+    activity_label = (req.activity_label or "").strip() or None
+    speedrun_blob: dict | None = None
+    if req.mode == "speedrun" and req.speedrun is not None:
+        if req.speedrun.kind == "time_boxed" and req.speedrun.budget_minutes is not None:
+            speedrun_blob = {
+                "type": "time_boxed",
+                "budget_seconds": req.speedrun.budget_minutes * 60,
+            }
+        elif req.speedrun.kind == "beat_best":
+            # Snapshot the record at start so the client can show the target;
+            # done() re-reads it inside the txn for the actual compare.
+            target = await game_crud.get_speedrun_record(db, user_id, activity_label)
+            speedrun_blob = {"type": "beat_best", "target_seconds": target}
     session = FocusSession(
         user_id=user_id,
         task_id=req.task_id,
         mode=req.mode,
         status="active",
-        activity_label=req.activity_label,
+        activity_label=activity_label,
         preset=preset,
         pause_budget_count=req.pause_budget_count,
         pause_budget_seconds=req.pause_budget_seconds,
+        speedrun=speedrun_blob,
         started_at=now,
     )
     db.add(session)
@@ -357,6 +420,9 @@ async def start_session(
                 # The feed reconstructs sessions from events alone — plan
                 # kinds/seconds must live here, not only on phase rows.
                 "phases": [{"kind": k, "seconds": s} for k, s in plan],
+                # Run params ride the start event too (budget/target) — the
+                # feed shouldn't need the session row to explain the run.
+                **({"speedrun": speedrun_blob} if speedrun_blob is not None else {}),
             },
         ),
         0,
@@ -460,3 +526,36 @@ async def stop(db: AsyncSession, user_id: int, session_id: int) -> _View:
         return scored + [final]
 
     return await _action(db, user_id, session_id, verb)
+
+
+async def done(db: AsyncSession, user_id: int, session_id: int) -> _View:
+    """User-declared finish — the speedrun win path.
+
+    Same evaluate → verb → persist shape as _action, unrolled: the verb
+    needs the beat_best record read INSIDE this transaction (a record is
+    cheaper than a stale start-time target — a run that started before
+    another run's record still has to beat the newer mark).
+    """
+    now = datetime.now(timezone.utc)
+    profile = await game_crud.get_or_create_profile(db, user_id)
+    session = await _locked_session(db, user_id, session_id)
+    if session.status != se.S_ACTIVE:
+        raise ConflictError("session is not active")
+    if session.mode != "speedrun":
+        raise ValueError("done is only valid for speedrun sessions")
+    phases, _ = await _evaluate(db, session, user_id, now)
+    if session.status != se.S_ACTIVE:
+        # The clock ended it before the verb landed — return the final
+        # state rather than erroring (same rule as _action).
+        return session, phases, profile
+    # Type detection mirrors the engine's speedrun_type (isinstance guard +
+    # planned_seconds fallback) — a corrupt/typeless blob can't 500 the read
+    # or skip it into a guaranteed record. live is None only when se.done
+    # would raise anyway, so the read is safely skipped then.
+    live = se.live_phase(phases)
+    prior_record = None
+    if live is not None and se.speedrun_type(session, live) == "beat_best":
+        prior_record = await game_crud.get_speedrun_record(db, user_id, session.activity_label)
+    steps = se.done(session, phases, now, prior_record_seconds=prior_record)
+    await _evaluate(db, session, user_id, now, need_steps=steps)
+    return session, phases, profile

@@ -113,10 +113,12 @@ async def get_activity_stats(
     end: Annotated[Optional[date], Query()] = None,
 ) -> ActivityStatsResponse:
     """The profile stat set over the same window: hours, streaks, best day,
-    weekly total. Streaks are bounded by the window."""
+    weekly total. Streaks are bounded by the window; speedrun PBs are
+    all-time and fetched separately from the day rows."""
     start, end = _resolve_range(start, end)
     days, _ = await _day_rows(db, current_user.id, start, end)
-    stats = tracking.summarize(days, datetime.now(timezone.utc).date())
+    pbs = await tracking_crud.get_speedrun_pbs(db, current_user.id)
+    stats = tracking.summarize(days, datetime.now(timezone.utc).date(), speedrun_pbs=pbs)
     return ActivityStatsResponse(
         start=start, end=end, server_time=datetime.now(timezone.utc), **stats
     )

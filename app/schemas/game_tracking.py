@@ -44,6 +44,28 @@ class ActivityBestDay(BaseModel):
     score: float
 
 
+class SpeedrunAttempt(BaseModel):
+    """One board-eligible completed run in a label's attempt history."""
+
+    seconds: int
+    ended_at: datetime
+
+
+class SpeedrunPB(BaseModel):
+    """One activity label's standing beat-your-best record (all-time).
+
+    set_at is when the current record was set — records strictly improve,
+    so the earliest completed run at the best time owns it. recent_attempts
+    is the last 5 board-eligible completions, newest first.
+    """
+
+    activity_label: str
+    best_seconds: int
+    attempts: int
+    set_at: datetime
+    recent_attempts: list[SpeedrunAttempt]
+
+
 class ActivityStatsResponse(BaseModel):
     """The profile stat set, computed over the same window convention as the
     grid (defaults: trailing 365 UTC days). Streaks count consecutive days
@@ -59,7 +81,7 @@ class ActivityStatsResponse(BaseModel):
     # Score sum over the 7 days ending at server-today, clipped to the
     # window — a window ending earlier legitimately reads lower.
     weekly_total: float
-    # Always null until the speedrun records feature (#69) exists — there is
-    # no PB table; FocusSession.speedrun is a per-session blob.
-    speedrun_pbs: list[dict] | None
+    # All-time per-label records (not window-scoped): the stats window
+    # bounds streaks/hours, but a PB is a PB whenever it was set.
+    speedrun_pbs: list[SpeedrunPB]
     server_time: datetime

@@ -10,6 +10,12 @@ events for each step.
 Abandon rules (spec #41): manual stop or absence-grace cost HP only with zero
 completed focus phases (>=1 is a clean exit); pause-overflow is a violation
 and always abandons.
+
+Speedrun (#69): a single open phase of kind 'speedrun'. time_boxed runs die
+on their wall-clock deadline (pauses never extend it); beat_best is
+open-ended like a stopwatch. A live speedrun phase never takes the
+session_abandoned path — timeout/abandon emit speedrun_failed, and done()
+is the user-declared win.
 """
 
 from dataclasses import dataclass, field
@@ -29,9 +35,15 @@ PENDING, ACTIVE, PAUSED, COMPLETED, SKIPPED, ABANDONED = (
     "abandoned",
 )
 S_ACTIVE, S_ENDED, S_ABANDONED = "active", "ended", "abandoned"
-FOCUS, BREAK, STOPWATCH = "focus", "break", "stopwatch"
+FOCUS, BREAK, STOPWATCH, SPEEDRUN = "focus", "break", "stopwatch", "speedrun"
 
 MAX_MILESTONES = 100  # ~41 h of stopwatch; caps per-stop ledger rows
+
+# Credit-eligibility floor: sub-minute completions still finish and earn
+# duration XP, but can't hold a label's beat_best board or claim the win
+# bonus — a speedrun under a minute isn't a serious recurring-activity
+# attempt (anti-misclick + anti-trivial-cheat + anti bonus-farm).
+MIN_RECORD_SECONDS = 60
 
 
 @dataclass
@@ -40,6 +52,7 @@ class Step:
 
     kind: str  # phase_completed|phase_started|phase_paused|phase_resumed|
     #            phase_skipped|session_started|session_ended|session_abandoned
+    #            speedrun_completed|speedrun_failed|record_set
     phase_seq: int | None = None
     at: datetime | None = None
     actual_seconds: int | None = None
@@ -48,7 +61,7 @@ class Step:
     extra: dict[str, Any] = field(default_factory=dict)
 
 
-def _live(phases: list[FocusPhase]) -> FocusPhase | None:
+def live_phase(phases: list[FocusPhase]) -> FocusPhase | None:
     return next((p for p in phases if p.status in (ACTIVE, PAUSED)), None)
 
 
@@ -164,6 +177,62 @@ def _complete_phase(
         steps.append(Step("phase_started", phase_seq=nxt.seq, at=end))
 
 
+def speedrun_type(session: FocusSession, phase: FocusPhase) -> str:
+    """The run variant: the start-time blob is authoritative, planned_seconds
+    is the fallback (budget>0 means a countdown)."""
+    blob = session.speedrun if isinstance(session.speedrun, dict) else {}
+    stype = str(blob.get("type"))
+    if stype in ("time_boxed", "beat_best"):
+        return stype
+    return "time_boxed" if phase.planned_seconds > 0 else "beat_best"
+
+
+def _speedrun_result(session: FocusSession, result: str, elapsed: int, **extra: Any) -> None:
+    """Write the run's outcome into the speedrun blob (reassign — in-place
+    mutation escapes SQLAlchemy's JSON change tracking). `extra` merges the
+    decision-time facts the end screen needs (margin, old record, reason)
+    but which otherwise only lived on the event payload."""
+    blob = session.speedrun if isinstance(session.speedrun, dict) else {}
+    session.speedrun = {**blob, "result": result, "elapsed_seconds": elapsed, **extra}
+
+
+def _check_speedrun_deadline(
+    session: FocusSession, cur: FocusPhase, phases: list[FocusPhase], now: datetime
+) -> list[Step] | None:
+    """Time-boxed miss: the countdown is wall-clock — pauses never extend
+    it. Returns the transition steps when the deadline passed, else None."""
+    if speedrun_type(session, cur) != "time_boxed":
+        return None  # beat_best is open-ended; it just sits, paused or not
+    started = _aware(cur.started_at) or now
+    deadline = started + timedelta(seconds=cur.planned_seconds)
+    if now < deadline:
+        return None
+    # Bank the open pause to the deadline — the phase ended there, not at
+    # this (possibly late) evaluation. The countdown died anyway, but the
+    # pause bookkeeping stays honest for the session record.
+    _bank_open_pause(cur, deadline)
+    cur.status = ABANDONED
+    cur.ended_at = deadline
+    session.status = S_ABANDONED
+    session.ended_at = deadline
+    _speedrun_result(session, "miss", cur.planned_seconds, reason="timeout")
+    skipped = _skip_pending(phases, deadline)
+    return skipped + [
+        Step("phase_abandoned", phase_seq=cur.seq, at=deadline),
+        Step(
+            "speedrun_failed",
+            phase_seq=cur.seq,
+            at=deadline,
+            scored=True,
+            reason="timeout",
+            extra={
+                "speedrun_type": "time_boxed",
+                "elapsed_seconds": cur.planned_seconds,
+            },
+        ),
+    ]
+
+
 def evaluate(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[Step]:
     """Replay elapsed wall-clock transitions; mutates session+phases in place.
 
@@ -183,12 +252,19 @@ def evaluate(session: FocusSession, phases: list[FocusPhase], now: datetime) -> 
     last_end = max(ended, default=_aware(session.started_at) or now)
 
     while True:
-        cur = _live(phases)
+        cur = live_phase(phases)
         if cur is None:
             steps.extend(_resolve_no_live(session, phases, last_end, now))
             return steps
         if cur.kind == STOPWATCH:
             return steps  # open-ended; a paused stopwatch just sits
+        if cur.kind == SPEEDRUN:
+            # Checked before the pause branch: a paused time-boxed run still
+            # dies on deadline — pauses bank honesty data, never extra time.
+            failed = _check_speedrun_deadline(session, cur, phases, now)
+            if failed is not None:
+                steps.extend(failed)
+            return steps
         if cur.status == PAUSED:
             steps.extend(_check_pause_overflow(session, cur, phases, now))
             return steps
@@ -204,13 +280,17 @@ def pause(session: FocusSession, phases: list[FocusPhase], now: datetime) -> lis
     """Validate + apply a pause on the live phase; returns the pause Step,
     or skip Steps + a session_abandoned Step when the count budget is
     exceeded (a dead session can't leave pending phases startable-looking)."""
-    phase = _live(phases)
+    phase = live_phase(phases)
     if phase is None or phase.status != ACTIVE:
         raise ValueError("no running phase to pause")
     if phase.kind == BREAK:
         raise ValueError("breaks cannot be paused")
-    if phase.kind == STOPWATCH or (phase.pause_count or 0) + 1 <= session.pause_budget_count:
-        # Stopwatch pauses bank time but carry no budget.
+    if (
+        phase.kind in (STOPWATCH, SPEEDRUN)
+        or (phase.pause_count or 0) + 1 <= session.pause_budget_count
+    ):
+        # Stopwatch/speedrun pauses bank time but carry no budget (a
+        # speedrun's countdown keeps ticking anyway — pausing buys nothing).
         phase.pause_count = (phase.pause_count or 0) + 1
         phase.pause_started_at = now
         phase.status = PAUSED
@@ -231,7 +311,7 @@ def resume(session: FocusSession, phases: list[FocusPhase], now: datetime) -> li
     """Validate + apply a resume; banks paused seconds and returns the resume
     Step, or skip Steps + a session_abandoned Step when the seconds budget
     was already blown."""
-    phase = _live(phases)
+    phase = live_phase(phases)
     if phase is None or phase.status != PAUSED:
         raise ValueError("no paused phase to resume")
     extra = int((now - (_aware(phase.pause_started_at) or now)).total_seconds())
@@ -253,7 +333,7 @@ def resume(session: FocusSession, phases: list[FocusPhase], now: datetime) -> li
 
 def advance(session: FocusSession, phases: list[FocusPhase], now: datetime) -> list[Step]:
     """User tap: begin the pending focus phase, or skip a running break."""
-    live = _live(phases)
+    live = live_phase(phases)
     if live is not None and live.kind == BREAK and live.status == ACTIVE:
         live.status = SKIPPED
         live.ended_at = now
@@ -276,11 +356,60 @@ def advance(session: FocusSession, phases: list[FocusPhase], now: datetime) -> l
     return [Step("phase_started", phase_seq=pend.seq, at=now)]
 
 
+def _bank_open_pause(phase: FocusPhase, now: datetime) -> None:
+    """Fold an in-flight pause into paused_seconds and clear the anchor."""
+    if phase.status == PAUSED and phase.pause_started_at is not None:
+        phase.paused_seconds = (phase.paused_seconds or 0) + int(
+            (now - (_aware(phase.pause_started_at) or now)).total_seconds()
+        )
+        phase.pause_started_at = None
+
+
+def _abandon_speedrun(
+    session: FocusSession,
+    live: FocusPhase,
+    phases: list[FocusPhase],
+    now: datetime,
+    elapsed: int,
+    reason: str,
+) -> tuple[Step, list[Step]]:
+    """A dead speedrun is a failed run, not a manual stop — the
+    speedrun_failed step carries the HP cost so no session_abandoned step
+    is emitted (emitting both would double-charge)."""
+    live.status = ABANDONED
+    live.ended_at = now
+    session.status = S_ABANDONED
+    session.ended_at = now
+    stype = speedrun_type(session, live)
+    result = "miss" if stype == "time_boxed" else "abandoned"
+    _speedrun_result(session, result, elapsed, reason=reason)
+    return (
+        Step(
+            "speedrun_failed",
+            phase_seq=live.seq,
+            at=now,
+            scored=True,
+            reason=reason,
+            extra={
+                "speedrun_type": stype,
+                "elapsed_seconds": elapsed,
+            },
+        ),
+        [Step("phase_abandoned", phase_seq=live.seq, at=now)] + _skip_pending(phases, now),
+    )
+
+
 def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tuple[Step, list[Step]]:
     """End the session now. Returns (final_step, scored_steps) — a stopwatch
     stop may emit milestone steps before the end step."""
     scored: list[Step] = []
-    live = _live(phases)
+    live = live_phase(phases)
+    if live is not None and live.kind == SPEEDRUN:
+        started = _aware(live.started_at) or now
+        _bank_open_pause(live, now)
+        return _abandon_speedrun(
+            session, live, phases, now, max(0, int((now - started).total_seconds())), "abandon"
+        )
     if live is not None and live.kind == STOPWATCH:
         started = _aware(live.started_at) or now
         elapsed = int((now - started).total_seconds())
@@ -344,3 +473,120 @@ def stop(session: FocusSession, phases: list[FocusPhase], now: datetime) -> tupl
     session.status = S_ENDED
     session.ended_at = now
     return Step("session_ended", at=now), scored + _skip_pending(phases, now)
+
+
+def done(
+    session: FocusSession,
+    phases: list[FocusPhase],
+    now: datetime,
+    prior_record_seconds: int | None = None,
+) -> list[Step]:
+    """User-declared finish — the speedrun win path.
+
+    Elapsed is wall-clock (pause-inclusive: the countdown kept ticking).
+    time_boxed wins under its budget; beat_best always finishes — the
+    caller-supplied prior record decides whether it's also a record run
+    (the service re-reads the record inside the txn, so the engine stays
+    DB-free). beat_best records are additionally gated at MIN_RECORD_SECONDS:
+    a sub-minute finish completes as "finished" without record, bonus or
+    board — an unbeatable 5s "record" would brick the label's board. The
+    phase_completed step is deliberately unscored — it lands in the ledger
+    so the feed can reconstruct the run, while the speedrun_completed step
+    carries the actual reward.
+    """
+    live = live_phase(phases)
+    if live is None or live.kind != SPEEDRUN:
+        raise ValueError("no live speedrun phase to finish")
+    started = _aware(live.started_at) or now
+    elapsed = max(0, int((now - started).total_seconds()))
+    if elapsed < 1:
+        # A sub-second "win" lands a completed phase with actual_seconds=0 —
+        # the label's beat_best board (MIN over completed runs) could never
+        # be beaten again. Rejected before ANY mutation; the run stays live.
+        raise ValueError("run too short")
+    _bank_open_pause(live, now)
+    stype = speedrun_type(session, live)
+    if stype == "time_boxed" and elapsed >= live.planned_seconds:
+        # evaluate() owns this transition and would already have failed the
+        # run — unreachable while the session is live; keep the guard so a
+        # late done() can't claim a deadline that already passed.
+        final, pre = _abandon_speedrun(session, live, phases, now, elapsed, "timeout")
+        return pre + [final]
+    live.status = COMPLETED
+    live.actual_seconds = elapsed
+    live.ended_at = now
+    session.status = S_ENDED
+    session.ended_at = now
+    steps = [
+        Step(
+            "phase_completed",
+            phase_seq=live.seq,
+            at=now,
+            actual_seconds=elapsed,
+            scored=False,
+        )
+    ]
+    if stype == "time_boxed":
+        _speedrun_result(session, "win", elapsed, margin_seconds=live.planned_seconds - elapsed)
+        steps.append(
+            Step(
+                "speedrun_completed",
+                phase_seq=live.seq,
+                at=now,
+                scored=True,
+                extra={
+                    "speedrun_type": "time_boxed",
+                    "elapsed_seconds": elapsed,
+                    # The floor gates the bonus too — a sub-minute finish is
+                    # still a "win" but earns no speedrun-specific credit
+                    # (kills the start→done→repeat bonus farm; result and
+                    # duration XP are unchanged).
+                    "win_bonus": elapsed >= MIN_RECORD_SECONDS,
+                    "under_budget": True,
+                    "margin_seconds": live.planned_seconds - elapsed,
+                },
+            )
+        )
+    else:
+        record = elapsed >= MIN_RECORD_SECONDS and (
+            prior_record_seconds is None or elapsed < prior_record_seconds
+        )
+        _speedrun_result(
+            session,
+            "record" if record else "finished",
+            elapsed,
+            old_record_seconds=prior_record_seconds,
+        )
+        steps.append(
+            Step(
+                "speedrun_completed",
+                phase_seq=live.seq,
+                at=now,
+                scored=True,
+                extra={
+                    "speedrun_type": "beat_best",
+                    "elapsed_seconds": elapsed,
+                    # The win bonus pays on record runs only — a non-record
+                    # finish still earns its duration XP.
+                    "win_bonus": record,
+                    "record": record,
+                    "old_record_seconds": prior_record_seconds,
+                },
+            )
+        )
+        if record:
+            steps.append(
+                Step(
+                    "record_set",
+                    phase_seq=live.seq,
+                    at=now,
+                    scored=True,
+                    extra={
+                        "activity_label": session.activity_label,
+                        "old_seconds": prior_record_seconds,
+                        "new_seconds": elapsed,
+                    },
+                )
+            )
+    steps.append(Step("session_ended", at=now))
+    return steps

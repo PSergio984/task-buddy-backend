@@ -1,6 +1,6 @@
 """Achievement registry and grant evaluation (issue #64).
 
-15 seeded badges across the spec's buckets — levels, streaks, focus totals,
+16 seeded badges across the spec's buckets — levels, streaks, focus totals,
 firsts, records, perfect days — each paying a tiered gold reward. Evaluation
 runs inside the post-score hook and on direct calls (pick_class, buy_gear),
 always under the caller's profile lock; grants are
@@ -145,6 +145,13 @@ ACHIEVEMENTS: list[dict] = [
         "description": "Reach +50 on one habit's counter",
         "criteria": {"kind": "habit_counter", "threshold": 50},
         "gold_reward": 35,
+    },
+    {
+        "key": "first-record",
+        "name": "Record Breaker",
+        "description": "Set a speedrun personal best",
+        "criteria": {"kind": "first", "what": "record_set"},
+        "gold_reward": 15,
     },
 ]
 
