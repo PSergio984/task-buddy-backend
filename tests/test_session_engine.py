@@ -278,7 +278,9 @@ class TestSpeedrun:
         steps = se.evaluate(s, phases, T0 + timedelta(seconds=700))
         assert s.status == "abandoned"
         assert steps[-1].kind == "speedrun_failed"
-        assert phase.paused_seconds == 400  # 100 banked + 300 open
+        # Open pause banks only to the deadline (T0+600): 100 banked + 200
+        # open — the pause can't accrue past the moment the run died.
+        assert phase.paused_seconds == 300
         assert phase.pause_started_at is None
 
     def test_beat_best_is_open_ended(self):
@@ -339,6 +341,7 @@ class TestSpeedrun:
         assert steps[1].extra["win_bonus"] is True
         assert steps[1].extra["margin_seconds"] == 100
         assert s.speedrun["result"] == "win"
+        assert s.speedrun["margin_seconds"] == 100  # same value the event carries
 
     def test_done_time_boxed_at_deadline_is_miss(self):
         """The guard: a done() racing the deadline can't claim the win."""
@@ -373,6 +376,7 @@ class TestSpeedrun:
         assert steps[1].extra["win_bonus"] is False
         assert steps[1].extra["old_record_seconds"] == 200
         assert s.speedrun["result"] == "finished"
+        assert s.speedrun["old_record_seconds"] == 200
 
     def test_done_beat_best_faster_than_record_sets_record(self):
         s = _speedrun_session(kind="beat_best", target=400)
@@ -390,3 +394,66 @@ class TestSpeedrun:
 
         with pytest.raises(ValueError):
             se.done(s, phases, T0 + timedelta(minutes=5))
+
+    def test_done_subsecond_rejected_without_mutation(self):
+        """elapsed==0 must never land a completed phase — actual_seconds=0
+        poisons the label's record board (MIN can't go below it). Rejected
+        before any mutation; the run stays fully live."""
+        s = _speedrun_session()
+        phases = [_speedrun_phase()]
+        import pytest
+
+        with pytest.raises(ValueError):
+            se.done(s, phases, T0)
+        assert s.status == "active"
+        assert s.ended_at is None
+        assert "result" not in s.speedrun
+        assert phases[0].status == "active"
+        assert phases[0].actual_seconds is None
+        assert phases[0].ended_at is None
+
+    def test_done_subsecond_rejection_runs_before_pause_banking(self):
+        """A paused run rejected at elapsed==0 keeps its open pause — the
+        guard precedes _bank_open_pause."""
+        s = _speedrun_session()
+        phase = _speedrun_phase(status="paused")
+        phase.pause_started_at = T0
+        import pytest
+
+        with pytest.raises(ValueError):
+            se.done(s, [phase], T0)
+        assert phase.status == "paused"
+        assert phase.pause_started_at == T0
+        assert phase.paused_seconds in (None, 0)
+
+    def test_done_subsecond_beat_best_rejected(self):
+        """The board poison is a beat_best hazard but the guard covers both
+        kinds — a 0s run is never a legal finish."""
+        s = _speedrun_session(kind="beat_best")
+        import pytest
+
+        with pytest.raises(ValueError):
+            se.done(s, [_speedrun_phase(planned=0)], T0)
+        assert s.status == "active"
+        assert "result" not in s.speedrun
+
+    def test_done_at_one_second_still_wins(self):
+        """The guard's lower boundary: elapsed==1 is a legal run, and the
+        win blob carries the same margin the event does."""
+        s = _speedrun_session()
+        phases = [_speedrun_phase()]
+        steps = se.done(s, phases, T0 + timedelta(seconds=1))
+        assert s.status == "ended"
+        assert steps[1].extra["margin_seconds"] == 599
+        assert s.speedrun["result"] == "win"
+        assert s.speedrun["margin_seconds"] == 599
+
+    def test_done_beat_best_one_second_still_records(self):
+        """elapsed==1 on a first beat_best run stays a record, and the blob
+        exposes the (null) prior it was judged against."""
+        s = _speedrun_session(kind="beat_best", target=None)
+        phases = [_speedrun_phase(planned=0)]
+        steps = se.done(s, phases, T0 + timedelta(seconds=1), prior_record_seconds=None)
+        assert s.speedrun["result"] == "record"
+        assert s.speedrun["old_record_seconds"] is None
+        assert steps[2].extra["new_seconds"] == 1

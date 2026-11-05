@@ -435,6 +435,40 @@ class TestActivityGrid:
         assert row["focus_minutes"] == pytest.approx(30.0)
         assert row["score"] == pytest.approx(30.0)  # not 30 + 5
 
+    async def test_speedrun_completed_weight_is_pinned_to_zero(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # Same pin as focus_phase_completed: a finished run's minutes already
+        # land via its completed phase row — a config weight can't re-add them.
+        db.add(
+            GameConfig(
+                key="activity_weights",
+                value={"weights": {"speedrun_completed": 5}},
+            )
+        )
+        db.add(
+            make_event(
+                confirmed_user["id"],
+                "server:s9:speedrun_completed:0:1700000000:0",
+                "speedrun_completed",
+                at(TODAY, 9),
+                {"session_id": 9, "elapsed_seconds": 300, "_outcome": {"scored": True}},
+            )
+        )
+        await db.commit()
+
+        body = (
+            await authenticated_async_client.get(
+                ACTIVITY, params={"start": TODAY.isoformat(), "end": TODAY.isoformat()}
+            )
+        ).json()
+        row = day_row(body, TODAY)
+        assert row["events"] == {"speedrun_completed": 1}
+        assert row["score"] == pytest.approx(0.0)  # not 5
+
     async def test_non_object_config_row_falls_back_to_defaults(
         self,
         authenticated_async_client: AsyncClient,

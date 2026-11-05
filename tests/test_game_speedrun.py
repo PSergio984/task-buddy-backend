@@ -12,7 +12,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.game import session_service
-from app.models.game import Achievement, FocusPhase, GameEvent, UserAchievement
+from app.models.game import Achievement, FocusPhase, FocusSession, GameEvent, UserAchievement
 from app.models.notification import Notification, NotificationType
 
 SESSIONS = "/api/v1/game/sessions"
@@ -209,6 +209,72 @@ class TestDone:
         response = await authenticated_async_client.post(f"{SESSIONS}/{sid}/done")
         assert response.status_code == 400
 
+    async def test_done_subsecond_is_400_and_run_stays_live(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """The sub-second window is real: int() truncates 0.7s to 0 — a 0s
+        'win' would poison the label's record board. The engine rejects it,
+        the verb's ValueError lands as a 400, and nothing mutated."""
+        session = await _start_time_boxed(authenticated_async_client)
+        sid = session["id"]
+        r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/done")
+        assert r.status_code == 400, r.text
+        view = (await authenticated_async_client.get(f"{SESSIONS}/{sid}")).json()
+        assert view["session"]["status"] == "active"
+        assert view["session"]["phases"][0]["status"] == "active"
+        assert "result" not in view["session"]["speedrun"]
+        assert await _events(db, "speedrun_completed") == []
+        assert await _events(db, "speedrun_failed") == []
+
+    async def test_done_subsecond_beat_best_is_400(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        """Beat-your-best shares the guard — it's the kind whose record
+        board the 0s run would poison."""
+        session = await _start_beat_best(authenticated_async_client)
+        r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
+        assert r.status_code == 400, r.text
+        view = (await authenticated_async_client.get(f"{SESSIONS}/{session['id']}")).json()
+        assert view["session"]["status"] == "active"
+
+    async def test_done_at_one_second_still_wins(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
+        await _rewind_phase(db, session["id"], 1)
+        r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
+        assert r.status_code == 200, r.text
+        assert r.json()["session"]["speedrun"]["result"] == "win"
+
+    async def test_done_win_blob_carries_margin_seconds(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """FE contract: the win blob carries the same margin_seconds the
+        speedrun_completed event does."""
+        session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
+        await _rewind_phase(db, session["id"], 5 * 60)
+        r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
+        blob = r.json()["session"]["speedrun"]
+        assert blob["result"] == "win"
+        assert blob["margin_seconds"] == pytest.approx(5 * 60, abs=2)
+
+    async def test_done_with_corrupt_speedrun_blob_does_not_500(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """Service type-detection mirrors the engine: a non-dict blob (only
+        writable via DB surgery, never the API) can't 500 the record read —
+        planned_seconds classifies the run."""
+        session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
+        sid = session["id"]
+        await db.execute(
+            update(FocusSession).where(FocusSession.id == sid).values(speedrun="corrupt")
+        )
+        await db.commit()
+        await _rewind_phase(db, sid, 5 * 60)
+        r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/done")
+        assert r.status_code == 200, r.text
+        assert r.json()["session"]["speedrun"]["result"] == "win"
+
 
 class TestFail:
     async def test_stop_abandons_and_costs_hp(
@@ -326,6 +392,21 @@ class TestRecords:
         # second record_set.
         assert body["profile"]["xp_today"] - xp_after_first == 6
         assert len(await _events(db, "record_set")) == 1
+
+    async def test_record_blob_carries_old_record_seconds(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        """FE contract: 'record'/'finished' blobs expose the standing record
+        the run was judged against — null on a label's first run."""
+        first = await self._run_and_done(authenticated_async_client, db, "5k", 5 * 60)
+        assert first["session"]["speedrun"]["result"] == "record"
+        assert first["session"]["speedrun"]["old_record_seconds"] is None
+        second = await self._run_and_done(authenticated_async_client, db, "5k", 4 * 60)
+        assert second["session"]["speedrun"]["result"] == "record"
+        assert second["session"]["speedrun"]["old_record_seconds"] == pytest.approx(5 * 60, abs=2)
+        third = await self._run_and_done(authenticated_async_client, db, "5k", 6 * 60)
+        assert third["session"]["speedrun"]["result"] == "finished"
+        assert third["session"]["speedrun"]["old_record_seconds"] == pytest.approx(4 * 60, abs=2)
 
     async def test_records_are_per_label(
         self, authenticated_async_client: AsyncClient, db: AsyncSession

@@ -98,6 +98,11 @@ class ActivityRates:
             # client payload), never a per-event weight — a config override
             # would silently reintroduce the double-count.
             merged["focus_phase_completed"] = 0.0
+            # Same double-count hazard: completed speedrun phases already
+            # feed focus_minutes ("speedrun" joined the CRUD focus kinds).
+            # speedrun_failed needs no pin — failed runs leave no completed
+            # phase, so a weight there scores nothing twice.
+            merged["speedrun_completed"] = 0.0
             rates = cls(weights=merged, tier_thresholds=rates.tier_thresholds)
         raw_tiers = data.get("tier_thresholds")
         if isinstance(raw_tiers, (list, tuple)) and 1 <= len(raw_tiers) <= 8:

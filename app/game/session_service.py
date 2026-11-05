@@ -545,8 +545,13 @@ async def done(db: AsyncSession, user_id: int, session_id: int) -> _View:
         # The clock ended it before the verb landed — return the final
         # state rather than erroring (same rule as _action).
         return session, phases, profile
+    # Type detection mirrors the engine's _speedrun_type (isinstance guard +
+    # planned_seconds fallback) — a corrupt/typeless blob can't 500 the read
+    # or skip it into a guaranteed record. live is None only when se.done
+    # would raise anyway, so the read is safely skipped then.
+    live = se._live(phases)
     prior_record = None
-    if (session.speedrun or {}).get("type") == "beat_best":
+    if live is not None and se._speedrun_type(session, live) == "beat_best":
         prior_record = await game_crud.get_speedrun_record(db, user_id, session.activity_label)
     steps = se.done(session, phases, now, prior_record_seconds=prior_record)
     await _evaluate(db, session, user_id, now, need_steps=steps)

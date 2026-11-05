@@ -181,11 +181,13 @@ def _speedrun_type(session: FocusSession, phase: FocusPhase) -> str:
     return "time_boxed" if phase.planned_seconds > 0 else "beat_best"
 
 
-def _speedrun_result(session: FocusSession, result: str, elapsed: int) -> None:
+def _speedrun_result(session: FocusSession, result: str, elapsed: int, **extra: Any) -> None:
     """Write the run's outcome into the speedrun blob (reassign — in-place
-    mutation escapes SQLAlchemy's JSON change tracking)."""
+    mutation escapes SQLAlchemy's JSON change tracking). `extra` merges the
+    decision-time facts the end screen needs (margin, old record, reason)
+    but which otherwise only lived on the event payload."""
     blob = session.speedrun if isinstance(session.speedrun, dict) else {}
-    session.speedrun = {**blob, "result": result, "elapsed_seconds": elapsed}
+    session.speedrun = {**blob, "result": result, "elapsed_seconds": elapsed, **extra}
 
 
 def _check_speedrun_deadline(
@@ -199,14 +201,15 @@ def _check_speedrun_deadline(
     deadline = started + timedelta(seconds=cur.planned_seconds)
     if now < deadline:
         return None
-    # Bank the open pause too — the countdown died anyway, but the pause
-    # bookkeeping stays honest for the session record.
-    _bank_open_pause(cur, now)
+    # Bank the open pause to the deadline — the phase ended there, not at
+    # this (possibly late) evaluation. The countdown died anyway, but the
+    # pause bookkeeping stays honest for the session record.
+    _bank_open_pause(cur, deadline)
     cur.status = ABANDONED
     cur.ended_at = deadline
     session.status = S_ABANDONED
     session.ended_at = deadline
-    _speedrun_result(session, "miss", cur.planned_seconds)
+    _speedrun_result(session, "miss", cur.planned_seconds, reason="timeout")
     skipped = _skip_pending(phases, deadline)
     return skipped + [
         Step("phase_abandoned", phase_seq=cur.seq, at=deadline),
@@ -372,7 +375,7 @@ def _abandon_speedrun(
     session.status = S_ABANDONED
     session.ended_at = now
     result = "miss" if _speedrun_type(session, live) == "time_boxed" else "abandoned"
-    _speedrun_result(session, result, elapsed)
+    _speedrun_result(session, result, elapsed, reason=reason)
     return (
         Step(
             "speedrun_failed",
@@ -485,8 +488,13 @@ def done(
     if live is None or live.kind != SPEEDRUN:
         raise ValueError("no live speedrun phase to finish")
     started = _aware(live.started_at) or now
-    _bank_open_pause(live, now)
     elapsed = max(0, int((now - started).total_seconds()))
+    if elapsed < 1:
+        # A sub-second "win" lands a completed phase with actual_seconds=0 —
+        # the label's beat_best board (MIN over completed runs) could never
+        # be beaten again. Rejected before ANY mutation; the run stays live.
+        raise ValueError("run too short")
+    _bank_open_pause(live, now)
     stype = _speedrun_type(session, live)
     if stype == "time_boxed" and elapsed >= live.planned_seconds:
         # evaluate() owns this transition and would already have failed the
@@ -509,7 +517,7 @@ def done(
         )
     ]
     if stype == "time_boxed":
-        _speedrun_result(session, "win", elapsed)
+        _speedrun_result(session, "win", elapsed, margin_seconds=live.planned_seconds - elapsed)
         steps.append(
             Step(
                 "speedrun_completed",
@@ -527,7 +535,12 @@ def done(
         )
     else:
         record = prior_record_seconds is None or elapsed < prior_record_seconds
-        _speedrun_result(session, "record" if record else "finished", elapsed)
+        _speedrun_result(
+            session,
+            "record" if record else "finished",
+            elapsed,
+            old_record_seconds=prior_record_seconds,
+        )
         steps.append(
             Step(
                 "speedrun_completed",
