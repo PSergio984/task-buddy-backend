@@ -238,11 +238,13 @@ class TestDone:
     async def test_done_subsecond_is_400_and_run_stays_live(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        """The sub-second window is real: int() truncates 0.7s to 0 — a 0s
-        'win' would poison the label's record board. The engine rejects it,
-        the verb's ValueError lands as a 400, and nothing mutated."""
+        """A 0s 'win' would poison the label's record board. The engine
+        rejects it, the verb's ValueError lands as a 400, and nothing
+        mutated. started_at pushed into the future so elapsed clamps to 0
+        deterministically — no reliance on the request landing <1s."""
         session = await _start_time_boxed(authenticated_async_client)
         sid = session["id"]
+        await _rewind_phase(db, sid, -30)
         r = await authenticated_async_client.post(f"{SESSIONS}/{sid}/done")
         assert r.status_code == 400, r.text
         view = (await authenticated_async_client.get(f"{SESSIONS}/{sid}")).json()
@@ -253,11 +255,13 @@ class TestDone:
         assert await _events(db, "speedrun_failed") == []
 
     async def test_done_subsecond_beat_best_is_400(
-        self, authenticated_async_client: AsyncClient
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
         """Beat-your-best shares the guard — it's the kind whose record
-        board the 0s run would poison."""
+        board the 0s run would poison. Future started_at makes elapsed 0
+        deterministically."""
         session = await _start_beat_best(authenticated_async_client)
+        await _rewind_phase(db, session["id"], -30)
         r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
         assert r.status_code == 400, r.text
         view = (await authenticated_async_client.get(f"{SESSIONS}/{session['id']}")).json()
@@ -527,18 +531,18 @@ class TestRecordFloor:
         assert [a["seconds"] for a in pb["recent_attempts"]] == pytest.approx([5 * 60], abs=2)
         assert len(await _events(db, "record_set")) == 1
 
-    async def test_time_boxed_sub_minute_win_still_pays_bonus(
+    async def test_time_boxed_sub_minute_win_pays_no_bonus(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        """The floor gates beat_best records only — a 10s time_boxed win
-        still pays the win bonus."""
+        """A sub-minute finish is still a "win" — the floor only gates
+        speedrun credit: no win bonus, so start→done→repeat can't farm."""
         session = await _start_time_boxed(authenticated_async_client, budget_minutes=10)
         await _rewind_phase(db, session["id"], 10)
         r = await authenticated_async_client.post(f"{SESSIONS}/{session['id']}/done")
         body = r.json()
         assert body["session"]["speedrun"]["result"] == "win"
         completed = (await _events(db, "speedrun_completed"))[0]
-        assert completed.payload["win_bonus"] is True
+        assert completed.payload["win_bonus"] is False
 
 
 class TestTracking:

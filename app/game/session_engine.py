@@ -39,10 +39,10 @@ FOCUS, BREAK, STOPWATCH, SPEEDRUN = "focus", "break", "stopwatch", "speedrun"
 
 MAX_MILESTONES = 100  # ~41 h of stopwatch; caps per-stop ledger rows
 
-# Board-eligibility floor: sub-minute completions still finish and earn
-# duration XP, but can't hold a label's beat_best board — a speedrun under
-# a minute isn't a serious recurring-activity attempt (anti-misclick +
-# anti-trivial-cheat: a first 5s "record" would brick the board's MIN).
+# Credit-eligibility floor: sub-minute completions still finish and earn
+# duration XP, but can't hold a label's beat_best board or claim the win
+# bonus — a speedrun under a minute isn't a serious recurring-activity
+# attempt (anti-misclick + anti-trivial-cheat + anti bonus-farm).
 MIN_RECORD_SECONDS = 60
 
 
@@ -537,7 +537,11 @@ def done(
                 extra={
                     "speedrun_type": "time_boxed",
                     "elapsed_seconds": elapsed,
-                    "win_bonus": True,
+                    # The floor gates the bonus too — a sub-minute finish is
+                    # still a "win" but earns no speedrun-specific credit
+                    # (kills the start→done→repeat bonus farm; result and
+                    # duration XP are unchanged).
+                    "win_bonus": elapsed >= MIN_RECORD_SECONDS,
                     "under_budget": True,
                     "margin_seconds": live.planned_seconds - elapsed,
                 },
