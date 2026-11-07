@@ -85,7 +85,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
 from app.game import character_service, engine, notifications
-from app.game.engine import GameRates
+from app.game.engine import AT_TS_SKEW_SECONDS, GameRates
 from app.models.game import FocusSession, GameEvent, GameProfile
 
 VERIFIED, UNVERIFIED, VIOLATED = "verified", "unverified", "violated"
@@ -103,12 +103,6 @@ VIOLATION_EVENT = "phone_down_violation"
 # Ledger marker emitted when the repeat-violation HP penalty lands.
 PENALTY_EVENT = "damage"
 PENALTY_REASON = "phone_down_violations"
-
-# Clock-skew slack between an event's claimed instant and its server
-# receipt. Bounds violation at_ts at ingest (a violation can't precede
-# itself) and widens the penalty scan's server_ts floor, since a legit
-# report's server_ts can trail its at_ts by up to this much.
-AT_TS_SKEW_SECONDS = 300
 
 
 def new_blob() -> dict:
@@ -189,26 +183,32 @@ def _merge(intervals: list[tuple[datetime, datetime]]) -> list[tuple[datetime, d
     return merged
 
 
+def _subtract_one(
+    lo: datetime, hi: datetime, minus: list[tuple[datetime, datetime]]
+) -> list[tuple[datetime, datetime]]:
+    """One merged interval minus the merged `minus` union."""
+    out: list[tuple[datetime, datetime]] = []
+    cur = lo
+    for m_lo, m_hi in minus:
+        if m_hi <= cur:
+            continue
+        if m_lo >= hi:
+            break
+        if m_lo > cur:
+            out.append((cur, m_lo))
+        cur = max(cur, m_hi)
+        if cur >= hi:
+            break
+    if cur < hi:
+        out.append((cur, hi))
+    return out
+
+
 def _subtract(
     intervals: list[tuple[datetime, datetime]], minus: list[tuple[datetime, datetime]]
 ) -> list[tuple[datetime, datetime]]:
     """Merged `intervals` minus the union of `minus` — both inputs merged."""
-    out: list[tuple[datetime, datetime]] = []
-    for lo, hi in intervals:
-        cur = lo
-        for m_lo, m_hi in minus:
-            if m_hi <= cur:
-                continue
-            if m_lo >= hi:
-                break
-            if m_lo > cur:
-                out.append((cur, m_lo))
-            cur = max(cur, m_hi)
-            if cur >= hi:
-                break
-        if cur < hi:
-            out.append((cur, hi))
-    return out
+    return [seg for lo, hi in intervals for seg in _subtract_one(lo, hi, minus)]
 
 
 def coverage_seconds(spans: Any, w_start: datetime, w_end: datetime) -> dict[str, float]:
@@ -316,7 +316,13 @@ def streak_scan_limit(rates: GameRates) -> int:
     cap = rates.phone_down_verified_streak_xp_cap
     if pct <= 0 or cap <= 0:
         return 0
-    return math.ceil(cap / pct)
+    ratio = cap / pct
+    # cap/pct can overflow float64 (huge rates config) — the limit only
+    # exists to bound the scan, so a saturated ratio clamps to a sane max.
+    return math.ceil(ratio) if math.isfinite(ratio) else _STREAK_SCAN_MAX
+
+
+_STREAK_SCAN_MAX = 10_000
 
 
 async def weight_block(

@@ -438,19 +438,18 @@ class TestScoring:
     async def test_mixed_coverage(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
     ) -> None:
-        """Verified first half, uncovered rest -> 5 verified + 5 unverified
-        minutes -> 5 x 1 + 5 x 0.5 = 7.5 -> 8 XP."""
+        """6 verified + 4 unverified minutes -> 6 x 1 + 4 x 0.5 = 8 XP."""
         session = await _start(authenticated_async_client, phone=True)
         sid = session["id"]
-        # Phase window is ~15min after the rewind; the verified span covers
-        # its first half, the rest folds into unverified.
+        # The 10-min rewound phase is [15,5]min ago; the span covers its
+        # first 6 minutes -> 6 x 1 + 4 x 0.5 = exactly 8 XP (payout floors).
         await _post(
             authenticated_async_client,
-            [_span("sp-1", sid, start_ago=15 * 60 + 30, end_ago=7 * 60 + 30)],
+            [_span("sp-1", sid, start_ago=15 * 60, end_ago=9 * 60)],
         )
         await _end_session_started_ago(db, sid, 15 * 60)
         body = (await authenticated_async_client.get(f"{SESSIONS}/{sid}")).json()
-        assert body["profile"]["xp_today"] == pytest.approx(8, abs=1)
+        assert body["profile"]["xp_today"] == 8
 
     async def test_violated_span_pays_zero(
         self, authenticated_async_client: AsyncClient, db: AsyncSession
@@ -893,14 +892,17 @@ class TestScoring:
         HP (SQLite's JSON_QUOTE once leaked missing session_id as 'null')."""
         session = await _start(authenticated_async_client)
         sid = session["id"]
+        # Future-dated at_ts with a *past* client_ts — the client_ts bound
+        # 422s outright, so the future_at_ts service rejection is what's
+        # under test here.
+        v_f1, v_f2 = (
+            _violation("v-f1", sid, at_ago=-(25 * 3600)),
+            _violation("v-f2", sid, at_ago=-(25 * 3600 + 60)),
+        )
+        v_f1["client_ts"] = v_f2["client_ts"] = _ago(60).isoformat()
         await _post(
             authenticated_async_client,
-            [
-                _violation("v-f1", sid, at_ago=-(25 * 3600)),
-                _violation("v-f2", sid, at_ago=-(25 * 3600 + 60)),
-                _violation("v-ok", sid, at_ago=6 * 60),
-                _phase_event("fp-1", sid),
-            ],
+            [v_f1, v_f2, _violation("v-ok", sid, at_ago=6 * 60), _phase_event("fp-1", sid)],
         )
         rows = await _events(db, "phone_down_violation")
         future = [r for r in rows if r.client_event_id.startswith("v-f")]

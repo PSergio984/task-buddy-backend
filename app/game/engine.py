@@ -35,6 +35,11 @@ _COLUMN_STAT = {v: k for k, v in STAT_COLUMN.items()}
 STAT_POINT_CAP = 100
 # Class pick unlocks at this level; respec re-opens the choice for gold.
 CLASS_MIN_LEVEL = 10
+# Clock-skew allowance applied to client-claimed instants vs server
+# receipt. Bounds client_ts/at_ts at ingest (an event can't precede
+# itself) and widens the penalty scan's server_ts floor, since a legit
+# report's server_ts can trail its at_ts by up to this much.
+AT_TS_SKEW_SECONDS = 300
 # Class -> its two affinity stats, primary first. Classes are affinities
 # only (no MP/skills per the spec): affinity drives auto-allocation order
 # and which gear ladder is buyable.

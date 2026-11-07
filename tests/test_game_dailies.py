@@ -37,7 +37,12 @@ def _today() -> date:
 
 def _at(days_ago: int, hour: int = 12) -> datetime:
     day = _today() - timedelta(days=days_ago)
-    return datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc)
+    # "Today at hour H" can still be in the future before H UTC — the
+    # ingest schema rejects future client_ts, so clamp at now.
+    return min(
+        datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc),
+        datetime.now(timezone.utc),
+    )
 
 
 async def _create(client: AsyncClient, **overrides) -> dict:

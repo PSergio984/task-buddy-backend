@@ -330,9 +330,7 @@ async def _apply_span_event(db: AsyncSession, session: FocusSession, event: Game
     return {"applied": True, "tier": tier}
 
 
-async def _apply_violation_event(
-    db: AsyncSession, session: FocusSession, event: GameEventIn
-) -> dict:
+def _apply_violation_event(session: FocusSession, event: GameEventIn) -> dict:
     """Validate + count one phone_down_violation marker on the blob.
 
     Increments `violations` and re-adjudicates any already-stored spans
@@ -420,7 +418,7 @@ async def _ingest_phone_down(
     elif event.type == phone_down.SPAN_EVENT:
         result = await _apply_span_event(db, session, event)
     else:
-        result = await _apply_violation_event(db, session, event)
+        result = _apply_violation_event(session, event)
     applied = result.get("applied") is True
     outcome = {"scored": False, **result}
     db.add(
@@ -532,8 +530,9 @@ async def _apply_generic(
             # server-side session path in session_service. The derived eid
             # hashes the client eid (unbounded length) like habit_service's
             # auto-click ids — truncating raw input could collide. Accepted:
-            # a 64-bit eid collision would silently suppress a real charge
-            # via uq dedupe (birthday bound needs ~2^32 events).
+            # a 64-bit eid collision makes the flush raise IntegrityError
+            # and fails the batch rather than double-charging (birthday
+            # bound needs ~2^32 events).
             penalty = await phone_down.maybe_violation_penalty(
                 db,
                 user_id,

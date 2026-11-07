@@ -79,10 +79,10 @@ async def get_or_create_profile(
     try:
         await db.flush()
     except IntegrityError:
-        # A create-race rollback releases any locks the caller took before
-        # this function (ingest_events locks session rows first for order
-        # safety) — narrow first-write window; the locks are re-acquired
-        # implicitly on next access only inside a serializable txn.
+        # A create-race rollback releases any session locks the caller
+        # took first (ingest locks sessions for order safety) — the
+        # narrow window is why service.py creates the profile before
+        # lock_sessions instead of relying on re-acquisition here.
         await db.rollback()
         result = await db.execute(query)
         profile = result.scalar_one()

@@ -3,7 +3,7 @@
 import json
 import re
 from collections.abc import Mapping
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, Literal, Optional
 from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
 
@@ -18,6 +18,7 @@ from pydantic import (
 
 from app.game import notification_kinds
 from app.game.engine import (
+    AT_TS_SKEW_SECONDS,
     SERVER_EVENT_TYPES,
     STAT_KEYS,
     STAT_POINT_CAP,
@@ -27,6 +28,9 @@ from app.models.game import GameProfile, HabitDirection
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
 _TEXT_MAX_LEN = 10_000
+# Server-authored ledger rows own this client_event_id namespace — a
+# client claiming it could suppress the real event via dedupe.
+SERVER_ID_PREFIX = "server:"
 # client_ts bounds: far-past/future instants pass astimezone but overflow
 # timedelta subtraction in scoring windows (OverflowError -> 500 the batch).
 _CLIENT_TS_MIN_YEAR = 1900
@@ -80,7 +84,7 @@ class GameEventIn(BaseModel):
         # Server-authored events own the "server:" prefix — a client could
         # otherwise squat a server id and suppress the real event via dedupe.
         # Casefolded: the ledger's server-prefix scans are case-insensitive.
-        if v.lower().startswith("server:"):
+        if v.lower().startswith(SERVER_ID_PREFIX):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 
@@ -112,6 +116,11 @@ class GameEventIn(BaseModel):
             # when scoring subtracts windows (timedelta near datetime.min) —
             # the uncaught OverflowError would 500 the whole batch.
             raise ValueError("client_ts out of supported range")
+        # Scoring windows derive [client_ts - minutes, client_ts] — a
+        # future-dated instant would slide the whole window past the
+        # violations it should have caught (forgery, not clock skew).
+        if utc > datetime.now(timezone.utc) + timedelta(seconds=AT_TS_SKEW_SECONDS):
+            raise ValueError("client_ts in the future")
         return utc
 
     @field_validator("payload")
@@ -475,7 +484,7 @@ class HabitClickIn(BaseModel):
     @field_validator("client_event_id")
     @classmethod
     def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v.lower().startswith("server:"):
+        if v is not None and v.lower().startswith(SERVER_ID_PREFIX):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 
@@ -822,7 +831,7 @@ class DailyCheckIn(BaseModel):
     @field_validator("client_event_id")
     @classmethod
     def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v.lower().startswith("server:"):
+        if v is not None and v.lower().startswith(SERVER_ID_PREFIX):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 
