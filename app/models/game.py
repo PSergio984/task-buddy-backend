@@ -110,6 +110,9 @@ class GameEvent(Base):
         Index("ix_game_events_user_feed", "user_id", "id"),
         # Issue #64 rider: ingest orders each batch by client_ts per user.
         Index("ix_game_events_user_client_ts", "user_id", "client_ts"),
+        # Issue #70 rider: phone-down violation/penalty scans filter
+        # (user_id, type, server_ts >= floor) per span ingest + scored phase.
+        Index("ix_game_events_user_type_ts", "user_id", "type", "server_ts"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True)
@@ -142,6 +145,9 @@ class FocusSession(Base):
             sqlite_where=text("status = 'active'"),
             postgresql_where=text("status = 'active'"),
         ),
+        # Phone-down verified-streak walk: user-wide ended_at scans,
+        # backward btree serves the DESC ordering.
+        Index("ix_focus_sessions_user_ended", "user_id", "ended_at"),
         CheckConstraint(
             "status IN ('active', 'ended', 'abandoned')",
             name="ck_focus_sessions_status",
@@ -163,6 +169,10 @@ class FocusSession(Base):
     pause_budget_seconds: Mapped[int] = mapped_column(Integer, default=300, nullable=False)
     # Per-session speedrun blob — schema landed ahead of the feature (#69).
     speedrun: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
+    # Per-session phone-down overlay blob (#70): {enabled, spans, violations,
+    # penalized_violation_ats, reported_client_event_ids} — same JSON pattern
+    # as speedrun.
+    phone_down: Mapped[dict | None] = mapped_column(JsonType, nullable=True)
     started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     ended_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())

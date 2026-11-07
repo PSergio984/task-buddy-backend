@@ -51,6 +51,10 @@ DEFAULT_WEIGHTS: dict[str, float] = {
     "speedrun_completed": 0.0,
     "speedrun_failed": 0.0,
     "record_set": 1.0,
+    # Phone-down markers (#70) carry no score: they're lifecycle evidence,
+    # not activity — the phase's minutes already land in focus_minutes.
+    "phone_down_span": 0.0,
+    "phone_down_violation": 0.0,
 }
 
 # Score cutoffs for tiers 1..4 (tier 0 = no activity). 5 intensities like
@@ -103,6 +107,10 @@ class ActivityRates:
             # speedrun_failed needs no pin — failed runs leave no completed
             # phase, so a weight there scores nothing twice.
             merged["speedrun_completed"] = 0.0
+            # Phone-down marker rows are evidence, not activity — a config
+            # override can't give a span report or a violation a day-score.
+            merged["phone_down_span"] = 0.0
+            merged["phone_down_violation"] = 0.0
             rates = cls(weights=merged, tier_thresholds=rates.tier_thresholds)
         raw_tiers = data.get("tier_thresholds")
         if isinstance(raw_tiers, (list, tuple)) and 1 <= len(raw_tiers) <= 8:

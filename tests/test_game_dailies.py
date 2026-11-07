@@ -40,6 +40,13 @@ def _at(days_ago: int, hour: int = 12) -> datetime:
     return datetime(day.year, day.month, day.day, hour, tzinfo=timezone.utc)
 
 
+def _at_client(days_ago: int, hour: int = 12) -> datetime:
+    # "Today at hour H" can still be in the future before H UTC — the
+    # ingest schema rejects future client_ts, so clamp at now. Simulated
+    # sweep times (run_daily_miss_sweep now=) stay unclamped via _at.
+    return min(_at(days_ago, hour), datetime.now(timezone.utc))
+
+
 async def _create(client: AsyncClient, **overrides) -> dict:
     body = {"title": "Meditate", **overrides}
     response = await client.post(DAILIES, json=body)
@@ -519,7 +526,7 @@ class TestDailyCheck:
                 client_event_id="e-fast-clock",
                 type="daily_check",
                 # Stamped 23:00 today — ahead of now most of the day.
-                client_ts=_at(0, 23),
+                client_ts=_at_client(0, 23),
                 payload={
                     "daily_id": daily["id"],
                     "check_date": today.isoformat(),
@@ -868,7 +875,7 @@ class TestDailyCheckEventSync:
         return {
             "client_event_id": eid,
             "type": "daily_check",
-            "client_ts": _at(days_ago).isoformat(),
+            "client_ts": _at_client(days_ago).isoformat(),
             "payload": payload,
         }
 
@@ -1021,14 +1028,14 @@ class TestDailyCheckEventSync:
                     {
                         "client_event_id": "f-1",
                         "type": "focus_phase_completed",
-                        "client_ts": _at(0).isoformat(),
+                        "client_ts": _at_client(0).isoformat(),
                         "payload": {"minutes": 10, "difficulty": "easy"},
                     },
                     self._event("d-1", {"daily_id": daily["id"]}),
                     {
                         "client_event_id": "f-2",
                         "type": "focus_phase_completed",
-                        "client_ts": _at(0).isoformat(),
+                        "client_ts": _at_client(0).isoformat(),
                         "payload": {"minutes": 10, "difficulty": "easy"},
                     },
                 ]

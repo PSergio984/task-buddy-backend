@@ -35,6 +35,11 @@ _COLUMN_STAT = {v: k for k, v in STAT_COLUMN.items()}
 STAT_POINT_CAP = 100
 # Class pick unlocks at this level; respec re-opens the choice for gold.
 CLASS_MIN_LEVEL = 10
+# Clock-skew allowance applied to client-claimed instants vs server
+# receipt. Bounds client_ts/at_ts at ingest (an event can't precede
+# itself) and widens the penalty scan's server_ts floor, since a legit
+# report's server_ts can trail its at_ts by up to this much.
+AT_TS_SKEW_SECONDS = 300
 # Class -> its two affinity stats, primary first. Classes are affinities
 # only (no MP/skills per the spec): affinity drives auto-allocation order
 # and which gear ladder is buyable.
@@ -84,12 +89,24 @@ _POSITIVE_FIELDS = frozenset(
 
 # Rates where zero is meaningful (0 disables the award) but negatives aren't.
 _NONNEGATIVE_FIELDS = frozenset(
-    {"stopwatch_milestone_xp", "respec_gold_cost", "speedrun_win_xp_bonus"}
+    {
+        "stopwatch_milestone_xp",
+        "respec_gold_cost",
+        "speedrun_win_xp_bonus",
+        # Phone-down (#70): 0 factor = unverified time pays nothing, 0
+        # pct/cap = streak bonus off, 0 window = violation HP penalty off.
+        "phone_down_unverified_xp_factor",
+        "phone_down_verified_streak_xp_pct",
+        "phone_down_verified_streak_xp_cap",
+        "phone_down_violation_repeat_window_hours",
+    }
 )
 
 # Fields that must stay integral: daily_xp_cap feeds an Integer column, and
 # lvl_curve_round is a bucket size — int(0.5) would collapse the level curve.
-_INT_FIELDS = frozenset({"daily_xp_cap", "lvl_curve_round"})
+_INT_FIELDS = frozenset(
+    {"daily_xp_cap", "lvl_curve_round", "phone_down_violation_repeat_window_hours"}
+)
 
 
 @dataclass(frozen=True)
@@ -117,6 +134,15 @@ class GameRates:
     stopwatch_milestone_xp: float = 25.0  # XP per 25/50/75-min stopwatch chunk
     speedrun_win_xp_bonus: float = 25.0  # flat XP on a won/record speedrun
     respec_gold_cost: float = 100.0  # gold price of a class/stat respec
+    # Phone-down overlay (#70): unverified minutes pay this factor of the
+    # per-minute rates (verified pays full, violated pays 0).
+    phone_down_unverified_xp_factor: float = 0.5
+    # +pct XP per consecutive all-verified phone-down session, capped.
+    phone_down_verified_streak_xp_pct: float = 0.10
+    phone_down_verified_streak_xp_cap: float = 0.50
+    # HP loss lands only on the 2nd+ violation inside this window (hours);
+    # the first is warning-only.
+    phone_down_violation_repeat_window_hours: int = 24
     # Level curve: 25*lvl below 5, fixed 150 at 5, quadratic afterwards.
     lvl_curve_early: float = 25.0
     lvl_curve_lvl5: float = 150.0
@@ -333,6 +359,53 @@ def _focus_payout(
     return xp, gold, mult
 
 
+def _phone_down_minutes(payload: dict, rates: GameRates) -> tuple[float, float] | None:
+    """(xp_minutes, gold_minutes) from a server-adjudicated weight block.
+
+    The block is server-written only (the ingest path recomputes or strips
+    client-supplied values), so a malformed shape is a loud payload error
+    like every other guard — never a silent full-pay fallback. Verified
+    minutes carry the streak multiplier on XP only (spec: the bonus is an
+    XP mechanic); unverified minutes pay the factor on both; violated pays
+    nothing.
+    """
+    block = payload.get("phone_down")
+    if block is None:
+        return None
+    if not isinstance(block, Mapping):
+        raise ValueError("phone_down weight block must be an object")
+
+    def _minutes(key: str) -> float:
+        v = block.get(key)
+        if (
+            not isinstance(v, (int, float))
+            or isinstance(v, bool)
+            or not math.isfinite(v)
+            or v < 0
+            or v > 1e6
+        ):
+            raise ValueError(f"phone_down {key} must be a finite number in [0, 1e6]")
+        return float(v)
+
+    verified = _minutes("verified_minutes")
+    unverified = _minutes("unverified_minutes")
+    _minutes("violated_minutes")  # validated for shape; violated pays 0
+    streak_mult = block.get("xp_multiplier")
+    if (
+        not isinstance(streak_mult, (int, float))
+        or isinstance(streak_mult, bool)
+        or not math.isfinite(streak_mult)
+        or streak_mult <= 0
+        or streak_mult > 100
+    ):
+        raise ValueError("phone_down xp_multiplier must be a finite number in (0, 100]")
+    factor = rates.phone_down_unverified_xp_factor
+    return (
+        verified * float(streak_mult) + unverified * factor,
+        verified + unverified * factor,
+    )
+
+
 def _apply_focus_phase(
     profile: GameProfile,
     payload: dict,
@@ -342,7 +415,15 @@ def _apply_focus_phase(
     stat_bonus: Mapping[str, int] | None = None,
 ) -> dict:
     minutes = _finite_positive(payload.get("minutes"), "focus_phase_completed minutes")
-    xp, gold, mult = _focus_payout(profile, minutes, payload, rates, rng_roll, stat_bonus)
+    weighted = _phone_down_minutes(payload, rates)
+    if weighted is None:
+        xp, gold, mult = _focus_payout(profile, minutes, payload, rates, rng_roll, stat_bonus)
+    else:
+        # One rng_roll feeds both calls — the crit decision is per event,
+        # so XP and gold can't disagree on whether the phase crit.
+        xp_minutes, gold_minutes = weighted
+        xp, _, mult = _focus_payout(profile, xp_minutes, payload, rates, rng_roll, stat_bonus)
+        _, gold, _ = _focus_payout(profile, gold_minutes, payload, rates, rng_roll, stat_bonus)
     outcome: dict = {"scored": True, "crit": mult > 1.0}
     outcome.update(award_xp(profile, xp, rates, today))
     outcome.update(award_gold(profile, gold, rates, today))
