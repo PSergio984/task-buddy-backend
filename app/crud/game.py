@@ -79,6 +79,10 @@ async def get_or_create_profile(
     try:
         await db.flush()
     except IntegrityError:
+        # A create-race rollback releases any locks the caller took before
+        # this function (ingest_events locks session rows first for order
+        # safety) — narrow first-write window; the locks are re-acquired
+        # implicitly on next access only inside a serializable txn.
         await db.rollback()
         result = await db.execute(query)
         profile = result.scalar_one()
@@ -110,17 +114,21 @@ async def existing_event_ids(
 
 
 async def get_events_since(
-    db: AsyncSession, user_id: int, since: int | None, limit: int
+    db: AsyncSession, user_id: int, since: int | None, limit: int, *, desc: bool = False
 ) -> list[GameEvent]:
     """Ledger catchup feed: events after the last-seen event id, oldest first.
 
     The cursor is the event id, not server_ts: clock granularity ties could
-    permanently hide same-timestamp rows under a timestamp cursor.
+    permanently hide same-timestamp rows under a timestamp cursor. `desc`
+    flips the direction — newest first — and `since` then means "older than
+    this id", so history can page backwards instead of replaying the whole
+    ledger from 0.
     """
     query = select(GameEvent).where(GameEvent.user_id == user_id)
     if since is not None:
-        query = query.where(GameEvent.id > since)
-    result = await db.execute(query.order_by(GameEvent.id).limit(limit))
+        query = query.where(GameEvent.id < since if desc else GameEvent.id > since)
+    ordering = GameEvent.id.desc() if desc else GameEvent.id
+    result = await db.execute(query.order_by(ordering).limit(limit))
     return list(result.scalars().all())
 
 
@@ -261,6 +269,26 @@ async def get_session(
     return result.scalar_one_or_none()
 
 
+async def lock_sessions(db: AsyncSession, user_id: int, session_ids: list[int]) -> None:
+    """SELECT FOR UPDATE the user's sessions, in id order.
+
+    Ingest takes these locks BEFORE the profile FOR UPDATE so the batch's
+    session->profile order matches the verb path's (_locked_session then
+    _evaluate's profile lock) — the opposite direction is the Postgres
+    cross-deadlock (40P01). Ordering by id keeps two concurrent batches'
+    acquisition order identical; unresolvable ids simply match no row.
+    """
+    if not session_ids:
+        return
+    await db.execute(
+        select(FocusSession)
+        .where(FocusSession.user_id == user_id, FocusSession.id.in_(session_ids))
+        .order_by(FocusSession.id)
+        .with_for_update()
+        .execution_options(populate_existing=True)
+    )
+
+
 async def get_active_session(
     db: AsyncSession, user_id: int, *, for_update: bool = False
 ) -> FocusSession | None:
@@ -312,6 +340,117 @@ async def get_speedrun_record(
         )
     )
     return result.scalar_one()
+
+
+async def list_recent_ended_phone_blobs(
+    db: AsyncSession,
+    user_id: int,
+    exclude_id: int,
+    limit: int,
+    *,
+    ended_before: datetime | None = None,
+) -> list[dict | None]:
+    """phone_down blobs of the user's most recently finished sessions, newest first.
+
+    The verified-streak derivation (#70) needs every finished session in the
+    window — not just enabled ones — so a non-phone-down session correctly
+    breaks the run. Abandoned sessions are included: their blob still carries
+    the violation/span evidence, and an abandon is never a clean run — they
+    report as None to the walk (the blob itself stays on the session row for
+    history). `ended_before` bounds the window to sessions finished before
+    the scored session's own end (or the scoring instant while it's live),
+    so a catch-up scoring can't credit younger completions toward its streak.
+    Adjudication lives in app.game.phone_down.
+    """
+    query = select(FocusSession.phone_down, FocusSession.status).where(
+        FocusSession.user_id == user_id,
+        FocusSession.id != exclude_id,
+        FocusSession.status.in_(("ended", "abandoned")),
+        # A corrupt finished row can carry NULL ended_at — Postgres sorts
+        # NULLS FIRST on DESC, so it would consume a walk slot and break
+        # the streak conservatively; just exclude it.
+        FocusSession.ended_at.is_not(None),
+    )
+    if ended_before is not None:
+        query = query.where(FocusSession.ended_at <= ended_before)
+    result = await db.execute(
+        query.order_by(FocusSession.ended_at.desc(), FocusSession.id.desc()).limit(limit)
+    )
+    return [blob if status == "ended" else None for blob, status in result.tuples().all()]
+
+
+async def list_phone_down_violation_events(
+    db: AsyncSession, user_id: int, session_id: int, started_at: datetime
+) -> list[GameEvent]:
+    """The user's phone_down_violation ledger rows for one session.
+
+    The server_ts >= started_at bound drops rows received before the
+    session existed — impossible for a legit report (the session must
+    exist before an event can reference it), and server-stamped so a
+    client can't backdate client_ts to make a violation invisible to
+    adjudication. The at_ts window check stays caller-side and
+    authoritative. Only applied rows carry session_id (the ingest strips
+    client extras and writes the resolved id back), so the SQL payload
+    filter keeps rejected events out — the payload[...].as_integer()
+    extraction reads JSON on both backends (game_tracking's
+    payload["minutes"].as_float() precedent).
+    """
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id,
+            GameEvent.type == "phone_down_violation",
+            GameEvent.server_ts >= started_at,
+            GameEvent.payload["session_id"].as_integer() == session_id,
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_recent_phone_down_violations(
+    db: AsyncSession, user_id: int, since_server_ts: datetime
+) -> list[GameEvent]:
+    """The user's applied phone_down_violation rows server-received since
+    the repeat-window floor — the penalty path's cross-session scan.
+
+    session_id presence marks an applied row (rejected events never get
+    the server-reserved key written back), so it doubles as the
+    applied-only filter. The at_ts window check stays caller-side and
+    authoritative; server_ts only bounds the scan.
+    """
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id,
+            GameEvent.type == "phone_down_violation",
+            GameEvent.server_ts >= since_server_ts,
+            # as_integer() then IS NOT NULL: a bare index is_not() compiles
+            # to JSON_QUOTE(json_extract(...)) on SQLite, and json_quote(NULL)
+            # is the 'null' string — never NULL — so rejected rows would
+            # leak into the penalty scan there (Postgres ->> is fine).
+            GameEvent.payload["session_id"].as_integer().is_not(None),
+        )
+    )
+    return list(result.scalars().all())
+
+
+async def list_recent_phone_down_penalties(
+    db: AsyncSession, user_id: int, since_server_ts: datetime
+) -> list[GameEvent]:
+    """The user's phone_down_violations damage rows since the same server
+    floor — their `charged_ats` payloads carry the durable cross-session
+    "already fined" set (the session blob's penalized_violation_ats is
+    pruned and session-local). The "server:" eid prefix keeps
+    client-authored damage claims out — the prefix is schema-reserved, so
+    a client can't forge charged_ats to pre-mark violations as fined."""
+    result = await db.execute(
+        select(GameEvent).where(
+            GameEvent.user_id == user_id,
+            GameEvent.type == "damage",
+            GameEvent.server_ts >= since_server_ts,
+            GameEvent.client_event_id.ilike("server:%"),
+            GameEvent.payload["reason"].as_string() == "phone_down_violations",
+        )
+    )
+    return list(result.scalars().all())
 
 
 async def get_habit(db: AsyncSession, user_id: int, habit_id: int) -> Habit | None:

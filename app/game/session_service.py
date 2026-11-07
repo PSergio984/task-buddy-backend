@@ -8,13 +8,13 @@ totals, crits and the death cascade behave identically to /events ingestion.
 """
 
 import random
-from datetime import date, datetime, timezone
+from datetime import date, datetime, timedelta, timezone
 
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import character_service, habit_service, notifications
+from app.game import character_service, habit_service, notifications, phone_down
 from app.game import session_engine as se
 from app.game.engine import GameRates, apply_event
 from app.game.service import load_rates
@@ -106,6 +106,77 @@ def _speedrun_event_for(step: se.Step, payload: dict, difficulty: str) -> tuple[
     return kind, {**event, **step.extra}
 
 
+async def _inject_phone_down_weight(
+    db: AsyncSession,
+    session: FocusSession,
+    phases: list[FocusPhase] | None,
+    step: se.Step,
+    payload: dict,
+    at: datetime,
+    rates: GameRates,
+) -> dict:
+    """The scored payload + adjudicated phone_down block, or unchanged.
+
+    The weighting window is the phase's wall-clock [started_at, ended_at]:
+    pause-stretched time stays inside the window but the paid minutes stay
+    the phase's own, so a long pause can't inflate the pay base. A phase
+    row is guaranteed for every scored step — the minutes fallback exists
+    only so a corrupt call signature can't 500 the whole evaluation.
+    """
+    if not phone_down.enabled(session):
+        return payload
+    paid = payload.get("minutes")
+    if not isinstance(paid, (int, float)) or paid <= 0:
+        return payload  # let the engine's own minutes guard report the shape
+    phase = next((p for p in (phases or []) if p.seq == step.phase_seq), None)
+    w_start = game_crud.utc_aware(phase.started_at) if phase and phase.started_at else None
+    w_end = game_crud.utc_aware(phase.ended_at) if phase and phase.ended_at else at
+    if w_start is None or w_end <= w_start:
+        w_end = at
+        w_start = w_end - timedelta(seconds=float(paid) * 60)
+    block = await phone_down.weight_block(
+        db, session, w_start=w_start, w_end=w_end, paid_minutes=float(paid), rates=rates
+    )
+    return {**payload, "phone_down": block}
+
+
+async def _phone_down_penalty(
+    db: AsyncSession,
+    user_id: int,
+    session: FocusSession,
+    step: se.Step,
+    at: datetime,
+    now: datetime,
+    profile: GameProfile,
+    rates: GameRates,
+    stat_bonus: dict[str, int] | None,
+) -> dict | None:
+    """Repeat-violation HP for a scored focus phase; None when N/A.
+
+    Each NEW in-window violation past the first costs hp_loss_base once —
+    the blob's penalized_violation_ats set keeps repeat scoring calls from
+    re-charging the same history. The merged death keys propagate to the
+    caller's gear refresh and the focus row's _outcome. `eid` is
+    deterministic per scored phase — the triggering step's own dedupe gate
+    is the real idempotency; this is the backstop for a ledger row lost to
+    surgery.
+    """
+    if not phone_down.enabled(session):
+        return None
+    return await phone_down.maybe_violation_penalty(
+        db,
+        user_id,
+        session,
+        at=at,
+        profile=profile,
+        rates=rates,
+        stat_bonus=stat_bonus,
+        rng=_rng,
+        eid=f"server:s{session.id}:phone_down_hp:{step.phase_seq or 0}:{int(at.timestamp())}",
+        now=now,
+    )
+
+
 async def _persist_step(
     db: AsyncSession,
     session: FocusSession,
@@ -119,6 +190,7 @@ async def _persist_step(
     habits: list[Habit] | None = None,
     auto_budget: int = 0,
     stat_bonus: dict[str, int] | None = None,
+    phases: list[FocusPhase] | None = None,
 ) -> tuple[int, dict | None]:
     """Write one transition's ledger row; score it when the engine knows how.
 
@@ -127,9 +199,11 @@ async def _persist_step(
     `habits` is the caller's prefetched bound-habit list (auto-click fanout);
     None means "no scored focus completion expected in this call".
     `stat_bonus` is the caller's per-evaluation gear resolution — a multi-phase
-    catch-up must not re-query equipped gear per scored step. Returns
-    (auto-clicks spent, the scoring outcome or None) so the caller can run a
-    per-evaluation budget and spot a gear loss.
+    catch-up must not re-query equipped gear per scored step. `phases` is the
+    caller's already-fetched phase list (the phone-down weight needs the
+    phase's wall-clock window). Returns (auto-clicks spent, the scoring
+    outcome or None) so the caller can run a per-evaluation budget and spot
+    a gear loss.
     """
     event_type, payload = _event_for(step, session)
     if event_type is None:
@@ -156,6 +230,11 @@ async def _persist_step(
         step_day = at.date()
         day = max(step_day, profile.totals_day) if profile.totals_day else step_day
         hp_before = profile.hp
+        if event_type == "focus_phase_completed":
+            # Phone-down overlay (#70): the engine pays the tier-weighted
+            # minutes, so the adjudicated coverage block must land in the
+            # payload before scoring — and in the ledger row for the feed.
+            payload = await _inject_phone_down_weight(db, session, phases, step, payload, at, rates)
         outcome = apply_event(
             profile,
             event_type,
@@ -170,6 +249,12 @@ async def _persist_step(
         await notifications.notify_score_outcome(db, user_id, profile, hp_before, outcome, now=now)
         if event_type == "focus_phase_completed" and outcome.get("scored"):
             await notifications.notify_phase_end(db, user_id, at, payload.get("minutes"), now=now)
+            # Repeat-violation HP penalty (#70) — folds into this row's
+            # _outcome so the phase honestly reports the hit it caused.
+            penalty = await _phone_down_penalty(
+                db, user_id, session, step, at, now, profile, rates, stat_bonus
+            )
+            phone_down.merge_penalty(outcome, penalty)
         if event_type == "record_set" and outcome.get("scored"):
             await notifications.notify_record_set(db, user_id, payload, now=now)
     row = GameEvent(
@@ -269,6 +354,7 @@ async def _evaluate(
             habits=bound_habits,
             auto_budget=auto_budget,
             stat_bonus=stat_bonus,
+            phases=phases,
         )
         auto_budget -= spent
         if outcome is not None and outcome.get("gear_lost"):
@@ -309,6 +395,16 @@ def _speedrun_plan(req: SessionStartIn) -> list[tuple[str, int]]:
 
 def _plan(req: SessionStartIn) -> list[tuple[str, int]]:
     """Phase plan before any DB work — a bad request can't churn a rollback."""
+    if req.phone_down and req.mode == "speedrun":
+        # One special overlay per session: speedrun is server-judged
+        # online-only, while phone-down tolerates offline evidence — the
+        # two trust models don't mix.
+        raise ValueError("phone_down is not available for speedrun mode")
+    if req.phone_down and req.mode == "stopwatch":
+        # Stopwatch pays milestone XP, not per-minute — there is no paid
+        # minute stream to tier-weight, so the overlay could only farm
+        # verified streaks on pay it never gated.
+        raise ValueError("phone_down is not available for stopwatch mode")
     if req.mode == "speedrun":
         return _speedrun_plan(req)
     if req.speedrun is not None:
@@ -371,6 +467,7 @@ async def start_session(
             # done() re-reads it inside the txn for the actual compare.
             target = await game_crud.get_speedrun_record(db, user_id, activity_label)
             speedrun_blob = {"type": "beat_best", "target_seconds": target}
+    phone_down_blob = phone_down.new_blob() if req.phone_down else None
     session = FocusSession(
         user_id=user_id,
         task_id=req.task_id,
@@ -381,6 +478,7 @@ async def start_session(
         pause_budget_count=req.pause_budget_count,
         pause_budget_seconds=req.pause_budget_seconds,
         speedrun=speedrun_blob,
+        phone_down=phone_down_blob,
         started_at=now,
     )
     db.add(session)
@@ -423,6 +521,8 @@ async def start_session(
                 # Run params ride the start event too (budget/target) — the
                 # feed shouldn't need the session row to explain the run.
                 **({"speedrun": speedrun_blob} if speedrun_blob is not None else {}),
+                # Same feed-reconstruction rule for the phone-down overlay.
+                **({"phone_down": phone_down_blob} if phone_down_blob is not None else {}),
             },
         ),
         0,

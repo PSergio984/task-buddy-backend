@@ -67,6 +67,7 @@ async def _respond(db, result) -> SessionActionResponse:
             # A scalar-JSON blob (DB-surgery only — the API only ever writes
             # dicts) can't 500 the read endpoints' response validation.
             speedrun=session.speedrun if isinstance(session.speedrun, dict) else None,
+            phone_down=(session.phone_down if isinstance(session.phone_down, dict) else None),
             phases=phases,
         ),
         profile=await _profile_read(db, profile, rates),

@@ -283,6 +283,29 @@ class TestEventIngestion:
         )
         assert response.status_code == 422
 
+    async def test_client_ts_year_bounds_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Far-past/future instants pass astimezone but overflow timedelta
+        # subtraction in scoring windows — reject 422, not a batch-wide 500.
+        for ts in ("1899-12-31T23:00:00Z", "2201-01-01T00:00:00Z"):
+            event = focus_event(f"e-ts-{ts[:4]}")
+            event["client_ts"] = ts
+            response = await authenticated_async_client.post(
+                f"{GAME}/events", json={"events": [event]}
+            )
+            assert response.status_code == 422
+
+    async def test_client_ts_offset_overflow_rejected(
+        self, authenticated_async_client: AsyncClient
+    ) -> None:
+        # Representable locally but its UTC form isn't — astimezone raises
+        # OverflowError; the validator surfaces it as input error.
+        event = focus_event("e-overflow")
+        event["client_ts"] = "0001-01-01T00:00:00+23:59"
+        response = await authenticated_async_client.post(f"{GAME}/events", json={"events": [event]})
+        assert response.status_code == 422
+
     async def test_non_finite_minutes_rejected(
         self, authenticated_async_client: AsyncClient
     ) -> None:
@@ -336,6 +359,33 @@ class TestEventsFeed:
         )
         remaining = [e["client_event_id"] for e in filtered.json()["events"]]
         assert remaining == ["e-3"]
+
+    async def test_events_desc_returns_newest_first_and_pages_backward(
+        self, authenticated_async_client: AsyncClient, db: AsyncSession
+    ) -> None:
+        now = datetime.now(timezone.utc)
+        batch = {
+            "events": [
+                focus_event("e-1", ts=now),
+                focus_event("e-2", ts=now + timedelta(seconds=1)),
+                focus_event("e-3", ts=now + timedelta(seconds=2)),
+            ]
+        }
+        await authenticated_async_client.post(f"{GAME}/events", json=batch)
+
+        newest = await authenticated_async_client.get(
+            f"{GAME}/events", params={"desc": "1", "limit": 2}
+        )
+        tail = [e["client_event_id"] for e in newest.json()["events"]]
+        assert tail == ["e-3", "e-2"]
+
+        # since under desc means "older than this id" — history pages back.
+        result = await db.execute(select(GameEvent).where(GameEvent.client_event_id == "e-2"))
+        pivot = result.scalar_one().id
+        older = await authenticated_async_client.get(
+            f"{GAME}/events", params={"desc": "1", "since": pivot}
+        )
+        assert [e["client_event_id"] for e in older.json()["events"]] == ["e-1"]
 
     async def test_events_scoped_to_user(
         self,

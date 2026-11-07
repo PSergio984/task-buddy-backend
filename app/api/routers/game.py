@@ -114,9 +114,11 @@ async def get_events(
     db: Annotated[AsyncSession, Depends(get_db)],
     since: Annotated[Optional[int], Query(ge=0)] = None,
     limit: Annotated[int, Query(ge=1, le=500)] = 500,
+    desc: Annotated[bool, Query()] = False,
 ) -> GameEventsFeedResponse:
-    """Ledger catchup feed: events with id > `since` (the last id the client saw)."""
-    rows = await game_crud.get_events_since(db, current_user.id, since, limit)
+    """Ledger feed: `since` returns id > since oldest-first (catchup); `desc`
+    returns newest-first and `since` then means "older than this id"."""
+    rows = await game_crud.get_events_since(db, current_user.id, since, limit, desc=desc)
     return GameEventsFeedResponse(
         events=[GameEventRead.model_validate(row) for row in rows],
         server_time=datetime.now(timezone.utc),

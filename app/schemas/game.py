@@ -27,6 +27,10 @@ from app.models.game import GameProfile, HabitDirection
 
 _PAYLOAD_MAX_BYTES = 16 * 1024
 _TEXT_MAX_LEN = 10_000
+# client_ts bounds: far-past/future instants pass astimezone but overflow
+# timedelta subtraction in scoring windows (OverflowError -> 500 the batch).
+_CLIENT_TS_MIN_YEAR = 1900
+_CLIENT_TS_MAX_YEAR = 2200
 
 _HabitDirection = Literal["positive", "negative", "both"]
 _Difficulty = Literal["trivial", "easy", "medium", "hard"]
@@ -75,7 +79,8 @@ class GameEventIn(BaseModel):
     def no_server_namespace(cls, v: str) -> str:
         # Server-authored events own the "server:" prefix — a client could
         # otherwise squat a server id and suppress the real event via dedupe.
-        if v.startswith("server:"):
+        # Casefolded: the ledger's server-prefix scans are case-insensitive.
+        if v.lower().startswith("server:"):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 
@@ -97,11 +102,17 @@ class GameEventIn(BaseModel):
         # re-labeling a local wall time as UTC mis-buckets the day views.
         aware = v if v.tzinfo is not None else v.replace(tzinfo=timezone.utc)
         try:
-            return aware.astimezone(timezone.utc)
+            utc = aware.astimezone(timezone.utc)
         except OverflowError:
             # The instant is representable locally but its UTC form isn't —
             # reject as input error, not a server crash.
             raise ValueError("client_ts out of representable range") from None
+        if not (_CLIENT_TS_MIN_YEAR <= utc.year <= _CLIENT_TS_MAX_YEAR):
+            # Far-past/future instants are accepted by astimezone but overflow
+            # when scoring subtracts windows (timedelta near datetime.min) —
+            # the uncaught OverflowError would 500 the whole batch.
+            raise ValueError("client_ts out of supported range")
+        return utc
 
     @field_validator("payload")
     @classmethod
@@ -464,7 +475,7 @@ class HabitClickIn(BaseModel):
     @field_validator("client_event_id")
     @classmethod
     def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v.startswith("server:"):
+        if v is not None and v.lower().startswith("server:"):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 
@@ -514,6 +525,11 @@ class SessionStartIn(BaseModel):
     pause_budget_count: int = Field(default=3, ge=0, le=20)
     pause_budget_seconds: int = Field(default=300, gt=0, le=3600)
     speedrun: SpeedrunIn | None = None
+    # Phone-down overlay (#70): gates productive pay on client-reported
+    # orientation evidence. Incompatible with speedrun and stopwatch modes —
+    # the service layer rejects the combo 400 like the other mode-conditional
+    # rules.
+    phone_down: bool = False
 
 
 class SessionPhaseOut(BaseModel):
@@ -590,7 +606,25 @@ class FocusSessionOut(BaseModel):
     started_at: datetime
     ended_at: datetime | None
     speedrun: dict | None
+    # Phone-down overlay blob (#70): {enabled, spans, violations,
+    # penalized_violation_ats, reported_client_event_ids} — None when the
+    # overlay was never enabled.
+    phone_down: dict | None
     phases: list[SessionPhaseOut]
+
+    @field_validator("phone_down", mode="before")
+    @classmethod
+    def strip_internal_blob_keys(cls, v: dict | None) -> dict | None:
+        # The dedupe belt and charge bookkeeping are server-internal —
+        # the client's copy needs only what end cards/history render.
+        # Filtered COPY: mutating the ORM blob in place would poison it.
+        if isinstance(v, dict):
+            return {
+                k: x
+                for k, x in v.items()
+                if k not in ("reported_client_event_ids", "penalized_violation_ats")
+            }
+        return v
 
 
 class SessionActionResponse(BaseModel):
@@ -788,7 +822,7 @@ class DailyCheckIn(BaseModel):
     @field_validator("client_event_id")
     @classmethod
     def no_server_namespace(cls, v: Optional[str]) -> Optional[str]:
-        if v is not None and v.startswith("server:"):
+        if v is not None and v.lower().startswith("server:"):
             raise ValueError("client_event_id prefix 'server:' is reserved")
         return v
 

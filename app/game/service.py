@@ -6,8 +6,9 @@ and committed transactionally by the router. On a mid-batch failure nothing
 commits, so retrying the batch re-dedupes cleanly against the ledger.
 """
 
+import hashlib
 import random
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from typing import Literal
 
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -19,12 +20,25 @@ from app.game import (
     engine,
     habit_service,
     notifications,
+    phone_down,
 )
 from app.game.engine import GameRates
-from app.models.game import Daily, DailyItem, GameEvent, GameProfile, Habit
+from app.models.game import Daily, DailyItem, FocusSession, GameEvent, GameProfile, Habit
 from app.schemas.game import GameEventIn, GameEventResult
 
 _rng = random.Random()
+
+# Blob growth bound (#70): every applied span lands on the session row's
+# JSON forever, so an unbounded count lets a client inflate one row without
+# limit. Over the cap the event records unscored like any rejection.
+# Sibling bound of the penalized_violation_ats prune + 100-entry cap in
+# phone_down.maybe_violation_penalty — same blob-growth discipline.
+MAX_SPANS_PER_SESSION = 200
+# Same bound for the dedupe-belt list itself — span and violation eids
+# share it, so neither event type can inflate the blob without limit.
+MAX_REPORTED_EVENT_IDS = 400
+# Clock-skew slack lives in phone_down (the scan bound there needs it
+# too, and service already imports the module) — see AT_TS_SKEW_SECONDS.
 
 
 async def load_rates(db: AsyncSession) -> GameRates:
@@ -227,6 +241,248 @@ async def _ingest_daily_check(
     return outcome
 
 
+async def _session_for_phone_event(
+    db: AsyncSession, user_id: int, event: GameEventIn
+) -> FocusSession | None:
+    """Resolve the session a phone_down_* event targets; None = unresolvable.
+
+    Same trust rule as _habit_for_event: only an int id that maps to an
+    owned row can mutate — a foreign/deleted/malformed session_id records
+    unscored, never a 400 that would wedge the client's retry queue.
+    """
+    session_id = event.payload.get("session_id")
+    if not isinstance(session_id, int) or isinstance(session_id, bool):
+        return None
+    return await game_crud.get_session(db, session_id, user_id)
+
+
+def _dedupe_belt(blob: dict, eid: str) -> tuple[list, bool]:
+    """(reported-eids list, already-applied) — the lost-ledger-row belt.
+
+    uq_game_events already dedupes retries; this list additionally stops a
+    marker eid re-applying when the ledger row was lost. Bounded at
+    MAX_REPORTED_EVENT_IDS by _dedupe_belt_append.
+    """
+    reported = blob.get("reported_client_event_ids")
+    reported = reported if isinstance(reported, list) else []
+    return reported, eid in reported
+
+
+def _dedupe_belt_append(reported: list, eid: str) -> list:
+    """The belt + eid — past the cap the unique constraint alone dedupes
+    retries, so a client can't grow the blob forever with marker eids."""
+    if len(reported) >= MAX_REPORTED_EVENT_IDS:
+        return list(reported)
+    return [*reported, eid]
+
+
+async def _apply_span_event(db: AsyncSession, session: FocusSession, event: GameEventIn) -> dict:
+    """Validate + adjudicate one phone_down_span; appends to the blob.
+
+    Returns the _outcome fields: {"applied": true, "tier": adjudicated} on
+    success, {"reason": ...} on rejection. The blob is REASSIGNED (not
+    mutated in place) — SQLAlchemy's plain-JSON column tracks assignment,
+    not deep edits (the speedrun blob's _speedrun_result precedent).
+    Adjudication is an ingest-time decision for the span's own claim; a
+    LATER violation event still downgrades it (violations dominate).
+    """
+    p = event.payload
+    claimed = p.get("claimed_tier")
+    evidence = p.get("evidence")
+    start = phone_down.parse_ts(p.get("start_ts"))
+    end = phone_down.parse_ts(p.get("end_ts"))
+    if claimed not in phone_down.TIERS:
+        return {"reason": "invalid_claimed_tier"}
+    if evidence not in phone_down.EVIDENCE_KINDS:
+        return {"reason": "invalid_evidence"}
+    if start is None or end is None or end <= start:
+        return {"reason": "invalid_span"}
+    # The window can't extend past receipt+skew: a span ending in the
+    # future would capture violations reported later via re-adjudication.
+    # (No matching start-floor: violation rows are session-scoped anyway,
+    # so a pre-session span can absorb nothing extra.)
+    if end > datetime.now(timezone.utc) + timedelta(seconds=phone_down.AT_TS_SKEW_SECONDS):
+        return {"reason": "invalid_span"}
+    blob = phone_down.blob_of(session)
+    reported, already = _dedupe_belt(blob, event.client_event_id)
+    if already:
+        # Belt over uq_game_events: a span eid already applied to THIS
+        # session can't append twice even if the ledger row was lost.
+        return {"applied": True, "deduped": True}
+    spans = blob.get("spans")
+    spans = spans if isinstance(spans, list) else []
+    if len(spans) >= MAX_SPANS_PER_SESSION:
+        return {"reason": "span_cap_reached"}
+    covered = await phone_down.violation_covers(db, session, start, end)
+    tier = phone_down.adjudicate_tier(claimed, evidence, covered)
+    assert tier is not None  # enums validated above
+    span = {
+        "start_ts": start.isoformat(),
+        "end_ts": end.isoformat(),
+        "tier": tier,
+        "evidence": evidence,
+    }
+    session.phone_down = {
+        **blob,
+        "spans": [*spans, span],
+        "reported_client_event_ids": _dedupe_belt_append(reported, event.client_event_id),
+    }
+    return {"applied": True, "tier": tier}
+
+
+async def _apply_violation_event(
+    db: AsyncSession, session: FocusSession, event: GameEventIn
+) -> dict:
+    """Validate + count one phone_down_violation marker on the blob.
+
+    Increments `violations` and re-adjudicates any already-stored spans
+    whose window contains the instant (violations dominate regardless of
+    upload order). HP cost is decided at phase scoring time (2nd+ inside
+    the repeat window), so a first violation is warning-only and a late
+    batch can't smuggle HP loss past the window.
+    """
+    p = event.payload
+    kind = p.get("kind")
+    at_ts = phone_down.parse_ts(p.get("at_ts"))
+    if kind not in phone_down.VIOLATION_KINDS:
+        return {"reason": "invalid_kind"}
+    if at_ts is None:
+        return {"reason": "invalid_at_ts"}
+    # A violation can't precede itself: at_ts past the server's own
+    # receipt instant (beyond clock skew) is malformed — and such rows
+    # escape the server_ts>=since penalty-scan bound, so they must not
+    # land. Bounds on server-now, not client_ts: a client may legitimately
+    # backdate client_ts and the row must still adjudicate.
+    if at_ts > datetime.now(timezone.utc) + timedelta(seconds=phone_down.AT_TS_SKEW_SECONDS):
+        return {"reason": "future_at_ts"}
+    blob = phone_down.blob_of(session)
+    reported, already = _dedupe_belt(blob, event.client_event_id)
+    if already:
+        # Same belt as spans — a retried violation can't double-count.
+        return {"applied": True, "deduped": True}
+    try:
+        violations = int(blob.get("violations") or 0)
+    except (TypeError, ValueError):
+        # Corrupt stored count: degrade to 0 — a poisoned blob must not
+        # wedge the batch on a ValueError (all_verified's defensive read).
+        violations = 0
+    # A violation whose client_ts orders after its overlapping span still
+    # re-adjudicates it — "violations dominate" is absolute, not ordered
+    # by upload luck. Mirrors violation_covers' [start, end] bounds and
+    # adjudicate_tier's any-tier downgrade (unverified included).
+    spans = blob.get("spans")
+    new_spans = (
+        [
+            (
+                {**s, "tier": phone_down.VIOLATED}
+                if (
+                    isinstance(s, dict)
+                    and s.get("tier") != phone_down.VIOLATED
+                    and (st := phone_down.parse_ts(s.get("start_ts"))) is not None
+                    and (et := phone_down.parse_ts(s.get("end_ts"))) is not None
+                    and st <= at_ts <= et
+                )
+                else s
+            )
+            for s in spans
+        ]
+        if isinstance(spans, list)
+        else spans
+    )
+    session.phone_down = {
+        **blob,
+        **({"spans": new_spans} if isinstance(new_spans, list) else {}),
+        "violations": violations + 1,
+        "reported_client_event_ids": _dedupe_belt_append(reported, event.client_event_id),
+    }
+    return {"applied": True}
+
+
+async def _ingest_phone_down(
+    db: AsyncSession,
+    user_id: int,
+    event: GameEventIn,
+) -> None:
+    """Apply one phone_down_span / phone_down_violation marker event.
+
+    These events carry no score of their own — they mutate the session's
+    phone_down blob (adjudicated span append / violation count) and record
+    a ledger row whose _outcome says what happened. Rejections record
+    applied-but-unscored like the habit/daily paths: one bad queued event
+    must not 400 the batch, and its eid stays consumed (a corrected event
+    must be resent under a NEW client_event_id).
+    """
+    session = await _session_for_phone_event(db, user_id, event)
+    if session is None:
+        result = {"reason": "session_unresolvable"}
+    elif not phone_down.enabled(session):
+        result = {"reason": "phone_down_not_enabled"}
+    elif event.type == phone_down.SPAN_EVENT:
+        result = await _apply_span_event(db, session, event)
+    else:
+        result = await _apply_violation_event(db, session, event)
+    applied = result.get("applied") is True
+    outcome = {"scored": False, **result}
+    db.add(
+        GameEvent(
+            user_id=user_id,
+            client_event_id=event.client_event_id,
+            type=event.type,
+            payload={
+                **habit_service.clean_extra(event.payload),
+                # session_id is server-reserved in stored payloads — written
+                # back only for applied rows, resolved server-side, so the
+                # violation-window count and the feed can't be forged.
+                **({"session_id": session.id} if applied and session is not None else {}),
+                "_outcome": outcome,
+            },
+            client_ts=event.client_ts,
+        )
+    )
+    # autoflush is disabled project-wide: a same-batch span re-reads applied
+    # violation rows for window coverage (daily_service precedent).
+    await db.flush()
+
+
+async def _resolve_phone_down_payload(
+    db: AsyncSession,
+    user_id: int,
+    event: GameEventIn,
+    rates: GameRates,
+) -> tuple[dict, FocusSession | None]:
+    """(payload, session) for a synced focus_phase_completed.
+
+    A client-supplied phone_down weight block never reaches the engine:
+    when the event resolves to an owned phone-down session the block is
+    recomputed server-side over [client_ts - minutes, client_ts]; anything
+    else has the key stripped — a forged multiplier would otherwise
+    self-award verified pay.
+    """
+    payload = event.payload
+    session = await _session_for_phone_event(db, user_id, event)
+    if session is not None and phone_down.enabled(session):
+        minutes = payload.get("minutes")
+        if (
+            isinstance(minutes, (int, float))
+            and not isinstance(minutes, bool)
+            and 0 < minutes <= 1e6
+        ):
+            w_end = event.client_ts
+            block = await phone_down.weight_block(
+                db,
+                session,
+                w_start=w_end - timedelta(seconds=float(minutes) * 60),
+                w_end=w_end,
+                paid_minutes=float(minutes),
+                rates=rates,
+            )
+            clean = {k: v for k, v in payload.items() if k != "phone_down"}
+            return {**clean, "phone_down": block}, session
+        # An unpayable minutes claim strips the block too — the engine's
+        # own guard reports the shape downstream.
+    return {k: v for k, v in payload.items() if k != "phone_down"}, session
+
+
 async def _apply_generic(
     db: AsyncSession,
     user_id: int,
@@ -236,20 +492,27 @@ async def _apply_generic(
     today,
     rng: random.Random,
     stat_bonus: dict[str, int],
-) -> tuple[dict, dict[str, int]]:
+) -> tuple[dict, dict[str, int], dict, FocusSession | None]:
     """Score one generic (non-habit/non-daily) event.
 
     A ValueError from the engine's payload guards records applied-but-
     unscored like the habit/daily paths — one malformed queued event must
     not 400 the batch and wedge the client's retry queue forever. Returns
-    (outcome, stat_bonus) so a mid-batch death's gear loss stops scoring.
+    (outcome, stat_bonus, payload, session) — the payload actually scored
+    so the ledger stores the server-resolved phone_down block, not a
+    client claim, and the resolved session so the stored row can carry
+    the verified session_id (a client claim alone can't be trusted).
     """
     hp_before = profile.hp
+    session: FocusSession | None = None
+    payload = event.payload
+    if event.type == "focus_phase_completed":
+        payload, session = await _resolve_phone_down_payload(db, user_id, event, rates)
     try:
         outcome = engine.apply_event(
             profile,
             event.type,
-            event.payload,
+            payload,
             rates,
             rng_roll=rng.random(),
             rng=rng,
@@ -257,15 +520,35 @@ async def _apply_generic(
             stat_bonus=stat_bonus,
         )
     except ValueError as exc:
-        return {"scored": False, "reason": str(exc)}, stat_bonus
+        return {"scored": False, "reason": str(exc)}, stat_bonus, payload, session
     await character_service.resolve_death_gear(db, user_id, outcome, rng)
     await notifications.notify_score_outcome(db, user_id, profile, hp_before, outcome)
     if event.type == "focus_phase_completed" and outcome.get("scored"):
         await notifications.notify_phase_end(
             db, user_id, event.client_ts, event.payload.get("minutes")
         )
+        if session is not None and phone_down.enabled(session):
+            # Repeat-violation HP penalty — same scoring-call rule as the
+            # server-side session path in session_service. The derived eid
+            # hashes the client eid (unbounded length) like habit_service's
+            # auto-click ids — truncating raw input could collide. Accepted:
+            # a 64-bit eid collision would silently suppress a real charge
+            # via uq dedupe (birthday bound needs ~2^32 events).
+            penalty = await phone_down.maybe_violation_penalty(
+                db,
+                user_id,
+                session,
+                at=event.client_ts,
+                profile=profile,
+                rates=rates,
+                stat_bonus=stat_bonus,
+                rng=rng,
+                eid=f"server:s{session.id}:phone_down_hp:sync:"
+                f"{hashlib.sha1(event.client_event_id.encode(), usedforsecurity=False).hexdigest()[:16]}",
+            )
+            phone_down.merge_penalty(outcome, penalty)
     stat_bonus = await _refresh_bonus_on_gear_loss(db, user_id, outcome, stat_bonus)
-    return outcome, stat_bonus
+    return outcome, stat_bonus, payload, session
 
 
 async def _refresh_bonus_on_gear_loss(
@@ -309,6 +592,33 @@ async def ingest_events(
     serialize instead of losing each other's totals.
     """
     rng = rng if rng is not None else _rng
+    # Lock order: session rows BEFORE the profile FOR UPDATE. The session
+    # verbs take theirs in that order (_locked_session → _evaluate's
+    # profile lock), so an ingest doing profile→session is the classic
+    # cross-direction deadlock on Postgres (40P01). The batch events that
+    # can write a session row — the phone_down_* blob mutations, and a
+    # synced focus_phase_completed whose repeat-violation penalty bumps
+    # penalized_violation_ats — lock their targets up front. Unresolvable or
+    # missing ids simply don't lock; the unscored-row path handles them.
+    phone_session_ids = sorted(
+        {
+            e.payload["session_id"]
+            for e in events
+            if e.type
+            in (phone_down.SPAN_EVENT, phone_down.VIOLATION_EVENT, "focus_phase_completed")
+            and isinstance(e.payload.get("session_id"), int)
+            and not isinstance(e.payload.get("session_id"), bool)
+        }
+    )
+    # Ensure the profile row exists BEFORE locking: get_or_create_profile's
+    # create-race recovery rolls back the transaction, which would release
+    # the session locks taken below (READ COMMITTED — lost locks stay
+    # lost). Unlocked here is safe: the create path is a no-op once the
+    # row exists, and no work is pending to lose yet. The FOR UPDATE read
+    # afterwards can never hit the create path, so the lock ordering above
+    # is preserved.
+    await game_crud.get_or_create_profile(db, user_id)
+    await game_crud.lock_sessions(db, user_id, phone_session_ids)
     profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
     rates = await load_rates(db)
     # One UTC day for the whole batch — a midnight-straddling ingest can't
@@ -376,14 +686,27 @@ async def ingest_events(
             seen.add(event.client_event_id)
             status_by_idx[idx] = "applied"
             continue
-        outcome, stat_bonus = await _apply_generic(
+        if event.type in (phone_down.SPAN_EVENT, phone_down.VIOLATION_EVENT):
+            await _ingest_phone_down(db, user_id, event)
+            _auto_distribute(profile)
+            seen.add(event.client_event_id)
+            status_by_idx[idx] = "applied"
+            continue
+        outcome, stat_bonus, resolved, session = await _apply_generic(
             db, user_id, event, profile, rates, today, rng, stat_bonus
         )
         # Engine outcome lands under "_outcome" so client payload keys never
         # collide with bookkeeping in the immutable ledger row. Client extras
         # are cleaned of server-reserved markers — a forged auto/session_id
-        # can't masquerade a claimed event as server-authored metadata.
-        payload = {**habit_service.clean_extra(event.payload), "_outcome": outcome}
+        # can't masquerade a claimed event as server-authored metadata. The
+        # RESOLVED session id is written back like _ingest_phone_down's
+        # applied rows, so a synced focus phase stays attributable to its
+        # session — unresolvable claims keep nothing.
+        payload = {
+            **habit_service.clean_extra(resolved),
+            **({"session_id": session.id} if session is not None else {}),
+            "_outcome": outcome,
+        }
         db.add(
             GameEvent(
                 user_id=user_id,
