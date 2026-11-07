@@ -319,7 +319,9 @@ def streak_scan_limit(rates: GameRates) -> int:
     ratio = cap / pct
     # cap/pct can overflow float64 (huge rates config) — the limit only
     # exists to bound the scan, so a saturated ratio clamps to a sane max.
-    return math.ceil(ratio) if math.isfinite(ratio) else _STREAK_SCAN_MAX
+    if not math.isfinite(ratio):
+        return _STREAK_SCAN_MAX
+    return min(math.ceil(ratio), _STREAK_SCAN_MAX)
 
 
 _STREAK_SCAN_MAX = 10_000
