@@ -104,3 +104,74 @@ async def test_idempotency_redis_unavailable_fails_open(
         "/api/v1/projects/", json={"name": "Open"}, headers=headers
     )
     assert response.status_code == 201
+
+
+@pytest.mark.anyio
+async def test_idempotency_redis_error_fails_open(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
+    """
+    A lazy client whose every call raises (e.g. dead Redis hostname) must
+    fail open like the missing-client path — a lock-acquisition error is
+    not a held lock, so it can't 409 every keyed POST into a write outage.
+    """
+    mock_redis = AsyncMock()
+    mock_redis.get.side_effect = ConnectionError("Redis is down")
+    mock_redis.set.side_effect = ConnectionError("Redis is down")
+
+    mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
+
+    headers = {"X-Idempotency-Key": str(uuid.uuid4())}
+    response = await authenticated_async_client.post(
+        "/api/v1/projects/", json={"name": "Still works"}, headers=headers
+    )
+    assert response.status_code == 201
+    # The fail-open must come from the errored lock path — if the request
+    # bypassed `set` entirely, it silently took the missing-client branch.
+    mock_redis.set.assert_awaited()
+
+
+@pytest.mark.anyio
+async def test_idempotency_cache_write_error_returns_response(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
+    """
+    Redis dying after the lock was acquired must not 500 a finished
+    request — the handler already ran, so its response returns uncached.
+    """
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+
+    async def mock_set(key, value, ex=None, nx=False):
+        if nx:
+            return True  # lock acquired before Redis died
+        raise ConnectionError("Redis died mid-request")
+
+    mock_redis.set.side_effect = mock_set
+    mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
+
+    headers = {"X-Idempotency-Key": str(uuid.uuid4())}
+    response = await authenticated_async_client.post(
+        "/api/v1/projects/", json={"name": "Uncached"}, headers=headers
+    )
+    assert response.status_code == 201
+
+
+@pytest.mark.anyio
+async def test_idempotency_lock_cleanup_error_returns_response(
+    authenticated_async_client: AsyncClient, mocker: Any
+) -> None:
+    """
+    Redis dying on lock cleanup must not mask the handler's own response —
+    a 422 from validation stays a 422, not a 500 from the delete.
+    """
+    mock_redis = AsyncMock()
+    mock_redis.get.return_value = None
+    mock_redis.set.return_value = True
+    mock_redis.delete.side_effect = ConnectionError("Redis died mid-request")
+
+    mocker.patch("app.middleware.idempotency.get_redis_client", return_value=mock_redis)
+
+    headers = {"X-Idempotency-Key": str(uuid.uuid4())}
+    response = await authenticated_async_client.post("/api/v1/projects/", json={}, headers=headers)
+    assert response.status_code == 422

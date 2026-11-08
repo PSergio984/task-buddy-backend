@@ -139,8 +139,17 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         if cached_response:
             return cached_response
 
-        # 2. Try to acquire an atomic lock
-        if not await self._set_lock(redis_client, cache_key):
+        # 2. Try to acquire an atomic lock. A Redis error here is NOT a
+        # held lock: the lazy client builds fine on a dead host, so
+        # failing closed would 409 every keyed write during an outage —
+        # fail open like the missing-client branch above instead.
+        try:
+            lock_acquired = await self._set_lock(redis_client, cache_key)
+        except Exception:
+            logger.exception("Error setting idempotency lock")
+            return await call_next(request)
+
+        if not lock_acquired:
             # If lock acquisition fails, check again if it finished in the meantime
             cached_response = await self._get_cached_response(
                 redis_client, cache_key, idempotency_key, user_id, body_hash
@@ -158,10 +167,11 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             # 3. Process the request
             response = await call_next(request)
             return await self._handle_response(redis_client, cache_key, response, body_hash)
-        except Exception as e:
-            # 4. Clean up lock on failure so user can retry
-            await redis_client.delete(cache_key)
-            raise e
+        except Exception:
+            # 4. Clean up lock on failure so user can retry — best-effort:
+            # a dead Redis must not mask the original exception.
+            await self._release_lock(redis_client, cache_key)
+            raise
 
     def _get_user_id(self, request: Request) -> Optional[str]:
         """
@@ -251,17 +261,25 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         """
         Set an atomic lock in Redis to indicate a request is in progress.
         Uses SET NX to ensure only one request can acquire the lock.
+        Redis errors propagate to the caller: returning False here would be
+        indistinguishable from a lock held by a live request and would
+        409 every keyed write while Redis is down.
+        """
+        # nx=True makes the set atomic: only succeeds if key doesn't exist.
+        # 120s TTL: LLM-backed endpoints routinely exceed 30s; a lock that
+        # expires mid-request lets a duplicate request double-spend.
+        success = await redis_client.set(cache_key, json.dumps("IN_PROGRESS"), ex=120, nx=True)
+        return bool(success)
+
+    async def _release_lock(self, redis_client: Any, cache_key: str) -> None:
+        """
+        Best-effort lock cleanup. A dead Redis must not turn a request that
+        already ran into a 500 — the lock's own TTL bounds the fallout.
         """
         try:
-            # nx=True makes the set atomic: only succeeds if key doesn't exist.
-            # 120s TTL: LLM-backed endpoints routinely exceed 30s; a lock that
-            # expires mid-request lets a duplicate request double-spend.
-            success = await redis_client.set(cache_key, json.dumps("IN_PROGRESS"), ex=120, nx=True)
-            return bool(success)
+            await redis_client.delete(cache_key)
         except Exception:
-            logger.exception("Error setting idempotency lock")
-            # If we can't set a lock, we shouldn't proceed to avoid double processing
-            return False
+            logger.exception("Error releasing idempotency lock")
 
     async def _handle_response(
         self, redis_client: Any, cache_key: str, response: Response, body_hash: str
@@ -272,7 +290,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
         # Cache only successful responses: server errors, rate limits, and
         # client errors (401/404/409) must be retryable, not replayed.
         if response.status_code < 200 or response.status_code >= 300:
-            await redis_client.delete(cache_key)
+            await self._release_lock(redis_client, cache_key)
             return response
 
         # SSE streams are unbounded and unreplayable: never consume or cache
@@ -287,7 +305,7 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
                     async for chunk in body_iterator:
                         yield chunk
                 finally:
-                    await redis_client.delete(cache_key)
+                    await self._release_lock(redis_client, cache_key)
 
             stream.body_iterator = release_stream_lock()
             return response
@@ -316,8 +334,13 @@ class IdempotencyMiddleware(BaseHTTPMiddleware):
             "media_type": response.media_type,
         }
 
-        # Store the full response in cache
-        await redis_client.set(cache_key, json.dumps(cache_payload), ex=TTL)
+        # Store the full response in cache — best-effort: if Redis died
+        # mid-request the handler already ran, so the response returns
+        # uncached rather than 500ing on the cache write.
+        try:
+            await redis_client.set(cache_key, json.dumps(cache_payload), ex=TTL)
+        except Exception:
+            logger.exception("Error caching idempotent response")
 
         # Return a new response object as the original body_iterator is consumed
         return Response(

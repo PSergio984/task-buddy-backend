@@ -47,6 +47,10 @@ _redis_client = None
 REDIS_POOL_MAX_CONNECTIONS = 15
 REDIS_POOL_HEALTH_CHECK_INTERVAL = 30
 REDIS_SOCKET_CONNECT_TIMEOUT = 5
+# Read/write timeout too — connect_timeout only covers "host refused"; a
+# blackholed Redis (TCP accepts, never answers) must fail fast so the
+# fail-open paths can engage instead of hanging every keyed request.
+REDIS_SOCKET_TIMEOUT = 5
 
 
 def _build_redis_client() -> Any:
@@ -58,6 +62,7 @@ def _build_redis_client() -> Any:
         max_connections=REDIS_POOL_MAX_CONNECTIONS,
         health_check_interval=REDIS_POOL_HEALTH_CHECK_INTERVAL,
         socket_connect_timeout=REDIS_SOCKET_CONNECT_TIMEOUT,
+        socket_timeout=REDIS_SOCKET_TIMEOUT,
     )
 
 
