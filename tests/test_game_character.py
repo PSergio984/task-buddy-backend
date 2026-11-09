@@ -311,6 +311,7 @@ class TestRespec:
         await _ensure_profile(authenticated_async_client)
         response = await authenticated_async_client.post(f"{CHAR}/respec")
         assert response.status_code == 400
+        assert response.json()["detail"] == "no class to respec"
 
     async def test_respec_debits_gold_and_refunds_stats(
         self,
@@ -348,6 +349,7 @@ class TestRespec:
         await _set_profile(db, confirmed_user["id"], level=10, game_class="mage", gold=50.0)
         response = await authenticated_async_client.post(f"{CHAR}/respec")
         assert response.status_code == 400
+        assert response.json()["detail"] == "not enough gold for respec"
 
     async def test_respec_reopens_class_choice(
         self,
