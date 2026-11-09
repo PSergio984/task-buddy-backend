@@ -32,9 +32,9 @@ const SAFE_PATH = '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const sh = (cmd, opts = {}) =>
   new Promise((res) => {
     const { env: extraEnv, ...rest } = opts;
-    const p = spawn('bash', ['-c', cmd], {
-      // PATH is spread last so caller-supplied env can never override it.
-      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH }, // NOSONAR
+    // PATH is spread last so caller-supplied env can never override it.
+    const p = spawn('bash', ['-c', cmd], { // NOSONAR
+      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH },
       ...rest,
     });
     let out = '';
