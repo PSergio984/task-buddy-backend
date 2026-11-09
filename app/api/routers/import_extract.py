@@ -74,22 +74,24 @@ async def import_extract(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    # Existing projects ground suggested_project_id: names+ids go into the
-    # prompt, and the id set filters any hallucinated/foreign ids in the output.
-    projects = await get_projects(db, user_id)
-    prompt = build_extract_prompt(
-        import_in.text,
-        today=datetime.now(timezone.utc).date(),
-        projects=[(p.id, p.name) for p in projects],
-    )
-    valid_project_ids = {p.id for p in projects}
-
-    # Release the pooled connection before the seconds-long LLM call: the
-    # rollback expires ORM instances, which is why user_id/project ids were
-    # snapshotted above (audit #27 pattern, mirrors breakdown router).
-    await db.rollback()
-
     try:
+        # Existing projects ground suggested_project_id: names+ids go into the
+        # prompt, and the id set filters any hallucinated/foreign ids in the
+        # output. Kept inside the try: a failure here would leak the reserved
+        # tokens until UTC rollover (phantom 429s).
+        projects = await get_projects(db, user_id)
+        prompt = build_extract_prompt(
+            import_in.text,
+            today=datetime.now(timezone.utc).date(),
+            projects=[(p.id, p.name) for p in projects],
+        )
+        valid_project_ids = {p.id for p in projects}
+
+        # Release the pooled connection before the seconds-long LLM call: the
+        # rollback expires ORM instances, which is why user_id/project ids were
+        # snapshotted above (audit #27 pattern, mirrors breakdown router).
+        await db.rollback()
+
         extraction, record, answer_text, usage_reported = await generate_extraction(
             prompt, valid_project_ids
         )
