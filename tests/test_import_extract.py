@@ -1,5 +1,6 @@
 """Tests for POST /api/v1/import/extract (guards, success, telemetry)."""
 
+import json
 from typing import Any
 
 import openai
@@ -8,6 +9,7 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.config import LLM_IMPORT_RESERVE_TOKENS
 from app.models.import_extract import ImportAnswer
 from app.models.project import Project
 from app.models.user import User
@@ -15,6 +17,7 @@ from app.models.user import User
 # Shared test helpers (cross-import precedent: test_game_notification_triggers
 # pulls _make_user from test_game_notifications).
 from tests.test_breakdown_endpoint import _confirmed_user, _mock_completion
+from tests.test_llm_budget import _BASE_BALANCE, counter_value, seed_reservation
 
 VALID_PAYLOAD = {
     "proposals": [
@@ -274,9 +277,12 @@ async def test_import_extract_429_when_budget_exhausted(
 async def test_import_extract_503_when_not_configured(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
-    _, token = await _confirmed_user(db, async_client, "_imp503")
+    user, token = await _confirmed_user(db, async_client, "_imp503")
     from app.knowledge.assistant import AssistantNotConfiguredError
 
+    # Seeded base balance proves the refund fired — 0 -> 0 would pass even if
+    # the reservation were never returned (leak regression detector).
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
     mocker.patch(
         "app.knowledge.assistant._call_completion",
         side_effect=AssistantNotConfiguredError("no key"),
@@ -287,13 +293,15 @@ async def test_import_extract_503_when_not_configured(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 503
+    assert await counter_value(user["id"]) == _BASE_BALANCE
 
 
 @pytest.mark.anyio
 async def test_import_extract_503_when_provider_down(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
-    _, token = await _confirmed_user(db, async_client, "imp_down")
+    user, token = await _confirmed_user(db, async_client, "imp_down")
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
     mocker.patch(
         "app.knowledge.assistant._call_completion",
         side_effect=openai.APIError("provider boom", request=None, body=None),
@@ -304,6 +312,52 @@ async def test_import_extract_503_when_provider_down(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 503
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_import_extract_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure after the reserve still refunds — otherwise the
+    prepaid tokens leak until UTC rollover and phantom 429s follow."""
+    user, token = await _confirmed_user(db, async_client, "imp_boom")
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.knowledge.assistant._call_completion",
+        side_effect=RuntimeError("unexpected boom"),
+    )
+    with pytest.raises(RuntimeError):
+        await async_client.post(
+            "/api/v1/import/extract",
+            json={"text": "hello"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_import_extract_missing_usage_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider that omits ``usage`` reconciles at the reserved amount —
+    conservative, the call must never become free under the daily cap."""
+    user, token = await _confirmed_user(db, async_client, "imp_nouse")
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    response_mock = mocker.Mock()
+    response_mock.choices = [mocker.Mock()]
+    response_mock.choices[0].message.content = json.dumps(VALID_PAYLOAD)
+    response_mock.usage = None
+    mocker.patch("app.knowledge.assistant._call_completion", return_value=response_mock)
+
+    response = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "email the venue friday 5pm"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    # Base + full estimate stands: the reconcile delta is zero.
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_IMPORT_RESERVE_TOKENS
 
 
 @pytest.mark.anyio

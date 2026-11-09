@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
     "/import/extract",
     response_model=ImportExtractResponse,
     responses={
+        403: {"description": "Email not confirmed"},
         404: {"description": "Import feature is disabled"},
         429: {"description": "Daily AI usage limit reached"},
         503: {"description": AI_NOT_CONFIGURED},
@@ -89,7 +90,9 @@ async def import_extract(
     await db.rollback()
 
     try:
-        extraction, record, answer_text = await generate_extraction(prompt, valid_project_ids)
+        extraction, record, answer_text, usage_reported = await generate_extraction(
+            prompt, valid_project_ids
+        )
     except AssistantNotConfiguredError as exc:
         logger.warning("import extraction not configured for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
@@ -98,10 +101,19 @@ async def import_extract(
         logger.warning("import extraction unavailable for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except Exception:
+        # Any other failure after the reserve would leak the prepaid tokens
+        # until UTC rollover (phantom 429s) — refund before propagating.
+        logger.exception("import extraction failed for user=%s", user_id)
+        await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
+        raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
-    # commit below persists it.
-    await reconcile_llm_usage(db, user_id, LLM_IMPORT_RESERVE_TOKENS, record.total_tokens)
+    # commit below persists it. A provider that omits usage reconciles at the
+    # reserved amount (conservative, never under-bills — the usage_reported
+    # convention from the ask stream, assistant.py).
+    actual = record.total_tokens if usage_reported else LLM_IMPORT_RESERVE_TOKENS
+    await reconcile_llm_usage(db, user_id, LLM_IMPORT_RESERVE_TOKENS, actual)
     await create_import_answer(
         db,
         user_id=user_id,
