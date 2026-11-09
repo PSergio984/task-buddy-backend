@@ -25,6 +25,7 @@ from app.models.game import (
     UserAchievement,
     UserGear,
 )
+from app.models.import_extract import ImportAnswer
 from app.models.knowledge import (
     JudgeVerdict,
     KnowledgeAnswer,
@@ -60,6 +61,7 @@ __all__ = [
     "JudgeVerdict",
     "PlanAnswer",
     "BreakdownAnswer",
+    "ImportAnswer",
     "VoiceAnswer",
     "LlmUsageReservation",
     "GameProfile",
