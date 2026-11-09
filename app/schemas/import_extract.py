@@ -8,7 +8,7 @@ from app.knowledge.import_extract import ImportTaskProposal
 
 
 class ImportExtractRequest(BaseModel):
-    text: str = Field(..., min_length=1, max_length=10_000)
+    text: str = Field(..., min_length=1, max_length=10_000, pattern=r"\S")
 
 
 class ImportExtractResponse(BaseModel):

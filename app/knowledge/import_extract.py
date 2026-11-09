@@ -30,6 +30,11 @@ logger = logging.getLogger(__name__)
 
 MAX_PROPOSALS = 15
 MAX_SUBTASKS_PER_PROPOSAL = 7
+# Task-create API limits — proposals are truncated to these so a long LLM
+# title can't pass extraction and then 422 when the client creates the task.
+TASK_TITLE_LIMIT = 100
+TASK_DESCRIPTION_LIMIT = 2000
+TASK_SUBTASK_TITLE_LIMIT = 80
 # Same 10k cap as breakdown — one shared input ceiling for pasted notes.
 INPUT_CHAR_LIMIT = 10_000
 # gpt-oss models are reasoners: reasoning tokens bill as completion tokens, so
@@ -138,6 +143,9 @@ def build_extract_prompt(
 ) -> str:
     """Serialize input text + today's UTC date + the user's existing projects."""
     clamped = text[:INPUT_CHAR_LIMIT]
+    # Untrusted data must not be able to close the <input> tag — escape
+    # angle brackets so a note containing "</input>" can't escape the guard.
+    clamped = clamped.replace("<", "&lt;").replace(">", "&gt;")
     parts: list[str] = [f"Today's date (UTC): {today.isoformat()}"]
     if projects:
         # Project names are user-controlled: collapse line breaks so a crafted
@@ -199,14 +207,15 @@ def _parse_item(item: Any, valid_project_ids: Collection[int]) -> Optional[Impor
         project_id = None
     if project_id not in valid_project_ids:
         project_id = None
+    description = _clean_title(item.get("description")) or None
     subtasks = [
-        ImportSubtaskProposal(title=sub_title)
+        ImportSubtaskProposal(title=sub_title[:TASK_SUBTASK_TITLE_LIMIT])
         for sub in item.get("subtasks") or []
         if isinstance(sub, dict) and (sub_title := _clean_title(sub.get("title")))
     ]
     return ImportTaskProposal(
-        title=title,
-        description=_clean_title(item.get("description")) or None,
+        title=title[:TASK_TITLE_LIMIT],
+        description=description and description[:TASK_DESCRIPTION_LIMIT],
         proposed_deadline=_parse_deadline(item.get("proposed_deadline")),
         priority=_parse_priority(item.get("priority")),
         suggested_project_id=project_id,

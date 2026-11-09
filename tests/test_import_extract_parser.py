@@ -90,6 +90,7 @@ def test_parse_proposals_project_id_coercion_rules() -> None:
         _item(title="str-id", suggested_project_id="42"),
         _item(title="int-id", suggested_project_id=42),
         _item(title="str-junk", suggested_project_id="abc"),
+        _item(title="inf", suggested_project_id=float("inf")),  # int() would raise OverflowError
         _item(title="null", suggested_project_id=None),
         _item(title="foreign", suggested_project_id=999),
     ]
@@ -101,6 +102,7 @@ def test_parse_proposals_project_id_coercion_rules() -> None:
         "str-id": 42,
         "int-id": 42,
         "str-junk": None,
+        "inf": None,
         "null": None,
         "foreign": None,
     }
@@ -122,6 +124,23 @@ def test_parse_proposals_priority_parsing() -> None:
         "bogus": TaskPriority.MEDIUM,
         "none": TaskPriority.MEDIUM,
     }
+
+
+def test_parse_proposals_truncates_to_task_api_limits() -> None:
+    """Over-limit titles/descriptions/subtasks are clipped at parse time so a
+    long LLM title can't pass extraction and then 422 at task-create."""
+    items = [
+        _item(
+            title="t" * 150,
+            description="d" * 3000,
+            subtasks=[{"title": "s" * 120}],
+        )
+    ]
+    extraction = parse_proposals(_payload(items), set())
+    proposal = extraction.proposals[0]
+    assert len(proposal.title) == 100
+    assert len(proposal.description) == 2000
+    assert len(proposal.subtasks[0].title) == 80
 
 
 def test_parse_proposals_deadline_parsing() -> None:

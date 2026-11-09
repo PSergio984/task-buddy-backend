@@ -86,7 +86,7 @@ All under `app/main.py:208-228` (`/api/v1/*`, 21 routers, ~113 routes). See work
 | Voice | POST | `/api/v1/voice/plan` | JWT | `10/min` | Whisper → plan |
 | Import | POST | `/api/v1/import/extract` | JWT | `10/min` | Note → task proposals |
 
-\* `RATE_LIMIT_KNOWLEDGE_ASK/MEMORY_SIMILAR/PLAN/BREAKDOWN/VOICE/IMPORT=10/minute` (`app/config.py:59-64`), `FEEDBACK=30/minute`, others per route (5–60/min) — see `app/config.py` exact. Full ~113-route table in workspace root README.
+\* `RATE_LIMIT_KNOWLEDGE_ASK/MEMORY_SIMILAR/PLAN/BREAKDOWN/VOICE/IMPORT=10/minute` (`app/config.py:59-118`), `FEEDBACK=30/minute`, others per route (5–100/min) — see `app/config.py` exact. Full ~113-route table in workspace root README.
 
 Core: `POST /api/v1/users/register`, `POST /api/v1/users/login`, `GET /api/v1/tasks/`, `POST /api/v1/tasks/`, `PUT /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/knowledge/ask` + `feedback`, `POST /api/v1/tasks/{id}/memory/similar`, `POST /api/v1/plan`, `POST /api/v1/breakdown`, `POST /api/v1/voice/plan`, `POST /api/v1/import/extract`, `POST /api/v1/sync` (LWW), plus projects/tags/subtasks/notifications/realtime/audit/stats (`docs/codebase/ARCHITECTURE.md`).
 

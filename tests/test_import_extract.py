@@ -157,8 +157,10 @@ async def test_import_extract_project_grounding(
 ) -> None:
     """Suggested ids survive only when the user owns them; the rest null out."""
     user, token = await _confirmed_user(db, async_client, "imp_proj")
+    other, _ = await _confirmed_user(db, async_client, "imp_proj_other")
     project = Project(user_id=user["id"], name="Errands")
-    db.add(project)
+    foreign = Project(user_id=other["id"], name="Not Mine")
+    db.add_all([project, foreign])
     await db.commit()
 
     mock = _mock_completion(
@@ -181,6 +183,14 @@ async def test_import_extract_project_grounding(
                     "suggested_project_id": 999999,
                     "subtasks": [],
                 },
+                {
+                    "title": "Foreign project task",
+                    "description": None,
+                    "proposed_deadline": None,
+                    "priority": "MEDIUM",
+                    "suggested_project_id": foreign.id,
+                    "subtasks": [],
+                },
             ]
         },
     )
@@ -194,6 +204,7 @@ async def test_import_extract_project_grounding(
     proposals = response.json()["proposals"]
     assert proposals[0]["suggested_project_id"] == project.id
     assert proposals[1]["suggested_project_id"] is None
+    assert proposals[2]["suggested_project_id"] is None  # foreign id nulled too
     # the project's id + name grounded the prompt
     user_prompt = mock.call_args.args[1][-1]["content"]
     assert "Errands" in user_prompt
@@ -395,6 +406,25 @@ async def test_import_extract_input_too_long_is_422(
     response = await async_client.post(
         "/api/v1/import/extract",
         json={"text": "x" * 10_001},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_import_extract_whitespace_input_is_422(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Blank-but-nonempty text 422s at the schema — it must not burn an LLM
+    reservation or a provider call."""
+    _, token = await _confirmed_user(db, async_client, "imp_blank")
+    mocker.patch(
+        "app.knowledge.assistant._call_completion",
+        side_effect=AssertionError("LLM called on whitespace input"),
+    )
+    response = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "   \n\t  "},
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422

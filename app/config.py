@@ -199,9 +199,10 @@ class GlobalConfig(BaseConfig):
     # estimate covers its cost envelope).
     LLM_VOICE_RESERVE_TOKENS: int = 12000
     LLM_ASK_RESERVE_TOKENS: int = 6000
-    # Import shares the breakdown envelope: same 10k input cap and a similar
-    # sized structured proposal list out.
-    LLM_IMPORT_RESERVE_TOKENS: int = 4000
+    # Worst-case reservation: 4,096-token completion + ~3k-token prompt
+    # (10k-char input + project list + system prompt) rounds up to 8,000 so
+    # reconciliation can never exceed the daily cap on a saturated request.
+    LLM_IMPORT_RESERVE_TOKENS: int = 8000
     # Demo calendar connector gated on by default (D-11) — no ProdConfig override.
     SYNTHETIC_CALENDAR_ENABLED: bool = True
     PLANNER_WORKING_WINDOW_START_HOUR: int = 18

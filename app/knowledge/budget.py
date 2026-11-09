@@ -39,7 +39,6 @@ from app.models.budget import LlmUsageReservation
 from app.models.import_extract import ImportAnswer
 from app.models.knowledge import KnowledgeAnswer
 from app.models.plan import PlanAnswer
-from app.models.voice import VoiceAnswer
 
 logger = logging.getLogger(__name__)
 
@@ -94,20 +93,14 @@ async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
             )
         )
     ).scalar_one()
-    voice_total = (
-        await db.execute(
-            select(func.coalesce(func.sum(VoiceAnswer.total_tokens), 0)).where(
-                VoiceAnswer.user_id == user_id,
-                VoiceAnswer.created_at >= start_of_day,
-            )
-        )
-    ).scalar_one()
+    # No VoiceAnswer term: a voice plan already persists its tokens as a
+    # PlanAnswer row via create_plan — VoiceAnswer copies the same
+    # total_tokens, so summing it would double-count every voice plan.
     return (
         int(ask_total or 0)
         + int(plan_total or 0)
         + int(breakdown_total or 0)
         + int(import_total or 0)
-        + int(voice_total or 0)
     )
 
 
