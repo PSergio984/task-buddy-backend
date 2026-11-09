@@ -34,7 +34,7 @@ const sh = (cmd, opts = {}) =>
     const { env: extraEnv, ...rest } = opts;
     const p = spawn('bash', ['-c', cmd], {
       // PATH is spread last so caller-supplied env can never override it.
-      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH }, // NOSONAR javascript:S4036
+      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH }, // NOSONAR
       ...rest,
     });
     let out = '';
