@@ -294,6 +294,12 @@ class AskStreamContext:
 class KnowledgeAssistant:
     """Orchestrates retrieval -> generation -> judge -> persistence."""
 
+    def __init__(self) -> None:
+        # Set right after the provider call inside ask(): lets the endpoint
+        # tell pre-generation failures (refund the reservation) from
+        # post-generation ones (settle — the spend already happened).
+        self.last_record: Optional[LLMCallRecord] = None
+
     async def ask(
         self, db: AsyncSession, task: Task, query: Optional[str] = None
     ) -> KnowledgeAnswer:
@@ -301,6 +307,7 @@ class KnowledgeAssistant:
         ctx = await self._retrieve(db, task, query)
 
         answer_text, record = await generate_answer(ctx.title, ctx.description, ctx.chunks)
+        self.last_record = record
 
         citations = await self._build_citations(db, ctx.chunks)
         # Same release before the judge call.

@@ -1,7 +1,11 @@
 """Tests for the per-user daily LLM token budget (audit #29; ADR 0002)."""
 
+import asyncio
+import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 from typing import Any, cast
+from unittest.mock import AsyncMock
 
 import openai
 import pytest
@@ -9,7 +13,14 @@ from httpx import AsyncClient
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.knowledge.assistant import AssistantNotConfiguredError
+from app.config import (
+    LLM_ASK_RESERVE_TOKENS,
+    LLM_BREAKDOWN_RESERVE_TOKENS,
+    LLM_IMPORT_RESERVE_TOKENS,
+    LLM_PLAN_RESERVE_TOKENS,
+    LLM_VOICE_RESERVE_TOKENS,
+)
+from app.knowledge.assistant import AssistantNotConfiguredError, KnowledgeAssistant
 from app.knowledge.budget import BudgetExceededError, daily_llm_tokens_used, reserve_llm_budget
 from app.models.breakdown import BreakdownAnswer
 from app.models.budget import LlmUsageReservation
@@ -253,6 +264,63 @@ async def counter_value(user_id: int) -> int:
             )
         ).scalar_one()
         return int(row.reserved_tokens)
+
+
+async def _post_ignoring_cancel(client: AsyncClient, url: str, **kwargs: Any) -> None:
+    """Fire a request whose handler raises ``asyncio.CancelledError``.
+
+    ASGITransport's task group surfaces the cancel however the middleware
+    stack translates it — ``RuntimeError`` from ``call_next``, the cancel
+    itself, or a swallowed return. The observable contract is the
+    reservation counter, not transport behavior.
+    """
+    try:
+        await client.post(url, **kwargs)
+    except (Exception, asyncio.CancelledError):
+        pass
+
+
+async def _seeded_user(
+    db: AsyncSession, client: AsyncClient, name: str
+) -> tuple[dict[str, Any], str]:
+    """Register + confirm + login a user and seed the base balance."""
+    user = await register_user(db, client, name, f"{name}@example.com")
+    await confirm_user(db, user)
+    token = await login_user(client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    return user, token
+
+
+def _voice_provider_mocks(mocker: Any) -> None:
+    """STT + plan stubs: Whisper returns a transcript, the planner gets a
+    buckets:[] response with usage omitted (settles at the reserve)."""
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.return_value = SimpleNamespace(text="plan tonight")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+    fake_response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"buckets": []})))],
+        usage=None,
+    )
+    fake_client = mocker.MagicMock()
+    fake_client.chat.completions.create.return_value = fake_response
+    mocker.patch("app.knowledge.assistant._openai_client", return_value=fake_client)
+
+
+def _failing_stream(mocker: Any, *, generation_started: bool) -> None:
+    """Patch ask_stream to raise APIError at the given generation boundary."""
+
+    async def fail_stream(self: Any, db: Any, ctx: Any) -> Any:
+        ctx.generation_started = generation_started
+        raise openai.APIError("stream boom", request=None, body=None)
+        yield  # pragma: no cover - keeps this an async generator
+
+    stream_ctx = SimpleNamespace(generation_started=False)
+    mocker.patch.object(
+        KnowledgeAssistant,
+        "prepare_ask_stream",
+        new=AsyncMock(return_value=stream_ctx),
+    )
+    mocker.patch.object(KnowledgeAssistant, "ask_stream", fail_stream)
 
 
 @pytest.mark.anyio
@@ -503,3 +571,686 @@ async def test_ask_foreign_task_404_performs_no_reservation(
             .all()
         )
         assert rows == []
+
+
+# ---------------------------------------------------------------------------
+# Reservation leak + missing-usage regressions (issue #95): the bug class
+# fixed in the import endpoint applied to every sibling router — a failure
+# inside the reserved window must refund (rolling back first when the session
+# is poisoned), and a provider that omits usage must settle at the reserved
+# amount rather than refund to zero.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_breakdown_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure after the reserve still refunds — otherwise the
+    prepaid tokens leak until UTC rollover and phantom 429s follow."""
+    user = await register_user(db, async_client, "leak_bd", "leak_bd@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.knowledge.assistant._call_completion",
+        side_effect=RuntimeError("unexpected boom"),
+    )
+    with pytest.raises(RuntimeError):
+        await async_client.post(
+            "/api/v1/breakdown",
+            json={"text": "set up ci and deploy"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_breakdown_pre_call_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure inside the reserved window before the provider call — here
+    the memory-hints lookup — still refunds; the except-clause rollback
+    recovers the poisoned session so the refund itself can run."""
+    user = await register_user(db, async_client, "leak_bdh", "leak_bdh@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.api.routers.breakdown.fetch_memory_hints",
+        side_effect=RuntimeError("db gone"),
+    )
+    # Class-level spy (same rationale as the import test): the request's
+    # session isn't the db fixture's, and SQLite can't poison a transaction —
+    # pin that the handler attempts rollback before refunding.
+    rollback_spy = mocker.spy(AsyncSession, "rollback")
+    with pytest.raises(RuntimeError):
+        await async_client.post(
+            "/api/v1/breakdown",
+            json={"text": "set up ci and deploy"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    rollback_spy.assert_awaited()
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_breakdown_missing_usage_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider that omits ``usage`` reconciles at the reserved amount —
+    conservative, the call must never become free under the daily cap."""
+    user = await register_user(db, async_client, "leak_bdu", "leak_bdu@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    response_mock = mocker.Mock()
+    response_mock.choices = [mocker.Mock()]
+    response_mock.choices[0].message.content = json.dumps(
+        {"tasks": [{"title": "T", "subtasks": []}]}
+    )
+    response_mock.usage = None
+    mocker.patch("app.knowledge.assistant._call_completion", return_value=response_mock)
+
+    response = await async_client.post(
+        "/api/v1/breakdown",
+        json={"text": "set up ci and deploy"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    # Base + full estimate stands: the reconcile delta is zero.
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_BREAKDOWN_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_plan_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure inside create_plan still refunds — a ValueError
+    is neither the mapped provider errors nor the RuntimeError the embeddings
+    path maps, so it exercises the catch-all."""
+    user = await register_user(db, async_client, "leak_pl", "leak_pl@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    # Open task required so the planner reaches the LLM call instead of the
+    # D-08 short-circuit (see test_plan_provider_error_refunds_reservation).
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "plan leak task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.knowledge.assistant._openai_client",
+        side_effect=ValueError("unexpected boom"),
+    )
+    with pytest.raises(ValueError):
+        await async_client.post(
+            "/api/v1/plan",
+            json={"available_minutes": 120},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_plan_missing_usage_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider that omits ``usage`` settles at the reserved amount —
+    total_tokens 0 is "unmeasured", not "free"."""
+    user = await register_user(db, async_client, "leak_plu", "leak_plu@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "plan usage task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    fake_response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"buckets": []})))],
+        usage=None,
+    )
+    fake_client = mocker.MagicMock()
+    fake_client.chat.completions.create.return_value = fake_response
+    mocker.patch("app.knowledge.assistant._openai_client", return_value=fake_client)
+
+    response = await async_client.post(
+        "/api/v1/plan",
+        json={"available_minutes": 120},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] != "rule"  # real LLM path, not a short-circuit
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_PLAN_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_plan_rule_short_circuit_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """The planner's rule short-circuit never calls the provider, so the
+    whole estimate refunds — the missing-usage settle must not bill it."""
+    user = await register_user(db, async_client, "leak_pls", "leak_pls@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+
+    response = await async_client.post(
+        "/api/v1/plan",
+        json={"available_minutes": 120},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["model"] == "rule"
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_ask_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure inside ask still refunds — a ValueError escapes
+    the mapped handlers (ask also maps RuntimeError -> 503)."""
+    user = await register_user(db, async_client, "leak_ak", "leak_ak@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask leak task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(side_effect=ValueError("unexpected boom")),
+    )
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_ask_missing_usage_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider that omits ``usage`` settles at the reserved amount — the
+    same conservative rule the ask stream already applies."""
+    user = await register_user(db, async_client, "leak_aku", "leak_aku@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask usage task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    fake_response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content="an answer"))],
+        usage=None,
+    )
+    fake_client = mocker.MagicMock()
+    fake_client.chat.completions.create.return_value = fake_response
+    mocker.patch("app.knowledge.assistant._openai_client", return_value=fake_client)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_ASK_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_prep_error_rolls_back_before_refund(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A pre-stream failure can poison the session — the catch-all must roll
+    back before refunding or the refund's UPDATE dies and masks the error."""
+    user = await register_user(db, async_client, "leak_sak", "leak_sak@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "stream prep task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch.object(
+        KnowledgeAssistant,
+        "prepare_ask_stream",
+        side_effect=ValueError("db gone"),
+    )
+    rollback_spy = mocker.spy(AsyncSession, "rollback")
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask/stream",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    rollback_spy.assert_awaited()
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_voice_stt_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure in STT still refunds the reservation."""
+    user = await register_user(db, async_client, "leak_vc", "leak_vc@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.side_effect = ValueError("unexpected boom")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            "/api/v1/voice/plan",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_voice_plan_generic_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A non-provider failure in the planner leg still refunds — the second
+    provider call sits inside the same reservation window as STT."""
+    user = await register_user(db, async_client, "leak_vcp", "leak_vcp@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "voice plan task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.return_value = SimpleNamespace(text="plan tonight")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+    mocker.patch(
+        "app.knowledge.assistant._openai_client",
+        side_effect=ValueError("unexpected boom"),
+    )
+    with pytest.raises(ValueError):
+        await async_client.post(
+            "/api/v1/voice/plan",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_voice_plan_missing_usage_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider that omits ``usage`` on the plan leg settles at the reserve."""
+    user = await register_user(db, async_client, "leak_vcu", "leak_vcu@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "voice usage task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.return_value = SimpleNamespace(text="plan tonight")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+    fake_response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"buckets": []})))],
+        usage=None,
+    )
+    fake_client = mocker.MagicMock()
+    fake_client.chat.completions.create.return_value = fake_response
+    mocker.patch("app.knowledge.assistant._openai_client", return_value=fake_client)
+
+    response = await async_client.post(
+        "/api/v1/voice/plan",
+        files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_VOICE_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_voice_rule_short_circuit_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Voice into an empty pool short-circuits the planner (no provider
+    call) — the whole estimate still refunds."""
+    user = await register_user(db, async_client, "leak_vcs", "leak_vcs@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.return_value = SimpleNamespace(text="plan tonight")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+
+    response = await async_client.post(
+        "/api/v1/voice/plan",
+        files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200, response.text
+    assert response.json()["plan"]["model"] == "rule"
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_voice_persist_failure_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A DB failure persisting telemetry AFTER the provider call must not
+    refund — STT + plan tokens were really consumed, so the estimate stands
+    as the bill (same convention as breakdown/import)."""
+    user, token = await _seeded_user(db, async_client, "persist_vc")
+    _voice_provider_mocks(mocker)
+    mocker.patch(
+        "app.api.routers.voice.create_voice_answer",
+        new=AsyncMock(side_effect=ValueError("db gone")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            "/api/v1/voice/plan",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_VOICE_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_provider_error_after_generation_settles_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider error AFTER generation started consumed billable tokens —
+    the stream settles at the reserve instead of refunding the estimate."""
+    user, token = await _seeded_user(db, async_client, "strm_set")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "stream settle task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    _failing_stream(mocker, generation_started=True)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask/stream",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert "provider_error" in response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_ASK_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_provider_error_before_generation_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider error BEFORE generation started consumed nothing — the
+    estimate still refunds."""
+    user, token = await _seeded_user(db, async_client, "strm_ref")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "stream refund task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    _failing_stream(mocker, generation_started=False)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask/stream",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert "provider_error" in response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_ask_post_generation_failure_settles_at_actual(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure AFTER generate_answer (judge/persist) consumed real tokens —
+    the reservation settles at the recorded spend, never a free call."""
+    user, token = await _seeded_user(db, async_client, "ask_set")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask settle task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    mocker.patch(
+        "app.knowledge.assistant.UserKnowledgeIndex.search", new=AsyncMock(return_value=[])
+    )
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(return_value=("You need X.", SimpleNamespace(total_tokens=77))),
+    )
+    mocker.patch(
+        "app.knowledge.assistant.create_answer",
+        new=AsyncMock(side_effect=ValueError("db gone")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + 77
+
+
+@pytest.mark.anyio
+async def test_ask_pre_generation_failure_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure BEFORE the provider call consumed nothing — full refund."""
+    user, token = await _seeded_user(db, async_client, "ask_pre")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask refund task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(side_effect=ValueError("retrieval boom")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+# ---------------------------------------------------------------------------
+# Cancellation boundary: disconnect/shutdown raises asyncio.CancelledError,
+# which skips `except Exception` — every endpoint rescues under a shield.
+# ---------------------------------------------------------------------------
+
+
+@pytest.mark.anyio
+async def test_breakdown_cancel_during_provider_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel with the provider call in flight: tokens were spent server-side,
+    so the estimate stands (rollback only, no refund)."""
+    user, token = await _seeded_user(db, async_client, "cx_bd")
+    mocker.patch(
+        "app.api.routers.breakdown.generate_breakdown",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/breakdown",
+        json={"text": "write report"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_BREAKDOWN_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_breakdown_cancel_before_provider_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel before the provider call consumed nothing — full refund."""
+    user, token = await _seeded_user(db, async_client, "cx_bd2")
+    mocker.patch(
+        "app.api.routers.breakdown.fetch_memory_hints",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/breakdown",
+        json={"text": "write report"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_plan_cancel_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """The planner's provider leg is inside create_plan — unobservable from
+    the router — so cancel conservatively keeps the estimate."""
+    user, token = await _seeded_user(db, async_client, "cx_pl")
+    mocker.patch(
+        "app.api.routers.plan.create_plan",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/plan",
+        json={"available_minutes": 60},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_PLAN_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_voice_cancel_during_provider_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel mid-STT: transcription may have consumed provider spend — the
+    estimate stands."""
+    user, token = await _seeded_user(db, async_client, "cx_vc")
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.side_effect = asyncio.CancelledError()
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/voice/plan",
+        files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_VOICE_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_voice_cancel_before_provider_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel during the audio read (pre-provider) — full refund."""
+    user, token = await _seeded_user(db, async_client, "cx_vc2")
+    mocker.patch(
+        "app.api.routers.voice._audio_bytes_or_413",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/voice/plan",
+        files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_import_cancel_during_provider_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel with extraction in flight — provider tokens were consumed, so
+    the estimate stands."""
+    user, token = await _seeded_user(db, async_client, "cx_im")
+    mocker.patch(
+        "app.api.routers.import_extract.generate_extraction",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/import/extract",
+        json={"text": "email Sarah, book dentist"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_IMPORT_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_import_cancel_before_provider_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel while loading grounding projects (pre-provider) — full refund."""
+    user, token = await _seeded_user(db, async_client, "cx_im2")
+    mocker.patch(
+        "app.api.routers.import_extract.get_projects",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        "/api/v1/import/extract",
+        json={"text": "email Sarah, book dentist"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_ask_cancel_before_generation_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Cancel before generation produced a record — the rescue path refunds."""
+    user, token = await _seeded_user(db, async_client, "cx_ak")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "cancel ask task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(side_effect=asyncio.CancelledError()),
+    )
+    await _post_ignoring_cancel(
+        async_client,
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert await counter_value(user["id"]) == _BASE_BALANCE

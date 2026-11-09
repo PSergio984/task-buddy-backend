@@ -1,8 +1,10 @@
 """API endpoint for the planner (POST /api/v1/plan)."""
 
+import asyncio
 import logging
 from typing import Annotated
 
+import anyio
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -64,8 +66,10 @@ async def plan(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
     try:
+        # Ctor lives inside the try so a future raisable connector cannot
+        # leak the reservation above.
+        connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
         result = await create_plan(
             db,
             user_id,
@@ -86,9 +90,35 @@ async def plan(
         logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except asyncio.CancelledError:
+        # Disconnect/shutdown skips `except Exception` entirely. The provider
+        # call is usually already in flight (tokens consumed server-side), so
+        # the estimate stands — release the pooled connection under a shield,
+        # then let the cancellation propagate.
+        try:
+            with anyio.CancelScope(shield=True):
+                await db.rollback()
+        except Exception:
+            logger.exception("plan cancellation cleanup failed for user=%s", user_id)
+        raise
+    except Exception:
+        # Any other failure after the reserve would leak the prepaid tokens
+        # until UTC rollover (phantom 429s) — refund before propagating. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
+        logger.exception("plan failed for user=%s", user_id)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("plan reservation refund failed for user=%s", user_id)
+        raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
-    # commit below persists it.
-    await reconcile_llm_usage(db, user_id, LLM_PLAN_RESERVE_TOKENS, result.total_tokens)
+    # commit below persists it. A rule short-circuit never reached the
+    # provider so the whole estimate refunds; a provider that omits usage
+    # reconciles at the reserved amount (conservative, never under-bills).
+    actual = 0 if result.model == "rule" else (result.total_tokens or LLM_PLAN_RESERVE_TOKENS)
+    await reconcile_llm_usage(db, user_id, LLM_PLAN_RESERVE_TOKENS, actual)
     await db.commit()
     return result
