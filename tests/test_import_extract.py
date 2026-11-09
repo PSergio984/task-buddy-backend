@@ -349,12 +349,17 @@ async def test_import_extract_project_lookup_error_refunds_reservation(
         "app.api.routers.import_extract.get_projects",
         side_effect=RuntimeError("db gone"),
     )
+    # Class-level spy: the request's session isn't the db fixture's, and
+    # SQLite can't poison a transaction — pin that the handler attempts
+    # rollback before refunding (the Postgres-only recovery path).
+    rollback_spy = mocker.spy(AsyncSession, "rollback")
     with pytest.raises(RuntimeError):
         await async_client.post(
             "/api/v1/import/extract",
             json={"text": "hello"},
             headers={"Authorization": f"Bearer {token}"},
         )
+    rollback_spy.assert_awaited()
     assert await counter_value(user["id"]) == _BASE_BALANCE
 
 
