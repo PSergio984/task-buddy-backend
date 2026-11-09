@@ -86,9 +86,24 @@ async def plan(
         logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except Exception:
+        # Any other failure after the reserve would leak the prepaid tokens
+        # until UTC rollover (phantom 429s) — refund before propagating. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
+        logger.exception("plan failed for user=%s", user_id)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("plan reservation refund failed for user=%s", user_id)
+        raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
-    # commit below persists it.
-    await reconcile_llm_usage(db, user_id, LLM_PLAN_RESERVE_TOKENS, result.total_tokens)
+    # commit below persists it. A rule short-circuit never reached the
+    # provider so the whole estimate refunds; a provider that omits usage
+    # reconciles at the reserved amount (conservative, never under-bills).
+    actual = 0 if result.model == "rule" else (result.total_tokens or LLM_PLAN_RESERVE_TOKENS)
+    await reconcile_llm_usage(db, user_id, LLM_PLAN_RESERVE_TOKENS, actual)
     await db.commit()
     return result

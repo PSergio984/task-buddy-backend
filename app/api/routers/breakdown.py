@@ -76,35 +76,38 @@ async def breakdown(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    context_task_id: Optional[int] = None
-    context_title: Optional[str] = None
-    context_description: Optional[str] = None
-    if breakdown_in.context_task_id is not None:
-        result = await db.execute(
-            select(Task).where(Task.id == breakdown_in.context_task_id, Task.user_id == user_id)
-        )
-        context_task = result.scalar_one_or_none()
-        if context_task is not None:
-            context_task_id = context_task.id
-            context_title = context_task.title
-            context_description = context_task.description
-
-    memory_hints = await fetch_memory_hints(db, user_id, breakdown_in.text)
-    prompt = build_breakdown_prompt(
-        breakdown_in.text,
-        context_title=context_title,
-        context_description=context_description,
-        memory_hints=memory_hints,
-        focus_task_title=breakdown_in.focus_task_title,
-        focus_task_number=breakdown_in.focus_task_number,
-    )
-
-    # Release the pooled connection before the seconds-long LLM call: the
-    # rollback expires ORM instances, which is why user_id/context fields were
-    # snapshotted above (audit #27 pattern, mirrors planner service).
-    await db.rollback()
-
     try:
+        # Kept inside the try: a failure between the reserve and the provider
+        # call would leak the reserved tokens until UTC rollover (phantom
+        # 429s) — same reservation-window discipline as the import router.
+        context_task_id: Optional[int] = None
+        context_title: Optional[str] = None
+        context_description: Optional[str] = None
+        if breakdown_in.context_task_id is not None:
+            result = await db.execute(
+                select(Task).where(Task.id == breakdown_in.context_task_id, Task.user_id == user_id)
+            )
+            context_task = result.scalar_one_or_none()
+            if context_task is not None:
+                context_task_id = context_task.id
+                context_title = context_task.title
+                context_description = context_task.description
+
+        memory_hints = await fetch_memory_hints(db, user_id, breakdown_in.text)
+        prompt = build_breakdown_prompt(
+            breakdown_in.text,
+            context_title=context_title,
+            context_description=context_description,
+            memory_hints=memory_hints,
+            focus_task_title=breakdown_in.focus_task_title,
+            focus_task_number=breakdown_in.focus_task_number,
+        )
+
+        # Release the pooled connection before the seconds-long LLM call: the
+        # rollback expires ORM instances, which is why user_id/context fields
+        # were snapshotted above (audit #27 pattern, mirrors planner service).
+        await db.rollback()
+
         proposal, record, answer_text = await generate_breakdown(prompt)
     except AssistantNotConfiguredError as exc:
         logger.warning("breakdown not configured for user=%s: %s", user_id, exc)
@@ -114,10 +117,24 @@ async def breakdown(
         logger.warning("breakdown unavailable for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except Exception:
+        # Any other failure after the reserve would leak the prepaid tokens
+        # until UTC rollover (phantom 429s) — refund before propagating. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
+        logger.exception("breakdown failed for user=%s", user_id)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("breakdown reservation refund failed for user=%s", user_id)
+        raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
-    # commit below persists it.
-    await reconcile_llm_usage(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS, record.total_tokens)
+    # commit below persists it. A provider that omits usage reconciles at the
+    # reserved amount (conservative, never under-bills).
+    actual = record.total_tokens or LLM_BREAKDOWN_RESERVE_TOKENS
+    await reconcile_llm_usage(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS, actual)
     await create_breakdown_answer(
         db,
         user_id=user_id,

@@ -342,10 +342,25 @@ async def ask_knowledge(
         logger.warning("knowledge ask not configured (embeddings) task=%s: %s", task_id, exc)
         await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except Exception:
+        # Any other failure after the reserve would leak the prepaid tokens
+        # until UTC rollover (phantom 429s) — refund before propagating. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
+        logger.exception("knowledge ask failed for task=%s", task_id)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("knowledge ask reservation refund failed for task=%s", task_id)
+        raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
-    # commit below persists it.
-    await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, answer_row.total_tokens)
+    # commit below persists it. A provider that omits usage reconciles at the
+    # reserved amount (conservative, never under-bills — the usage_reported
+    # convention from the ask stream).
+    actual = answer_row.total_tokens or LLM_ASK_RESERVE_TOKENS
+    await reconcile_llm_usage(db, user_id, LLM_ASK_RESERVE_TOKENS, actual)
     await db.commit()
     await db.refresh(answer_row)
 
@@ -581,9 +596,15 @@ async def ask_knowledge_stream(
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
     except Exception:
         # Anything unexpected (DB, retrieval) still owes a refund — the
-        # reservation must not charge for a request that never streamed.
+        # reservation must not charge for a request that never streamed. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
         logger.exception("knowledge ask stream preparation failed for task=%s", task_id)
-        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("knowledge ask stream refund failed for task=%s", task_id)
         raise
 
     return StreamingResponse(
