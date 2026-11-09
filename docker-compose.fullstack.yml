@@ -183,6 +183,9 @@ services:
       # named volume, not a bind: the bridge runs as `node`, and a host-dir
       # bind would shadow the image's ownership so incident writes fail on
       # hosts where the dir isn't writable by the container UID.
+      # inspect: docker compose exec alert-bridge ls incidents/
+      # migrate prior host records: docker cp ./incident-response/incidents/. \
+      #   task-buddy-alert-bridge:/srv/incident-response/incidents/
       - incident_records:/srv/incident-response/incidents
       - ./docker-compose.fullstack.yml:/srv/compose.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock
