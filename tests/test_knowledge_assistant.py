@@ -813,9 +813,7 @@ async def test_ask_stream_mid_stream_provider_error_settles(
     )
     mocker.patch("app.knowledge.assistant._async_openai_client", return_value=client)
     refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
-    reconcile = mocker.patch(
-        "app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock()
-    )
+    reconcile = mocker.patch("app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock())
 
     response = await async_client.post(
         f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
