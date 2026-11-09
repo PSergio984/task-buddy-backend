@@ -14,6 +14,7 @@ against server-side state (today's UTC date, the user's existing projects).
 import asyncio
 import json
 import logging
+import re
 import time
 from collections.abc import Collection, Sequence
 from datetime import date, datetime, timezone
@@ -143,9 +144,10 @@ def build_extract_prompt(
 ) -> str:
     """Serialize input text + today's UTC date + the user's existing projects."""
     clamped = text[:INPUT_CHAR_LIMIT]
-    # Untrusted data must not be able to close the <input> tag — escape
-    # angle brackets so a note containing "</input>" can't escape the guard.
-    clamped = clamped.replace("<", "&lt;").replace(">", "&gt;")
+    # Untrusted data must not be able to close the <input> tag — neutralize
+    # only the tag itself ("</input", "<input" lose their "<"), not every
+    # angle bracket, or "a -> b" notes would come back as "a -&gt; b".
+    clamped = re.sub(r"<\s*(/?)\s*input\b", r"&lt;\1input", clamped, flags=re.IGNORECASE)
     parts: list[str] = [f"Today's date (UTC): {today.isoformat()}"]
     if projects:
         # Project names are user-controlled: collapse line breaks so a crafted
