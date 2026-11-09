@@ -179,6 +179,11 @@ class GlobalConfig(BaseConfig):
     VOICE_ENABLED: bool = True
     WHISPER_MODEL: str = "whisper-large-v3-turbo"
     RATE_LIMIT_VOICE: str = "10/minute"
+    # Smart Import extraction (POST /api/v1/import/extract, issue #92):
+    # freeform notes -> task proposals. Default-on kill switch mirroring
+    # BREAKDOWN_ENABLED; shares BREAKDOWN_MODEL (same structured-outputs pin).
+    IMPORT_ENABLED: bool = True
+    RATE_LIMIT_IMPORT: str = "10/minute"
     # Per-user daily LLM token cap across ask + plan (audit #29). The per-IP
     # rate limit bounds call count, not spend: a legit-but-abusive client can
     # burn the free-tier quota without a per-user budget. 0 disables the cap.
@@ -194,6 +199,10 @@ class GlobalConfig(BaseConfig):
     # estimate covers its cost envelope).
     LLM_VOICE_RESERVE_TOKENS: int = 12000
     LLM_ASK_RESERVE_TOKENS: int = 6000
+    # Worst-case reservation: 4,096-token completion + ~3k-token prompt
+    # (10k-char input + project list + system prompt) rounds up to 8,000 so
+    # reconciliation can never exceed the daily cap on a saturated request.
+    LLM_IMPORT_RESERVE_TOKENS: int = 8000
     # Demo calendar connector gated on by default (D-11) — no ProdConfig override.
     SYNTHETIC_CALENDAR_ENABLED: bool = True
     PLANNER_WORKING_WINDOW_START_HOUR: int = 18
@@ -365,6 +374,7 @@ class TestConfig(GlobalConfig):
     RATE_LIMIT_PLAN: str = "10/minute"
     RATE_LIMIT_BREAKDOWN: str = "10/minute"
     RATE_LIMIT_VOICE: str = "10/minute"
+    RATE_LIMIT_IMPORT: str = "10/minute"
     RATE_LIMIT_TAG_CREATE: str = "20/minute"
     RATE_LIMIT_TAG_UPDATE: str = "20/minute"
     RATE_LIMIT_TAG_DELETE: str = "20/minute"
@@ -493,11 +503,14 @@ BREAKDOWN_MODEL = config.BREAKDOWN_MODEL
 VOICE_ENABLED = config.VOICE_ENABLED
 WHISPER_MODEL = config.WHISPER_MODEL
 RATE_LIMIT_VOICE = config.RATE_LIMIT_VOICE
+IMPORT_ENABLED = config.IMPORT_ENABLED
+RATE_LIMIT_IMPORT = config.RATE_LIMIT_IMPORT
 LLM_DAILY_TOKEN_BUDGET = config.LLM_DAILY_TOKEN_BUDGET
 LLM_PLAN_RESERVE_TOKENS = config.LLM_PLAN_RESERVE_TOKENS
 LLM_BREAKDOWN_RESERVE_TOKENS = config.LLM_BREAKDOWN_RESERVE_TOKENS
 LLM_VOICE_RESERVE_TOKENS = config.LLM_VOICE_RESERVE_TOKENS
 LLM_ASK_RESERVE_TOKENS = config.LLM_ASK_RESERVE_TOKENS
+LLM_IMPORT_RESERVE_TOKENS = config.LLM_IMPORT_RESERVE_TOKENS
 EMBEDDING_MODEL = config.EMBEDDING_MODEL
 EMBEDDING_DIM = config.EMBEDDING_DIM
 EMBEDDING_PROVIDER = config.EMBEDDING_PROVIDER

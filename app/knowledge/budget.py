@@ -36,6 +36,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.config import LLM_DAILY_TOKEN_BUDGET
 from app.models.breakdown import BreakdownAnswer
 from app.models.budget import LlmUsageReservation
+from app.models.import_extract import ImportAnswer
 from app.models.knowledge import KnowledgeAnswer
 from app.models.plan import PlanAnswer
 
@@ -52,7 +53,11 @@ def _utc_today() -> date:
 
 
 async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
-    """Sum today's LLM tokens across ask + plan + breakdown instrumentation rows."""
+    """Sum today's LLM tokens across all instrumented surfaces.
+
+    ask + plan + breakdown + import + voice — every endpoint that persists
+    per-call token rows must count here or the SUM undercounts real spend.
+    """
     start_of_day = datetime.combine(
         datetime.now(timezone.utc).date(), time.min, tzinfo=timezone.utc
     )
@@ -80,7 +85,23 @@ async def daily_llm_tokens_used(db: AsyncSession, user_id: int) -> int:
             )
         )
     ).scalar_one()
-    return int(ask_total or 0) + int(plan_total or 0) + int(breakdown_total or 0)
+    import_total = (
+        await db.execute(
+            select(func.coalesce(func.sum(ImportAnswer.total_tokens), 0)).where(
+                ImportAnswer.user_id == user_id,
+                ImportAnswer.created_at >= start_of_day,
+            )
+        )
+    ).scalar_one()
+    # No VoiceAnswer term: a voice plan already persists its tokens as a
+    # PlanAnswer row via create_plan — VoiceAnswer copies the same
+    # total_tokens, so summing it would double-count every voice plan.
+    return (
+        int(ask_total or 0)
+        + int(plan_total or 0)
+        + int(breakdown_total or 0)
+        + int(import_total or 0)
+    )
 
 
 async def check_llm_budget(db: AsyncSession, user_id: int) -> None:

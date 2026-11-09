@@ -12,8 +12,9 @@ FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Pla
 - 📅 **Planner** `POST /api/v1/plan` — synthetic connector + LLM-judged scoring `app/planner/service.py` → `{tonight, tomorrow, later}` + soft deadlines `app/planner/deadline.py`
 - 🧩 **Breakdown** `POST /api/v1/breakdown` — `BREAKDOWN_MODEL=openai/gpt-oss-120b` `app/config.py:179` (strict `json_schema`), 10/min
 - 🎙️ **Voice** `POST /api/v1/voice/plan` — `whisper-large-v3-turbo` → plan
+- 📥 **Import** `POST /api/v1/import/extract` — pasted notes → task proposals (strict `json_schema`), 10/min
 - 🔄 **Sync** `POST /api/v1/sync` — offline delta flush, LWW `app/sync/lww.py` + Supabase Realtime push `app/api/routers/realtime.py` (SSE `task-buddy-backend/app/libs/broadcaster.py` dead code per `docs/codebase/CONCERNS.md`)
-- 🧪 347 tests / 49 files `tests/` (`pytest`), golden `tests/fixtures/golden_knowledge.json` + gate `hybrid ≥ bm25 AND ≥ semantic`
+- 🧪 1035 tests / 75 files `tests/` (`pytest`), golden `tests/fixtures/golden_knowledge.json` + gate `hybrid ≥ bm25 AND ≥ semantic`
 - 🔐 JWT cookie + CSRF + idempotency + slowapi rate limits + per-user LLM budget `app/knowledge/budget.py`
 - 📧 In-process `app/tasks.py` lifespan (no Celery `ee84a2f`) — emails (Brevo), pushes (VAPID), 60s reminder sweep
 
@@ -59,7 +60,7 @@ Background work (emails/pushes/reminders/memory backfill) runs inside this proce
 ```text
 Next.js SPA (IndexedDB queue) ── POST /api/v1/sync LWW ──┐
                                                         ▼
-FastAPI /api/v1/* (13 routers ~58 routes app/main.py:165-177) ── Supabase Postgres tbl_* + pgvector
+FastAPI /api/v1/* (21 routers ~113 routes app/main.py:208-228) ── Supabase Postgres tbl_* + pgvector
         │  RAG pipeline Source→chunk→embed→index→retrieve→generate→judge (app/knowledge/)
         └─ Planner synthetic connector + LLM-judged scoring (app/planner/service.py)
 ```
@@ -68,7 +69,7 @@ RAG serves **Knowledge** (notes) + **Memory** (history), *not* live `tbl_tasks` 
 
 ## Endpoints (grouped — auth JWT cookie + CSRF, `10/min` where `app/config.py` `RATE_LIMIT_*`)
 
-All under `app/main.py:163-177` (`/api/v1/*`, 13 routers, ~58 routes). See workspace root `../README.md` (local) for the full grouped table with Method|Path|Auth|Rate limit|Description.
+All under `app/main.py:208-228` (`/api/v1/*`, 21 routers, ~113 routes). See workspace root `../README.md` (local) for the full grouped table with Method|Path|Auth|Rate limit|Description.
 
 | Group | Method | Path | Auth | Rate limit | Description |
 |-------|--------|------|------|------------|-------------|
@@ -83,10 +84,11 @@ All under `app/main.py:163-177` (`/api/v1/*`, 13 routers, ~58 routes). See works
 | Sync | POST | `/api/v1/sync` | JWT | — | LWW flush |
 | Breakdown | POST | `/api/v1/breakdown` | JWT | `10/min` | `gpt-oss-120b` |
 | Voice | POST | `/api/v1/voice/plan` | JWT | `10/min` | Whisper → plan |
+| Import | POST | `/api/v1/import/extract` | JWT | `10/min` | Note → task proposals |
 
-\* `RATE_LIMIT_KNOWLEDGE_ASK/MEMORY_SIMILAR/PLAN/BREAKDOWN/VOICE=10/minute` (`app/config.py:59-64`), `FEEDBACK=30/minute`, others per route (5–60/min) — see `app/config.py` exact. Full ~58-route table in workspace root README.
+\* `RATE_LIMIT_KNOWLEDGE_ASK/MEMORY_SIMILAR/PLAN/BREAKDOWN/VOICE/IMPORT=10/minute` (`app/config.py:59-118`), `FEEDBACK=30/minute`, others per route (5–100/min) — see `app/config.py` exact. Full ~113-route table in workspace root README.
 
-Core: `POST /api/v1/users/register`, `POST /api/v1/users/login`, `GET /api/v1/tasks/`, `POST /api/v1/tasks/`, `PUT /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/knowledge/ask` + `feedback`, `POST /api/v1/tasks/{id}/memory/similar`, `POST /api/v1/plan`, `POST /api/v1/breakdown`, `POST /api/v1/voice/plan`, `POST /api/v1/sync` (LWW), plus projects/tags/subtasks/notifications/realtime/audit/stats (`docs/codebase/ARCHITECTURE.md`).
+Core: `POST /api/v1/users/register`, `POST /api/v1/users/login`, `GET /api/v1/tasks/`, `POST /api/v1/tasks/`, `PUT /api/v1/tasks/{id}`, `POST /api/v1/tasks/{id}/knowledge/ask` + `feedback`, `POST /api/v1/tasks/{id}/memory/similar`, `POST /api/v1/plan`, `POST /api/v1/breakdown`, `POST /api/v1/voice/plan`, `POST /api/v1/import/extract`, `POST /api/v1/sync` (LWW), plus projects/tags/subtasks/notifications/realtime/audit/stats (`docs/codebase/ARCHITECTURE.md`).
 
 Swagger: `http://localhost:8000/docs`
 
@@ -99,7 +101,7 @@ No query rewriting, no rerank, no catalog-code pin (CEIT extras) — hybrid + ju
 ## Testing & evaluation
 
 ```bash
-pytest                      # 347/49 (per 2026-08-16 scan, docs/codebase/TESTING.md)
+pytest                      # 1035/75 (see docs/codebase/TESTING.md)
 pytest tests/test_evaluation.py -v  # retrieval gate — 3-row P@k TODO until re-run (do not copy CEIT 0.4545)
 pytest tests/test_knowledge_assistant.py -v  # judge RELEVANT/PARTLY/NON + LLMCallRecord
 pytest --cov=app            # coverage [TODO]
@@ -136,7 +138,7 @@ app/planner/{service,deadline}.py
 app/sync/lww.py
 app/tasks.py                # lifespan loops
 alembic/versions/           # 19 migrations
-tests/                      # 49 files + fixtures/golden_knowledge.json
+tests/                      # 75 files + fixtures/golden_knowledge.json
 ```
 
 ## Docs
