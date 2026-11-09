@@ -793,14 +793,16 @@ async def test_ask_stream_endpoint_503_when_not_configured(
 
 
 @pytest.mark.anyio
-async def test_ask_stream_mid_stream_provider_error_refunds(
+async def test_ask_stream_mid_stream_provider_error_settles(
     db: AsyncSession,
     async_client: AsyncClient,
     logged_in_token: str,
     confirmed_user: dict[str, Any],
     mocker: Any,
 ) -> None:
-    """A mid-stream APIError emits a terminal error event and refunds the reservation."""
+    """A mid-stream APIError emits a terminal error event and SETTLES the
+    reservation — generation already started, so provider tokens were
+    consumed and the spend must not be refunded."""
     import openai
 
     task = await create_task(async_client, logged_in_token, {"title": "Stream error task"})
@@ -811,6 +813,9 @@ async def test_ask_stream_mid_stream_provider_error_refunds(
     )
     mocker.patch("app.knowledge.assistant._async_openai_client", return_value=client)
     refund = mocker.patch("app.api.routers.knowledge.refund_llm_reservation", new=AsyncMock())
+    reconcile = mocker.patch(
+        "app.api.routers.knowledge.reconcile_llm_usage", new=AsyncMock()
+    )
 
     response = await async_client.post(
         f"/api/v1/tasks/{task['id']}/knowledge/ask/stream",
@@ -825,7 +830,8 @@ async def test_ask_stream_mid_stream_provider_error_refunds(
         "code": "provider_error",
         "message": "AI service unavailable",
     }
-    refund.assert_awaited_once()
+    refund.assert_not_awaited()
+    reconcile.assert_awaited_once()
 
     rows = (
         (await db.execute(select(KnowledgeAnswer).where(KnowledgeAnswer.task_id == task["id"])))
