@@ -202,7 +202,7 @@ class TestActivityGrid:
                     {
                         "client_event_id": "forge-daily",
                         "type": "daily_check",
-                        "client_ts": f"{TODAY}T09:00:00Z",
+                        "client_ts": (datetime.now(timezone.utc) - timedelta(hours=1)).isoformat(),
                         "payload": {"daily_id": 1},
                     }
                 ]
