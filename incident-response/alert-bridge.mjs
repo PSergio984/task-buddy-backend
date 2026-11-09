@@ -31,9 +31,10 @@ const log = (m) => console.log(`[${now()}] ${m}`);
 const SAFE_PATH = '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const sh = (cmd, opts = {}) =>
   new Promise((res) => {
+    const { env: extraEnv, ...rest } = opts;
     const p = spawn('bash', ['-c', cmd], {
-      env: { ...process.env, PATH: SAFE_PATH },
-      ...opts,
+      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH },
+      ...rest,
     });
     let out = '';
     p.stdout.on('data', (d) => (out += d));

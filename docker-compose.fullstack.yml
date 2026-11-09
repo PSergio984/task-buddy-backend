@@ -180,9 +180,17 @@ services:
       context: ./incident-response
     container_name: task-buddy-alert-bridge
     volumes:
-      - ./incident-response/incidents:/srv/incident-response/incidents
+      # named volume, not a bind: the bridge runs as `node`, and a host-dir
+      # bind would shadow the image's ownership so incident writes fail on
+      # hosts where the dir isn't writable by the container UID.
+      - incident_records:/srv/incident-response/incidents
       - ./docker-compose.fullstack.yml:/srv/compose.yaml:ro
       - /var/run/docker.sock:/var/run/docker.sock
+    # host docker socket is root:docker 0660 — grant the runtime group so the
+    # node user can call the docker CLI. Set DOCKER_GID to the host's docker
+    # GID (`getent group docker | cut -d: -f3`) if it isn't 999.
+    group_add:
+      - "${DOCKER_GID:-999}"
     environment:
       ONCALL_PORT: 9099
       ONCALL_DRY_RUN: "1"             # set 0 + ONCALL_AGENT_CMD to enable the agent
@@ -202,6 +210,7 @@ services:
       - loki
 
 volumes:
+  incident_records:
   postgres_data:
   prometheus_data:
   tempo_data:
