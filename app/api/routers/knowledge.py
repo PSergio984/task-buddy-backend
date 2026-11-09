@@ -1,5 +1,6 @@
 """API endpoints for task-attached knowledge (notes)."""
 
+import asyncio
 import json
 import logging
 from collections.abc import AsyncGenerator
@@ -342,17 +343,21 @@ async def ask_knowledge(
         logger.warning("knowledge ask not configured (embeddings) task=%s: %s", task_id, exc)
         await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except asyncio.CancelledError:
+        # Disconnect/shutdown skips `except Exception` entirely — rescue the
+        # reservation under a shield (settle if generation already ran, else
+        # refund), then let the cancellation propagate.
+        logger.warning("knowledge ask cancelled for task=%s", task_id)
+        with anyio.CancelScope(shield=True):
+            await _rescue_ask_reservation(db, user_id, task_id, locals().get("assistant"))
+        raise
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
-        # until UTC rollover (phantom 429s) — refund before propagating. A
-        # DB-originated failure poisons the session's transaction, so roll
-        # back first; a failing refund must not mask the original error.
+        # until UTC rollover (phantom 429s). A DB-originated failure poisons
+        # the session's transaction, so roll back first — and settle rather
+        # than refund when generation already consumed provider tokens.
         logger.exception("knowledge ask failed for task=%s", task_id)
-        try:
-            await db.rollback()
-            await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
-        except Exception:
-            logger.exception("knowledge ask reservation refund failed for task=%s", task_id)
+        await _rescue_ask_reservation(db, user_id, task_id, locals().get("assistant"))
         raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
@@ -456,12 +461,14 @@ async def _refund_reservation(db: AsyncSession, user_id: int, task_id: int) -> b
         return False
 
 
-async def _settle_reservation(db: AsyncSession, user_id: int, task_id: int, actual: int) -> None:
+async def _settle_reservation(db: AsyncSession, user_id: int, task_id: int, actual: int) -> bool:
     """Charge the reservation on abort paths where generation was consumed.
 
     A disconnect is not a provider failure: the work happened, so settle the
     way ``/ask`` does (actual when reported, else the reserve). Refunding here
     would let a client read the full answer, hang up, and keep the tokens.
+    Returns False on failure so callers can retry — a skipped retry strands
+    the reservation until rollover.
     """
     try:
         await db.rollback()
@@ -469,6 +476,8 @@ async def _settle_reservation(db: AsyncSession, user_id: int, task_id: int, actu
         await db.commit()
     except Exception:
         logger.exception("stream settlement failed for task=%s", task_id)
+        return False
+    return True
 
 
 async def _abort_stream_reservation(
@@ -483,14 +492,36 @@ async def _abort_stream_reservation(
     boundary: before the provider request nothing billable happened (refund);
     after it the provider consumed real tokens (settle, never under-bills)."""
     if stream_ctx.generation_started:
-        await _settle_reservation(
+        return await _settle_reservation(
             db,
             user_id,
             task_id,
             stream_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS,
         )
-        return True
     return await _refund_reservation(db, user_id, task_id)
+
+
+async def _rescue_ask_reservation(
+    db: AsyncSession,
+    user_id: int,
+    task_id: int,
+    assistant: Optional[KnowledgeAssistant],
+) -> None:
+    """Best-effort rescue for a failed /ask: settle when generation already
+    produced a record (provider tokens consumed — a later citations/judge/
+    persist failure must not free real spend), refund otherwise."""
+    record = assistant.last_record if assistant is not None else None
+    try:
+        await db.rollback()
+        if record is None:
+            await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        else:
+            await reconcile_llm_usage(
+                db, user_id, LLM_ASK_RESERVE_TOKENS, record.total_tokens or LLM_ASK_RESERVE_TOKENS
+            )
+            await db.commit()
+    except Exception:
+        logger.exception("knowledge ask reservation rescue failed for task=%s", task_id)
 
 
 async def _knowledge_sse_stream(
@@ -607,19 +638,25 @@ async def ask_knowledge_stream(
     try:
         assistant = KnowledgeAssistant()
         stream_ctx = await assistant.prepare_ask_stream(db, db_task, ask_in.query)
-    except AssistantNotConfiguredError as exc:
-        logger.warning("knowledge ask stream not configured for task=%s: %s", task_id, exc)
-        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
-    except openai.APIError as exc:
-        # Same mapping as /ask: provider failure pre-stream is still a 503.
+    except (AssistantNotConfiguredError, openai.APIError, RuntimeError) as exc:
+        # AssistantNotConfiguredError + the planner's bare RuntimeErrors mean
+        # "not configured"; a real provider failure means "unavailable".
         logger.warning("knowledge ask stream unavailable for task=%s: %s", task_id, exc)
         await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
-        raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
-    except RuntimeError as exc:
-        logger.warning("knowledge ask stream not configured (embeddings) task=%s: %s", task_id, exc)
-        await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
-        raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+        raise HTTPException(
+            status_code=503,
+            detail=AI_UNAVAILABLE if isinstance(exc, openai.APIError) else AI_NOT_CONFIGURED,
+        ) from exc
+    except asyncio.CancelledError:
+        # Prep is pre-provider: nothing billable happened — refund under a
+        # shield, then let the cancellation propagate.
+        try:
+            with anyio.CancelScope(shield=True):
+                await db.rollback()
+                await refund_llm_reservation(db, user_id, LLM_ASK_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("knowledge ask stream cancel-refund failed for task=%s", task_id)
+        raise
     except Exception:
         # Anything unexpected (DB, retrieval) still owes a refund — the
         # reservation must not charge for a request that never streamed. A

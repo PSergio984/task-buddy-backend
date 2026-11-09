@@ -1011,3 +1011,63 @@ async def test_ask_stream_provider_error_before_generation_refunds_reservation(
     assert response.status_code == 200
     assert "provider_error" in response.text
     assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_ask_post_generation_failure_settles_at_actual(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure AFTER generate_answer (judge/persist) consumed real tokens —
+    the reservation settles at the recorded spend, never a free call."""
+    user, token = await _seeded_user(db, async_client, "ask_set")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask settle task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    mocker.patch(
+        "app.knowledge.assistant.UserKnowledgeIndex.search", new=AsyncMock(return_value=[])
+    )
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(return_value=("You need X.", SimpleNamespace(total_tokens=77))),
+    )
+    mocker.patch(
+        "app.knowledge.assistant.create_answer",
+        new=AsyncMock(side_effect=ValueError("db gone")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + 77
+
+
+@pytest.mark.anyio
+async def test_ask_pre_generation_failure_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure BEFORE the provider call consumed nothing — full refund."""
+    user, token = await _seeded_user(db, async_client, "ask_pre")
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "ask refund task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    mocker.patch(
+        "app.knowledge.assistant.generate_answer",
+        new=AsyncMock(side_effect=ValueError("retrieval boom")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask",
+            json={"query": "what do I need"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE

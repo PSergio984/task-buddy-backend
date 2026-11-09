@@ -1,8 +1,10 @@
 """API endpoint for the planner (POST /api/v1/plan)."""
 
+import asyncio
 import logging
 from typing import Annotated
 
+import anyio
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -88,6 +90,17 @@ async def plan(
         logger.warning("plan not configured (embeddings) user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_PLAN_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc
+    except asyncio.CancelledError:
+        # Disconnect/shutdown skips `except Exception` entirely. The provider
+        # call is usually already in flight (tokens consumed server-side), so
+        # the estimate stands — release the pooled connection under a shield,
+        # then let the cancellation propagate.
+        try:
+            with anyio.CancelScope(shield=True):
+                await db.rollback()
+        except Exception:
+            logger.exception("plan cancellation cleanup failed for user=%s", user_id)
+        raise
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
         # until UTC rollover (phantom 429s) — refund before propagating. A

@@ -1,9 +1,11 @@
 """API endpoint for Smart Import extraction (POST /api/v1/import/extract)."""
 
+import asyncio
 import logging
 from datetime import datetime, timezone
 from typing import Annotated
 
+import anyio
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -103,6 +105,17 @@ async def import_extract(
         logger.warning("import extraction unavailable for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
+    except asyncio.CancelledError:
+        # Disconnect/shutdown skips `except Exception` entirely. The provider
+        # call is usually already in flight (tokens consumed server-side), so
+        # the estimate stands — release the pooled connection under a shield,
+        # then let the cancellation propagate.
+        try:
+            with anyio.CancelScope(shield=True):
+                await db.rollback()
+        except Exception:
+            logger.exception("import cancellation cleanup failed for user=%s", user_id)
+        raise
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
         # until UTC rollover (phantom 429s) — refund before propagating. A

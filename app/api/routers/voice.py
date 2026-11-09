@@ -1,9 +1,11 @@
 """API endpoint for the voice assistant (POST /api/v1/voice/plan)."""
 
+import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Annotated, TypeVar
 
+import anyio
 import openai
 from fastapi import APIRouter, Depends, File, HTTPException, Request, Response, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -77,6 +79,28 @@ async def _provider_call_or_503(
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
 
 
+async def _audio_bytes_or_413(audio: UploadFile, refund: Callable[[], Awaitable[None]]) -> bytes:
+    """Capped read of the upload; 413 (pre-refunded) past the byte cap."""
+    if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
+        await refund()
+        raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
+    # Read at most one byte over the cap so an oversized body is never
+    # fully materialized in memory.
+    audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
+    await audio.close()
+    if len(audio_bytes) > MAX_AUDIO_BYTES:
+        await refund()
+        raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
+    return audio_bytes
+
+
+async def _transcript_or_422(transcript: str, refund: Callable[[], Awaitable[None]]) -> None:
+    """Nothing instrumentable is spent on a blank transcript — refund, 422."""
+    if is_blank_transcript(transcript):
+        await refund()
+        raise HTTPException(status_code=422, detail=BLANK_TRANSCRIPT_DETAIL)
+
+
 async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
     """The existing stateless planner. Its embedding path raises bare
     ``RuntimeError`` when the provider key is missing — normalized here so the
@@ -130,25 +154,18 @@ async def voice_plan(
         ) from exc
 
     async def _refund() -> None:
-        # Roll back first: a DB-originated failure inside the planner poisons
-        # the session's transaction, which would kill the refund too.
-        await db.rollback()
-        await refund_llm_reservation(db, user_id, LLM_VOICE_RESERVE_TOKENS)
+        # Best-effort: roll back first (a DB-originated failure inside the
+        # planner poisons the session, which would kill the refund too), and
+        # a failing refund must not mask the mapped 413/422/503 or the
+        # original provider error.
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_VOICE_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("voice reservation refund failed for user=%s", user_id)
 
     try:
-        # Early exit before materializing the body; the capped read below
-        # stays as belt-and-braces for clients that lie about Content-Length.
-        if audio.size is not None and audio.size > MAX_AUDIO_BYTES:
-            await _refund()
-            raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
-
-        # Read at most one byte over the cap so an oversized body is never
-        # fully materialized in memory.
-        audio_bytes = await audio.read(MAX_AUDIO_BYTES + 1)
-        await audio.close()
-        if len(audio_bytes) > MAX_AUDIO_BYTES:
-            await _refund()
-            raise HTTPException(status_code=413, detail=AUDIO_TOO_LARGE_DETAIL)
+        audio_bytes = await _audio_bytes_or_413(audio, _refund)
 
         # Release the pooled connection before the seconds-long provider calls
         # (audit #27 pattern, mirrors breakdown router). The reservation
@@ -163,12 +180,7 @@ async def voice_plan(
             on_provider_error=_refund,
         )
 
-        if is_blank_transcript(transcript):
-            # Nothing instrumentable was spent on a blank transcript; refunding
-            # keeps parity with pre-reservation semantics where blank exits
-            # consumed no budget.
-            await _refund()
-            raise HTTPException(status_code=422, detail=BLANK_TRANSCRIPT_DETAIL)
+        await _transcript_or_422(transcript, _refund)
 
         # Route the planner through the shared mapper: it normalizes the
         # planner's bare RuntimeError into AssistantNotConfiguredError, and the
@@ -178,6 +190,17 @@ async def voice_plan(
         )
     except HTTPException:
         # The mapped 413/422/503 exits above already refunded their reservation.
+        raise
+    except asyncio.CancelledError:
+        # Disconnect/shutdown skips `except Exception` entirely. A provider
+        # call is usually already in flight (tokens consumed server-side), so
+        # the estimate stands — just release the pooled connection under a
+        # shield, then let the cancellation propagate.
+        try:
+            with anyio.CancelScope(shield=True):
+                await db.rollback()
+        except Exception:
+            logger.exception("voice cancellation cleanup failed for user=%s", user_id)
         raise
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
