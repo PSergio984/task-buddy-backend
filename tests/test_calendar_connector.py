@@ -78,4 +78,5 @@ def test_events_for_other_days_returns_empty() -> None:
 def test_events_for_is_deterministic_per_user() -> None:
     connector = SyntheticCalendarConnector()
     assert connector.events_for(1, WED) == connector.events_for(999, WED)
-    assert connector.events_for(1, WED) == connector.events_for(1, WED)
+    first = connector.events_for(1, WED)
+    assert first == connector.events_for(1, WED)
