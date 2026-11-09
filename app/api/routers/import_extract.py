@@ -105,16 +105,22 @@ async def import_extract(
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
-        # until UTC rollover (phantom 429s) — refund before propagating.
+        # until UTC rollover (phantom 429s) — refund before propagating. A
+        # DB-originated failure poisons the session's transaction, so roll
+        # back first; a failing refund must not mask the original error.
         logger.exception("import extraction failed for user=%s", user_id)
-        await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
+        try:
+            await db.rollback()
+            await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
+        except Exception:
+            logger.exception("import reservation refund failed for user=%s", user_id)
         raise
 
     # Reconcile the reservation to actual spend (flush-only); the final
     # commit below persists it. A provider that omits usage reconciles at the
     # reserved amount (conservative, never under-bills — the usage_reported
     # convention from the ask stream, assistant.py).
-    actual = record.total_tokens if usage_reported else LLM_IMPORT_RESERVE_TOKENS
+    actual = record.total_tokens or LLM_IMPORT_RESERVE_TOKENS
     await reconcile_llm_usage(db, user_id, LLM_IMPORT_RESERVE_TOKENS, actual)
     await create_import_answer(
         db,

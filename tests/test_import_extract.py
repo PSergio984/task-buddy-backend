@@ -337,6 +337,28 @@ async def test_import_extract_generic_error_refunds_reservation(
 
 
 @pytest.mark.anyio
+async def test_import_extract_project_lookup_error_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A failure inside the reserved window before the provider call —
+    here, the project lookup — still refunds; the except-clause rollback
+    recovers the poisoned session so the refund itself can run."""
+    user, token = await _confirmed_user(db, async_client, "imp_dbboom")
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    mocker.patch(
+        "app.api.routers.import_extract.get_projects",
+        side_effect=RuntimeError("db gone"),
+    )
+    with pytest.raises(RuntimeError):
+        await async_client.post(
+            "/api/v1/import/extract",
+            json={"text": "hello"},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
 async def test_import_extract_missing_usage_keeps_reservation(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
