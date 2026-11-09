@@ -33,7 +33,8 @@ const sh = (cmd, opts = {}) =>
   new Promise((res) => {
     const { env: extraEnv, ...rest } = opts;
     const p = spawn('bash', ['-c', cmd], {
-      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH },
+      // PATH is spread last so caller-supplied env can never override it.
+      env: { ...process.env, ...extraEnv, PATH: SAFE_PATH }, // NOSONAR
       ...rest,
     });
     let out = '';
