@@ -147,7 +147,7 @@ def build_extract_prompt(
     # Untrusted data must not be able to close the <input> tag — neutralize
     # only the tag itself ("</input", "<input" lose their "<"), not every
     # angle bracket, or "a -> b" notes would come back as "a -&gt; b".
-    clamped = re.sub(r"<\s*(/?)\s*input\b", r"&lt;\1input", clamped, flags=re.IGNORECASE)
+    clamped = re.sub(r"<(\s*/\s*|\s*)input\b", r"&lt;\1input", clamped, flags=re.IGNORECASE)
     parts: list[str] = [f"Today's date (UTC): {today.isoformat()}"]
     if projects:
         # Project names are user-controlled: collapse line breaks so a crafted
