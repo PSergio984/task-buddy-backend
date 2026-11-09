@@ -80,7 +80,7 @@ async def _provider_call_or_503(
 async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
     """The existing stateless planner. Its embedding path raises bare
     ``RuntimeError`` when the provider key is missing — normalized here so the
-    shared mapper sees one config-error type and stray RuntimeErrors still 500."""
+    shared mapper sees one config-error type; every RuntimeError maps to 503."""
     connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
     try:
         return await create_plan(db, user_id, None, None, connector)
@@ -176,16 +176,6 @@ async def voice_plan(
         plan = await _provider_call_or_503(
             "plan", user_id, lambda: _plan_or_503(db, user_id), on_provider_error=_refund
         )
-
-        await create_voice_answer(
-            db,
-            user_id=user_id,
-            transcript=transcript,
-            audio_bytes=len(audio_bytes),
-            stt_model=WHISPER_MODEL,
-            stt_latency_s=stt_latency,
-            plan=plan,
-        )
     except HTTPException:
         # The mapped 413/422/503 exits above already refunded their reservation.
         raise
@@ -199,6 +189,19 @@ async def voice_plan(
         except Exception:
             logger.exception("voice reservation refund failed for user=%s", user_id)
         raise
+
+    # Persist OUTSIDE the try: a failure here must not refund — the provider
+    # already consumed STT + plan tokens, so the estimate stands as the bill
+    # (same convention as breakdown/import).
+    await create_voice_answer(
+        db,
+        user_id=user_id,
+        transcript=transcript,
+        audio_bytes=len(audio_bytes),
+        stt_model=WHISPER_MODEL,
+        stt_latency_s=stt_latency,
+        plan=plan,
+    )
 
     # Reconcile the reservation to the plan call's actual spend (flush-only;
     # STT tokens are untracked); the final commit below persists it. A rule

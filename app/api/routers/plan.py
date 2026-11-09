@@ -64,8 +64,10 @@ async def plan(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
     try:
+        # Ctor lives inside the try so a future raisable connector cannot
+        # leak the reservation above.
+        connector = SyntheticCalendarConnector() if SYNTHETIC_CALENDAR_ENABLED else None
         result = await create_plan(
             db,
             user_id,

@@ -895,3 +895,119 @@ async def test_voice_rule_short_circuit_refunds_reservation(
     assert response.status_code == 200, response.text
     assert response.json()["plan"]["model"] == "rule"
     assert await counter_value(user["id"]) == _BASE_BALANCE
+
+
+@pytest.mark.anyio
+async def test_voice_persist_failure_keeps_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A DB failure persisting telemetry AFTER the provider call must not
+    refund — STT + plan tokens were really consumed, so the estimate stands
+    as the bill (same convention as breakdown/import)."""
+    user = await register_user(db, async_client, "persist_vc", "persist_vc@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+    stt_client = mocker.MagicMock()
+    stt_client.audio.transcriptions.create.return_value = SimpleNamespace(text="plan tonight")
+    mocker.patch("app.knowledge.voice._stt_client", return_value=stt_client)
+    fake_response = SimpleNamespace(
+        choices=[SimpleNamespace(message=SimpleNamespace(content=json.dumps({"buckets": []})))],
+        usage=None,
+    )
+    fake_client = mocker.MagicMock()
+    fake_client.chat.completions.create.return_value = fake_response
+    mocker.patch("app.knowledge.assistant._openai_client", return_value=fake_client)
+    mocker.patch(
+        "app.api.routers.voice.create_voice_answer",
+        new=AsyncMock(side_effect=ValueError("db gone")),
+    )
+
+    with pytest.raises(ValueError):
+        await async_client.post(
+            "/api/v1/voice/plan",
+            files={"audio": ("clip.webm", b"fake-audio-bytes", "audio/webm")},
+            headers={"Authorization": f"Bearer {token}"},
+        )
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_VOICE_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_provider_error_after_generation_settles_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider error AFTER generation started consumed billable tokens —
+    the stream settles at the reserve instead of refunding the estimate."""
+    user = await register_user(db, async_client, "strm_set", "strm_set@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "stream settle task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+
+    stream_ctx = SimpleNamespace(generation_started=False)
+    mocker.patch.object(
+        KnowledgeAssistant,
+        "prepare_ask_stream",
+        new=AsyncMock(return_value=stream_ctx),
+    )
+
+    async def fail_after_generation(self: Any, db: Any, ctx: Any) -> Any:
+        ctx.generation_started = True
+        raise openai.APIError("mid-stream boom", request=None, body=None)
+        yield  # pragma: no cover - keeps this an async generator
+
+    mocker.patch.object(KnowledgeAssistant, "ask_stream", fail_after_generation)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask/stream",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert "provider_error" in response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE + LLM_ASK_RESERVE_TOKENS
+
+
+@pytest.mark.anyio
+async def test_ask_stream_provider_error_before_generation_refunds_reservation(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """A provider error BEFORE generation started consumed nothing — the
+    estimate still refunds."""
+    user = await register_user(db, async_client, "strm_ref", "strm_ref@example.com")
+    await confirm_user(db, user)
+    token = await login_user(async_client, user)
+    task_resp = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "stream refund task"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_resp.status_code == 201
+    await seed_reservation(db, user["id"], _BASE_BALANCE)
+
+    stream_ctx = SimpleNamespace(generation_started=False)
+    mocker.patch.object(
+        KnowledgeAssistant,
+        "prepare_ask_stream",
+        new=AsyncMock(return_value=stream_ctx),
+    )
+
+    async def fail_before_generation(self: Any, db: Any, ctx: Any) -> Any:
+        raise openai.APIError("pre-flight boom", request=None, body=None)
+        yield  # pragma: no cover - keeps this an async generator
+
+    mocker.patch.object(KnowledgeAssistant, "ask_stream", fail_before_generation)
+
+    response = await async_client.post(
+        f"/api/v1/tasks/{task_resp.json()['id']}/knowledge/ask/stream",
+        json={"query": "what do I need"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert response.status_code == 200
+    assert "provider_error" in response.text
+    assert await counter_value(user["id"]) == _BASE_BALANCE

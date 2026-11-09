@@ -318,8 +318,8 @@ async def ask_knowledge(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    assistant = KnowledgeAssistant()
     try:
+        assistant = KnowledgeAssistant()
         answer_row = await assistant.ask(db, db_task, ask_in.query)
     except AssistantNotConfiguredError as exc:
         logger.warning("knowledge ask not configured for task=%s: %s", task_id, exc)
@@ -471,6 +471,28 @@ async def _settle_reservation(db: AsyncSession, user_id: int, task_id: int, actu
         logger.exception("stream settlement failed for task=%s", task_id)
 
 
+async def _abort_stream_reservation(
+    db: AsyncSession,
+    user_id: int,
+    task_id: int,
+    stream_ctx: AskStreamContext,
+    usage_reported: bool,
+    stream_tokens: int,
+) -> bool:
+    """Settle an aborted stream's reservation. generation_started is the
+    boundary: before the provider request nothing billable happened (refund);
+    after it the provider consumed real tokens (settle, never under-bills)."""
+    if stream_ctx.generation_started:
+        await _settle_reservation(
+            db,
+            user_id,
+            task_id,
+            stream_tokens if usage_reported else LLM_ASK_RESERVE_TOKENS,
+        )
+        return True
+    return await _refund_reservation(db, user_id, task_id)
+
+
 async def _knowledge_sse_stream(
     assistant: KnowledgeAssistant,
     db: AsyncSession,
@@ -509,13 +531,17 @@ async def _knowledge_sse_stream(
         # Status line is already sent; a provider failure mid-stream surfaces
         # as a terminal error event, then the stream closes.
         logger.warning("knowledge ask stream provider error for task=%s: %s", task_id, exc)
-        settled = await _refund_reservation(db, user_id, task_id)
+        settled = await _abort_stream_reservation(
+            db, user_id, task_id, stream_ctx, usage_reported, stream_tokens
+        )
         yield _sse_frame("error", {"code": "provider_error", "message": "AI service unavailable"})
     except Exception:
         # Any other mid-stream failure (judge, citations, reconcile) — still
         # close with a terminal error frame rather than an abrupt abort.
         logger.exception("knowledge ask stream failed for task=%s", task_id)
-        settled = await _refund_reservation(db, user_id, task_id)
+        settled = await _abort_stream_reservation(
+            db, user_id, task_id, stream_ctx, usage_reported, stream_tokens
+        )
         yield _sse_frame("error", {"code": "internal_error", "message": "AI service unavailable"})
     finally:
         if not settled:
@@ -578,8 +604,8 @@ async def ask_knowledge_stream(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    assistant = KnowledgeAssistant()
     try:
+        assistant = KnowledgeAssistant()
         stream_ctx = await assistant.prepare_ask_stream(db, db_task, ask_in.query)
     except AssistantNotConfiguredError as exc:
         logger.warning("knowledge ask stream not configured for task=%s: %s", task_id, exc)
