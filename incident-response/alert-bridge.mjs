@@ -26,9 +26,15 @@ const AGENT_CMD =
 
 const now = () => new Date().toISOString();
 const log = (m) => console.log(`[${now()}] ${m}`);
+// Spawned shells get a PATH of fixed, system-owned dirs only — the bridge
+// runs shell commands built from webhook payloads, so PATH stays minimal.
+const SAFE_PATH = '/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin';
 const sh = (cmd, opts = {}) =>
   new Promise((res) => {
-    const p = spawn('bash', ['-c', cmd], { env: process.env, ...opts });
+    const p = spawn('bash', ['-c', cmd], {
+      env: { ...process.env, PATH: SAFE_PATH },
+      ...opts,
+    });
     let out = '';
     p.stdout.on('data', (d) => (out += d));
     p.stderr.on('data', (d) => (out += d));
