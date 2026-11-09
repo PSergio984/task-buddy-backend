@@ -76,6 +76,7 @@ async def import_extract(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
+    provider_started = False
     try:
         # Existing projects ground suggested_project_id: names+ids go into the
         # prompt, and the id set filters any hallucinated/foreign ids in the
@@ -94,6 +95,7 @@ async def import_extract(
         # snapshotted above (audit #27 pattern, mirrors breakdown router).
         await db.rollback()
 
+        provider_started = True
         extraction, record, answer_text, usage_reported = await generate_extraction(
             prompt, valid_project_ids
         )
@@ -106,13 +108,15 @@ async def import_extract(
         await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_UNAVAILABLE) from exc
     except asyncio.CancelledError:
-        # Disconnect/shutdown skips `except Exception` entirely. The provider
-        # call is usually already in flight (tokens consumed server-side), so
-        # the estimate stands — release the pooled connection under a shield,
-        # then let the cancellation propagate.
+        # Disconnect/shutdown skips `except Exception` entirely. Before the
+        # provider call nothing was consumed — refund; once the call is in
+        # flight the tokens are spent server-side — the estimate stands and
+        # only the pooled connection needs releasing (under a shield).
         try:
             with anyio.CancelScope(shield=True):
                 await db.rollback()
+                if not provider_started:
+                    await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
         except Exception:
             logger.exception("import cancellation cleanup failed for user=%s", user_id)
         raise

@@ -42,6 +42,21 @@ router = APIRouter(
 logger = logging.getLogger(__name__)
 
 
+async def _load_context_fields(
+    db: AsyncSession, user_id: int, context_task_id: Optional[int]
+) -> tuple[Optional[int], Optional[str], Optional[str]]:
+    """Snapshot the optional context task's fields for the prompt."""
+    if context_task_id is None:
+        return None, None, None
+    result = await db.execute(
+        select(Task).where(Task.id == context_task_id, Task.user_id == user_id)
+    )
+    context_task = result.scalar_one_or_none()
+    if context_task is None:
+        return None, None, None
+    return context_task.id, context_task.title, context_task.description
+
+
 @router.post(
     "/breakdown",
     response_model=BreakdownResponse,
@@ -78,22 +93,14 @@ async def breakdown(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
+    provider_started = False
     try:
         # Kept inside the try: a failure between the reserve and the provider
         # call would leak the reserved tokens until UTC rollover (phantom
         # 429s) — same reservation-window discipline as the import router.
-        context_task_id: Optional[int] = None
-        context_title: Optional[str] = None
-        context_description: Optional[str] = None
-        if breakdown_in.context_task_id is not None:
-            result = await db.execute(
-                select(Task).where(Task.id == breakdown_in.context_task_id, Task.user_id == user_id)
-            )
-            context_task = result.scalar_one_or_none()
-            if context_task is not None:
-                context_task_id = context_task.id
-                context_title = context_task.title
-                context_description = context_task.description
+        context_task_id, context_title, context_description = await _load_context_fields(
+            db, user_id, breakdown_in.context_task_id
+        )
 
         memory_hints = await fetch_memory_hints(db, user_id, breakdown_in.text)
         prompt = build_breakdown_prompt(
@@ -110,6 +117,7 @@ async def breakdown(
         # were snapshotted above (audit #27 pattern, mirrors planner service).
         await db.rollback()
 
+        provider_started = True
         proposal, record, answer_text = await generate_breakdown(prompt)
     except (AssistantNotConfiguredError, openai.APIError) as exc:
         logger.warning("breakdown unavailable for user=%s: %s", user_id, exc)
@@ -119,13 +127,15 @@ async def breakdown(
             detail=AI_UNAVAILABLE if isinstance(exc, openai.APIError) else AI_NOT_CONFIGURED,
         ) from exc
     except asyncio.CancelledError:
-        # Disconnect/shutdown skips `except Exception` entirely. The provider
-        # call is usually already in flight (tokens consumed server-side), so
-        # the estimate stands — release the pooled connection under a shield,
-        # then let the cancellation propagate.
+        # Disconnect/shutdown skips `except Exception` entirely. Before the
+        # provider call nothing was consumed — refund; once the call is in
+        # flight the tokens are spent server-side — the estimate stands and
+        # only the pooled connection needs releasing (under a shield).
         try:
             with anyio.CancelScope(shield=True):
                 await db.rollback()
+                if not provider_started:
+                    await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         except Exception:
             logger.exception("breakdown cancellation cleanup failed for user=%s", user_id)
         raise

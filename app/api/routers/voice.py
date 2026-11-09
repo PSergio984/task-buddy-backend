@@ -101,6 +101,23 @@ async def _transcript_or_422(transcript: str, refund: Callable[[], Awaitable[Non
         raise HTTPException(status_code=422, detail=BLANK_TRANSCRIPT_DETAIL)
 
 
+async def _refund_reservation(db: AsyncSession, user_id: int, *, skip: bool = False) -> None:
+    """Best-effort refund of the voice reservation.
+
+    Rolls back first (a DB-originated failure inside the planner poisons the
+    session, which would kill the refund too), and a failing refund must not
+    mask the mapped 413/422/503 or the original provider error. ``skip=True``
+    releases the session only — a cancel after the provider started keeps the
+    estimate (the tokens were consumed server-side).
+    """
+    try:
+        await db.rollback()
+        if not skip:
+            await refund_llm_reservation(db, user_id, LLM_VOICE_RESERVE_TOKENS)
+    except Exception:
+        logger.exception("voice reservation refund failed for user=%s", user_id)
+
+
 async def _plan_or_503(db: AsyncSession, user_id: int) -> PlanResponse:
     """The existing stateless planner. Its embedding path raises bare
     ``RuntimeError`` when the provider key is missing — normalized here so the
@@ -153,19 +170,9 @@ async def voice_plan(
             detail="Daily AI usage limit reached. Try again tomorrow.",
         ) from exc
 
-    async def _refund() -> None:
-        # Best-effort: roll back first (a DB-originated failure inside the
-        # planner poisons the session, which would kill the refund too), and
-        # a failing refund must not mask the mapped 413/422/503 or the
-        # original provider error.
-        try:
-            await db.rollback()
-            await refund_llm_reservation(db, user_id, LLM_VOICE_RESERVE_TOKENS)
-        except Exception:
-            logger.exception("voice reservation refund failed for user=%s", user_id)
-
+    provider_started = False
     try:
-        audio_bytes = await _audio_bytes_or_413(audio, _refund)
+        audio_bytes = await _audio_bytes_or_413(audio, lambda: _refund_reservation(db, user_id))
 
         # Release the pooled connection before the seconds-long provider calls
         # (audit #27 pattern, mirrors breakdown router). The reservation
@@ -173,44 +180,42 @@ async def voice_plan(
         await db.rollback()
 
         filename = audio.filename or "audio.webm"
+        provider_started = True
         transcript, stt_latency = await _provider_call_or_503(
             "stt",
             user_id,
             lambda: transcribe_audio(audio_bytes, filename),
-            on_provider_error=_refund,
+            on_provider_error=lambda: _refund_reservation(db, user_id),
         )
 
-        await _transcript_or_422(transcript, _refund)
+        await _transcript_or_422(transcript, lambda: _refund_reservation(db, user_id))
 
         # Route the planner through the shared mapper: it normalizes the
         # planner's bare RuntimeError into AssistantNotConfiguredError, and the
         # mapper turns both that and openai.APIError into 503 with a refund.
         plan = await _provider_call_or_503(
-            "plan", user_id, lambda: _plan_or_503(db, user_id), on_provider_error=_refund
+            "plan",
+            user_id,
+            lambda: _plan_or_503(db, user_id),
+            on_provider_error=lambda: _refund_reservation(db, user_id),
         )
     except HTTPException:
         # The mapped 413/422/503 exits above already refunded their reservation.
         raise
     except asyncio.CancelledError:
-        # Disconnect/shutdown skips `except Exception` entirely. A provider
-        # call is usually already in flight (tokens consumed server-side), so
-        # the estimate stands — just release the pooled connection under a
-        # shield, then let the cancellation propagate.
-        try:
-            with anyio.CancelScope(shield=True):
-                await db.rollback()
-        except Exception:
-            logger.exception("voice cancellation cleanup failed for user=%s", user_id)
+        # Disconnect/shutdown skips `except Exception` entirely. Before the
+        # provider calls nothing was consumed — refund; once STT is in
+        # flight the tokens are spent server-side — the estimate stands and
+        # only the pooled connection needs releasing (under a shield).
+        with anyio.CancelScope(shield=True):
+            await _refund_reservation(db, user_id, skip=provider_started)
         raise
     except Exception:
         # Any other failure after the reserve would leak the prepaid tokens
-        # until UTC rollover (phantom 429s) — refund before propagating; a
-        # failing refund must not mask the original error.
+        # until UTC rollover (phantom 429s) — refund before propagating; the
+        # best-effort refund must not mask the original error.
         logger.exception("voice plan failed for user=%s", user_id)
-        try:
-            await _refund()
-        except Exception:
-            logger.exception("voice reservation refund failed for user=%s", user_id)
+        await _refund_reservation(db, user_id)
         raise
 
     # Persist OUTSIDE the try: a failure here must not refund — the provider
