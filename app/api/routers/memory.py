@@ -111,8 +111,8 @@ async def similar_memory_tasks(
             knowledge = history_by_chunk.get(chunk["chunk_id"])
             if knowledge is None:
                 continue  # stale in-memory index entry — drop, never 5xx
-            if knowledge.task_id == task_id:
-                continue  # exclude the query task itself
+            if knowledge.task_id is None or knowledge.task_id == task_id:
+                continue  # exclude unattached knowledge or the query task itself
             if knowledge.task_id in seen_task_ids:
                 continue  # task-level dedupe: keep best rrf_score (search order)
             seen_task_ids.add(knowledge.task_id)

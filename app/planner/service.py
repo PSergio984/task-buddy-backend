@@ -104,8 +104,8 @@ async def _memory_hint_minutes(db: AsyncSession, user_id: int, task: Task) -> Op
         knowledge = history_by_chunk.get(chunk["chunk_id"])
         if knowledge is None:
             continue  # stale in-memory index entry
-        if knowledge.task_id == task.id:
-            continue  # exclude self
+        if knowledge.task_id is None or knowledge.task_id == task.id:
+            continue  # exclude unattached knowledge and self
         if knowledge.task_id in seen_task_ids:
             continue
         seen_task_ids.add(knowledge.task_id)

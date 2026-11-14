@@ -104,7 +104,7 @@ class UserKnowledgeIndex:
         self,
         db: AsyncSession,
         user_id: int,
-        task_id: int,
+        task_id: int | None,
         knowledge_id: int,
         text_chunks: list[str],
         embeddings: np.ndarray,

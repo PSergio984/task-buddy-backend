@@ -11,6 +11,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import LLM_IMPORT_RESERVE_TOKENS
 from app.models.import_extract import ImportAnswer
+from app.models.knowledge import KnowledgeChunk, SourceType, TaskKnowledge
 from app.models.project import Project
 from app.models.user import User
 
@@ -69,6 +70,24 @@ async def test_import_extract_success_persists_telemetry(
     assert len(rows) == 1
     assert rows[0].user_id == user["id"]
     assert rows[0].total_tokens == 150
+
+    # Issue #93 provenance: source note persisted as TaskKnowledge and chunks indexed
+    assert body["source_knowledge_id"] is not None
+    k_res = await db.execute(
+        select(TaskKnowledge).where(TaskKnowledge.id == body["source_knowledge_id"])
+    )
+    k_row = k_res.scalar_one()
+    assert k_row.user_id == user["id"]
+    assert k_row.task_id is None
+    assert k_row.source_type == SourceType.NOTE
+    assert k_row.content == "email the venue friday 5pm, buy snacks"
+
+    chunks_res = await db.execute(
+        select(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == body["source_knowledge_id"])
+    )
+    chunks = chunks_res.scalars().all()
+    assert len(chunks) > 0
+    assert all(c.task_id is None for c in chunks)
     mock.assert_called_once()
     # strict structured output requested from the provider (3rd positional arg)
     assert mock.call_args.args[2].get("type") == "json_schema"
@@ -441,3 +460,136 @@ async def test_import_extract_empty_input_is_422(
         headers={"Authorization": f"Bearer {token}"},
     )
     assert response.status_code == 422
+
+
+@pytest.mark.anyio
+async def test_import_extract_provenance_re_extract_updates_knowledge(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Re-extracting with source_knowledge_id reuses the entry and updates content/chunks."""
+    user, token = await _confirmed_user(db, async_client, "imp_re")
+    _mock_completion(mocker, VALID_PAYLOAD)
+
+    # Initial extraction
+    res1 = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "initial notes for event"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res1.status_code == 200
+    source_kid = res1.json()["source_knowledge_id"]
+    assert source_kid is not None
+
+    # Re-extract with modified text and source_knowledge_id
+    res2 = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "updated notes for event", "source_knowledge_id": source_kid},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res2.status_code == 200
+    assert res2.json()["source_knowledge_id"] == source_kid
+
+    # Check updated content in DB
+    k_res = await db.execute(select(TaskKnowledge).where(TaskKnowledge.id == source_kid))
+    k_row = k_res.scalar_one()
+    assert k_row.content == "updated notes for event"
+
+
+@pytest.mark.anyio
+async def test_import_extract_invalid_source_knowledge_id_400(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Invalid or foreign source_knowledge_id returns 400 without calling provider."""
+    user, token = await _confirmed_user(db, async_client, "imp_bad_kid")
+    other_user, other_token = await _confirmed_user(db, async_client, "imp_other")
+
+    # Foreign knowledge entry
+    other_k = TaskKnowledge(
+        user_id=other_user["id"],
+        task_id=None,
+        source_type=SourceType.NOTE,
+        title="Other user note",
+        content="secret other note",
+    )
+    db.add(other_k)
+    await db.commit()
+    await db.refresh(other_k)
+
+    # Attempt extraction referencing foreign knowledge id
+    res = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "my note", "source_knowledge_id": other_k.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res.status_code == 400
+    assert res.json()["detail"] == "Invalid source_knowledge_id"
+
+    # Non-existent knowledge id
+    res_404 = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "my note", "source_knowledge_id": 999999},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_404.status_code == 400
+    assert res_404.json()["detail"] == "Invalid source_knowledge_id"
+
+
+@pytest.mark.anyio
+async def test_task_creation_with_provenance_and_ownership_gate(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Tasks created with source_knowledge_id link back to note; foreign knowledge 400s."""
+    user, token = await _confirmed_user(db, async_client, "imp_task_link")
+    other_user, other_token = await _confirmed_user(db, async_client, "imp_task_other")
+
+    # Create knowledge for user
+    k = TaskKnowledge(
+        user_id=user["id"],
+        task_id=None,
+        source_type=SourceType.NOTE,
+        title="Meeting note",
+        content="Action items from meeting",
+    )
+    db.add(k)
+    await db.commit()
+    await db.refresh(k)
+
+    # Foreign user knowledge
+    other_k = TaskKnowledge(
+        user_id=other_user["id"],
+        task_id=None,
+        source_type=SourceType.NOTE,
+        title="Other note",
+        content="Other note content",
+    )
+    db.add(other_k)
+    await db.commit()
+    await db.refresh(other_k)
+
+    # Successful task creation linked to source_knowledge_id
+    task_res = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "Action item 1", "source_knowledge_id": k.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert task_res.status_code == 201, task_res.text
+    task_data = task_res.json()
+    assert task_data["source_knowledge_id"] == k.id
+
+    # Foreign source_knowledge_id rejected with 400
+    foreign_res = await async_client.post(
+        "/api/v1/tasks/",
+        json={"title": "Action item 2", "source_knowledge_id": other_k.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert foreign_res.status_code == 400
+    assert foreign_res.json()["detail"] == "Invalid source_knowledge_id"
+
+    # Update task with foreign source_knowledge_id rejected with 400
+    update_res = await async_client.put(
+        f"/api/v1/tasks/{task_data['id']}",
+        json={"source_knowledge_id": other_k.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert update_res.status_code == 400
+    assert update_res.json()["detail"] == "Invalid source_knowledge_id"

@@ -45,8 +45,9 @@ class TaskKnowledge(Base):
     user_id: Mapped[int] = mapped_column(ForeignKey("tbl_users.id"), nullable=False)
     # CASCADE: TaskKnowledge has no ORM relationship on Task (unlike SubTask's
     # delete-orphan cascade), so task deletion must cascade at the DB level.
-    task_id: Mapped[int] = mapped_column(
-        ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
+    # Nullable so knowledge notes can exist before tasks or across multiple tasks (import provenance).
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=True
     )
     source_type: Mapped[SourceType] = mapped_column(
         # values_callable persists the VALUES ("note"), not member names ("NOTE")
@@ -122,8 +123,8 @@ class KnowledgeChunk(Base):
     knowledge_id: Mapped[int] = mapped_column(
         ForeignKey("tbl_knowledge.id", ondelete="CASCADE"), nullable=False
     )
-    task_id: Mapped[int] = mapped_column(
-        ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=False
+    task_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tbl_tasks.id", ondelete="CASCADE"), nullable=True
     )
     chunk_index: Mapped[int] = mapped_column(nullable=False)
     content: Mapped[str] = mapped_column(Text, nullable=False)
