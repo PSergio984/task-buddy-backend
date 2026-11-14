@@ -14,7 +14,7 @@ FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Pla
 - 🎙️ **Voice** `POST /api/v1/voice/plan` — `whisper-large-v3-turbo` → plan
 - 📥 **Import** `POST /api/v1/import/extract` — pasted notes → task proposals (strict `json_schema`), 10/min
 - 🔄 **Sync** `POST /api/v1/sync` — offline delta flush, LWW `app/sync/lww.py` + Supabase Realtime push `app/api/routers/realtime.py` (SSE `task-buddy-backend/app/libs/broadcaster.py` dead code per `docs/codebase/CONCERNS.md`)
-- 🧪 1035 tests / 75 files `tests/` (`pytest`), golden `tests/fixtures/golden_knowledge.json` + gate `hybrid ≥ bm25 AND ≥ semantic`
+- 🧪 1068 tests / 75 files `tests/` (`pytest`), golden `tests/fixtures/golden_knowledge.json` + gate `hybrid ≥ bm25 AND ≥ semantic`
 - 🔐 JWT cookie + CSRF + idempotency + slowapi rate limits + per-user LLM budget `app/knowledge/budget.py`
 - 📧 In-process `app/tasks.py` lifespan (no Celery `ee84a2f`) — emails (Brevo), pushes (VAPID), 60s reminder sweep
 
@@ -35,7 +35,7 @@ FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Pla
 
 ### 🐳 Full-Stack & Observability (One Command — Recommended)
 
-Starts the entire application and telemetry stack in a single command:
+Starts the entire application and telemetry stack in a single command (*Prerequisite: requires sibling checkout of `task-buddy-frontend` at `../task-buddy-frontend` as built in Compose*):
 
 ```bash
 docker compose -f docker-compose.fullstack.yml up --build
@@ -150,12 +150,13 @@ Task Buddy implements the complete production telemetry and incident response ar
    - **Grafana** (`:3001`) pre-provisions datasources and the overview dashboard (`observability/dashboards/task-buddy.json`).
 
 2. **Alerting on User Impact (`observability/grafana/provisioning/alerting/`)**:
-   - Alert rules (`rules.yml`) monitor real user impact: API 5xx error rate spikes (`TaskBuddyApi5xxRate`) and p95 latency.
+   - Alert rules (`rules.yml`) monitor real user impact: API 5xx error rate spikes (`Task Buddy API 5xx error rate elevated`, UID: `tb-api-5xx-rate`) and service health (`Task Buddy API scrape failing`, UID: `tb-backend-down`).
    - Alerts fire webhooks directly into the on-call alert bridge.
 
 3. **Autonomous AI On-Call Responder (`incident-response/`)**:
    - See detailed docs in [`incident-response/README.md`](incident-response/README.md).
    - `alert-bridge.mjs` wakes up on incoming alerts (`POST /alert`), gathers an allowlisted evidence packet (`collect-evidence.sh`), invokes a headless AI agent, validates proposed actions against `autonomy-policy.yaml` ("model proposes, code enforces"), executes allowlisted remediations or escalates, runs `verify-recovery.sh`, and writes an auditable incident summary in `incidents/<id>/`.
+   - *Note on live execution:* The Compose stack runs with `ONCALL_DRY_RUN=1` by default for safety; set `ONCALL_DRY_RUN=0` and configure `ONCALL_AGENT_CMD` (e.g. `claude -p ...`) to enable active remediation execution.
 
 4. **Agent Team Specification (`docs/agents/`)**:
    - Defined in [`docs/agents/agent-team.md`](docs/agents/agent-team.md): 7 distinct bounded AI agent roles (Implementer, Spec Reviewer, Correctness Reviewer, Domain Reviewer, CodeRabbit, On-call Responder, Build Cop) with an automated review-and-verification loop and standing quality gates.
@@ -169,11 +170,11 @@ This project fulfills all 12 criteria for the final project (24 points total, 10
 | # | Criterion | Max | Evidence (Path / Anchor) | Status |
 |---|---|:---:|---|:---:|
 | 1 | **Problem Description** | 2 | [README.md §Features](#features-capstone-surfaces) + [`docs/codebase/PRESENTATION.md`](docs/codebase/PRESENTATION.md) | ✅ 2/2 |
-| 2 | **Product Specification** | 2 | Specs in [`../docs/specs/`](../docs/specs/) + public GitHub Issues with acceptance criteria + agent PR review trails | ✅ 2/2 |
+| 2 | **Product Specification** | 2 | Specs in [`docs/specs/`](docs/specs/) (and root monorepo `docs/specs/`) + public GitHub Issues with acceptance criteria + agent PR review trails | ✅ 2/2 |
 | 3 | **Agent Team Specification** | 2 | Defined in [`docs/agents/agent-team.md`](docs/agents/agent-team.md) (7 bounded roles + multi-agent loop) | ✅ 2/2 |
 | 4 | **Context Management** | 2 | [`AGENTS.md`](AGENTS.md) + [`CONTEXT.md`](CONTEXT.md) + modular docs in [`docs/agents/`](docs/agents/) and [`docs/codebase/`](docs/codebase/) | ✅ 2/2 |
 | 5 | **Application** | 2 | FastAPI backend + Next.js frontend + Supabase Postgres (pgvector) + offline-first sync (IndexedDB + LWW) | ✅ 2/2 |
-| 6 | **Testing** | 2 | 347+ backend tests (`pytest`), frontend Vitest + 8 Playwright E2E suites (`npm run test:e2e`), mobile Jest tests | ✅ 2/2 |
+| 6 | **Testing** | 2 | 1,068 backend tests across 75 files (`pytest`), frontend Vitest + 8 Playwright E2E suites (`npm run test:e2e`), mobile Jest tests | ✅ 2/2 |
 | 7 | **Containerization** | 2 | Full system in a single command via [`docker-compose.fullstack.yml`](docker-compose.fullstack.yml) | ✅ 2/2 |
 | 8 | **Deployment** | 2 | Publicly deployed: Backend on [Render](https://task-buddy-backend-wy3w.onrender.com), Frontend on [Vercel](https://task-buddy-frontend.vercel.app), Supabase DB | ✅ 2/2 |
 | 9 | **CI/CD** | 3 | PR CI (`.github/workflows/python-app.yml`), CD auto-deploys to preview/prod, manual gate in [`deploy-production.yml`](.github/workflows/deploy-production.yml) | ✅ 3/3 |
