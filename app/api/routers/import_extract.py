@@ -102,7 +102,7 @@ async def _persist_provenance_knowledge(
     if source_knowledge_id is not None:
         db_knowledge = await knowledge_crud.get_knowledge(db, source_knowledge_id, user_id)
         if not db_knowledge:
-            raise HTTPException(status_code=404, detail="Source knowledge not found")
+            raise HTTPException(status_code=400, detail="Invalid source_knowledge_id")
 
         needs_reingest = db_knowledge.content != text
         if not needs_reingest:
