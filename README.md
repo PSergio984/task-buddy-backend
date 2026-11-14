@@ -4,6 +4,9 @@ FastAPI backend for **Task Buddy — AI Task Manager (Memory · Knowledge · Pla
 
 > Monorepo front door is at workspace root `../README.md` (local) (33k, CEIT-tier: live demo, mermaid, full run-it, walkthrough, eval, rubric — local only, not tracked in this repo). This file is the deep backend reference. Keep it in sync with `docs/codebase/` (STACK, STRUCTURE, ARCHITECTURE, TESTING, etc.).
 
+> [!NOTE]
+> **Render Cold Start:** The hosted backend runs on Render's free tier (`https://task-buddy-backend-wy3w.onrender.com`), which spins down after 15 minutes of inactivity. Initial wake-up takes 30–50 seconds. Ping `/health` to verify warm state before testing public endpoints.
+
 ## Features (capstone surfaces)
 
 - 🚀 FastAPI + Uvicorn + SQLAlchemy 2 async + Alembic + Pydantic v2 (Python `>=3.11`, compiled `3.11`, `mypy 3.12` `pyproject.toml`)
