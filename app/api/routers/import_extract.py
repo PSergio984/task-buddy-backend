@@ -69,6 +69,60 @@ async def _perform_extraction(db: AsyncSession, user_id: int, text: str) -> tupl
         extraction, record, answer_text, _ = await generate_extraction(prompt, valid_project_ids)
         return extraction, record, answer_text
     except AssistantNotConfiguredError as exc:
+        import os
+
+        if os.getenv("ENABLE_DEV_MOCK_LLM") == "1":
+            import json
+            from datetime import timedelta
+
+            from app.knowledge.import_extract import (
+                ImportExtraction,
+                ImportSubtaskProposal,
+                ImportTaskProposal,
+            )
+            from app.knowledge.records import LLMCallRecord
+
+            now = datetime.now(timezone.utc)
+            friday_offset = (4 - now.weekday()) % 7
+            if friday_offset == 0:
+                friday_offset = 7
+            friday = (now + timedelta(days=friday_offset)).replace(
+                hour=23, minute=59, second=59, microsecond=0
+            )
+            projects = await get_projects(db, user_id)
+            pid = projects[0].id if projects else 1
+            proposals = [
+                ImportTaskProposal(
+                    title="Ship import feature",
+                    description="Ship import feature by Friday high priority",
+                    proposed_deadline=friday,
+                    priority="HIGH",
+                    suggested_project_id=pid,
+                    subtasks=[
+                        ImportSubtaskProposal(title="Review frontend import sheet"),
+                        ImportSubtaskProposal(title="Verify backend extraction contract"),
+                    ],
+                ),
+                ImportTaskProposal(
+                    title="Organize backlog groom",
+                    description="Organize backlog groom next Monday",
+                    proposed_deadline=(now + timedelta(days=7)).replace(
+                        hour=10, minute=0, second=0, microsecond=0
+                    ),
+                    priority="MEDIUM",
+                    suggested_project_id=pid,
+                    subtasks=[
+                        ImportSubtaskProposal(title="Review unassigned tickets"),
+                    ],
+                ),
+            ]
+            extraction = ImportExtraction(proposals=proposals)
+            record = LLMCallRecord.zeroed(model="mock-gpt", response_time=0.25)
+            record.prompt = prompt
+            record.answer = json.dumps(
+                {"proposals": [p.model_dump(mode="json") for p in extraction.proposals]}
+            )
+            return extraction, record, record.answer
         logger.warning("import extraction not configured for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_IMPORT_RESERVE_TOKENS)
         raise HTTPException(status_code=503, detail=AI_NOT_CONFIGURED) from exc

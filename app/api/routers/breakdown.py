@@ -120,6 +120,50 @@ async def breakdown(
         provider_started = True
         proposal, record, answer_text = await generate_breakdown(prompt)
     except (AssistantNotConfiguredError, openai.APIError) as exc:
+        import os
+
+        if os.getenv("ENABLE_DEV_MOCK_LLM") == "1" and isinstance(exc, AssistantNotConfiguredError):
+            import json
+
+            from app.knowledge.breakdown import BreakdownSubtaskProposal, BreakdownTaskProposal
+            from app.knowledge.records import LLMCallRecord
+
+            proposal = BreakdownResponse(
+                tasks=[
+                    BreakdownTaskProposal(
+                        title=context_title or "Finalize Q3 Infrastructure Audit",
+                        estimated_effort_minutes=60,
+                        subtasks=[
+                            BreakdownSubtaskProposal(
+                                title="Review AWS billing and cost allocations"
+                            ),
+                            BreakdownSubtaskProposal(
+                                title="Identify idle compute and unattached EBS volumes"
+                            ),
+                            BreakdownSubtaskProposal(
+                                title="Draft cost-saving remediation proposal"
+                            ),
+                        ],
+                    )
+                ],
+                reason=None,
+            )
+            record = LLMCallRecord.zeroed(model="mock-gpt", response_time=0.20)
+            record.prompt = prompt
+            record.answer = json.dumps(proposal.model_dump(mode="json"))
+            answer_text = record.answer
+            actual = record.total_tokens or LLM_BREAKDOWN_RESERVE_TOKENS
+            await reconcile_llm_usage(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS, actual)
+            await create_breakdown_answer(
+                db,
+                user_id=user_id,
+                answer_text=answer_text,
+                record=record,
+                input_chars=len(breakdown_in.text),
+                context_task_id=context_task_id,
+            )
+            await db.commit()
+            return proposal
         logger.warning("breakdown unavailable for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         raise HTTPException(
