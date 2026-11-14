@@ -49,8 +49,15 @@ def downgrade() -> None:
         )
         batch_op.drop_column("source_knowledge_id")
 
-    op.execute("DELETE FROM tbl_knowledge_chunks WHERE task_id IS NULL")
-    op.execute("DELETE FROM tbl_knowledge WHERE task_id IS NULL")
+    conn = op.get_bind()
+    unattached = conn.execute(
+        sa.text("SELECT count(*) FROM tbl_knowledge WHERE task_id IS NULL")
+    ).scalar()
+    if unattached and unattached > 0:
+        raise RuntimeError(
+            f"Cannot downgrade: found {unattached} standalone knowledge row(s) (task_id IS NULL). "
+            "Reassign or delete these rows before downgrading to avoid data loss."
+        )
 
     with op.batch_alter_table("tbl_knowledge_chunks") as batch_op:
         batch_op.alter_column("task_id", existing_type=sa.Integer(), nullable=False)

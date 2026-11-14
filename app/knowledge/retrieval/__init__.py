@@ -88,17 +88,20 @@ class UserKnowledgeIndex:
         if entry["content_hash"] == corpus_hash:
             return
 
-        # Build fresh objects, then swap — stale chunks never survive an edit.
-        bm25 = InvertedIndex(user_id=user_id)
-        semantic = ChunkedSemanticSearch()
-        for chunk_id, content, embedding, _content_hash in rows:
-            bm25.add_document(chunk_id, content, metadata={"content": content})
-            semantic.add_chunk(chunk_id, content, parse_embedding(embedding))
-        self._cache[user_id] = {
-            "content_hash": corpus_hash,
-            "bm25": bm25,
-            "semantic": semantic,
-        }
+        # Build fresh objects off the event loop, then swap — stale chunks never survive an edit.
+        def _build_and_swap() -> None:
+            bm25 = InvertedIndex(user_id=user_id)
+            semantic = ChunkedSemanticSearch()
+            for chunk_id, content, embedding, _content_hash in rows:
+                bm25.add_document(chunk_id, content, metadata={"content": content})
+                semantic.add_chunk(chunk_id, content, parse_embedding(embedding))
+            self._cache[user_id] = {
+                "content_hash": corpus_hash,
+                "bm25": bm25,
+                "semantic": semantic,
+            }
+
+        await asyncio.to_thread(_build_and_swap)
 
     async def ingest_chunks(
         self,

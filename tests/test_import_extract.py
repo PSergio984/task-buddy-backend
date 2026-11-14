@@ -6,7 +6,7 @@ from typing import Any
 import openai
 import pytest
 from httpx import AsyncClient
-from sqlalchemy import select
+from sqlalchemy import delete, select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import LLM_IMPORT_RESERVE_TOKENS
@@ -480,6 +480,13 @@ async def test_import_extract_provenance_re_extract_updates_knowledge(
     source_kid = res1.json()["source_knowledge_id"]
     assert source_kid is not None
 
+    initial_chunks = (
+        (await db.execute(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == source_kid)))
+        .scalars()
+        .all()
+    )
+    assert len(initial_chunks) > 0
+
     # Re-extract with modified text and source_knowledge_id
     res2 = await async_client.post(
         "/api/v1/import/extract",
@@ -490,18 +497,84 @@ async def test_import_extract_provenance_re_extract_updates_knowledge(
     assert res2.json()["source_knowledge_id"] == source_kid
 
     # Check updated content in DB
+    db.expire_all()
     k_res = await db.execute(select(TaskKnowledge).where(TaskKnowledge.id == source_kid))
     k_row = k_res.scalar_one()
     assert k_row.content == "updated notes for event"
+
+    # Verify chunks replaced with updated content
+    updated_chunks = (
+        (await db.execute(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == source_kid)))
+        .scalars()
+        .all()
+    )
+    assert len(updated_chunks) > 0
+    assert all("updated notes for event" in c.content for c in updated_chunks)
+    assert not any("initial notes for event" in c.content for c in updated_chunks)
+
+
+@pytest.mark.anyio
+async def test_import_extract_provenance_re_extract_recovers_missing_chunks_when_text_unchanged(
+    db: AsyncSession, async_client: AsyncClient, mocker: Any
+) -> None:
+    """Re-extracting with same text recovers missing chunks if earlier ingestion failed."""
+    user, token = await _confirmed_user(db, async_client, "imp_recov")
+    _mock_completion(mocker, VALID_PAYLOAD)
+
+    # Initial extraction
+    res1 = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "recovery notes text"},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res1.status_code == 200
+    source_kid = res1.json()["source_knowledge_id"]
+    assert source_kid is not None
+
+    # Manually delete chunks to simulate prior ingestion/embedding failure
+    await db.execute(delete(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == source_kid))
+    await db.commit()
+
+    db.expire_all()
+    chunks_before = (
+        (await db.execute(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == source_kid)))
+        .scalars()
+        .all()
+    )
+    assert len(chunks_before) == 0
+
+    # Re-extract with IDENTICAL text and source_knowledge_id
+    res2 = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "recovery notes text", "source_knowledge_id": source_kid},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res2.status_code == 200
+    assert res2.json()["source_knowledge_id"] == source_kid
+
+    # Chunks are recovered
+    db.expire_all()
+    recovered_chunks = (
+        (await db.execute(select(KnowledgeChunk).where(KnowledgeChunk.knowledge_id == source_kid)))
+        .scalars()
+        .all()
+    )
+    assert len(recovered_chunks) > 0
+    assert all("recovery notes text" in c.content for c in recovered_chunks)
 
 
 @pytest.mark.anyio
 async def test_import_extract_invalid_source_knowledge_id_400(
     db: AsyncSession, async_client: AsyncClient, mocker: Any
 ) -> None:
-    """Invalid or foreign source_knowledge_id returns 400 without calling provider."""
+    """Invalid, foreign, or task-attached source_knowledge_id returns 400 without provider call."""
     user, token = await _confirmed_user(db, async_client, "imp_bad_kid")
     other_user, other_token = await _confirmed_user(db, async_client, "imp_other")
+
+    mock_llm = mocker.patch(
+        "app.knowledge.assistant._call_completion",
+        side_effect=AssertionError("LLM must not be called on invalid source_knowledge_id"),
+    )
 
     # Foreign knowledge entry
     other_k = TaskKnowledge(
@@ -532,6 +605,33 @@ async def test_import_extract_invalid_source_knowledge_id_400(
     )
     assert res_404.status_code == 400
     assert res_404.json()["detail"] == "Invalid source_knowledge_id"
+
+    # Task-attached note rejected (must be unattached provenance note)
+    from app.models.task import Task
+
+    t = Task(user_id=user["id"], title="Parent task")
+    db.add(t)
+    await db.flush()
+
+    attached_k = TaskKnowledge(
+        user_id=user["id"],
+        task_id=t.id,
+        source_type=SourceType.NOTE,
+        title="Attached note",
+        content="attached",
+    )
+    db.add(attached_k)
+    await db.commit()
+    await db.refresh(attached_k)
+
+    res_attached = await async_client.post(
+        "/api/v1/import/extract",
+        json={"text": "my note", "source_knowledge_id": attached_k.id},
+        headers={"Authorization": f"Bearer {token}"},
+    )
+    assert res_attached.status_code == 400
+    assert res_attached.json()["detail"] == "Invalid source_knowledge_id"
+    assert mock_llm.call_count == 0
 
 
 @pytest.mark.anyio

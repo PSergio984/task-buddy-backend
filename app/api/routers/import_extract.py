@@ -8,6 +8,7 @@ from typing import Annotated, Any
 import anyio
 import openai
 from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.api.routers.knowledge import AI_NOT_CONFIGURED, AI_UNAVAILABLE
@@ -27,7 +28,7 @@ from app.knowledge.import_extract import build_extract_prompt, generate_extracti
 from app.knowledge.ingest import ingest_knowledge
 from app.knowledge.retrieval import UserKnowledgeIndex
 from app.limiter import limiter
-from app.models.knowledge import SourceType, TaskKnowledge
+from app.models.knowledge import KnowledgeChunk, SourceType, TaskKnowledge
 from app.models.user import User
 from app.schemas.import_extract import ImportExtractRequest, ImportExtractResponse
 from app.security import get_confirmed_user
@@ -47,7 +48,7 @@ async def _validate_source_knowledge(
 ) -> None:
     if source_knowledge_id is not None:
         existing = await knowledge_crud.get_knowledge(db, source_knowledge_id, user_id)
-        if not existing:
+        if not existing or existing.source_type != SourceType.NOTE or existing.task_id is not None:
             raise HTTPException(status_code=400, detail="Invalid source_knowledge_id")
 
 
@@ -100,14 +101,33 @@ async def _persist_provenance_knowledge(
     """Persist or update source note as TaskKnowledge (source_type: NOTE) for provenance."""
     if source_knowledge_id is not None:
         db_knowledge = await knowledge_crud.get_knowledge(db, source_knowledge_id, user_id)
-        if db_knowledge and db_knowledge.content != text:
-            db_knowledge.content = text
-            db.add(db_knowledge)
-            await db.flush()
+        if not db_knowledge:
+            raise HTTPException(status_code=404, detail="Source knowledge not found")
+
+        needs_reingest = db_knowledge.content != text
+        if not needs_reingest:
+            existing_chunk = (
+                await db.execute(
+                    select(KnowledgeChunk.id)
+                    .where(
+                        KnowledgeChunk.knowledge_id == db_knowledge.id,
+                        KnowledgeChunk.user_id == user_id,
+                    )
+                    .limit(1)
+                )
+            ).scalar_one_or_none()
+            needs_reingest = existing_chunk is None
+
+        if needs_reingest:
+            if db_knowledge.content != text:
+                db_knowledge.content = text
+                db.add(db_knowledge)
+                await db.flush()
             try:
-                await UserKnowledgeIndex().remove_knowledge_chunks(db, user_id, db_knowledge.id)
-                await ingest_knowledge(db, db_knowledge)
-                await UserKnowledgeIndex().ensure_index(db, user_id)
+                async with db.begin_nested():
+                    await UserKnowledgeIndex().remove_knowledge_chunks(db, user_id, db_knowledge.id)
+                    await ingest_knowledge(db, db_knowledge)
+                    await UserKnowledgeIndex().ensure_index(db, user_id)
             except Exception as exc:
                 logger.warning("knowledge re-ingest failed for id=%s: %s", db_knowledge.id, exc)
         return source_knowledge_id
@@ -124,8 +144,9 @@ async def _persist_provenance_knowledge(
     await db.flush()
     await db.refresh(new_knowledge)
     try:
-        await ingest_knowledge(db, new_knowledge)
-        await UserKnowledgeIndex().ensure_index(db, user_id)
+        async with db.begin_nested():
+            await ingest_knowledge(db, new_knowledge)
+            await UserKnowledgeIndex().ensure_index(db, user_id)
     except Exception as exc:
         logger.warning("knowledge ingest failed for id=%s: %s", new_knowledge.id, exc)
     return new_knowledge.id
