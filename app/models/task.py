@@ -68,6 +68,11 @@ class Task(AsyncAttrs, Base):
         SQLEnum(DeadlineType, values_callable=lambda members: [m.value for m in members]),
         nullable=True,
     )
+    source_knowledge_id: Mapped[int | None] = mapped_column(
+        ForeignKey("tbl_knowledge.id", ondelete="SET NULL", use_alter=True),
+        nullable=True,
+        index=True,
+    )
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now())
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now(), onupdate=func.now()

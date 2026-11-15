@@ -53,11 +53,17 @@ class UserKnowledgeIndex:
     """
 
     _cache: dict[int, dict] = {}
+    _locks: dict[int, asyncio.Lock] = {}
 
     @classmethod
     def clear_cache(cls) -> None:
         """Drop all in-memory indexes (test isolation / cache eviction)."""
         cls._cache.clear()
+        cls._locks.clear()
+
+    @classmethod
+    def _user_lock(cls, user_id: int) -> asyncio.Lock:
+        return cls._locks.setdefault(user_id, asyncio.Lock())
 
     def _entry(self, user_id: int) -> dict:
         return self._cache.setdefault(
@@ -71,40 +77,44 @@ class UserKnowledgeIndex:
 
     async def ensure_index(self, db: AsyncSession, user_id: int) -> None:
         """Build/rebuild the user's index when the stored chunk set changed."""
-        result = await db.execute(
-            select(
-                KnowledgeChunk.id,
-                KnowledgeChunk.content,
-                KnowledgeChunk.embedding,
-                KnowledgeChunk.content_hash,
+        async with self._user_lock(user_id):
+            result = await db.execute(
+                select(
+                    KnowledgeChunk.id,
+                    KnowledgeChunk.content,
+                    KnowledgeChunk.embedding,
+                    KnowledgeChunk.content_hash,
+                )
+                .where(KnowledgeChunk.user_id == user_id)
+                .order_by(KnowledgeChunk.id)
             )
-            .where(KnowledgeChunk.user_id == user_id)
-            .order_by(KnowledgeChunk.id)
-        )
-        rows = result.all()
+            rows = result.all()
 
-        corpus_hash = chunk_hash("|".join(f"{r.id}:{r.content_hash}" for r in rows))
-        entry = self._entry(user_id)
-        if entry["content_hash"] == corpus_hash:
-            return
+            corpus_hash = chunk_hash("|".join(f"{r.id}:{r.content_hash}" for r in rows))
+            entry = self._entry(user_id)
+            if entry["content_hash"] == corpus_hash:
+                return
 
-        # Build fresh objects, then swap — stale chunks never survive an edit.
-        bm25 = InvertedIndex(user_id=user_id)
-        semantic = ChunkedSemanticSearch()
-        for chunk_id, content, embedding, _content_hash in rows:
-            bm25.add_document(chunk_id, content, metadata={"content": content})
-            semantic.add_chunk(chunk_id, content, parse_embedding(embedding))
-        self._cache[user_id] = {
-            "content_hash": corpus_hash,
-            "bm25": bm25,
-            "semantic": semantic,
-        }
+            # Build fresh objects off the event loop, then swap — stale chunks never survive an edit.
+            def _build_and_swap() -> None:
+                bm25 = InvertedIndex(user_id=user_id)
+                semantic = ChunkedSemanticSearch()
+                for chunk_id, content, embedding, _content_hash in rows:
+                    bm25.add_document(chunk_id, content, metadata={"content": content})
+                    semantic.add_chunk(chunk_id, content, parse_embedding(embedding))
+                self._cache[user_id] = {
+                    "content_hash": corpus_hash,
+                    "bm25": bm25,
+                    "semantic": semantic,
+                }
+
+            await asyncio.to_thread(_build_and_swap)
 
     async def ingest_chunks(
         self,
         db: AsyncSession,
         user_id: int,
-        task_id: int,
+        task_id: int | None,
         knowledge_id: int,
         text_chunks: list[str],
         embeddings: np.ndarray,

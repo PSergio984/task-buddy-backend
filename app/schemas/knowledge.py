@@ -41,7 +41,7 @@ class KnowledgeResponse(KnowledgeCreateRequest):
 
     id: int
     user_id: int
-    task_id: int
+    task_id: Optional[int] = None
     created_at: datetime
     updated_at: Optional[datetime] = None
 

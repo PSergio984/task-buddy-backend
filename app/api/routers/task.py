@@ -23,6 +23,7 @@ from app.config import (
     RATE_LIMIT_TASK_GET,
     RATE_LIMIT_TASK_UPDATE,
 )
+from app.crud import knowledge as knowledge_crud
 from app.crud import project as project_crud
 from app.crud import tag as tag_crud
 from app.crud import task as task_crud
@@ -56,6 +57,7 @@ NOT_AUTHORIZED_MODIFY_TASK = "Not authorized to modify this task"
 NOT_AUTHORIZED_VIEW_TAGS = "Not authorized to view this task's tags"
 TAG_NOT_FOUND = "Tag not found"
 INVALID_PROJECT_ID = "Invalid project_id"
+INVALID_SOURCE_KNOWLEDGE_ID = "Invalid source_knowledge_id"
 MAX_TAGS_EXCEEDED = "Cannot exceed 10 tags per task"
 MAX_SUBTASKS_EXCEEDED = "Cannot exceed 50 subtasks per task"
 
@@ -89,6 +91,17 @@ async def verify_project_ownership(db: AsyncSession, project_id: int | None, use
         db_project = await project_crud.get_project(db, project_id=project_id, user_id=user_id)
         if not db_project:
             raise HTTPException(status_code=400, detail=INVALID_PROJECT_ID)
+
+
+async def verify_knowledge_ownership(
+    db: AsyncSession, knowledge_id: int | None, user_id: int
+) -> None:
+    if knowledge_id is not None:
+        db_knowledge = await knowledge_crud.get_knowledge(
+            db, knowledge_id=knowledge_id, user_id=user_id
+        )
+        if not db_knowledge:
+            raise HTTPException(status_code=400, detail=INVALID_SOURCE_KNOWLEDGE_ID)
 
 
 async def _validate_tags_limit(db: AsyncSession, tags: list[str] | None, user_id: int) -> None:
@@ -224,6 +237,7 @@ async def create_task(
     await _validate_tags_limit(db, task.tags, current_user.id)
 
     await verify_project_ownership(db, task.project_id, current_user.id)
+    await verify_knowledge_ownership(db, task.source_knowledge_id, current_user.id)
 
     try:
         db_task: Task = await task_crud.create_task(db, user_id=current_user.id, task_in=task)
@@ -283,6 +297,9 @@ async def update_task(
 
     if "project_id" in update_data:
         await verify_project_ownership(db, task_update.project_id, current_user.id)
+
+    if "source_knowledge_id" in update_data:
+        await verify_knowledge_ownership(db, task_update.source_knowledge_id, current_user.id)
 
     if update_data.get("due_date") is not None:
         # D-10 parity: a persisted due date is a hard deadline. The create

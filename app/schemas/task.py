@@ -23,6 +23,7 @@ class TaskCreateRequest(BaseModel):
     completed: bool = False
     priority: TaskPriority = TaskPriority.MEDIUM
     project_id: Optional[int] = None
+    source_knowledge_id: Optional[int] = None
     tags: list[str] = Field(default_factory=list)
     subtasks: list[SubTaskCreateNestedRequest] = Field(default_factory=list)
 
@@ -66,6 +67,7 @@ class TaskCreateResponse(BaseModel):
     completed: bool = False
     priority: TaskPriority
     project_id: Optional[int] = None
+    source_knowledge_id: Optional[int] = None
     user_id: int
     created_at: datetime
     updated_at: datetime
@@ -89,6 +91,7 @@ class TaskUpdateRequest(BaseModel):
     completed: Optional[bool] = None
     priority: Optional[TaskPriority] = None
     project_id: Optional[int] = None
+    source_knowledge_id: Optional[int] = None
     tags: Optional[list[str]] = None
 
     @field_validator("tags")
