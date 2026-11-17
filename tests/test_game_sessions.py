@@ -498,3 +498,75 @@ class TestSessionRowLock:
         locked = await game_crud.get_active_session(db, uid, for_update=True)
         assert locked is not None
         assert locked.activity_label == "external-2"
+
+
+class TestDiversion:
+    async def test_record_diversion_applies_damage(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        uid = confirmed_user["id"]
+        profile_before = await game_crud.get_or_create_profile(db, uid)
+        initial_hp = profile_before.hp
+        await db.commit()
+
+        res = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "test_barrier_bypass", "base_damage": 15.0},
+        )
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data["applied"] is True
+        assert data["base_damage"] == 15.0
+        assert data["hp_lost"] > 0
+        assert data["current_hp"] < initial_hp
+
+        # Verify event logged in ledger
+        events = (
+            await db.execute(
+                select(GameEvent)
+                .where(GameEvent.user_id == uid, GameEvent.type == "diversion_penalty")
+            )
+        ).scalars().all()
+        assert len(events) >= 1
+        assert events[0].payload["reason"] == "test_barrier_bypass"
+
+    async def test_record_diversion_mitigated_by_gear(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        uid = confirmed_user["id"]
+        profile = await game_crud.get_or_create_profile(db, uid)
+        # Give profile CON to boost shield
+        profile.con_stat = 20
+        await db.commit()
+
+        res = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "test_armored_bypass", "base_damage": 15.0},
+        )
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data["applied"] is True
+        # With high CON, damage should be mitigated
+        assert data["damage_mitigated"] > 0
+        assert data["hp_lost"] < 15.0
+
+
+class TestStream:
+    async def test_session_stream_returns_sse(
+        self,
+        authenticated_async_client: AsyncClient,
+    ) -> None:
+        response = await authenticated_async_client.get(f"{SESSIONS}/stream?once=true")
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
+        assert response.headers.get("cache-control") == "no-cache"
+        assert "event: session_state" in response.text
+        assert '"status": "idle"' in response.text
+
+
