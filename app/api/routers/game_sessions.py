@@ -20,7 +20,8 @@ from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
 from app.database import AsyncSessionLocal
 from app.dependencies import get_db
-from app.game import character_service, engine, session_engine as se, session_service
+from app.game import character_service, engine, session_service
+from app.game import session_engine as se
 from app.limiter import limiter
 from app.models.game import GameEvent
 from app.models.user import User
@@ -196,6 +197,91 @@ async def record_diversion(
     )
 
 
+def _format_stream_payload(result: tuple | None) -> dict:
+    """Format SSE session_state payload from active session snapshot view."""
+    if result is None:
+        return {
+            "is_active": False,
+            "session_id": None,
+            "task_id": None,
+            "activity_label": None,
+            "mode": None,
+            "status": "idle",
+            "current_phase": None,
+            "server_time": datetime.now(timezone.utc).isoformat(),
+        }
+
+    f_session, phases, _ = result
+    active_phase = se.live_phase(phases)
+    phase_data = (
+        {
+            "seq": active_phase.seq,
+            "kind": active_phase.kind,
+            "status": active_phase.status,
+            "minutes": active_phase.planned_seconds // 60,
+        }
+        if active_phase
+        else None
+    )
+    return {
+        "is_active": True,
+        "session_id": f_session.id,
+        "task_id": f_session.task_id,
+        "activity_label": f_session.activity_label,
+        "mode": f_session.mode,
+        "status": f_session.status,
+        "current_phase": phase_data,
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _fetch_user_snapshot(request: Request, user_id: int):
+    """Fetch active session snapshot without holding pooled database connections."""
+    override = request.app.dependency_overrides.get(get_db)
+    if override:
+        async for session in override():
+            res = await session_service.get_active_view(session, user_id)
+            await session.commit()
+            return res
+    else:
+        async with AsyncSessionLocal() as session:
+            res = await session_service.get_active_view(session, user_id)
+            await session.commit()
+            return res
+
+
+async def _stream_events(
+    request: Request,
+    user_id: int,
+    heartbeat_seconds: int,
+    once: bool,
+):
+    """Generator for SSE events checking client disconnect every 500ms."""
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+
+            result = await _fetch_user_snapshot(request, user_id)
+            payload = _format_stream_payload(result)
+            yield f"event: session_state\ndata: {json.dumps(payload)}\n\n"
+
+            if once:
+                break
+
+            disconnected = False
+            for _ in range(max(1, heartbeat_seconds * 2)):
+                if await request.is_disconnected():
+                    disconnected = True
+                    break
+                await asyncio.sleep(0.5)
+
+            if disconnected:
+                break
+    except asyncio.CancelledError:
+        pass
+
+
 @router.get("/stream")
 @limiter.limit(RATE_LIMIT_GAME_READ)
 async def session_stream(
@@ -205,83 +291,8 @@ async def session_stream(
     once: bool = False,
 ) -> StreamingResponse:
     """Server-Sent Events stream for real-time focus session state synchronization."""
-    user_id = current_user.id
-
-    async def _fetch_snapshot():
-        override = request.app.dependency_overrides.get(get_db)
-        if override:
-            async for session in override():
-                res = await session_service.get_active_view(session, user_id)
-                await session.commit()
-                return res
-        else:
-            async with AsyncSessionLocal() as session:
-                res = await session_service.get_active_view(session, user_id)
-                await session.commit()
-                return res
-
-    async def event_generator():
-        try:
-            while True:
-                if await request.is_disconnected():
-                    break
-
-                result = await _fetch_snapshot()
-                if result is not None:
-                    f_session, phases, _ = result
-                    active_phase = se.live_phase(phases)
-                    phase_data = (
-                        {
-                            "seq": active_phase.seq,
-                            "kind": active_phase.kind,
-                            "status": active_phase.status,
-                            "minutes": active_phase.minutes,
-                        }
-                        if active_phase
-                        else None
-                    )
-                    payload = {
-                        "is_active": True,
-                        "session_id": f_session.id,
-                        "task_id": f_session.task_id,
-                        "activity_label": f_session.activity_label,
-                        "mode": f_session.mode,
-                        "status": f_session.status,
-                        "current_phase": phase_data,
-                        "server_time": datetime.now(timezone.utc).isoformat(),
-                    }
-                else:
-                    payload = {
-                        "is_active": False,
-                        "session_id": None,
-                        "task_id": None,
-                        "activity_label": None,
-                        "mode": None,
-                        "status": "idle",
-                        "current_phase": None,
-                        "server_time": datetime.now(timezone.utc).isoformat(),
-                    }
-
-                yield f"event: session_state\ndata: {json.dumps(payload)}\n\n"
-
-                if once:
-                    break
-
-                # Check for disconnection rapidly (every 500ms) rather than blocking on long sleep
-                disconnected = False
-                for _ in range(max(1, heartbeat_seconds * 2)):
-                    if await request.is_disconnected():
-                        disconnected = True
-                        break
-                    await asyncio.sleep(0.5)
-
-                if disconnected:
-                    break
-        except asyncio.CancelledError:
-            pass
-
     return StreamingResponse(
-        event_generator(),
+        _stream_events(request, current_user.id, heartbeat_seconds, once),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

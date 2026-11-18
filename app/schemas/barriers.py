@@ -3,6 +3,7 @@ Pydantic schemas for desktop accountability friction barriers and diversion pena
 """
 
 from typing import Optional
+
 from pydantic import BaseModel, Field
 
 
