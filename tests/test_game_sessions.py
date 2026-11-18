@@ -627,6 +627,25 @@ class TestDiversion:
         ).scalars().all()
         assert len(events) == 1
 
+        # Reusing client_event_id from a different event type yields 409 Conflict
+        diff_event_id = f"client-task-{uuid.uuid4().hex[:12]}"
+        other_event = GameEvent(
+            user_id=confirmed_user["id"],
+            client_event_id=diff_event_id,
+            type="task_completed",
+            payload={"task_id": "test-123"},
+            client_ts=datetime.now(timezone.utc),
+        )
+        db.add(other_event)
+        await db.commit()
+
+        r_conflict = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"client_event_id": diff_event_id, "reason": "collide_bypass"},
+        )
+        assert r_conflict.status_code == 409
+        assert "already used for different event type" in r_conflict.json()["detail"]
+
     async def test_record_rapid_diversions_unique_events(
         self,
         authenticated_async_client: AsyncClient,

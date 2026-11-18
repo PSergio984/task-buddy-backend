@@ -172,6 +172,11 @@ async def record_diversion(
             )
         ).scalar_one_or_none()
         if existing_event:
+            if existing_event.type != "diversion_penalty":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="client_event_id already used for different event type",
+                )
             payload = existing_event.payload or {}
             hp_lost = float(payload.get("hp_lost", 0.0))
             mitigated = float(payload.get("damage_mitigated", 0.0))
