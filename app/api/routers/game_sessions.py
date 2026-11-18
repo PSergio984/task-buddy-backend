@@ -8,6 +8,7 @@ app being closed can neither cheat nor lose state.
 import asyncio
 import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
@@ -23,9 +24,8 @@ from app.game import character_service, engine, session_engine as se, session_se
 from app.limiter import limiter
 from app.models.game import GameEvent
 from app.models.user import User
+from app.schemas.barriers import DiversionPenaltyIn, DiversionPenaltyOut
 from app.schemas.game import (
-    DiversionPenaltyIn,
-    DiversionPenaltyOut,
     FocusSessionOut,
     GameProfileRead,
     SessionActionResponse,
@@ -160,7 +160,7 @@ async def record_diversion(
     now = datetime.now(timezone.utc)
     event = GameEvent(
         user_id=user_id,
-        client_event_id=f"server:diversion:{user_id}:{int(now.timestamp())}",
+        client_event_id=f"server:diversion:{user_id}:{int(now.timestamp())}:{uuid.uuid4().hex[:8]}",
         type="diversion_penalty",
         payload={
             "session_id": body.session_id,
@@ -197,15 +197,28 @@ async def record_diversion(
 
 
 @router.get("/stream")
+@limiter.limit(RATE_LIMIT_GAME_READ)
 async def session_stream(
     request: Request,
     current_user: Annotated[User, Depends(get_confirmed_user)],
-    db: Annotated[AsyncSession, Depends(get_db)],
     heartbeat_seconds: int = 15,
     once: bool = False,
 ) -> StreamingResponse:
     """Server-Sent Events stream for real-time focus session state synchronization."""
     user_id = current_user.id
+
+    async def _fetch_snapshot():
+        override = request.app.dependency_overrides.get(get_db)
+        if override:
+            async for session in override():
+                res = await session_service.get_active_view(session, user_id)
+                await session.commit()
+                return res
+        else:
+            async with AsyncSessionLocal() as session:
+                res = await session_service.get_active_view(session, user_id)
+                await session.commit()
+                return res
 
     async def event_generator():
         try:
@@ -213,8 +226,7 @@ async def session_stream(
                 if await request.is_disconnected():
                     break
 
-                result = await session_service.get_active_view(db, user_id)
-                await db.commit()
+                result = await _fetch_snapshot()
                 if result is not None:
                     f_session, phases, _ = result
                     active_phase = se.live_phase(phases)

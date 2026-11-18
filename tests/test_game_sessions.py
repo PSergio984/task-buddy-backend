@@ -556,6 +556,22 @@ class TestDiversion:
         assert data["damage_mitigated"] > 0
         assert data["hp_lost"] < 15.0
 
+    async def test_record_rapid_diversions_unique_events(
+        self,
+        authenticated_async_client: AsyncClient,
+    ) -> None:
+        # Rapid consecutive diversion requests must not collide on idempotency keys
+        r1 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "rapid_bypass_1", "base_damage": 5.0},
+        )
+        r2 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "rapid_bypass_2", "base_damage": 5.0},
+        )
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+
 
 class TestStream:
     async def test_session_stream_returns_sse(
