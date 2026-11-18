@@ -11,8 +11,9 @@ class DiversionPenaltyIn(BaseModel):
     """Payload sent when a user force-bypasses a desktop digital barrier."""
 
     session_id: Optional[int] = None
+    client_event_id: Optional[str] = Field(default=None, max_length=128)
     reason: str = Field(default="barrier_force_bypass", max_length=128)
-    base_damage: float = Field(default=15.0, ge=1.0, le=100.0)
+    base_damage: float = Field(default=15.0, ge=1.0, le=100.0, allow_inf_nan=False)
 
 
 class DiversionPenaltyOut(BaseModel):

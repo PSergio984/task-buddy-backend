@@ -525,11 +525,16 @@ class TestDiversion:
 
         # Verify event logged in ledger
         events = (
-            await db.execute(
-                select(GameEvent)
-                .where(GameEvent.user_id == uid, GameEvent.type == "diversion_penalty")
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == uid, GameEvent.type == "diversion_penalty"
+                    )
+                )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(events) >= 1
         assert events[0].payload["reason"] == "test_barrier_bypass"
 
@@ -559,6 +564,8 @@ class TestDiversion:
     async def test_record_rapid_diversions_unique_events(
         self,
         authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
     ) -> None:
         # Rapid consecutive diversion requests must not collide on idempotency keys
         r1 = await authenticated_async_client.post(
@@ -572,6 +579,19 @@ class TestDiversion:
         assert r1.status_code == 200
         assert r2.status_code == 200
 
+        # Query and assert two distinct diversion events with distinct client_event_ids
+        events = (
+            await db.execute(
+                select(GameEvent).where(
+                    GameEvent.user_id == confirmed_user["id"],
+                    GameEvent.type == "diversion_penalty",
+                )
+            )
+        ).scalars().all()
+        assert len(events) >= 2
+        event_ids = {e.client_event_id for e in events}
+        assert len(event_ids) >= 2
+
 
 class TestStream:
     async def test_session_stream_returns_sse(
@@ -584,5 +604,3 @@ class TestStream:
         assert response.headers.get("cache-control") == "no-cache"
         assert "event: session_state" in response.text
         assert '"status": "idle"' in response.text
-
-

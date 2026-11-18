@@ -12,7 +12,7 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
 from fastapi.responses import StreamingResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -154,14 +154,21 @@ async def record_diversion(
     stat_bonus = await character_service.gear_stat_bonus(db, user_id)
 
     outcome = engine.apply_hp_loss(profile, body.base_damage, rates, stat_bonus=stat_bonus)
+    if outcome.get("died"):
+        await character_service.resolve_death_gear(db, user_id, outcome, None)
+
     hp_lost = outcome.get("hp_lost", 0.0)
     mitigated = max(0.0, float(body.base_damage) - float(hp_lost))
 
     # Log diversion penalty event in game ledger
     now = datetime.now(timezone.utc)
+    evt_id = (
+        body.client_event_id
+        or f"server:diversion:{user_id}:{int(now.timestamp())}:{uuid.uuid4().hex}"
+    )
     event = GameEvent(
         user_id=user_id,
-        client_event_id=f"server:diversion:{user_id}:{int(now.timestamp())}:{uuid.uuid4().hex[:8]}",
+        client_event_id=evt_id,
         type="diversion_penalty",
         payload={
             "session_id": body.session_id,
@@ -287,7 +294,7 @@ async def _stream_events(
 async def session_stream(
     request: Request,
     current_user: Annotated[User, Depends(get_confirmed_user)],
-    heartbeat_seconds: int = 15,
+    heartbeat_seconds: Annotated[int, Query(ge=1, le=300)] = 15,
     once: bool = False,
 ) -> StreamingResponse:
     """Server-Sent Events stream for real-time focus session state synchronization."""
