@@ -5,6 +5,7 @@ pause_started_at) and letting the next call's wall-clock evaluation replay
 the transitions — no sleeps, fully deterministic.
 """
 
+import uuid
 from datetime import datetime, timedelta, timezone
 
 import pytest
@@ -13,7 +14,7 @@ from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.crud import game as game_crud
-from app.game import session_service
+from app.game import character_service, session_service
 from app.models.game import FocusPhase, FocusSession, GameEvent, GameProfile
 from app.models.user import User
 
@@ -498,3 +499,201 @@ class TestSessionRowLock:
         locked = await game_crud.get_active_session(db, uid, for_update=True)
         assert locked is not None
         assert locked.activity_label == "external-2"
+
+
+class TestDiversion:
+    async def test_record_diversion_applies_damage(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        uid = confirmed_user["id"]
+        profile_before = await game_crud.get_or_create_profile(db, uid)
+        initial_hp = profile_before.hp
+        await db.commit()
+
+        res = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "test_barrier_bypass", "base_damage": 15.0},
+        )
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data["applied"] is True
+        assert data["base_damage"] == 15.0
+        assert data["hp_lost"] > 0
+        assert data["current_hp"] < initial_hp
+
+        # Verify event logged in ledger
+        events = (
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == uid, GameEvent.type == "diversion_penalty"
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) >= 1
+        assert events[0].payload["reason"] == "test_barrier_bypass"
+
+    async def test_record_diversion_mitigated_by_gear(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        uid = confirmed_user["id"]
+        await character_service.seed_gear_catalog(db)
+        profile = await game_crud.get_or_create_profile(db, uid)
+        profile.gold = 500
+        profile.con_stat = 0
+        await db.commit()
+
+        # Check unequipped diversion baseline
+        r_unequipped = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "test_unequipped_bypass"},
+        )
+        assert r_unequipped.status_code == 200
+        d_unequipped = r_unequipped.json()
+        assert d_unequipped["damage_mitigated"] == 0.0
+
+        # Equip CON gear (all-shield-1 grants con bonus)
+        r_buy = await authenticated_async_client.post(
+            "/api/v1/game/gear/buy", json={"key": "all-shield-1"}
+        )
+        assert r_buy.status_code == 200, r_buy.text
+        r_equip = await authenticated_async_client.post(
+            "/api/v1/game/gear/equip",
+            json={"key": "all-shield-1", "equipped": True},
+        )
+        assert r_equip.status_code == 200, r_equip.text
+
+        res = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "test_armored_bypass"},
+        )
+        assert res.status_code == 200, res.text
+        data = res.json()
+        assert data["applied"] is True
+        assert data["gear_stat_bonus"].get("con", 0) > 0
+        assert data["damage_mitigated"] > 0
+        assert data["hp_lost"] < d_unequipped["hp_lost"]
+
+    async def test_record_diversion_idempotency_and_server_prefix_rejection(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # Rejection of reserved server: prefix
+        res_bad = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"client_event_id": "server:forged_bypass", "reason": "test_fake"},
+        )
+        assert res_bad.status_code == 422
+
+        # Idempotent replay with client_event_id
+        client_id = f"client-bypass-{uuid.uuid4().hex[:12]}"
+        r1 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"client_event_id": client_id, "reason": "idempotent_bypass"},
+        )
+        assert r1.status_code == 200
+        d1 = r1.json()
+
+        # Second request with the same client_event_id returns identical response without duplicate HP loss
+        r2 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"client_event_id": client_id, "reason": "idempotent_bypass"},
+        )
+        assert r2.status_code == 200
+        d2 = r2.json()
+        assert d1["current_hp"] == d2["current_hp"]
+        assert d1["hp_lost"] == d2["hp_lost"]
+        assert d1["applied"] == d2["applied"]
+
+        # Only 1 GameEvent recorded in DB for client_id
+        events = (
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == confirmed_user["id"],
+                        GameEvent.client_event_id == client_id,
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) == 1
+
+        # Reusing client_event_id from a different event type yields 409 Conflict
+        diff_event_id = f"client-task-{uuid.uuid4().hex[:12]}"
+        other_event = GameEvent(
+            user_id=confirmed_user["id"],
+            client_event_id=diff_event_id,
+            type="task_completed",
+            payload={"task_id": "test-123"},
+            client_ts=datetime.now(timezone.utc),
+        )
+        db.add(other_event)
+        await db.commit()
+
+        r_conflict = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"client_event_id": diff_event_id, "reason": "collide_bypass"},
+        )
+        assert r_conflict.status_code == 409
+        assert "already used for different event type" in r_conflict.json()["detail"]
+
+    async def test_record_rapid_diversions_unique_events(
+        self,
+        authenticated_async_client: AsyncClient,
+        confirmed_user: dict,
+        db: AsyncSession,
+    ) -> None:
+        # Rapid consecutive diversion requests must not collide on idempotency keys
+        r1 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "rapid_bypass_1", "base_damage": 5.0},
+        )
+        r2 = await authenticated_async_client.post(
+            f"{SESSIONS}/diversion",
+            json={"reason": "rapid_bypass_2", "base_damage": 5.0},
+        )
+        assert r1.status_code == 200
+        assert r2.status_code == 200
+
+        # Query and assert two distinct diversion events with distinct client_event_ids
+        events = (
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == confirmed_user["id"],
+                        GameEvent.type == "diversion_penalty",
+                    )
+                )
+            )
+            .scalars()
+            .all()
+        )
+        assert len(events) >= 2
+        event_ids = {e.client_event_id for e in events}
+        assert len(event_ids) >= 2
+
+
+class TestStream:
+    async def test_session_stream_returns_sse(
+        self,
+        authenticated_async_client: AsyncClient,
+    ) -> None:
+        response = await authenticated_async_client.get(f"{SESSIONS}/stream?once=true")
+        assert response.status_code == 200
+        assert "text/event-stream" in response.headers.get("content-type", "")
+        assert response.headers.get("cache-control") == "no-cache"
+        assert "event: session_state" in response.text
+        assert '"status": "idle"' in response.text

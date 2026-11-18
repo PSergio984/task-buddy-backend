@@ -5,25 +5,42 @@ so a session left mid-phase completes (or ends) itself deterministically — the
 app being closed can neither cheat nor lose state.
 """
 
+import asyncio
+import json
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
+from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
+from app.crud import game as game_crud
+from app.crud.user import get_user_by_id as crud_get_user_by_id
+from app.database import AsyncSessionLocal
 from app.dependencies import get_db
 from app.game import character_service, engine, session_service
+from app.game import session_engine as se
 from app.limiter import limiter
+from app.models.game import GameEvent
 from app.models.user import User
+from app.schemas.barriers import DiversionPenaltyIn, DiversionPenaltyOut
 from app.schemas.game import (
     FocusSessionOut,
     GameProfileRead,
     SessionActionResponse,
     SessionStartIn,
 )
-from app.security import get_confirmed_user
+from app.security import (
+    create_credentials_exception,
+    get_confirmed_user,
+    get_subject_for_token_type,
+    get_token,
+    is_token_blacklisted,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -127,6 +144,246 @@ async def get_active(
         return None
     await db.commit()
     return await _respond(db, result)
+
+
+@router.post("/diversion", response_model=DiversionPenaltyOut)
+@limiter.limit(RATE_LIMIT_GAME_EVENTS)
+async def record_diversion(
+    body: DiversionPenaltyIn,
+    request: Request,
+    response: Response,
+    current_user: Annotated[User, Depends(get_confirmed_user)],
+    db: Annotated[AsyncSession, Depends(get_db)],
+) -> DiversionPenaltyOut:
+    """Record a desktop barrier diversion penalty, calculating HP loss with gear defense mitigation."""
+    user_id = current_user.id
+    profile = await game_crud.get_or_create_profile(db, user_id, for_update=True)
+    rates = await session_service.load_rates(db)
+    stat_bonus = await character_service.gear_stat_bonus(db, user_id)
+
+    # Idempotency check: if client_event_id is provided, return existing result without re-applying damage
+    if body.client_event_id:
+        existing_event = (
+            await db.execute(
+                select(GameEvent).where(
+                    GameEvent.user_id == user_id,
+                    GameEvent.client_event_id == body.client_event_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_event:
+            if existing_event.type != "diversion_penalty":
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="client_event_id already used for different event type",
+                )
+            payload = existing_event.payload or {}
+            hp_lost = float(payload.get("hp_lost", 0.0))
+            mitigated = float(payload.get("damage_mitigated", 0.0))
+            base_damage = float(payload.get("base_damage", 15.0))
+            outcome = payload.get("outcome", {})
+            return DiversionPenaltyOut(
+                applied=True,
+                base_damage=base_damage,
+                hp_lost=hp_lost,
+                damage_mitigated=mitigated,
+                current_hp=profile.hp,
+                died=outcome.get("died", False),
+                gear_stat_bonus=stat_bonus,
+            )
+
+    base_damage = 15.0
+    outcome = engine.apply_hp_loss(profile, base_damage, rates, stat_bonus=stat_bonus)
+    if outcome.get("died"):
+        await character_service.resolve_death_gear(db, user_id, outcome, None)
+
+    hp_lost = outcome.get("hp_lost", 0.0)
+    mitigated = max(0.0, float(base_damage) - float(hp_lost))
+
+    # Log diversion penalty event in game ledger
+    now = datetime.now(timezone.utc)
+    evt_id = (
+        body.client_event_id
+        or f"server:diversion:{user_id}:{int(now.timestamp())}:{uuid.uuid4().hex}"
+    )
+    event = GameEvent(
+        user_id=user_id,
+        client_event_id=evt_id,
+        type="diversion_penalty",
+        payload={
+            "session_id": body.session_id,
+            "reason": body.reason,
+            "base_damage": base_damage,
+            "hp_lost": hp_lost,
+            "damage_mitigated": mitigated,
+            "outcome": {
+                "died": outcome.get("died", False),
+                "gear_lost": outcome.get("gear_lost", False),
+                "gear_lost_key": outcome.get("gear_lost_key"),
+            },
+        },
+        client_ts=now,
+        server_ts=now,
+    )
+    db.add(event)
+    await db.commit()
+
+    logger.info(
+        "diversion penalty applied: user=%s base=%s lost=%s mitigated=%s hp=%s died=%s",
+        user_id,
+        base_damage,
+        hp_lost,
+        mitigated,
+        profile.hp,
+        outcome.get("died", False),
+    )
+
+    return DiversionPenaltyOut(
+        applied=True,
+        base_damage=base_damage,
+        hp_lost=hp_lost,
+        damage_mitigated=mitigated,
+        current_hp=profile.hp,
+        died=outcome.get("died", False),
+        gear_stat_bonus=stat_bonus,
+    )
+
+
+def _format_stream_payload(result: tuple | None) -> dict:
+    """Format SSE session_state payload from active session snapshot view."""
+    if result is None:
+        return {
+            "is_active": False,
+            "session_id": None,
+            "task_id": None,
+            "activity_label": None,
+            "mode": None,
+            "status": "idle",
+            "current_phase": None,
+            "server_time": datetime.now(timezone.utc).isoformat(),
+        }
+
+    f_session, phases, _ = result
+    active_phase = se.live_phase(phases)
+    phase_data = (
+        {
+            "seq": active_phase.seq,
+            "kind": active_phase.kind,
+            "status": active_phase.status,
+            "minutes": active_phase.planned_seconds // 60,
+        }
+        if active_phase
+        else None
+    )
+    return {
+        "is_active": f_session.status == se.S_ACTIVE,
+        "session_id": f_session.id,
+        "task_id": f_session.task_id,
+        "activity_label": f_session.activity_label,
+        "mode": f_session.mode,
+        "status": f_session.status,
+        "current_phase": phase_data,
+        "server_time": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+async def _fetch_user_snapshot(request: Request, user_id: int):
+    """Fetch active session snapshot without holding pooled database connections."""
+    override = request.app.dependency_overrides.get(get_db)
+    if override:
+        async for session in override():
+            res = await session_service.get_active_view(session, user_id)
+            await session.commit()
+            return res
+    else:
+        async with AsyncSessionLocal() as session:
+            res = await session_service.get_active_view(session, user_id)
+            await session.commit()
+            return res
+
+
+async def _stream_events(
+    request: Request,
+    user_id: int,
+    heartbeat_seconds: int,
+    once: bool,
+):
+    """Generator for SSE events checking client disconnect every 500ms."""
+    try:
+        while True:
+            if await request.is_disconnected():
+                break
+
+            result = await _fetch_user_snapshot(request, user_id)
+            payload = _format_stream_payload(result)
+            yield f"event: session_state\ndata: {json.dumps(payload)}\n\n"
+
+            if once:
+                break
+
+            disconnected = False
+            for _ in range(max(1, heartbeat_seconds * 2)):
+                if await request.is_disconnected():
+                    disconnected = True
+                    break
+                await asyncio.sleep(0.5)
+
+            if disconnected:
+                break
+    except asyncio.CancelledError:
+        pass
+
+
+async def _get_stream_user(
+    request: Request,
+    token: Annotated[str, Depends(get_token)],
+) -> User:
+    """Authenticate and verify confirmed user using a short-lived DB session so connections are not held during streaming."""
+    if await is_token_blacklisted(token):
+        raise create_credentials_exception("Token is blacklisted")
+    subject = get_subject_for_token_type(token, expected_type="access")
+    try:
+        user_id = int(subject)
+    except ValueError as err:
+        raise create_credentials_exception("Invalid user ID in token") from err
+
+    override = request.app.dependency_overrides.get(get_db)
+    if override:
+        async for session in override():
+            user = await crud_get_user_by_id(session, user_id=user_id)
+            break
+    else:
+        async with AsyncSessionLocal() as session:
+            user = await crud_get_user_by_id(session, user_id=user_id)
+
+    if user is None:
+        raise create_credentials_exception("Could not find user for this token")
+    if not user.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not confirmed",
+        )
+    return user
+
+
+@router.get("/stream")
+@limiter.limit(RATE_LIMIT_GAME_READ)
+async def session_stream(
+    request: Request,
+    current_user: Annotated[User, Depends(_get_stream_user)],
+    heartbeat_seconds: Annotated[int, Query(ge=1, le=300)] = 15,
+    once: bool = False,
+) -> StreamingResponse:
+    """Server-Sent Events stream for real-time focus session state synchronization."""
+    return StreamingResponse(
+        _stream_events(request, current_user.id, heartbeat_seconds, once),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
+    )
 
 
 @router.get("/{session_id}", response_model=SessionActionResponse)

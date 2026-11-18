@@ -91,12 +91,14 @@ async def _perform_extraction(db: AsyncSession, user_id: int, text: str) -> tupl
             )
             projects = await get_projects(db, user_id)
             pid = projects[0].id if projects else 1
+            from app.schemas.task import TaskPriority
+
             proposals = [
                 ImportTaskProposal(
                     title="Ship import feature",
                     description="Ship import feature by Friday high priority",
                     proposed_deadline=friday,
-                    priority="HIGH",
+                    priority=TaskPriority.HIGH,
                     suggested_project_id=pid,
                     subtasks=[
                         ImportSubtaskProposal(title="Review frontend import sheet"),
@@ -109,7 +111,7 @@ async def _perform_extraction(db: AsyncSession, user_id: int, text: str) -> tupl
                     proposed_deadline=(now + timedelta(days=7)).replace(
                         hour=10, minute=0, second=0, microsecond=0
                     ),
-                    priority="MEDIUM",
+                    priority=TaskPriority.MEDIUM,
                     suggested_project_id=pid,
                     subtasks=[
                         ImportSubtaskProposal(title="Review unassigned tickets"),

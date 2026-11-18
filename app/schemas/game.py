@@ -1043,3 +1043,7 @@ class DeviceTokenRead(BaseModel):
     created_at: datetime
 
     model_config = ConfigDict(from_attributes=True)
+
+
+# --- Desktop digital barriers & diversion penalties --------------------------
+from app.schemas.barriers import DiversionPenaltyIn, DiversionPenaltyOut  # noqa: E402, F401
