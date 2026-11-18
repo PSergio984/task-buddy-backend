@@ -618,13 +618,17 @@ class TestDiversion:
 
         # Only 1 GameEvent recorded in DB for client_id
         events = (
-            await db.execute(
-                select(GameEvent).where(
-                    GameEvent.user_id == confirmed_user["id"],
-                    GameEvent.client_event_id == client_id,
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == confirmed_user["id"],
+                        GameEvent.client_event_id == client_id,
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(events) == 1
 
         # Reusing client_event_id from a different event type yields 409 Conflict
@@ -666,13 +670,17 @@ class TestDiversion:
 
         # Query and assert two distinct diversion events with distinct client_event_ids
         events = (
-            await db.execute(
-                select(GameEvent).where(
-                    GameEvent.user_id == confirmed_user["id"],
-                    GameEvent.type == "diversion_penalty",
+            (
+                await db.execute(
+                    select(GameEvent).where(
+                        GameEvent.user_id == confirmed_user["id"],
+                        GameEvent.type == "diversion_penalty",
+                    )
                 )
             )
-        ).scalars().all()
+            .scalars()
+            .all()
+        )
         assert len(events) >= 2
         event_ids = {e.client_event_id for e in events}
         assert len(event_ids) >= 2

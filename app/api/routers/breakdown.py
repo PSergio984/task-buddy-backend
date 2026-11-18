@@ -125,10 +125,14 @@ async def breakdown(
         if os.getenv("ENABLE_DEV_MOCK_LLM") == "1" and isinstance(exc, AssistantNotConfiguredError):
             import json
 
-            from app.knowledge.breakdown import BreakdownSubtaskProposal, BreakdownTaskProposal
+            from app.knowledge.breakdown import (
+                BreakdownProposal,
+                BreakdownSubtaskProposal,
+                BreakdownTaskProposal,
+            )
             from app.knowledge.records import LLMCallRecord
 
-            proposal = BreakdownResponse(
+            mock_proposal = BreakdownProposal(
                 tasks=[
                     BreakdownTaskProposal(
                         title=context_title or "Finalize Q3 Infrastructure Audit",
@@ -150,7 +154,7 @@ async def breakdown(
             )
             record = LLMCallRecord.zeroed(model="mock-gpt", response_time=0.20)
             record.prompt = prompt
-            record.answer = json.dumps(proposal.model_dump(mode="json"))
+            record.answer = json.dumps(mock_proposal.model_dump(mode="json"))
             answer_text = record.answer
             actual = record.total_tokens or LLM_BREAKDOWN_RESERVE_TOKENS
             await reconcile_llm_usage(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS, actual)
@@ -163,7 +167,7 @@ async def breakdown(
                 context_task_id=context_task_id,
             )
             await db.commit()
-            return proposal
+            return BreakdownResponse(tasks=mock_proposal.tasks, reason=mock_proposal.reason)
         logger.warning("breakdown unavailable for user=%s: %s", user_id, exc)
         await refund_llm_reservation(db, user_id, LLM_BREAKDOWN_RESERVE_TOKENS)
         raise HTTPException(
