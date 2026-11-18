@@ -12,12 +12,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, Response, status
 from fastapi.responses import StreamingResponse
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.config import RATE_LIMIT_GAME_EVENTS, RATE_LIMIT_GAME_READ
 from app.crud import game as game_crud
+from app.crud.user import get_user_by_id as crud_get_user_by_id
 from app.database import AsyncSessionLocal
 from app.dependencies import get_db
 from app.game import character_service, engine, session_service
@@ -32,7 +34,13 @@ from app.schemas.game import (
     SessionActionResponse,
     SessionStartIn,
 )
-from app.security import get_confirmed_user
+from app.security import (
+    create_credentials_exception,
+    get_confirmed_user,
+    get_subject_for_token_type,
+    get_token,
+    is_token_blacklisted,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -153,12 +161,39 @@ async def record_diversion(
     rates = await session_service.load_rates(db)
     stat_bonus = await character_service.gear_stat_bonus(db, user_id)
 
-    outcome = engine.apply_hp_loss(profile, body.base_damage, rates, stat_bonus=stat_bonus)
+    # Idempotency check: if client_event_id is provided, return existing result without re-applying damage
+    if body.client_event_id:
+        existing_event = (
+            await db.execute(
+                select(GameEvent).where(
+                    GameEvent.user_id == user_id,
+                    GameEvent.client_event_id == body.client_event_id,
+                )
+            )
+        ).scalar_one_or_none()
+        if existing_event:
+            payload = existing_event.payload or {}
+            hp_lost = float(payload.get("hp_lost", 0.0))
+            mitigated = float(payload.get("damage_mitigated", 0.0))
+            base_damage = float(payload.get("base_damage", 15.0))
+            outcome = payload.get("outcome", {})
+            return DiversionPenaltyOut(
+                applied=True,
+                base_damage=base_damage,
+                hp_lost=hp_lost,
+                damage_mitigated=mitigated,
+                current_hp=profile.hp,
+                died=outcome.get("died", False),
+                gear_stat_bonus=stat_bonus,
+            )
+
+    base_damage = 15.0
+    outcome = engine.apply_hp_loss(profile, base_damage, rates, stat_bonus=stat_bonus)
     if outcome.get("died"):
         await character_service.resolve_death_gear(db, user_id, outcome, None)
 
     hp_lost = outcome.get("hp_lost", 0.0)
-    mitigated = max(0.0, float(body.base_damage) - float(hp_lost))
+    mitigated = max(0.0, float(base_damage) - float(hp_lost))
 
     # Log diversion penalty event in game ledger
     now = datetime.now(timezone.utc)
@@ -173,9 +208,14 @@ async def record_diversion(
         payload={
             "session_id": body.session_id,
             "reason": body.reason,
-            "base_damage": body.base_damage,
+            "base_damage": base_damage,
             "hp_lost": hp_lost,
             "damage_mitigated": mitigated,
+            "outcome": {
+                "died": outcome.get("died", False),
+                "gear_lost": outcome.get("gear_lost", False),
+                "gear_lost_key": outcome.get("gear_lost_key"),
+            },
         },
         client_ts=now,
         server_ts=now,
@@ -186,7 +226,7 @@ async def record_diversion(
     logger.info(
         "diversion penalty applied: user=%s base=%s lost=%s mitigated=%s hp=%s died=%s",
         user_id,
-        body.base_damage,
+        base_damage,
         hp_lost,
         mitigated,
         profile.hp,
@@ -195,7 +235,7 @@ async def record_diversion(
 
     return DiversionPenaltyOut(
         applied=True,
-        base_damage=body.base_damage,
+        base_damage=base_damage,
         hp_lost=hp_lost,
         damage_mitigated=mitigated,
         current_hp=profile.hp,
@@ -231,7 +271,7 @@ def _format_stream_payload(result: tuple | None) -> dict:
         else None
     )
     return {
-        "is_active": True,
+        "is_active": f_session.status == se.S_ACTIVE,
         "session_id": f_session.id,
         "task_id": f_session.task_id,
         "activity_label": f_session.activity_label,
@@ -289,11 +329,43 @@ async def _stream_events(
         pass
 
 
+async def _get_stream_user(
+    request: Request,
+    token: Annotated[str, Depends(get_token)],
+) -> User:
+    """Authenticate and verify confirmed user using a short-lived DB session so connections are not held during streaming."""
+    if await is_token_blacklisted(token):
+        raise create_credentials_exception("Token is blacklisted")
+    subject = get_subject_for_token_type(token, expected_type="access")
+    try:
+        user_id = int(subject)
+    except ValueError as err:
+        raise create_credentials_exception("Invalid user ID in token") from err
+
+    override = request.app.dependency_overrides.get(get_db)
+    if override:
+        async for session in override():
+            user = await crud_get_user_by_id(session, user_id=user_id)
+            break
+    else:
+        async with AsyncSessionLocal() as session:
+            user = await crud_get_user_by_id(session, user_id=user_id)
+
+    if user is None:
+        raise create_credentials_exception("Could not find user for this token")
+    if not user.confirmed:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Email not confirmed",
+        )
+    return user
+
+
 @router.get("/stream")
 @limiter.limit(RATE_LIMIT_GAME_READ)
 async def session_stream(
     request: Request,
-    current_user: Annotated[User, Depends(get_confirmed_user)],
+    current_user: Annotated[User, Depends(_get_stream_user)],
     heartbeat_seconds: Annotated[int, Query(ge=1, le=300)] = 15,
     once: bool = False,
 ) -> StreamingResponse:
